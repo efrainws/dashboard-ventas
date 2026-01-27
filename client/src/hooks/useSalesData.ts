@@ -44,7 +44,7 @@ export function useSalesData() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/data.json')
+    fetch('/api/data')
       .then(res => res.json())
       .then(data => {
         setData(data);

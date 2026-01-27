@@ -184,5 +184,12 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    proxy: {
+      '/api/data': {
+        target: 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663237488769/RzHNfONGyvwEzFVC.json',
+        changeOrigin: true,
+        rewrite: (path) => '',
+      }
+    }
   },
 });
