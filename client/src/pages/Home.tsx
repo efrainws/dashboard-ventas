@@ -5,11 +5,12 @@ import { SalesTable } from "@/components/SalesTable";
 import { Filters, useFilteredSales, useSalesData } from "@/hooks/useSalesData";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Home() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { data, loading, error } = useSalesData();
   const [filters, setFilters] = useState<Filters>({
     branch: 'all',
@@ -61,10 +62,21 @@ export default function Home() {
               )}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={logout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Cerrar Sesión
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
+              {user?.role === 'admin' ? (
+                <Shield className="h-4 w-4 text-primary" />
+              ) : (
+                <UserIcon className="h-4 w-4" />
+              )}
+              <span className="font-medium">{user?.name}</span>
+              <span className="text-xs opacity-70 capitalize">({user?.role})</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
 
         {/* Filtros */}
@@ -82,10 +94,21 @@ export default function Home() {
         {/* Gráficos */}
         <DashboardCharts sales={filteredSales} />
 
-        {/* Tabla de Datos */}
+        {/* Tabla de Datos - Solo visible para Admin */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold tracking-tight">Detalle de Transacciones</h2>
-          <SalesTable sales={filteredSales} />
+          {user?.role === 'admin' ? (
+            <SalesTable sales={filteredSales} />
+          ) : (
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertTitle>Acceso Restringido</AlertTitle>
+              <AlertDescription>
+                Solo los administradores pueden ver el detalle de transacciones individual.
+                Contacta a soporte si necesitas acceso.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
     </div>

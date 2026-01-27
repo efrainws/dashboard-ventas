@@ -3,19 +3,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export default function Login() {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(password)) {
+    if (login(username, password)) {
       setError('');
     } else {
-      setError('Contraseña incorrecta');
+      setError('Usuario o contraseña incorrectos');
     }
   };
 
@@ -30,19 +32,38 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl font-bold">Acceso Restringido</CardTitle>
           <CardDescription>
-            Ingresa la contraseña para acceder al dashboard
+            Ingresa tus credenciales para acceder al dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={error ? 'border-destructive' : ''}
-              />
+              <Label htmlFor="username">Usuario</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={`pl-9 ${error ? 'border-destructive' : ''}`}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`pl-9 ${error ? 'border-destructive' : ''}`}
+                />
+              </div>
               {error && (
                 <p className="text-sm text-destructive font-medium">{error}</p>
               )}
@@ -50,6 +71,11 @@ export default function Login() {
             <Button type="submit" className="w-full">
               Ingresar
             </Button>
+            <div className="text-xs text-center text-muted-foreground mt-4">
+              <p>Credenciales de prueba:</p>
+              <p>Admin: admin / admin123</p>
+              <p>Visualizador: user / user123</p>
+            </div>
           </form>
         </CardContent>
       </Card>
