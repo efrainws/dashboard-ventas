@@ -69,3 +69,15 @@
 - [x] Simplificar componente Login para eliminar complejidad innecesaria
 - [ ] Probar flujo completo de login en el navegador (requiere prueba manual)
 - [ ] Verificar redirección después del login exitoso (requiere prueba manual)
+
+## Problema Reportado - Cookie de Sesión
+- [x] Investigar por qué la cookie de sesión no persiste después del login
+- [x] Verificar configuración de SameSite, Secure y Domain en las cookies
+- [x] Corregir el problema de redirección al login después de autenticación exitosa
+- [x] Probar que el usuario permanezca autenticado después del login
+
+### Solución Aplicada
+- Cambiado SameSite de "none" a "lax" en cookies.ts
+- Corregida verificación de userId en authenticateRequest para aceptar number además de string
+- Modificado auth.me para no devolver el campo password en la respuesta
+- Login funcionando correctamente, usuario permanece autenticado

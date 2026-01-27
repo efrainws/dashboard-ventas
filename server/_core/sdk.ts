@@ -272,8 +272,9 @@ class SDKServer {
       });
 
       // Si tiene userId, es un JWT local (de nuestro login)
-      if (payload.userId && typeof payload.userId === "string") {
-        const user = await db.getUserById(payload.userId);
+      if (payload.userId && (typeof payload.userId === "string" || typeof payload.userId === "number")) {
+        const userId = String(payload.userId);
+        const user = await db.getUserById(userId);
         if (!user) {
           throw ForbiddenError("User not found");
         }
