@@ -1,0 +1,87 @@
+import { COOKIE_NAME } from "@shared/const";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { systemRouter } from "./_core/systemRouter";
+import { publicProcedure, router } from "./_core/trpc";
+import { getUserByUsername, updateUserLastSignIn } from "./db";
+import bcrypt from "bcrypt";
+import { z } from "zod";
+import { SignJWT } from "jose";
+import { ENV } from "./_core/env";
+
+export const appRouter = router({
+    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  system: systemRouter,
+  auth: router({
+    me: publicProcedure.query(opts => opts.ctx.user),
+    login: publicProcedure
+      .input(
+        z.object({
+          username: z.string().min(1, "Usuario requerido"),
+          password: z.string().min(1, "Contraseña requerida"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { username, password } = input;
+
+        // Buscar usuario por username
+        const user = await getUserByUsername(username);
+
+        if (!user || !user.password) {
+          throw new Error("Credenciales inválidas");
+        }
+
+        // Verificar contraseña
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+          throw new Error("Credenciales inválidas");
+        }
+
+        // Actualizar última fecha de inicio de sesión
+        await updateUserLastSignIn(user.id);
+
+        // Crear JWT token
+        const secret = new TextEncoder().encode(ENV.cookieSecret);
+        const token = await new SignJWT({
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .setIssuedAt()
+          .setExpirationTime("7d")
+          .sign(secret);
+
+        // Establecer cookie de sesión
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...cookieOptions,
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+        });
+
+        // No devolver el password en la respuesta
+        const { password: _, ...userWithoutPassword } = user;
+        
+        return {
+          success: true,
+          user: userWithoutPassword,
+        };
+      }),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return {
+        success: true,
+      } as const;
+    }),
+  }),
+
+  // TODO: add feature routers here, e.g.
+  // todo: router({
+  //   list: protectedProcedure.query(({ ctx }) =>
+  //     db.getUserTodos(ctx.user.id)
+  //   ),
+  // }),
+});
+
+export type AppRouter = typeof appRouter;

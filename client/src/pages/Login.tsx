@@ -1,24 +1,39 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'wouter';
+import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [, setLocation] = useLocation();
+  
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: () => {
+      setError('');
+      // Redirigir al home después del login exitoso
+      setLocation('/');
+    },
+    onError: (error) => {
+      setError(error.message || 'Error al iniciar sesión');
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
-      setError('');
-    } else {
-      setError('Usuario o contraseña incorrectos');
+    setError('');
+    
+    if (!username.trim() || !password.trim()) {
+      setError('Por favor ingresa usuario y contraseña');
+      return;
     }
+    
+    loginMutation.mutate({ username, password });
   };
 
   return (
@@ -48,6 +63,7 @@ export default function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className={`pl-9 ${error ? 'border-destructive' : ''}`}
+                  disabled={loginMutation.isPending}
                 />
               </div>
             </div>
@@ -62,14 +78,22 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`pl-9 ${error ? 'border-destructive' : ''}`}
+                  disabled={loginMutation.isPending}
                 />
               </div>
               {error && (
                 <p className="text-sm text-destructive font-medium">{error}</p>
               )}
             </div>
-            <Button type="submit" className="w-full">
-              Ingresar
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Ingresando...
+                </>
+              ) : (
+                'Ingresar'
+              )}
             </Button>
             <div className="text-xs text-center text-muted-foreground mt-4">
               <p>Credenciales de prueba:</p>

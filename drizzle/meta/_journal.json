@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1769504662054,
+      "tag": "0000_deep_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1769504747834,
+      "tag": "0001_deep_power_pack",
+      "breakpoints": true
+    }
+  ]
+}
