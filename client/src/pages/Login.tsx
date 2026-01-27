@@ -17,7 +17,7 @@ export default function Login() {
     onSuccess: () => {
       setError('');
       // Redirigir al home después del login exitoso
-      setLocation('/');
+      window.location.href = '/';
     },
     onError: (error) => {
       setError(error.message || 'Error al iniciar sesión');
@@ -64,6 +64,7 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   className={`pl-9 ${error ? 'border-destructive' : ''}`}
                   disabled={loginMutation.isPending}
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -79,6 +80,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className={`pl-9 ${error ? 'border-destructive' : ''}`}
                   disabled={loginMutation.isPending}
+                  autoComplete="current-password"
                 />
               </div>
               {error && (

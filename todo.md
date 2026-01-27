@@ -61,3 +61,11 @@
 - `client/src/App.tsx`: Eliminado AuthProvider, usa ProtectedRoute con useAuth
 - `drizzle/schema.ts`: Tabla users extendida con username y password
 - `server/auth.login.test.ts`: Tests unitarios para el endpoint de login
+
+## Nueva Tarea - Depuración de Login UI
+- [x] Identificar causa del problema del botón de login que no responde
+- [x] Corregir el problema en el componente Login.tsx
+- [x] Verificar que las peticiones tRPC se envíen correctamente
+- [x] Simplificar componente Login para eliminar complejidad innecesaria
+- [ ] Probar flujo completo de login en el navegador (requiere prueba manual)
+- [ ] Verificar redirección después del login exitoso (requiere prueba manual)
