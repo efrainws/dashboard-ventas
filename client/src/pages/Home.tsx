@@ -3,10 +3,13 @@ import { DashboardFilters } from "@/components/DashboardFilters";
 import { DashboardStats } from "@/components/DashboardStats";
 import { SalesTable } from "@/components/SalesTable";
 import { Filters, useFilteredSales, useSalesData } from "@/hooks/useSalesData";
-import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Loader2, LogOut } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export default function Home() {
+  const { logout } = useAuth();
   const { data, loading, error } = useSalesData();
   const [filters, setFilters] = useState<Filters>({
     branch: 'all',
@@ -46,16 +49,22 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="container py-8 space-y-8">
         {/* Header */}
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
-          <p className="text-muted-foreground">
-            Visualización interactiva de ventas y transacciones.
-            {data?.metadata && (
-              <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
-                Actualizado: {data.metadata.generated_at}
-              </span>
-            )}
-          </p>
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
+            <p className="text-muted-foreground">
+              Visualización interactiva de ventas y transacciones.
+              {data?.metadata && (
+                <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
+                  Actualizado: {data.metadata.generated_at}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={logout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Cerrar Sesión
+          </Button>
         </div>
 
         {/* Filtros */}
