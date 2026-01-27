@@ -4,17 +4,26 @@ import { DashboardStats } from "@/components/DashboardStats";
 import { SalesTable } from "@/components/SalesTable";
 import { Filters, useFilteredSales, useSalesData } from "@/hooks/useSalesData";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function Home() {
   const { data, loading, error } = useSalesData();
   const [filters, setFilters] = useState<Filters>({
     branch: 'all',
     paymentMethod: 'all',
+    year: 'all',
+    monthYear: 'all',
     dateRange: { from: undefined, to: undefined }
   });
 
   const filteredSales = useFilteredSales(data, filters);
+
+  // Calcular meses disponibles a partir de los datos
+  const availableMonths = useMemo(() => {
+    if (!data) return [];
+    const months = new Set(data.sales.map(s => s.month_str));
+    return Array.from(months).sort().reverse();
+  }, [data]);
 
   if (loading) {
     return (
@@ -55,6 +64,7 @@ export default function Home() {
           setFilters={setFilters}
           branches={data?.branches || []}
           paymentMethods={data?.payment_methods || []}
+          availableMonths={availableMonths}
         />
 
         {/* KPIs */}

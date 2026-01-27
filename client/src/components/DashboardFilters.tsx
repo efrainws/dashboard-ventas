@@ -17,12 +17,14 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarIcon, X } from "lucide-react";
+import { useMemo } from "react";
 
 interface DashboardFiltersProps {
   filters: Filters;
   setFilters: (filters: Filters) => void;
   branches: string[];
   paymentMethods: string[];
+  availableMonths: string[]; // Lista de meses disponibles (YYYY-MM)
 }
 
 export function DashboardFilters({
@@ -30,11 +32,21 @@ export function DashboardFilters({
   setFilters,
   branches,
   paymentMethods,
+  availableMonths,
 }: DashboardFiltersProps) {
+  
+  // Extraer años únicos de los meses disponibles
+  const availableYears = useMemo(() => {
+    const years = new Set(availableMonths.map(m => m.split('-')[0]));
+    return Array.from(years).sort().reverse();
+  }, [availableMonths]);
+
   const handleReset = () => {
     setFilters({
       branch: 'all',
       paymentMethod: 'all',
+      year: 'all',
+      monthYear: 'all',
       dateRange: { from: undefined, to: undefined }
     });
   };
@@ -83,9 +95,54 @@ export function DashboardFilters({
         </Select>
       </div>
 
-      {/* Filtro de Fecha */}
+      {/* Filtro de Año */}
+      <div className="space-y-2 min-w-[120px]">
+        <label className="text-sm font-medium text-muted-foreground">Año</label>
+        <Select
+          value={filters.year}
+          onValueChange={(value) => setFilters({ ...filters, year: value, monthYear: 'all' })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {availableYears.map((year) => (
+              <SelectItem key={year} value={year}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filtro de Mes-Año */}
+      <div className="space-y-2 min-w-[160px]">
+        <label className="text-sm font-medium text-muted-foreground">Mes</label>
+        <Select
+          value={filters.monthYear}
+          onValueChange={(value) => setFilters({ ...filters, monthYear: value })}
+          disabled={filters.year !== 'all'} // Deshabilitar si hay año seleccionado (opcional, o filtrar lista)
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {availableMonths
+              .filter(m => filters.year === 'all' || m.startsWith(filters.year))
+              .map((month) => (
+              <SelectItem key={month} value={month}>
+                {month}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filtro de Fecha Personalizada */}
       <div className="space-y-2 min-w-[240px]">
-        <label className="text-sm font-medium text-muted-foreground">Rango de Fechas</label>
+        <label className="text-sm font-medium text-muted-foreground">Rango Personalizado</label>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -122,7 +179,9 @@ export function DashboardFilters({
                   dateRange: { 
                     from: range?.from, 
                     to: range?.to 
-                  } 
+                  },
+                  year: 'all', // Limpiar otros filtros de tiempo
+                  monthYear: 'all'
                 })
               }
               numberOfMonths={2}

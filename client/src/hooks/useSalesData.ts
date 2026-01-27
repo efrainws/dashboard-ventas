@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { subDays, startOfDay, parseISO } from 'date-fns';
 
 export interface Sale {
   id: string;
@@ -29,6 +30,8 @@ export interface DashboardData {
 export interface Filters {
   branch: string | 'all';
   paymentMethod: string | 'all';
+  year: string | 'all';
+  monthYear: string | 'all';
   dateRange: {
     from: Date | undefined;
     to: Date | undefined;
@@ -61,7 +64,39 @@ export function useFilteredSales(data: DashboardData | null, filters: Filters) {
   return useMemo(() => {
     if (!data) return [];
 
-    return data.sales.filter(sale => {
+    // Si no hay filtros activos, mostrar solo la última semana por defecto
+    const isDefaultView = 
+      filters.branch === 'all' && 
+      filters.paymentMethod === 'all' && 
+      filters.year === 'all' && 
+      filters.monthYear === 'all' && 
+      !filters.dateRange.from && 
+      !filters.dateRange.to;
+
+    let filteredSales = data.sales;
+
+    if (isDefaultView) {
+      // Obtener la fecha más reciente de manera eficiente
+      let maxTimestamp = 0;
+      for (const sale of data.sales) {
+        const ts = parseISO(sale.date_str).getTime();
+        if (ts > maxTimestamp) {
+          maxTimestamp = ts;
+        }
+      }
+      
+      const maxDate = new Date(maxTimestamp);
+      const oneWeekAgo = subDays(maxDate, 7);
+      
+      return data.sales.filter(sale => {
+        const saleDate = parseISO(sale.date_str);
+        return saleDate >= oneWeekAgo;
+      });
+    }
+
+    return filteredSales.filter(sale => {
+      const saleDate = parseISO(sale.date_str);
+
       // Filtro por sucursal
       if (filters.branch !== 'all' && sale.branch_name !== filters.branch) {
         return false;
@@ -74,16 +109,27 @@ export function useFilteredSales(data: DashboardData | null, filters: Filters) {
         }
       }
 
-      // Filtro por fecha
+      // Filtro por Año
+      if (filters.year !== 'all') {
+        if (saleDate.getFullYear().toString() !== filters.year) {
+          return false;
+        }
+      }
+
+      // Filtro por Año-Mes
+      if (filters.monthYear !== 'all') {
+        if (sale.month_str !== filters.monthYear) {
+          return false;
+        }
+      }
+
+      // Filtro por rango de fechas personalizado
       if (filters.dateRange.from || filters.dateRange.to) {
-        const saleDate = new Date(sale.date_str);
-        
-        if (filters.dateRange.from && saleDate < filters.dateRange.from) {
+        if (filters.dateRange.from && saleDate < startOfDay(filters.dateRange.from)) {
           return false;
         }
         
         if (filters.dateRange.to) {
-          // Ajustar al final del día para incluir ventas del mismo día
           const endDate = new Date(filters.dateRange.to);
           endDate.setHours(23, 59, 59, 999);
           
