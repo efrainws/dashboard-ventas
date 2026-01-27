@@ -111,3 +111,18 @@
 - [x] Agregar navegación desde el dashboard principal
 - [x] Probar la consulta con datos reales en el navegador
 - [x] Optimizar rendimiento de la consulta recursiva (funcionando correctamente)
+
+
+## Modificación Solicitada - Cambiar Consulta SQL de Categorías
+- [x] Reemplazar consulta recursiva CTE por consulta con JOINs directos proporcionada por el usuario
+- [x] Usar category_group_id específico: '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+- [x] Adaptar la lógica para usar grandparent_category_id y grandparent_category_name directamente
+- [x] Usar COALESCE para manejar categorías sin padre o abuelo
+- [x] Probar la nueva consulta con datos reales
+- [x] Verificar que los resultados sean correctos en el navegador
+
+### Resultados:
+- Reducción de 53 a 7 categorías abuelo (filtrado por category_group_id)
+- SOL 111,815.67 en ventas (vs SOL 293,630.33 anterior)
+- Consulta más eficiente usando JOINs directos en lugar de recursividad
+- COALESCE maneja correctamente categorías sin padre o abuelo

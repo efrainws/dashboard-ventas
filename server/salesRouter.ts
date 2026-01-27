@@ -18,38 +18,37 @@ export const salesRouter = router({
       const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const query = `
-        WITH RECURSIVE category_hierarchy AS (
-          -- Caso base: categorías sin padre (abuelos)
-          SELECT 
-            id as category_id,
-            id as grandparent_id,
-            name as grandparent_name,
-            0 as level
-          FROM categories
-          WHERE parent_category_id IS NULL
-          
-          UNION ALL
-          
-          -- Caso recursivo: categorías con padre
-          SELECT 
-            c.id as category_id,
-            ch.grandparent_id,
-            ch.grandparent_name,
-            ch.level + 1 as level
-          FROM categories c
-          INNER JOIN category_hierarchy ch ON c.parent_category_id = ch.category_id
+        WITH product_categories AS (
+          SELECT
+            p.id    AS product_id,
+            p.sku   AS product_sku,
+            p.name  AS product_name,
+            c.id    AS category_id,
+            c.name  AS category_name,
+            cp.id   AS parent_category_id,
+            cp.name AS parent_category_name,
+            COALESCE(cg.id, cp.id, c.id) AS grandparent_category_id,
+            COALESCE(cg.name, cp.name, c.name) AS grandparent_category_name
+          FROM products p
+          JOIN categories_products cpr
+            ON cpr.product_id = p.id
+           AND cpr.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          JOIN categories c
+            ON c.id = cpr.category_id
+          LEFT JOIN categories cp
+            ON cp.id = c.parent_category_id
+          LEFT JOIN categories cg
+            ON cg.id = cp.parent_category_id
         )
         SELECT 
-          ch.grandparent_id as id,
-          ch.grandparent_name as name,
+          pc.grandparent_category_id as id,
+          pc.grandparent_category_name as name,
           COUNT(DISTINCT sd.header_id) as transaction_count,
           CAST(SUM(sd.total) AS DECIMAL(10,2)) as total_sales,
           COUNT(sd.id) as items_sold
         FROM sales_detail sd
         INNER JOIN sales_header sh ON sd.header_id = sh.id
-        INNER JOIN products p ON sd.product_id = p.id
-        INNER JOIN categories_products cp ON p.id = cp.product_id
-        INNER JOIN category_hierarchy ch ON cp.category_id = ch.category_id
+        INNER JOIN product_categories pc ON sd.product_id = pc.product_id
         WHERE sh.doc_date IS NOT NULL
           ${
             startDate
@@ -61,7 +60,7 @@ export const salesRouter = router({
               ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp`
               : `AND sh.doc_date <= '${defaultEndDate}'::timestamp`
           }
-        GROUP BY ch.grandparent_id, ch.grandparent_name
+        GROUP BY pc.grandparent_category_id, pc.grandparent_category_name
         ORDER BY total_sales DESC
       `;
 
