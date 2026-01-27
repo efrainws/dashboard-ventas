@@ -7,9 +7,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
+import { Loader2, LogOut, Shield, User as UserIcon, BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Link } from "wouter";
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -85,6 +86,12 @@ export default function Home() {
               <span className="font-medium">{user?.name}</span>
               <span className="text-xs opacity-70 capitalize">({user?.role})</span>
             </div>
+            <Link href="/categorias">
+              <Button variant="outline" size="sm">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Ver Categorías
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={handleLogout} disabled={logoutMutation.isPending}>
               <LogOut className="mr-2 h-4 w-4" />
               Cerrar Sesión

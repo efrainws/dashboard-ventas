@@ -3,6 +3,86 @@ import { productionPool } from "./postgres";
 import { z } from "zod";
 
 export const salesRouter = router({
+  getSalesByGrandparentCategory: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate } = input;
+
+      // Por defecto, última semana si no se especifican fechas
+      const defaultEndDate = new Date().toISOString();
+      const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const query = `
+        WITH RECURSIVE category_hierarchy AS (
+          -- Caso base: categorías sin padre (abuelos)
+          SELECT 
+            id as category_id,
+            id as grandparent_id,
+            name as grandparent_name,
+            0 as level
+          FROM categories
+          WHERE parent_category_id IS NULL
+          
+          UNION ALL
+          
+          -- Caso recursivo: categorías con padre
+          SELECT 
+            c.id as category_id,
+            ch.grandparent_id,
+            ch.grandparent_name,
+            ch.level + 1 as level
+          FROM categories c
+          INNER JOIN category_hierarchy ch ON c.parent_category_id = ch.category_id
+        )
+        SELECT 
+          ch.grandparent_id as id,
+          ch.grandparent_name as name,
+          COUNT(DISTINCT sd.header_id) as transaction_count,
+          CAST(SUM(sd.total) AS DECIMAL(10,2)) as total_sales,
+          COUNT(sd.id) as items_sold
+        FROM sales_detail sd
+        INNER JOIN sales_header sh ON sd.header_id = sh.id
+        INNER JOIN products p ON sd.product_id = p.id
+        INNER JOIN categories_products cp ON p.id = cp.product_id
+        INNER JOIN category_hierarchy ch ON cp.category_id = ch.category_id
+        WHERE sh.doc_date IS NOT NULL
+          ${
+            startDate
+              ? `AND sh.doc_date >= $1::timestamp`
+              : `AND sh.doc_date >= '${defaultStartDate}'::timestamp`
+          }
+          ${
+            endDate
+              ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp`
+              : `AND sh.doc_date <= '${defaultEndDate}'::timestamp`
+          }
+        GROUP BY ch.grandparent_id, ch.grandparent_name
+        ORDER BY total_sales DESC
+      `;
+
+      const params = [];
+      if (startDate) params.push(startDate);
+      if (endDate) params.push(endDate);
+
+      const result = await productionPool.query(query, params.length > 0 ? params : undefined);
+
+      return {
+        categories: result.rows,
+        metadata: {
+          total_categories: result.rows.length,
+          date_range: {
+            start: startDate || defaultStartDate,
+            end: endDate || defaultEndDate,
+          },
+        },
+      };
+    }),
+
   // Obtener datos de ventas con filtros opcionales
   getSalesData: publicProcedure
     .input(

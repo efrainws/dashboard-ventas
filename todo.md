@@ -100,3 +100,14 @@
 - Límite de 1000 registros por consulta para optimizar rendimiento
 - Actualizado useSalesData para usar tRPC en lugar de fetch
 - Dashboard cargando correctamente 156,534 registros válidos
+
+
+## Nueva Funcionalidad - Vista de Ventas por Categoría Abuelo
+- [x] Investigar estructura de la tabla categories en PostgreSQL
+- [x] Crear consulta SQL recursiva para obtener categoría abuelo de cada producto
+- [x] Crear endpoint tRPC getSalesByGrandparentCategory en salesRouter
+- [x] Crear componente React para visualizar ventas por categoría abuelo
+- [x] Agregar ruta en App.tsx para la nueva vista
+- [x] Agregar navegación desde el dashboard principal
+- [x] Probar la consulta con datos reales en el navegador
+- [x] Optimizar rendimiento de la consulta recursiva (funcionando correctamente)
