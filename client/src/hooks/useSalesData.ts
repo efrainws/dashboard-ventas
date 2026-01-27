@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { subDays, startOfDay, parseISO } from 'date-fns';
+import { trpc } from '@/lib/trpc';
 
 export interface Sale {
   id: string;
@@ -39,25 +40,13 @@ export interface Filters {
 }
 
 export function useSalesData() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = trpc.sales.getSalesData.useQuery();
 
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(data => {
-        setData(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error loading data:', err);
-        setError('Error al cargar los datos de ventas');
-        setLoading(false);
-      });
-  }, []);
-
-  return { data, loading, error };
+  return { 
+    data: data || null, 
+    loading: isLoading, 
+    error: error ? 'Error al cargar los datos de ventas' : null 
+  };
 }
 
 export function useFilteredSales(data: DashboardData | null, filters: Filters) {

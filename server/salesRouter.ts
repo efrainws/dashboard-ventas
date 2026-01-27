@@ -1,0 +1,119 @@
+import { publicProcedure, router } from "./_core/trpc";
+import { productionPool } from "./postgres";
+import { z } from "zod";
+
+export const salesRouter = router({
+  // Obtener datos de ventas con filtros opcionales
+  getSalesData: publicProcedure
+    .input(
+      z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().min(1).max(10000).default(1000),
+      }).optional()
+    )
+    .query(async ({ input }) => {
+      const { startDate, endDate, limit = 1000 } = input || {};
+
+      try {
+        // Query para obtener encabezados de ventas con información de sucursal y métodos de pago
+        const query = `
+          SELECT 
+            sh.id,
+            sh.order_number,
+            to_char(sh.doc_date, 'YYYY-MM-DD') as date_str,
+            to_char(sh.doc_date, 'YYYY-MM') as month_str,
+            sh.total,
+            b.name as branch_name,
+            sh.currency,
+            sh.country,
+            COALESCE(
+              json_agg(
+                DISTINCT pa.name
+              ) FILTER (WHERE pa.name IS NOT NULL),
+              '[]'::json
+            ) as payment_methods
+          FROM sales_header sh
+          LEFT JOIN branches b ON sh.branch_id = b.id
+          LEFT JOIN methods_payment mp ON sh.id = mp.header_id AND mp.position <> -1
+          LEFT JOIN payment_accounts pa ON mp.payment_account_id = pa.id
+          WHERE sh.doc_date IS NOT NULL
+            ${startDate ? `AND sh.doc_date >= $1::timestamp` : ''}
+            ${endDate ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp` : ''}
+          GROUP BY sh.id, sh.order_number, sh.doc_date, sh.total, b.name, sh.currency, sh.country
+          ORDER BY sh.doc_date DESC
+          LIMIT $${startDate && endDate ? '3' : startDate || endDate ? '2' : '1'}
+        `;
+
+        const params: any[] = [];
+        if (startDate) params.push(startDate);
+        if (endDate) params.push(endDate);
+        params.push(limit);
+
+        const result = await productionPool.query(query, params);
+
+        // Obtener listas únicas de sucursales y métodos de pago
+        const branchesSet = new Set<string>();
+        result.rows.forEach((r: any) => {
+          if (r.branch_name) branchesSet.add(r.branch_name);
+        });
+        const branches: string[] = [];
+        branchesSet.forEach(b => branches.push(b));
+        const paymentMethodsSet = new Set<string>();
+        result.rows.forEach((row: any) => {
+          if (Array.isArray(row.payment_methods)) {
+            row.payment_methods.forEach((pm: string) => paymentMethodsSet.add(pm));
+          }
+        });
+        const payment_methods: string[] = [];
+        paymentMethodsSet.forEach(pm => payment_methods.push(pm));
+
+        // Calcular rango de fechas
+        const dates = result.rows.map((r: any) => r.date_str).filter(Boolean);
+        const dateRange = {
+          start: dates.length > 0 ? dates[dates.length - 1] : null,
+          end: dates.length > 0 ? dates[0] : null,
+        };
+
+        return {
+          metadata: {
+            generated_at: new Date().toISOString(),
+            total_records: result.rows.length,
+            date_range: dateRange,
+          },
+          branches: branches.sort(),
+          payment_methods: payment_methods.sort(),
+          sales: result.rows.map((row: any) => ({
+            id: row.id.toString(),
+            order_number: row.order_number,
+            date_str: row.date_str,
+            month_str: row.month_str,
+            total: parseFloat(row.total),
+            branch_name: row.branch_name,
+            payment_methods: Array.isArray(row.payment_methods) ? row.payment_methods : [],
+            currency: row.currency,
+            country: row.country,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error fetching sales data:', error);
+        throw new Error('Error al consultar datos de ventas desde PostgreSQL');
+      }
+    }),
+
+  // Obtener estadísticas de sucursales
+  getBranches: publicProcedure.query(async () => {
+    try {
+      const result = await productionPool.query(`
+        SELECT id, name, sap_id, location, address
+        FROM branches
+        ORDER BY name
+      `);
+
+      return result.rows;
+    } catch (error) {
+      console.error('[PostgreSQL] Error fetching branches:', error);
+      throw new Error('Error al consultar sucursales desde PostgreSQL');
+    }
+  }),
+});

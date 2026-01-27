@@ -81,3 +81,22 @@
 - Corregida verificación de userId en authenticateRequest para aceptar number además de string
 - Modificado auth.me para no devolver el campo password en la respuesta
 - Login funcionando correctamente, usuario permanece autenticado
+
+## Problema Reportado - Error de Conexión PostgreSQL
+- [x] Investigar el error "Error al cargar los datos de ventas"
+- [x] Revisar logs del servidor para identificar el problema
+- [x] Verificar configuración de conexión a PostgreSQL de producción
+- [x] Crear cliente PostgreSQL para base de datos de producción
+- [x] Crear endpoint tRPC para consultar datos de ventas
+- [x] Actualizar frontend para usar tRPC en lugar de /api/data
+- [x] Probar que los datos se carguen correctamente en el dashboard
+
+### Solución Aplicada
+- Instalado driver de PostgreSQL (pg)
+- Creado cliente PostgreSQL con conexión a AWS RDS
+- Creado salesRouter con endpoint getSalesData
+- Consulta SQL optimizada con JOIN a branches, methods_payment y payment_accounts
+- Filtro WHERE doc_date IS NOT NULL para excluir registros sin fecha
+- Límite de 1000 registros por consulta para optimizar rendimiento
+- Actualizado useSalesData para usar tRPC en lugar de fetch
+- Dashboard cargando correctamente 156,534 registros válidos
