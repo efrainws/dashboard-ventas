@@ -1,25 +1,74 @@
-import { Button } from "@/components/ui/button";
+import { DashboardCharts } from "@/components/DashboardCharts";
+import { DashboardFilters } from "@/components/DashboardFilters";
+import { DashboardStats } from "@/components/DashboardStats";
+import { SalesTable } from "@/components/SalesTable";
+import { Filters, useFilteredSales, useSalesData } from "@/hooks/useSalesData";
 import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { useState } from "react";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Best Practices, Design Guide and Common Pitfalls
- */
 export default function Home() {
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  const { data, loading, error } = useSalesData();
+  const [filters, setFilters] = useState<Filters>({
+    branch: 'all',
+    paymentMethod: 'all',
+    dateRange: { from: undefined, to: undefined }
+  });
+
+  const filteredSales = useFilteredSales(data, filters);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-destructive">
+        <span className="text-lg font-medium">{error}</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
+    <div className="min-h-screen bg-background">
+      <div className="container py-8 space-y-8">
+        {/* Header */}
+        <div className="flex flex-col space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
+          <p className="text-muted-foreground">
+            Visualización interactiva de ventas y transacciones.
+            {data?.metadata && (
+              <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
+                Actualizado: {data.metadata.generated_at}
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Filtros */}
+        <DashboardFilters
+          filters={filters}
+          setFilters={setFilters}
+          branches={data?.branches || []}
+          paymentMethods={data?.payment_methods || []}
+        />
+
+        {/* KPIs */}
+        <DashboardStats sales={filteredSales} />
+
+        {/* Gráficos */}
+        <DashboardCharts sales={filteredSales} />
+
+        {/* Tabla de Datos */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Detalle de Transacciones</h2>
+          <SalesTable sales={filteredSales} />
+        </div>
+      </div>
     </div>
   );
 }
