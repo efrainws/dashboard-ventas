@@ -47,3 +47,26 @@
   * Dashboard principal: 1,000 transacciones (con límite)
   * Vista de categorías: 3,112 transacciones (filtradas por category_group_id)
 - Esto es correcto, no hay error en los datos
+
+
+## Optimización Solicitada - Filtrar sales_detail por sales_header
+- [x] Revisar consulta actual en getSalesData
+- [x] Identificar si sales_detail está cargando líneas de headers no filtrados
+- [x] Modificar consulta para usar CTE que primero filtre sales_header
+- [x] Asegurar que sales_detail solo cargue líneas cuyos header_id están en los resultados filtrados
+- [x] Probar la consulta optimizada en el navegador
+- [x] Verificar que el rendimiento mejore
+
+### Resultados:
+- Dashboard carga correctamente: SOL 62,754.91 en 1,000 transacciones
+- La consulta ahora es más eficiente:
+  * CTE filtra primero los 1,000 headers más recientes
+  * JOIN con sales_detail solo procesa esos headers específicos
+  * Reduce significativamente la cantidad de datos procesados
+- No hay cambios en los resultados, solo mejora de rendimiento
+
+### Solución Implementada:
+- Creado CTE `filtered_headers` que primero filtra y limita sales_header
+- El JOIN con sales_detail ahora se hace solo sobre los headers filtrados
+- Esto asegura que sales_detail solo cargue líneas de los 1,000 headers más recientes
+- Mejora significativa en rendimiento al reducir la cantidad de datos procesados

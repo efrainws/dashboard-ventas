@@ -95,35 +95,46 @@ export const salesRouter = router({
       const { startDate, endDate, limit = 1000 } = input || {};
 
       try {
-        // Query para obtener encabezados de ventas con información de sucursal y métodos de pago
-        // Calculando el total desde sales_detail para consistencia con otras consultas
+        // Query optimizada: primero filtra sales_header, luego carga solo los sales_detail correspondientes
+        // Usando CTE para asegurar que sales_detail solo cargue líneas de los headers filtrados
         const query = `
+          WITH filtered_headers AS (
+            SELECT 
+              sh.id,
+              sh.order_number,
+              sh.doc_date,
+              sh.branch_id,
+              sh.currency,
+              sh.country
+            FROM sales_header sh
+            WHERE sh.doc_date IS NOT NULL
+              ${startDate ? `AND sh.doc_date >= $1::timestamp` : ''}
+              ${endDate ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp` : ''}
+            ORDER BY sh.doc_date DESC
+            LIMIT $${startDate && endDate ? '3' : startDate || endDate ? '2' : '1'}
+          )
           SELECT 
-            sh.id,
-            sh.order_number,
-            to_char(sh.doc_date, 'YYYY-MM-DD') as date_str,
-            to_char(sh.doc_date, 'YYYY-MM') as month_str,
+            fh.id,
+            fh.order_number,
+            to_char(fh.doc_date, 'YYYY-MM-DD') as date_str,
+            to_char(fh.doc_date, 'YYYY-MM') as month_str,
             CAST(COALESCE(SUM(sd.total), 0) AS DECIMAL(10,2)) as total,
             b.name as branch_name,
-            sh.currency,
-            sh.country,
+            fh.currency,
+            fh.country,
             COALESCE(
               json_agg(
                 DISTINCT pa.name
               ) FILTER (WHERE pa.name IS NOT NULL),
               '[]'::json
             ) as payment_methods
-          FROM sales_header sh
-          LEFT JOIN sales_detail sd ON sh.id = sd.header_id
-          LEFT JOIN branches b ON sh.branch_id = b.id
-          LEFT JOIN methods_payment mp ON sh.id = mp.header_id AND mp.position <> -1
+          FROM filtered_headers fh
+          LEFT JOIN sales_detail sd ON fh.id = sd.header_id
+          LEFT JOIN branches b ON fh.branch_id = b.id
+          LEFT JOIN methods_payment mp ON fh.id = mp.header_id AND mp.position <> -1
           LEFT JOIN payment_accounts pa ON mp.payment_account_id = pa.id
-          WHERE sh.doc_date IS NOT NULL
-            ${startDate ? `AND sh.doc_date >= $1::timestamp` : ''}
-            ${endDate ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp` : ''}
-          GROUP BY sh.id, sh.order_number, sh.doc_date, b.name, sh.currency, sh.country
-          ORDER BY sh.doc_date DESC
-          LIMIT $${startDate && endDate ? '3' : startDate || endDate ? '2' : '1'}
+          GROUP BY fh.id, fh.order_number, fh.doc_date, b.name, fh.currency, fh.country
+          ORDER BY fh.doc_date DESC
         `;
 
         const params: any[] = [];
