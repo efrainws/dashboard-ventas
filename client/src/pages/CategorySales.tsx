@@ -1,4 +1,5 @@
-import { trpc } from "@/lib/trpc";
+import { useFilters } from "@/contexts/FiltersContext";
+import { useCategorySales } from "@/hooks/useCategorySales";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp, Package, ShoppingCart, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
@@ -31,7 +32,8 @@ const COLORS = [
 ];
 
 export default function CategorySales() {
-  const { data, isLoading, error } = trpc.sales.getSalesByGrandparentCategory.useQuery({});
+  const { filters } = useFilters();
+  const { data, loading: isLoading, error } = useCategorySales(filters);
 
   if (isLoading) {
     return (
@@ -45,7 +47,7 @@ export default function CategorySales() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-destructive">
-        <span className="text-lg font-medium">Error al cargar los datos: {error.message}</span>
+        <span className="text-lg font-medium">{error}</span>
       </div>
     );
   }
@@ -99,12 +101,6 @@ export default function CategorySales() {
           <h1 className="text-3xl font-bold tracking-tight">Ventas por Categoría Abuelo</h1>
           <p className="text-muted-foreground">
             Análisis de ventas agrupadas por categorías principales.
-            {data.metadata && (
-              <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
-                Período: {new Date(data.metadata.date_range.start).toLocaleDateString()} -{" "}
-                {new Date(data.metadata.date_range.end).toLocaleDateString()}
-              </span>
-            )}
           </p>
         </div>
 

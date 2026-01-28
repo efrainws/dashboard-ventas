@@ -2,13 +2,14 @@ import { DashboardCharts } from "@/components/DashboardCharts";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { DashboardStats } from "@/components/DashboardStats";
 import { SalesTable } from "@/components/SalesTable";
-import { Filters, useFilteredSales, useSalesData } from "@/hooks/useSalesData";
+import { useFilteredSales, useSalesData } from "@/hooks/useSalesData";
+import { useFilters } from "@/contexts/FiltersContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut, Shield, User as UserIcon, BarChart3 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 
@@ -26,13 +27,7 @@ export default function Home() {
     logoutMutation.mutate();
   };
   const { data, loading, error } = useSalesData();
-  const [filters, setFilters] = useState<Filters>({
-    branch: 'all',
-    paymentMethod: 'all',
-    year: 'all',
-    monthYear: 'all',
-    dateRange: { from: undefined, to: undefined }
-  });
+  const { filters, setFilters } = useFilters();
 
   const filteredSales = useFilteredSales(data, filters);
 

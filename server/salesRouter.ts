@@ -6,16 +6,14 @@ export const salesRouter = router({
   getSalesByGrandparentCategory: publicProcedure
     .input(
       z.object({
+        branch: z.string().optional(),
+        paymentMethod: z.string().optional(),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      const { startDate, endDate } = input;
-
-      // Por defecto, última semana si no se especifican fechas
-      const defaultEndDate = new Date().toISOString();
-      const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { branch, paymentMethod, startDate, endDate } = input;
 
       const query = `
         WITH product_categories AS (
@@ -49,35 +47,24 @@ export const salesRouter = router({
         FROM sales_detail sd
         INNER JOIN sales_header sh ON sd.header_id = sh.id
         INNER JOIN product_categories pc ON sd.product_id = pc.product_id
+        LEFT JOIN branches b ON sh.branch_id = b.id
+        LEFT JOIN methods_payment mp ON sh.id = mp.header_id AND mp.position <> -1
+        LEFT JOIN payment_accounts pa ON mp.payment_account_id = pa.id
         WHERE sh.doc_date IS NOT NULL
-          ${
-            startDate
-              ? `AND sh.doc_date >= $1::timestamp`
-              : `AND sh.doc_date >= '${defaultStartDate}'::timestamp`
-          }
-          ${
-            endDate
-              ? `AND sh.doc_date <= $${startDate ? '2' : '1'}::timestamp`
-              : `AND sh.doc_date <= '${defaultEndDate}'::timestamp`
-          }
+          ${branch && branch !== 'all' ? `AND b.name = '${branch}'` : ''}
+          ${paymentMethod && paymentMethod !== 'all' ? `AND pa.name = '${paymentMethod}'` : ''}
+          ${startDate ? `AND sh.doc_date >= '${startDate}'::timestamp` : ''}
+          ${endDate ? `AND sh.doc_date <= '${endDate}'::timestamp` : ''}
         GROUP BY pc.grandparent_category_id, pc.grandparent_category_name
         ORDER BY total_sales DESC
       `;
 
-      const params = [];
-      if (startDate) params.push(startDate);
-      if (endDate) params.push(endDate);
-
-      const result = await productionPool.query(query, params.length > 0 ? params : undefined);
+      const result = await productionPool.query(query);
 
       return {
         categories: result.rows,
         metadata: {
           total_categories: result.rows.length,
-          date_range: {
-            start: startDate || defaultStartDate,
-            end: endDate || defaultEndDate,
-          },
         },
       };
     }),

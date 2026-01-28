@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { FiltersProvider } from "./contexts/FiltersContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -50,10 +51,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <FiltersProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </FiltersProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

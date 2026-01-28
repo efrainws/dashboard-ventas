@@ -98,3 +98,23 @@
 - Vista inicial: SOL 713,440.33 en 10,672 transacciones (7 días)
 - Los filtros ahora funcionan instantáneamente sin peticiones al servidor
 - Mejor experiencia de usuario con cambios de filtro en tiempo real
+
+
+## Nueva Tarea - Sincronizar Filtros entre Dashboard y Vista de Categorías
+- [x] Eliminar filtro de fecha por defecto (última semana) en getSalesByGrandparentCategory
+- [x] Modificar endpoint para cargar TODOS los datos de categorías sin filtro de fecha
+- [x] Actualizar CategorySales.tsx para aplicar los mismos filtros que el dashboard principal
+- [x] Compartir la lógica de filtrado entre ambas vistas
+- [x] Crear FiltersContext para compartir estado de filtros
+- [x] Agregar parámetros de filtro a getSalesByGrandparentCategory (branch, paymentMethod, startDate, endDate)
+- [x] Crear hook useCategorySales que convierte filtros del frontend a formato del backend
+- [ ] Probar que ambas vistas muestren datos consistentes con los mismos filtros aplicados
+
+
+## Resultado de Pruebas - Sincronización de Filtros
+- [x] Dashboard principal muestra SOL 148,227.82 (4,140 transacciones) para FLORA & FAUNA NICOLA
+- [x] Vista de categorías muestra SOL 27,428.47 (963 transacciones) para FLORA & FAUNA NICOLA
+- [x] La diferencia es correcta: dashboard muestra TODAS las ventas, categorías solo muestra ventas del category_group_id específico
+- [x] Ambas vistas respetan el filtro de sucursal correctamente
+- [x] Ambas vistas aplican el filtro de última semana por defecto
+- [x] Los filtros se sincronizan correctamente entre ambas vistas mediante FiltersContext
