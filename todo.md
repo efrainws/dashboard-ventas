@@ -70,3 +70,31 @@
 - El JOIN con sales_detail ahora se hace solo sobre los headers filtrados
 - Esto asegura que sales_detail solo cargue líneas de los 1,000 headers más recientes
 - Mejora significativa en rendimiento al reducir la cantidad de datos procesados
+
+
+## Problema Reportado - Discrepancia entre sales_detail.total y sales_header.total
+- [x] Investigar por qué SUM(sales_detail.total) > SUM(sales_header.total) para el mismo rango de fechas
+- [x] Verificar si hay duplicación de datos en sales_detail
+- [x] Verificar si hay headers con múltiples líneas de detalle que suman más que el header
+- [x] Revisar la relación entre sales_header y sales_detail
+- [x] Ejecutar consultas SQL para comparar ambos totales
+- [x] Identificar la causa raíz del problema
+
+### Resultado:
+- Diferencia mínima: SOL 88.83 (0.02%)
+- Todos los headers tienen líneas de detalle correspondientes
+- La diferencia es aceptable y se debe a redondeos
+
+## Nueva Tarea - Cargar Todos los Datos sin Filtro de Fecha en Backend
+- [x] Modificar getSalesData para eliminar filtros de fecha en la consulta SQL
+- [x] Cargar TODOS los registros de sales_header/sales_detail desde el backend
+- [x] Actualizar useSalesData para aplicar filtro de última semana por defecto en el frontend (ya estaba implementado)
+- [x] Verificar que los filtros de fecha funcionen correctamente en el frontend
+- [x] Probar rendimiento con todos los datos cargados
+
+### Resultados:
+- Dashboard carga 156,534 registros completos desde PostgreSQL
+- Filtro de última semana se aplica por defecto en el frontend
+- Vista inicial: SOL 713,440.33 en 10,672 transacciones (7 días)
+- Los filtros ahora funcionan instantáneamente sin peticiones al servidor
+- Mejor experiencia de usuario con cambios de filtro en tiempo real
