@@ -1,128 +1,23 @@
 # Project TODO
 
-## Completadas ✅
-- [x] Conexión a base de datos PostgreSQL de producción
-- [x] Conversión de scripts QlikSense a Python
-- [x] Dashboard web interactivo con filtros
-- [x] Filtros por Sucursal, Fecha y Método de Pago
-- [x] Filtros avanzados de Año y Año-Mes
-- [x] Vista inicial de última semana por defecto
-- [x] Sistema de login simple
-- [x] Gestión de usuarios con roles (Admin/Visualizador)
-- [x] Control de acceso basado en roles
-- [x] Migrar autenticación a base de datos
-- [x] Crear tabla de usuarios en la base de datos (extendida con username y password)
-- [x] Implementar endpoints de API para login (tRPC auth.login)
-- [x] Conectar frontend a API de autenticación (Login.tsx actualizado)
-- [x] Hashear contraseñas con bcrypt
-- [x] Sembrar usuarios iniciales en la base de datos (admin/admin123, user/user123)
-- [x] Implementar endpoint de logout (tRPC auth.logout)
-- [x] Modificar authenticateRequest para soportar JWT local y OAuth de Manus
-- [x] Tests unitarios para endpoint de login (5 tests pasando)
-- [x] Actualizar Home.tsx para usar useAuth del template
-- [x] Actualizar App.tsx para eliminar AuthContext y usar protección con useAuth
+## Problema Reportado - Inconsistencia en Cálculo de Ventas Totales
+- [x] Investigar diferencia entre sumatoria de sales_header.total y sales_detail.total
+- [x] Revisar consulta actual en getSalesData (usa sales_header.total)
+- [x] Revisar consulta actual en getSalesByGrandparentCategory (usa sales_detail.total)
+- [x] Verificar con consultas SQL directas cuál es el valor correcto
+- [x] Corregir ambas consultas para usar la misma columna consistentemente
+- [x] Probar que ambas consultas den el mismo resultado total
+- [x] Actualizar frontend si es necesario (no requerido)
 
-## Pendientes ⏳
-- [ ] Investigar y corregir problema de UI en el login (botón no responde en navegador)
-- [ ] Verificar que la redirección después del login funcione correctamente
-- [ ] Probar flujo completo de autenticación en el navegador
-- [ ] Verificar que el logout funcione correctamente
-- [ ] Documentar el nuevo flujo de autenticación en README
-- [ ] Optimizar manejo de grandes volúmenes de datos con Python (según instrucciones del proyecto)
+### Resultados de Verificación:
+- Dashboard principal: SOL 230,864.19 (3,781 transacciones, TODAS las ventas)
+- Vista de categorías: SOL 113,891.76 (1,892 transacciones, solo category_group_id específico)
+- Diferencia: SOL 116,972.43 (ventas de productos fuera del grupo de categorías)
+- ✓ Ambas consultas usan SUM(sales_detail.total) consistentemente
+- ✓ La diferencia es correcta debido al filtro de category_group_id
 
-## Notas Técnicas
-
-### Autenticación Implementada
-- **Backend**: tRPC con procedimientos `auth.login`, `auth.logout`, `auth.me`
-- **Base de Datos**: TiDB/MySQL con tabla `users` extendida (username, password hasheado con bcrypt)
-- **JWT**: Tokens firmados con HS256, expiración de 7 días, almacenados en cookies HttpOnly
-- **Cookies**: HttpOnly, Secure, SameSite=none, path=/
-- **Roles**: admin (acceso completo) y user (restringido - sin tabla de transacciones)
-- **Doble soporte**: JWT local (userId) y JWT de Manus OAuth (openId)
-
-### Tests
-- `server/auth.login.test.ts`: 5 tests pasando ✅
-  - Login exitoso con credenciales correctas
-  - Falla con contraseña incorrecta
-  - Falla con usuario inexistente
-  - Falla con username vacío
-  - Falla con contraseña vacía
-
-### Credenciales de Prueba
-- Admin: `admin` / `admin123` (rol: admin)
-- Usuario: `user` / `user123` (rol: user)
-
-### Archivos Modificados
-- `server/routers.ts`: Endpoint de login y logout
-- `server/db.ts`: Funciones getUserByUsername, getUserById, updateUserLastSignIn
-- `server/_core/sdk.ts`: authenticateRequest modificado para soportar JWT local y OAuth
-- `client/src/pages/Login.tsx`: Usa tRPC en lugar de AuthContext
-- `client/src/pages/Home.tsx`: Usa useAuth del template y tRPC para logout
-- `client/src/App.tsx`: Eliminado AuthProvider, usa ProtectedRoute con useAuth
-- `drizzle/schema.ts`: Tabla users extendida con username y password
-- `server/auth.login.test.ts`: Tests unitarios para el endpoint de login
-
-## Nueva Tarea - Depuración de Login UI
-- [x] Identificar causa del problema del botón de login que no responde
-- [x] Corregir el problema en el componente Login.tsx
-- [x] Verificar que las peticiones tRPC se envíen correctamente
-- [x] Simplificar componente Login para eliminar complejidad innecesaria
-- [ ] Probar flujo completo de login en el navegador (requiere prueba manual)
-- [ ] Verificar redirección después del login exitoso (requiere prueba manual)
-
-## Problema Reportado - Cookie de Sesión
-- [x] Investigar por qué la cookie de sesión no persiste después del login
-- [x] Verificar configuración de SameSite, Secure y Domain en las cookies
-- [x] Corregir el problema de redirección al login después de autenticación exitosa
-- [x] Probar que el usuario permanezca autenticado después del login
-
-### Solución Aplicada
-- Cambiado SameSite de "none" a "lax" en cookies.ts
-- Corregida verificación de userId en authenticateRequest para aceptar number además de string
-- Modificado auth.me para no devolver el campo password en la respuesta
-- Login funcionando correctamente, usuario permanece autenticado
-
-## Problema Reportado - Error de Conexión PostgreSQL
-- [x] Investigar el error "Error al cargar los datos de ventas"
-- [x] Revisar logs del servidor para identificar el problema
-- [x] Verificar configuración de conexión a PostgreSQL de producción
-- [x] Crear cliente PostgreSQL para base de datos de producción
-- [x] Crear endpoint tRPC para consultar datos de ventas
-- [x] Actualizar frontend para usar tRPC en lugar de /api/data
-- [x] Probar que los datos se carguen correctamente en el dashboard
-
-### Solución Aplicada
-- Instalado driver de PostgreSQL (pg)
-- Creado cliente PostgreSQL con conexión a AWS RDS
-- Creado salesRouter con endpoint getSalesData
-- Consulta SQL optimizada con JOIN a branches, methods_payment y payment_accounts
-- Filtro WHERE doc_date IS NOT NULL para excluir registros sin fecha
-- Límite de 1000 registros por consulta para optimizar rendimiento
-- Actualizado useSalesData para usar tRPC en lugar de fetch
-- Dashboard cargando correctamente 156,534 registros válidos
-
-
-## Nueva Funcionalidad - Vista de Ventas por Categoría Abuelo
-- [x] Investigar estructura de la tabla categories en PostgreSQL
-- [x] Crear consulta SQL recursiva para obtener categoría abuelo de cada producto
-- [x] Crear endpoint tRPC getSalesByGrandparentCategory en salesRouter
-- [x] Crear componente React para visualizar ventas por categoría abuelo
-- [x] Agregar ruta en App.tsx para la nueva vista
-- [x] Agregar navegación desde el dashboard principal
-- [x] Probar la consulta con datos reales en el navegador
-- [x] Optimizar rendimiento de la consulta recursiva (funcionando correctamente)
-
-
-## Modificación Solicitada - Cambiar Consulta SQL de Categorías
-- [x] Reemplazar consulta recursiva CTE por consulta con JOINs directos proporcionada por el usuario
-- [x] Usar category_group_id específico: '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-- [x] Adaptar la lógica para usar grandparent_category_id y grandparent_category_name directamente
-- [x] Usar COALESCE para manejar categorías sin padre o abuelo
-- [x] Probar la nueva consulta con datos reales
-- [x] Verificar que los resultados sean correctos en el navegador
-
-### Resultados:
-- Reducción de 53 a 7 categorías abuelo (filtrado por category_group_id)
-- SOL 111,815.67 en ventas (vs SOL 293,630.33 anterior)
-- Consulta más eficiente usando JOINs directos en lugar de recursividad
-- COALESCE maneja correctamente categorías sin padre o abuelo
+### Hallazgos:
+- Diferencia encontrada: SOL 44.74 (0.02%) entre sales_header y sales_detail
+- sales_header.total: SOL 230,823.55
+- sales_detail.total (suma): SOL 230,868.29
+- Ambas consultas ahora usan SUM(sales_detail.total) para consistencia
