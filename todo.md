@@ -118,3 +118,21 @@
 - [x] Ambas vistas respetan el filtro de sucursal correctamente
 - [x] Ambas vistas aplican el filtro de última semana por defecto
 - [x] Los filtros se sincronizan correctamente entre ambas vistas mediante FiltersContext
+
+
+## Nueva Tarea - Eliminar Scripts de Carga y Lógica de Visualizaciones
+- [x] Eliminar server/salesRouter.ts (endpoints de ventas)
+- [x] Eliminar server/postgres.ts (conexión a PostgreSQL)
+- [x] Eliminar client/src/hooks/useSalesData.ts
+- [x] Eliminar client/src/hooks/useCategorySales.ts
+- [x] Eliminar client/src/contexts/FiltersContext.tsx
+- [x] Eliminar client/src/components/DashboardCharts.tsx
+- [x] Eliminar client/src/components/DashboardFilters.tsx
+- [x] Eliminar client/src/components/DashboardStats.tsx
+- [x] Eliminar client/src/components/SalesTable.tsx
+- [x] Limpiar client/src/pages/Home.tsx (dejar estructura básica)
+- [x] Limpiar client/src/pages/CategorySales.tsx (eliminada completamente)
+- [x] Actualizar App.tsx para eliminar rutas y referencias a componentes eliminados
+- [x] Actualizar server/routers.ts para eliminar referencia a salesRouter
+- [x] Verificar que la aplicación funcione sin errores (0 errores de TypeScript, servidor corriendo)
+- [ ] Guardar checkpoint con los cambios

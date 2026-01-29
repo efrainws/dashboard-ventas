@@ -7,12 +7,10 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { SignJWT } from "jose";
 import { ENV } from "./_core/env";
-import { salesRouter } from "./salesRouter";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
-  sales: salesRouter,
   auth: router({
     me: publicProcedure.query(opts => {
       const user = opts.ctx.user;
