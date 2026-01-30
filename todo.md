@@ -136,3 +136,19 @@
 - [x] Actualizar server/routers.ts para eliminar referencia a salesRouter
 - [x] Verificar que la aplicación funcione sin errores (0 errores de TypeScript, servidor corriendo)
 - [ ] Guardar checkpoint con los cambios
+
+
+## Nueva Tarea - Implementar Consulta PostgreSQL Optimizada
+- [x] Crear server/postgres.ts con conexión a PostgreSQL (reutilizar credenciales previas)
+- [x] Implementar consulta SQL agregada por hora, fecha, tienda y categoría abuelo
+- [x] Crear endpoint tRPC en server/salesRouter.ts con parámetros fecha_min y fecha_max
+- [x] Registrar salesRouter en server/routers.ts
+- [x] Crear hook client/src/hooks/useAggregatedSales.ts para consumir datos
+- [x] Actualizar client/src/pages/Home.tsx para mostrar los datos agregados
+- [x] Implementar filtros de fecha con rango por defecto de última semana
+- [x] Probar la consulta con diferentes rangos de fechas (enero 2026)
+- [x] Verificar que no haya errores y el rendimiento sea aceptable (16,258 registros en ~10-15s)
+- [x] Actualizar credenciales de PostgreSQL (base de datos: production-middleware-florayfauna)
+- [x] Configurar SSL para conexión a RDS
+- [x] Ajustar rango de fechas por defecto a enero 2026
+- [ ] Guardar checkpoint con la implementación completa
