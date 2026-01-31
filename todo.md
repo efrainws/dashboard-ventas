@@ -152,3 +152,33 @@
 - [x] Configurar SSL para conexión a RDS
 - [x] Ajustar rango de fechas por defecto a enero 2026
 - [ ] Guardar checkpoint con la implementación completa
+
+
+## Nueva Tarea - Implementar Filtros Interactivos (31/01/2026)
+
+### Backend
+- [x] Actualizar endpoint tRPC getAggregatedSales para aceptar filtros de branch_id y category_id
+- [x] Modificar consulta SQL para aplicar filtros WHERE opcionales
+
+### Frontend - Componente de Filtros
+- [x] Crear componente DashboardFilters.tsx con selectores de fecha, sucursal y categoría
+- [x] Implementar selector de rango de fechas (date picker con from/to)
+- [x] Implementar selector de sucursal (dropdown con todas las sucursales)
+- [x] Implementar selector de categoría (dropdown con todas las categorías)
+- [x] Agregar botón "Limpiar filtros" para resetear a valores por defecto
+
+### Integración
+- [x] Actualizar useAggregatedSales para aceptar filtros de branch_id y category_id
+- [x] Integrar DashboardFilters en Home.tsx
+- [x] Conectar estado de filtros con la consulta tRPC
+- [x] Mostrar indicadores visuales de filtros activos
+
+### Testing
+- [x] Probar filtro de rango de fechas (enero 2026, última semana, mes completo)
+- [x] Probar filtro de sucursal individual (Flora & Fauna La Mol: S/ 532,581.88, 8,464 tickets, 876 registros)
+- [x] Probar filtro de categoría individual y múltiples categorías
+- [x] Probar combinación de filtros (fecha + sucursal + categoría)
+- [x] Verificar que el botón "Limpiar filtros" funcione correctamente
+- [x] Verificar que los KPIs se actualicen correctamente con cada filtro
+- [x] Corregir error de validación de filtros undefined
+- [x] Guardar checkpoint con filtros interactivos funcionando

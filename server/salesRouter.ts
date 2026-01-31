@@ -6,16 +6,36 @@ export const salesRouter = router({
   /**
    * Obtiene ventas agregadas por hora, fecha, tienda y categoría abuelo
    * Consulta optimizada para Gerencia de Operaciones y Jefes de Tienda
+   * Soporta filtros opcionales de sucursal y categoría
    */
   getAggregatedSales: publicProcedure
     .input(
       z.object({
         fecha_min: z.string().datetime(), // ISO 8601 format: "2024-01-01T00:00:00Z"
         fecha_max: z.string().datetime(), // ISO 8601 format: "2024-01-31T23:59:59Z"
+        branch_id: z.string().optional(), // Filtro opcional de sucursal
+        category_id: z.string().optional(), // Filtro opcional de categoría abuelo
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max } = input;
+      const { fecha_min, fecha_max, branch_id, category_id } = input;
+
+      // Construir filtros adicionales dinámicamente
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [fecha_min, fecha_max];
+      let paramIndex = 3;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      if (category_id && category_id !== 'all') {
+        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
+        queryParams.push(category_id);
+        paramIndex++;
+      }
 
       const query = `
         WITH base AS (
@@ -63,6 +83,7 @@ export const salesRouter = router({
         FROM base
         WHERE doc_date >= $1
           AND doc_date <  $2
+          ${additionalFilters.join('\n          ')}
         GROUP BY
           hour_ts, branch_id, branch_sap_id,
           branch_name, branch_address,
@@ -71,7 +92,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, [fecha_min, fecha_max]);
+        const result = await pool.query(query, queryParams);
         
         return {
           success: true,
@@ -80,6 +101,8 @@ export const salesRouter = router({
             total_rows: result.rows.length,
             fecha_min,
             fecha_max,
+            branch_id: branch_id || 'all',
+            category_id: category_id || 'all',
             generated_at: new Date().toISOString(),
           },
         };

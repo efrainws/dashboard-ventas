@@ -1,13 +1,20 @@
 import { trpc } from "@/lib/trpc";
 import { useMemo } from "react";
 
+export interface AggregatedSalesFilters {
+  fecha_min?: string;
+  fecha_max?: string;
+  branch_id?: string;
+  category_id?: string;
+}
+
 /**
  * Hook para obtener ventas agregadas por hora, fecha, tienda y categoría abuelo
- * Por defecto trae datos de la última semana
+ * Por defecto trae datos de enero 2026
  */
-export function useAggregatedSales(dateRange?: { fecha_min: string; fecha_max: string }) {
+export function useAggregatedSales(filters?: AggregatedSalesFilters) {
   // Calcular rango de fechas por defecto: enero 2026
-  const defaultDateRange = useMemo(() => {
+  const defaultFilters = useMemo(() => {
     // Enero 2026: del 1 al 31
     const fecha_min = new Date('2026-01-01T00:00:00Z');
     const fecha_max = new Date('2026-02-01T00:00:00Z'); // Hasta el inicio de febrero
@@ -18,9 +25,26 @@ export function useAggregatedSales(dateRange?: { fecha_min: string; fecha_max: s
     };
   }, []);
 
-  const range = dateRange || defaultDateRange;
+  // Combinar filtros por defecto con filtros proporcionados
+  // Filtrar valores undefined para evitar errores de validación
+  const queryFilters = useMemo(() => {
+    const combined = {
+      ...defaultFilters,
+      ...filters,
+    };
 
-  const { data, isLoading, error } = trpc.sales.getAggregatedSales.useQuery(range);
+    // Eliminar propiedades undefined
+    const cleaned: any = {};
+    Object.entries(combined).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleaned[key] = value;
+      }
+    });
+
+    return cleaned;
+  }, [defaultFilters, filters]);
+
+  const { data, isLoading, error } = trpc.sales.getAggregatedSales.useQuery(queryFilters);
 
   // Calcular métricas agregadas
   const metrics = useMemo(() => {

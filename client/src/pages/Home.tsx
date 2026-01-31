@@ -3,8 +3,9 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, ShoppingCart, DollarSign } from "lucide-react";
-import { useAggregatedSales } from "@/hooks/useAggregatedSales";
+import { Loader2, LogOut, TrendingUp, ShoppingCart, DollarSign, Filter } from "lucide-react";
+import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
+import { DashboardFilters } from "@/components/DashboardFilters";
 import { useState, useMemo } from "react";
 
 export default function Home() {
@@ -16,14 +17,54 @@ export default function Home() {
     },
   });
 
-  // Estado para filtros de fecha (por defecto última semana)
-  const [dateRange, setDateRange] = useState<{ fecha_min: string; fecha_max: string } | undefined>(undefined);
+  // Estado para filtros
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // Obtener datos agregados
-  const { data, metadata, metrics, isLoading, error } = useAggregatedSales(dateRange);
+  // Construir filtros para la consulta
+  const filters = useMemo<AggregatedSalesFilters | undefined>(() => {
+    const hasFilters = dateFrom || dateTo || selectedBranch !== "all" || selectedCategory !== "all";
+    
+    if (!hasFilters) {
+      return undefined; // Usar valores por defecto del hook
+    }
+
+    // Construir objeto de filtros solo con valores definidos
+    const result: AggregatedSalesFilters = {};
+    
+    if (dateFrom) {
+      result.fecha_min = dateFrom.toISOString();
+    }
+    
+    if (dateTo) {
+      result.fecha_max = dateTo.toISOString();
+    }
+    
+    if (selectedBranch !== "all") {
+      result.branch_id = selectedBranch;
+    }
+    
+    if (selectedCategory !== "all") {
+      result.category_id = selectedCategory;
+    }
+
+    return result;
+  }, [dateFrom, dateTo, selectedBranch, selectedCategory]);
+
+  // Obtener datos agregados con filtros
+  const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  const handleClearFilters = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSelectedBranch("all");
+    setSelectedCategory("all");
   };
 
   if (authLoading) {
@@ -48,6 +89,18 @@ export default function Home() {
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('es-PE').format(num);
   };
+
+  // Determinar el texto del rango de fechas
+  const dateRangeText = useMemo(() => {
+    if (dateFrom && dateTo) {
+      return `${dateFrom.toLocaleDateString('es-PE')} - ${dateTo.toLocaleDateString('es-PE')}`;
+    } else if (dateFrom) {
+      return `Desde ${dateFrom.toLocaleDateString('es-PE')}`;
+    } else if (dateTo) {
+      return `Hasta ${dateTo.toLocaleDateString('es-PE')}`;
+    }
+    return "Enero 2026 (por defecto)";
+  }, [dateFrom, dateTo]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,6 +131,21 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Filtros */}
+        <DashboardFilters
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          selectedBranch={selectedBranch}
+          branches={metrics.branches}
+          onBranchChange={setSelectedBranch}
+          selectedCategory={selectedCategory}
+          categories={metrics.categories}
+          onCategoryChange={setSelectedCategory}
+          onClearFilters={handleClearFilters}
+        />
+
         {/* Estado de carga */}
         {isLoading && (
           <div className="flex items-center justify-center py-12">
@@ -107,7 +175,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(metrics.totalSales)}</div>
-                  <p className="text-xs text-muted-foreground">Enero 2026</p>
+                  <p className="text-xs text-muted-foreground">{dateRangeText}</p>
                 </CardContent>
               </Card>
 
@@ -139,7 +207,11 @@ export default function Home() {
               <Card>
                 <CardHeader>
                   <CardTitle>Sucursales</CardTitle>
-                  <CardDescription>{metrics.branches.length} sucursales activas</CardDescription>
+                  <CardDescription>
+                    {selectedBranch !== "all" 
+                      ? "Sucursal seleccionada" 
+                      : `${metrics.branches.length} sucursales activas`}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -161,7 +233,11 @@ export default function Home() {
               <Card>
                 <CardHeader>
                   <CardTitle>Categorías Abuelo</CardTitle>
-                  <CardDescription>{metrics.categories.length} categorías activas</CardDescription>
+                  <CardDescription>
+                    {selectedCategory !== "all" 
+                      ? "Categoría seleccionada" 
+                      : `${metrics.categories.length} categorías activas`}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -189,7 +265,17 @@ export default function Home() {
               <CardContent>
                 <div className="space-y-2 text-sm">
                   <p><span className="font-medium">Total de registros agregados:</span> {formatNumber(data.length)}</p>
-                  <p><span className="font-medium">Rango de fechas:</span> Enero 2026 (todo el mes)</p>
+                  <p><span className="font-medium">Rango de fechas:</span> {dateRangeText}</p>
+                  <p><span className="font-medium">Sucursal:</span> {
+                    selectedBranch === "all" 
+                      ? "Todas las sucursales" 
+                      : metrics.branches.find(b => b.id === selectedBranch)?.name || "Desconocida"
+                  }</p>
+                  <p><span className="font-medium">Categoría:</span> {
+                    selectedCategory === "all" 
+                      ? "Todas las categorías" 
+                      : metrics.categories.find(c => c.id === selectedCategory)?.name || "Desconocida"
+                  }</p>
                   <p><span className="font-medium">Agrupación:</span> Por hora, sucursal y categoría abuelo</p>
                   <p className="text-xs text-muted-foreground mt-4">
                     Los datos se agregan desde la base de datos PostgreSQL usando una consulta optimizada
