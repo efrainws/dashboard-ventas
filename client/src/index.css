@@ -200,26 +200,26 @@
    ========================= */
 .dark {
   /* Backgrounds */
-  --background: oklch(from var(--ff-carbon) l c h);
-  --foreground: oklch(from var(--ff-humo) l c h);
-  --card: oklch(from var(--ff-carbon) l c h);
-  --card-foreground: oklch(from var(--ff-humo) l c h);
-  --popover: oklch(from var(--ff-carbon) l c h);
+  --background: #1a1a1a;
+  --foreground: oklch(from var(--ff-beige) l c h);
+  --card: #242424;
+  --card-foreground: oklch(from var(--ff-beige) l c h);
+  --popover: #242424;
   --popover-foreground: oklch(from var(--ff-beige) l c h);
   
-  /* Primary (Humo in dark mode) */
-  --primary: oklch(from var(--ff-humo) l c h);
-  --primary-foreground: oklch(from var(--ff-carbon) l c h);
+  /* Primary (Beige in dark mode) */
+  --primary: oklch(from var(--ff-beige) l c h);
+  --primary-foreground: #1a1a1a;
   
   /* Secondary & Muted */
-  --secondary: oklch(from var(--ff-carbon) l c h);
+  --secondary: #2a2a2a;
   --secondary-foreground: oklch(from var(--ff-beige) l c h);
-  --muted: oklch(from var(--ff-carbon) l c h);
-  --muted-foreground: oklch(from var(--ff-beige) l c h);
+  --muted: #2a2a2a;
+  --muted-foreground: oklch(from var(--ff-humo) l c h);
   
-  /* Accent (Carbon para botones de acento) */
-  --accent: oklch(from var(--ff-carbon) l c h);
-  --accent-foreground: oklch(from var(--ff-blanco) l c h);
+  /* Accent (Beige para botones de acento en dark mode) */
+  --accent: oklch(from var(--ff-beige) l c h);
+  --accent-foreground: #1a1a1a;
   
   /* Destructive */
   --destructive: oklch(from var(--ff-granate) l c h);
@@ -238,12 +238,12 @@
   --chart-5: oklch(from var(--ff-rosado) l c h);
   
   /* Sidebar */
-  --sidebar: oklch(from var(--ff-carbon) l c h);
-  --sidebar-foreground: oklch(from var(--ff-humo) l c h);
-  --sidebar-primary: oklch(from var(--ff-humo) l c h);
-  --sidebar-primary-foreground: oklch(from var(--ff-carbon) l c h);
-  --sidebar-accent: oklch(from var(--ff-carbon) l c h);
-  --sidebar-accent-foreground: oklch(from var(--ff-hueso) l c h);
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: oklch(from var(--ff-beige) l c h);
+  --sidebar-primary: oklch(from var(--ff-beige) l c h);
+  --sidebar-primary-foreground: #1a1a1a;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: oklch(from var(--ff-beige) l c h);
   --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
   --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
 }

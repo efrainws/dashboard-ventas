@@ -343,3 +343,15 @@ Fecha: 1 de febrero de 2026
 - [x] Asegurar que el logo esté alineado al borde izquierdo (usando self-start)
 - [x] Verificar que el título mantenga su posición
 - [x] Guardar checkpoint con cambios aplicados
+
+## Implementación de Modo Oscuro (2026-02-02)
+
+- [x] Verificar tokens CSS de modo oscuro en index.css (ya existían)
+- [x] Actualizar ThemeContext para soportar detección automática ("system")
+- [x] Actualizar App.tsx para cambiar ThemeProvider de "light" a "system"
+- [x] Mejorar colores de modo oscuro (backgrounds #1a1a1a y #242424, foreground Beige)
+- [x] Ajustar primary, secondary, muted y accent para modo oscuro
+- [x] Los gráficos ya funcionan en ambos modos (usan colores primitivos)
+- [x] Verificar contraste y legibilidad en modo oscuro (screenshot muestra modo claro funcionando)
+- [x] Probar cambio automático según preferencias del sistema (ThemeContext escucha prefers-color-scheme)
+- [ ] Guardar checkpoint con modo oscuro implementado
