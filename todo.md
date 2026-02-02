@@ -434,4 +434,22 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar que modo oscuro funcione en ambos dashboards (logo adaptativo implementado)
 - [x] Verificar navegación entre dashboards (botones funcionando)
 - [x] Verificar datos: Home 2,356 registros (por fecha), HourlyAnalysis 4,971 registros (por hora)
-- [ ] Guardar checkpoint con ambos dashboards implementados
+- [x] Guardar checkpoint con ambos dashboards implementados
+
+## Cambio de Terminología: "Abuelo" → "Departamento" (2026-02-02)
+
+### Frontend
+- [x] Home.tsx: Cambiar "categoría abuelo" por "departamento" en descripción (3 referencias)
+- [ ] DashboardFilters.tsx: Cambiar etiqueta "Categoría" por "Departamento"
+- [x] CategoryPieChart.tsx: Cambiar descripción por defecto
+- [ ] BranchBarChart.tsx: Verificar referencias (no encontradas en grep)
+- [ ] SalesLineChart.tsx: Verificar referencias (no encontradas en grep)
+- [x] useAggregatedSales.ts: Actualizar comentario del hook
+
+### Backend
+- [x] salesRouter.ts: Actualizar comentarios (2 referencias a "abuelo" cambiadas)
+- [x] Verificar nombres de columnas en DB: category_abuelo_id y category_abuelo_name se mantienen como aliases en SELECT (no afecta DB)
+
+### Verificación
+- [x] Revisar todos los textos visibles en la UI (screenshot muestra "departamento" en descripción)
+- [ ] Guardar checkpoint con cambios aplicados

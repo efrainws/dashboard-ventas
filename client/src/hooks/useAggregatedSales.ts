@@ -9,7 +9,7 @@ export interface AggregatedSalesFilters {
 }
 
 /**
- * Hook para obtener ventas agregadas por hora, fecha, tienda y categoría abuelo
+ * Hook para obtener ventas agregadas por hora, fecha, tienda y departamento
  * Por defecto trae datos de enero 2026
  */
 export function useAggregatedSales(filters?: AggregatedSalesFilters) {

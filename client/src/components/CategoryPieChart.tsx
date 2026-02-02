@@ -118,7 +118,7 @@ export function CategoryPieChart({ data, title, description }: CategoryPieChartP
           {title || "Distribución por Categoría"}
         </CardTitle>
         <CardDescription>
-          {description || "Ventas totales distribuidas por categoría abuelo"}
+          {description || "Ventas totales distribuidas por departamento"}
         </CardDescription>
       </CardHeader>
       <CardContent>

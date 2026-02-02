@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const salesRouter = router({
   /**
-   * Obtiene ventas agregadas por fecha, tienda y categoría abuelo
+   * Obtiene ventas agregadas por fecha, tienda y departamento
    * Consulta optimizada para Gerencia de Operaciones y Jefes de Tienda
    * Soporta filtros opcionales de sucursal y categoría
    */
@@ -14,7 +14,7 @@ export const salesRouter = router({
         fecha_min: z.string().datetime(), // ISO 8601 format: "2024-01-01T00:00:00Z"
         fecha_max: z.string().datetime(), // ISO 8601 format: "2024-01-31T23:59:59Z"
         branch_id: z.string().optional(), // Filtro opcional de sucursal
-        category_id: z.string().optional(), // Filtro opcional de categoría abuelo
+        category_id: z.string().optional(), // Filtro opcional de departamento
       })
     )
     .query(async ({ input }) => {

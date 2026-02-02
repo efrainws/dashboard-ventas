@@ -121,7 +121,7 @@ export default function Home() {
             <div className="flex flex-col space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR CATEGORÍAS</h1>
             <p className="text-muted-foreground">
-              Ventas agregadas por fecha, tienda y categoría abuelo
+              Ventas agregadas por fecha, tienda y departamento
             </p>
             {metadata && (
               <p className="text-xs text-muted-foreground">
@@ -230,10 +230,10 @@ export default function Home() {
                       ? "Todas las categorías" 
                       : metrics.categories.find(c => c.id === selectedCategory)?.name || "Desconocida"
                   }</p>
-                  <p><span className="font-medium">Agrupación:</span> Por hora, sucursal y categoría abuelo</p>
+                  <p><span className="font-medium">Agrupación:</span> Por hora, sucursal y departamento</p>
                   <p className="text-xs text-muted-foreground mt-4">
                     Los datos se agregan desde la base de datos PostgreSQL usando una consulta optimizada
-                    que agrupa ventas por hora, fecha, tienda y categoría abuelo. No se muestran detalles
+                    que agrupa ventas por hora, fecha, tienda y departamento. No se muestran detalles
                     de transacciones individuales ni información de formas de pago.
                   </p>
                 </div>
