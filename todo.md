@@ -182,3 +182,44 @@
 - [x] Verificar que los KPIs se actualicen correctamente con cada filtro
 - [x] Corregir error de validación de filtros undefined
 - [x] Guardar checkpoint con filtros interactivos funcionando
+
+## Nueva Tarea - Implementar Gráficos de Visualización de Ventas
+Fecha: 31 de enero de 2026
+
+### Instalación y Configuración
+- [x] Verificar que Recharts esté instalado en package.json (v2.15.2)
+- [x] Instalar Recharts si no está disponible (ya instalado)
+
+### Componentes de Gráficos
+- [x] Crear componente SalesLineChart.tsx para gráfico de línea (día y mes)
+  - [x] Implementar vista por día (agregación diaria)
+  - [x] Implementar vista por mes (agregación mensual)
+  - [x] Agregar toggle para cambiar entre día/mes
+- [x] Crear componente CategoryPieChart.tsx para gráfico de tarta
+  - [x] Mostrar distribución de ventas por categoría abuelo
+  - [x] Agregar leyenda con porcentajes
+  - [x] Agregar tooltips con valores absolutos
+  - [x] Agregar tabla de resumen con colores y porcentajes
+- [x] Crear componente BranchBarChart.tsx para gráfico de barras
+  - [x] Mostrar comparación de ventas entre sucursales
+  - [x] Ordenar sucursales por ventas (mayor a menor)
+  - [x] Agregar etiquetas con valores
+  - [x] Agregar tabla de resumen con tickets y ticket promedio
+
+### Integración
+- [x] Crear funciones de agregación de datos en componentes de gráficos
+  - [x] Función para agrupar por día (en SalesLineChart)
+  - [x] Función para agrupar por mes (en SalesLineChart)
+  - [x] Función para agrupar por categoría (en CategoryPieChart)
+  - [x] Función para agrupar por sucursal (en BranchBarChart)
+- [x] Integrar los 4 gráficos en Home.tsx
+- [x] Aplicar diseño responsive con grid layout
+
+### Testing
+- [x] Probar gráfico de línea con diferentes rangos de fechas
+- [x] Probar cambio entre vista diaria y mensual (funciona correctamente)
+- [x] Probar gráfico de tarta con filtros de sucursal
+- [x] Probar gráfico de barras con filtros de categoría
+- [x] Verificar que todos los gráficos sean responsive
+- [x] Verificar que las tablas de resumen se actualicen correctamente
+- [x] Guardar checkpoint con gráficos implementados

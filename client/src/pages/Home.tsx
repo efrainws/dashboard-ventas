@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, LogOut, TrendingUp, ShoppingCart, DollarSign, Filter } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
+import { SalesLineChart } from "@/components/SalesLineChart";
+import { CategoryPieChart } from "@/components/CategoryPieChart";
+import { BranchBarChart } from "@/components/BranchBarChart";
 import { useState, useMemo } from "react";
 
 export default function Home() {
@@ -254,6 +257,21 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Gráficos de visualización */}
+            <div className="space-y-6">
+              {/* Gráfico de línea: Progresión de ventas */}
+              <SalesLineChart data={data} />
+
+              {/* Gráficos de distribución */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Gráfico de tarta: Distribución por categoría */}
+                <CategoryPieChart data={data} />
+
+                {/* Gráfico de barras: Comparación por sucursal */}
+                <BranchBarChart data={data} />
+              </div>
             </div>
 
             {/* Información de datos */}
