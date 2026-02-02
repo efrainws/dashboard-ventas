@@ -110,8 +110,10 @@ export default function Home() {
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">
-          <div className="flex flex-col space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
+          <div className="flex items-start gap-4">
+            <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-12 w-auto" />
+            <div className="flex flex-col space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
             <p className="text-muted-foreground">
               Ventas agregadas por hora, fecha, tienda y categoría abuelo
             </p>
@@ -121,6 +123,7 @@ export default function Home() {
                 Total registros: {formatNumber(metadata.total_rows)}
               </p>
             )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">

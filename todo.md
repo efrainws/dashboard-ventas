@@ -315,3 +315,12 @@ Fecha: 1 de febrero de 2026
 - [x] Eliminar card de resumen de Categorías Abuelo (línea 236-260)
 - [x] Verificar que el layout se ajuste correctamente sin estas secciones
 - [x] Guardar checkpoint con cambios aplicados
+
+
+## Nueva Tarea - Agregar Logo de Flora y Fauna
+
+- [x] Copiar Logonegro.svg a client/public/ (4.2KB)
+- [x] Actualizar Home.tsx para incluir logo en header (esquina superior izquierda)
+- [x] Ajustar tamaño y espaciado del logo (h-12 con gap-4)
+- [x] Verificar que el logo se vea correctamente en el dashboard (visible en esquina superior izquierda)
+- [x] Guardar checkpoint con logo implementado
