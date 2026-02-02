@@ -15,18 +15,18 @@ interface CategoryPieChartProps {
   description?: string;
 }
 
-// Colores para las categorías
+// Colores para las categorías (paleta Flora y Fauna)
 const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "#8884d8",
-  "#82ca9d",
-  "#ffc658",
-  "#ff8042",
-  "#a4de6c",
+  "hsl(var(--chart-1))", // Esmeralda
+  "hsl(var(--chart-2))", // Cobalto
+  "hsl(var(--chart-3))", // Celeste
+  "hsl(var(--chart-4))", // Mostaza
+  "hsl(var(--chart-5))", // Rosado
+  "var(--ff-granate)",   // Granate
+  "var(--ff-esmeralda)", // Esmeralda (alternativo)
+  "var(--ff-cobalto)",   // Cobalto (alternativo)
+  "var(--ff-celeste)",   // Celeste (alternativo)
+  "var(--ff-mostaza)",   // Mostaza (alternativo)
 ];
 
 export function CategoryPieChart({ data, title, description }: CategoryPieChartProps) {

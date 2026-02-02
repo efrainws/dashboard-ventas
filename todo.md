@@ -223,3 +223,25 @@ Fecha: 31 de enero de 2026
 - [x] Verificar que todos los gráficos sean responsive
 - [x] Verificar que las tablas de resumen se actualicen correctamente
 - [x] Guardar checkpoint con gráficos implementados
+
+
+## Nueva Tarea - Aplicar Paleta de Colores Flora y Fauna
+Fecha: 1 de febrero de 2026
+
+### Tokens CSS
+- [x] Copiar tokens de colores primitivos de CSSTokens.css a index.css
+- [x] Copiar tokens semánticos (Light Mode) a index.css
+- [x] Copiar tokens de Dark Mode a index.css
+- [x] Actualizar variables CSS de Tailwind para usar tokens de Flora y Fauna
+
+### Actualización de Gráficos
+- [x] Actualizar colores de SalesLineChart con paleta Flora y Fauna
+- [x] Actualizar colores de CategoryPieChart con paleta Flora y Fauna
+- [x] Actualizar colores de BranchBarChart con paleta Flora y Fauna
+- [x] Verificar contraste y legibilidad en todos los gráficos
+
+### Testing
+- [x] Verificar que todos los colores se apliquen correctamente
+- [x] Verificar contraste entre texto y fondo (Carbon sobre Hueso = excelente)
+- [x] Verificar que los gráficos mantengan buena legibilidad (colores distintivos)
+- [x] Guardar checkpoint con paleta de colores aplicada

@@ -199,7 +199,7 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                 yAxisId="left"
                 type="monotone"
                 dataKey="sales"
-                stroke="hsl(var(--primary))"
+                stroke="hsl(var(--chart-1))"
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
