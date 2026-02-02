@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, TrendingUp } from "lucide-react";
 
 export interface SalesDataPoint {
-  hour_ts: string;
+  doc_date: string;
   sales_amount: string;
 }
 
@@ -34,7 +34,7 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      const date = new Date(row.hour_ts);
+      const date = new Date(row.doc_date);
       const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
 
       const existing = grouped.get(dayKey) || { sales: 0 };
@@ -60,7 +60,7 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      const date = new Date(row.hour_ts);
+      const date = new Date(row.doc_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
 
       const existing = grouped.get(monthKey) || { sales: 0 };

@@ -386,4 +386,17 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar SalesLineChart para remover línea de tickets y eje Y derecho
 - [x] Eliminar cálculo de "Ticket Promedio" de BranchBarChart
 - [x] Verificar que no queden referencias a tickets en el código (TypeScript sin errores)
-- [ ] Guardar checkpoint con métrica de tickets eliminada
+- [x] Guardar checkpoint con métrica de tickets eliminada
+
+## Simplificación de Query SQL - Agrupar por Fecha (2026-02-02)
+
+- [x] Modificar query en salesRouter.ts para eliminar hour_ts
+- [x] Cambiar agrupación de hora a fecha (doc_date::date)
+- [x] Actualizar SELECT para usar doc_date::date en lugar de date_trunc('hour', doc_date)
+- [x] Actualizar GROUP BY para agrupar por doc_date::date, branch_id, category_abuelo_id
+- [x] Actualizar ORDER BY para ordenar por doc_date en lugar de hour_ts
+- [x] Actualizar comentario del procedimiento (eliminar referencia a "hora")
+- [x] Actualizar tipos TypeScript en SalesLineChart (hour_ts → doc_date)
+- [x] Actualizar tipos TypeScript en BranchBarChart (no usa hour_ts, ya usa doc_date indirectamente)
+- [x] Verificar que los gráficos funcionen correctamente con datos por fecha (Total registros: 2,356 vs 25,946 anterior - reducción de ~90%)
+- [ ] Guardar checkpoint con query simplificado

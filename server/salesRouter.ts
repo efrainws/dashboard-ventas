@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const salesRouter = router({
   /**
-   * Obtiene ventas agregadas por hora, fecha, tienda y categoría abuelo
+   * Obtiene ventas agregadas por fecha, tienda y categoría abuelo
    * Consulta optimizada para Gerencia de Operaciones y Jefes de Tienda
    * Soporta filtros opcionales de sucursal y categoría
    */
@@ -65,7 +65,7 @@ export const salesRouter = router({
           WHERE sh.doc_date IS NOT NULL
         )
         SELECT
-          date_trunc('hour', doc_date) AS hour_ts,
+          doc_date::date AS doc_date,
           branch_id,
           branch_sap_id,
           branch_name,
@@ -84,10 +84,10 @@ export const salesRouter = router({
           AND doc_date <  $2
           ${additionalFilters.join('\n          ')}
         GROUP BY
-          hour_ts, branch_id, branch_sap_id,
+          doc_date::date, branch_id, branch_sap_id,
           branch_name, branch_address,
           category_abuelo_id, category_abuelo_name
-        ORDER BY hour_ts, branch_name, category_abuelo_name;
+        ORDER BY doc_date, branch_name, category_abuelo_name;
       `;
 
       try {
