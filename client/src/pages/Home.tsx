@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { useState, useMemo } from "react";
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
+  const { effectiveTheme } = useTheme();
   const [, setLocation] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -111,7 +113,11 @@ export default function Home() {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col space-y-4 w-full">
-            <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-4 w-auto self-start" />
+            <img 
+              src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
+              alt="Flora & Fauna" 
+              className="h-4 w-auto self-start" 
+            />
             <div className="flex flex-col space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
             <p className="text-muted-foreground">

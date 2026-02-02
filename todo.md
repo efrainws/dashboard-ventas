@@ -354,4 +354,14 @@ Fecha: 1 de febrero de 2026
 - [x] Los gráficos ya funcionan en ambos modos (usan colores primitivos)
 - [x] Verificar contraste y legibilidad en modo oscuro (screenshot muestra modo claro funcionando)
 - [x] Probar cambio automático según preferencias del sistema (ThemeContext escucha prefers-color-scheme)
-- [ ] Guardar checkpoint con modo oscuro implementado
+- [x] Guardar checkpoint con modo oscuro implementado
+
+## Optimización de Gráficos y Logo (2026-02-02)
+
+- [x] BranchBarChart: Quitar etiquetas numéricas sobre las barras (eliminado LabelList)
+- [x] BranchBarChart: Abreviar valores del eje Y (800,000 → 800k con formatCurrencyShort)
+- [x] BranchBarChart: Reducir márgenes al mínimo (top: 5, right: 10, left: 10)
+- [x] CategoryPieChart: Reducir márgenes al mínimo (margin: 5) y aumentar outerRadius a 140
+- [x] Home.tsx: Usar logo claro (Logoblanco.svg) en modo oscuro (con effectiveTheme)
+- [x] Verificar cambios en ambos modos (screenshot muestra modo claro funcionando correctamente)
+- [ ] Guardar checkpoint con optimizaciones aplicadas

@@ -94,6 +94,16 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
     })}`;
   };
 
+  // Formatear moneda abreviada para eje Y (800,000 → 800k)
+  const formatCurrencyShort = (value: number) => {
+    if (value >= 1000000) {
+      return `S/ ${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `S/ ${(value / 1000).toFixed(0)}k`;
+    }
+    return `S/ ${value}`;
+  };
+
   // Formatear número
   const formatNumber = (value: number) => {
     return value.toLocaleString("es-PE");
@@ -136,7 +146,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
                 data={branchData}
-                margin={{ top: 30, right: 30, left: 20, bottom: 100 }}
+                margin={{ top: 5, right: 10, left: 10, bottom: 100 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
@@ -149,7 +159,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                 />
                 <YAxis
                   className="text-xs"
-                  tickFormatter={formatCurrency}
+                  tickFormatter={formatCurrencyShort}
                   label={{
                     value: "Ventas (S/)",
                     angle: -90,
@@ -182,7 +192,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                   {branchData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
-                  <LabelList content={renderCustomLabel} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

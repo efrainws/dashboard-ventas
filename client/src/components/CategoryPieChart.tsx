@@ -129,14 +129,14 @@ export function CategoryPieChart({ data, title, description }: CategoryPieChartP
         ) : (
           <div className="space-y-4">
             <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
+              <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
                   label={renderCustomLabel}
-                  outerRadius={120}
+                  outerRadius={140}
                   fill="#8884d8"
                   dataKey="value"
                 >
