@@ -328,3 +328,11 @@ Fecha: 1 de febrero de 2026
 ## Ajuste de Tamaño de Logo (2026-02-02)
 
 - [x] Reducir tamaño del logo de h-12 a h-4 (aproximadamente 30% del tamaño original)
+
+## Reorganización del Layout del Header (2026-02-02)
+
+- [x] Modificar estructura del header para que logo y título estén en líneas separadas
+- [x] Logo en la primera línea (alineado a la izquierda)
+- [x] Título "DASHBOARD DE VENTAS" y descripción en la segunda línea
+- [x] Verificar espaciado y alineación
+- [x] Guardar checkpoint con cambios aplicados
