@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChartIcon } from "lucide-react";
 
@@ -155,14 +155,6 @@ export function CategoryPieChart({ data, title, description }: CategoryPieChartP
                       `${formatCurrency(value)} (${formatPercentage(value)})`,
                       name,
                     ];
-                  }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  formatter={(value, entry: any) => {
-                    const percentage = formatPercentage(entry.payload.value);
-                    return `${value} (${percentage})`;
                   }}
                 />
               </PieChart>

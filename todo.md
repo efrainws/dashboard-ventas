@@ -364,4 +364,11 @@ Fecha: 1 de febrero de 2026
 - [x] CategoryPieChart: Reducir márgenes al mínimo (margin: 5) y aumentar outerRadius a 140
 - [x] Home.tsx: Usar logo claro (Logoblanco.svg) en modo oscuro (con effectiveTheme)
 - [x] Verificar cambios en ambos modos (screenshot muestra modo claro funcionando correctamente)
-- [ ] Guardar checkpoint con optimizaciones aplicadas
+- [x] Guardar checkpoint con optimizaciones aplicadas
+
+## Eliminación de Leyenda en CategoryPieChart (2026-02-02)
+
+- [x] Eliminar componente Legend del gráfico de pastel
+- [x] Eliminar Legend de los imports
+- [x] Verificar que los porcentajes en el gráfico sean suficientes (tabla de resumen aún disponible)
+- [x] Guardar checkpoint con leyenda eliminada
