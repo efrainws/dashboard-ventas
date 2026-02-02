@@ -245,3 +245,12 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar contraste entre texto y fondo (Carbon sobre Hueso = excelente)
 - [x] Verificar que los gráficos mantengan buena legibilidad (colores distintivos)
 - [x] Guardar checkpoint con paleta de colores aplicada
+
+
+## Corrección - Colores de Fondo Light Mode
+Fecha: 1 de febrero de 2026
+
+- [x] Corregir fondo principal: debe ser Beige #EAE8E2 (actualmente es Hueso)
+- [x] Corregir fondo secundario/cards: debe ser Hueso #F5F4F1 (actualmente es Beige)
+- [x] Verificar que el cambio se aplique correctamente en toda la interfaz
+- [x] Guardar checkpoint con corrección aplicada

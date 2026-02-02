@@ -66,11 +66,11 @@
   --radius: 0.65rem;
   
   /* Backgrounds */
-  --background: oklch(from var(--ff-hueso) l c h);
+  --background: oklch(from var(--ff-beige) l c h);
   --foreground: oklch(from var(--ff-carbon) l c h);
-  --card: oklch(from var(--ff-beige) l c h);
+  --card: oklch(from var(--ff-hueso) l c h);
   --card-foreground: oklch(from var(--ff-carbon) l c h);
-  --popover: oklch(from var(--ff-beige) l c h);
+  --popover: oklch(from var(--ff-hueso) l c h);
   --popover-foreground: oklch(from var(--ff-carbon) l c h);
   
   /* Primary (Carbon) */
@@ -104,11 +104,11 @@
   --chart-5: oklch(from var(--ff-rosado) l c h);
   
   /* Sidebar */
-  --sidebar: oklch(from var(--ff-hueso) l c h);
+  --sidebar: oklch(from var(--ff-beige) l c h);
   --sidebar-foreground: oklch(from var(--ff-carbon) l c h);
   --sidebar-primary: oklch(from var(--ff-carbon) l c h);
   --sidebar-primary-foreground: oklch(from var(--ff-hueso) l c h);
-  --sidebar-accent: oklch(from var(--ff-beige) l c h);
+  --sidebar-accent: oklch(from var(--ff-hueso) l c h);
   --sidebar-accent-foreground: oklch(from var(--ff-carbon) l c h);
   --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
   --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
