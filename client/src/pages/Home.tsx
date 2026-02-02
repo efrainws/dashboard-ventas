@@ -205,60 +205,6 @@ export default function Home() {
               </Card>
             </div>
 
-            {/* Resumen de sucursales y categorías */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sucursales</CardTitle>
-                  <CardDescription>
-                    {selectedBranch !== "all" 
-                      ? "Sucursal seleccionada" 
-                      : `${metrics.branches.length} sucursales activas`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {metrics.branches.slice(0, 5).map((branch) => (
-                      <div key={branch.id} className="flex justify-between items-center text-sm">
-                        <span className="font-medium">{branch.name}</span>
-                        <span className="text-muted-foreground text-xs">{branch.sap_id}</span>
-                      </div>
-                    ))}
-                    {metrics.branches.length > 5 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{metrics.branches.length - 5} sucursales más
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Categorías Abuelo</CardTitle>
-                  <CardDescription>
-                    {selectedCategory !== "all" 
-                      ? "Categoría seleccionada" 
-                      : `${metrics.categories.length} categorías activas`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {metrics.categories.slice(0, 5).map((category) => (
-                      <div key={category.id} className="flex justify-between items-center text-sm">
-                        <span className="font-medium">{category.name}</span>
-                      </div>
-                    ))}
-                    {metrics.categories.length > 5 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{metrics.categories.length - 5} categorías más
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Gráficos de visualización */}
             <div className="space-y-6">
               {/* Gráfico de línea: Progresión de ventas */}

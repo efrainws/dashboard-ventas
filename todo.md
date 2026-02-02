@@ -307,3 +307,11 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar títulos con ItalianPlateNo1 en mayúsculas (H1: "DASHBOARD DE VENTAS")
 - [x] Verificar texto de cuerpo con Sailec (etiquetas, descripciones, tablas)
 - [x] Guardar checkpoint con fuentes aplicadas
+
+
+## Nueva Tarea - Eliminar Secciones de Resumen
+
+- [x] Eliminar card de resumen de Sucursales (línea 210-234)
+- [x] Eliminar card de resumen de Categorías Abuelo (línea 236-260)
+- [x] Verificar que el layout se ajuste correctamente sin estas secciones
+- [x] Guardar checkpoint con cambios aplicados
