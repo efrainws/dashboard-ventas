@@ -280,3 +280,30 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar que los gráficos tengan suficiente variedad de colores (15 colores en tarta, 12 en barras)
 - [x] Verificar que los botones de acento sean visibles (Carbon con foreground Blanco)
 - [x] Guardar checkpoint con ajustes finales
+
+
+## Nueva Tarea - Implementar Fuentes Corporativas Flora y Fauna
+
+### Copiar Archivos de Fuentes
+- [x] Buscar proyecto de referencia (tqEwMT2hX5kV1BNSAIMbGj)
+- [x] Crear directorio client/public/fonts si no existe
+- [x] Copiar ItalianPlateNo1-Bold.otf (82KB)
+- [x] Copiar ItalianPlateNo1-Extrabold.otf (82KB)
+- [x] Copiar Sailec-Regular.otf (42KB)
+- [x] Copiar Sailec-Medium.otf (41KB)
+- [x] Copiar Sailec-Bold.otf (43KB)
+- [x] Copiar Sailec-Black.otf (43KB)
+
+### Actualizar CSS
+- [x] Agregar @font-face para ItalianPlateNo1 (Bold, Extrabold)
+- [x] Agregar @font-face para Sailec (Regular, Medium, Bold, Black)
+- [x] Definir variable CSS --font-heading para ItalianPlateNo1
+- [x] Aplicar estilos base: H1/H2/H3 con ItalianPlateNo1 uppercase
+- [x] Aplicar estilos base: H4/H5/H6 con Sailec
+- [x] Aplicar font-sans (Sailec) a body con antialiasing
+
+### Testing
+- [x] Verificar que las fuentes se carguen correctamente (344KB total)
+- [x] Verificar títulos con ItalianPlateNo1 en mayúsculas (H1: "DASHBOARD DE VENTAS")
+- [x] Verificar texto de cuerpo con Sailec (etiquetas, descripciones, tablas)
+- [x] Guardar checkpoint con fuentes aplicadas

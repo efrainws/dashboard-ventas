@@ -3,6 +3,57 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =========================
+   F&F — Fuentes Corporativas
+   ========================= */
+@font-face {
+  font-family: 'ItalianPlateNo1';
+  src: url('/fonts/ItalianPlateNo1-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ItalianPlateNo1';
+  src: url('/fonts/ItalianPlateNo1-Extrabold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sailec';
+  src: url('/fonts/Sailec-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sailec';
+  src: url('/fonts/Sailec-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sailec';
+  src: url('/fonts/Sailec-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sailec';
+  src: url('/fonts/Sailec-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -81,8 +132,12 @@
   --ff-rosado-dark: #B8848F;      /* Mezclado con Carbon */
   
   /* Granate */
-  --ff-granate-light: #D47286;    /* Mezclado con Beige */
-  --ff-granate-dark: #8A1F31;     /* Mezclado con Carbon */
+  --ff-granate-light: #D87A8E;    /* Mezclado con Beige */
+  --ff-granate-dark: #842032;     /* Mezclado con Carbon */
+
+  /* Fuentes */
+  --font-heading: 'ItalianPlateNo1', sans-serif;
+  --font-sans: 'Sailec', system-ui, -apple-system, sans-serif;
 }
 
 /* =========================
@@ -198,7 +253,16 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  /* H1, H2, H3 use ItalianPlateNo1 with uppercase */
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    @apply font-bold tracking-tight uppercase;
+  }
+  /* H4, H5, H6 use Sailec */
+  h4, h5, h6 {
+    @apply font-sans font-bold tracking-tight;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
