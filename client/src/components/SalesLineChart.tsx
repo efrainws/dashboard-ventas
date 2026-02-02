@@ -16,7 +16,6 @@ import { Calendar, TrendingUp } from "lucide-react";
 export interface SalesDataPoint {
   hour_ts: string;
   sales_amount: string;
-  tickets_count: string;
 }
 
 interface SalesLineChartProps {
@@ -32,16 +31,15 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
 
   // Agregar datos por día
   const dailyData = useMemo(() => {
-    const grouped = new Map<string, { sales: number; tickets: number }>();
+    const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
       const date = new Date(row.hour_ts);
       const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
 
-      const existing = grouped.get(dayKey) || { sales: 0, tickets: 0 };
+      const existing = grouped.get(dayKey) || { sales: 0 };
       grouped.set(dayKey, {
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
-        tickets: existing.tickets + parseInt(row.tickets_count || "0"),
       });
     });
 
@@ -53,23 +51,21 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
           month: "short",
         }),
         sales: values.sales,
-        tickets: values.tickets,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
   // Agregar datos por mes
   const monthlyData = useMemo(() => {
-    const grouped = new Map<string, { sales: number; tickets: number }>();
+    const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
       const date = new Date(row.hour_ts);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
 
-      const existing = grouped.get(monthKey) || { sales: 0, tickets: 0 };
+      const existing = grouped.get(monthKey) || { sales: 0 };
       grouped.set(monthKey, {
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
-        tickets: existing.tickets + parseInt(row.tickets_count || "0"),
       });
     });
 
@@ -81,7 +77,6 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
           year: "numeric",
         }),
         sales: values.sales,
-        tickets: values.tickets,
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
   }, [data]);
@@ -152,7 +147,6 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                 height={viewMode === "day" ? 80 : 30}
               />
               <YAxis
-                yAxisId="left"
                 className="text-xs"
                 tickFormatter={formatCurrency}
                 label={{
@@ -162,41 +156,15 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                   style: { textAnchor: "middle" },
                 }}
               />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                className="text-xs"
-                tickFormatter={formatNumber}
-                label={{
-                  value: "Tickets",
-                  angle: 90,
-                  position: "insideRight",
-                  style: { textAnchor: "middle" },
-                }}
-              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "var(--radius)",
                 }}
-                formatter={(value: number, name: string) => {
-                  if (name === "sales") {
-                    return [formatCurrency(value), "Ventas"];
-                  }
-                  return [formatNumber(value), "Tickets"];
-                }}
-              />
-              <Legend
-                wrapperStyle={{ paddingTop: "20px" }}
-                formatter={(value) => {
-                  if (value === "sales") return "Ventas";
-                  if (value === "tickets") return "Tickets";
-                  return value;
-                }}
+                formatter={(value: number) => [formatCurrency(value), "Ventas"]}
               />
               <Line
-                yAxisId="left"
                 type="monotone"
                 dataKey="sales"
                 stroke="var(--ff-esmeralda)"
@@ -204,16 +172,6 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                 dot={{ r: 4, fill: "var(--ff-esmeralda)" }}
                 activeDot={{ r: 6, fill: "var(--ff-esmeralda-dark)" }}
                 name="sales"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="tickets"
-                stroke="var(--ff-cobalto)"
-                strokeWidth={2}
-                dot={{ r: 4, fill: "var(--ff-cobalto)" }}
-                activeDot={{ r: 6, fill: "var(--ff-cobalto-dark)" }}
-                name="tickets"
               />
             </LineChart>
           </ResponsiveContainer>

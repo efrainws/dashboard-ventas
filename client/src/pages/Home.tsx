@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, ShoppingCart, DollarSign, Filter } from "lucide-react";
+import { Loader2, LogOut, TrendingUp, DollarSign, Filter } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
@@ -179,7 +179,7 @@ export default function Home() {
         {/* KPIs principales */}
         {!isLoading && !error && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-1">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
@@ -188,28 +188,6 @@ export default function Home() {
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(metrics.totalSales)}</div>
                   <p className="text-xs text-muted-foreground">{dateRangeText}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatNumber(metrics.totalTickets)}</div>
-                  <p className="text-xs text-muted-foreground">Transacciones únicas</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(metrics.avgTicket)}</div>
-                  <p className="text-xs text-muted-foreground">Por transacción</p>
                 </CardContent>
               </Card>
             </div>

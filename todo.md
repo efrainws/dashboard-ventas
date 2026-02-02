@@ -372,3 +372,18 @@ Fecha: 1 de febrero de 2026
 - [x] Eliminar Legend de los imports
 - [x] Verificar que los porcentajes en el gráfico sean suficientes (tabla de resumen aún disponible)
 - [x] Guardar checkpoint con leyenda eliminada
+
+## Eliminación de Métrica de Tickets (2026-02-02)
+
+- [x] Modificar query SQL en salesRouter.ts para eliminar tickets_count
+- [x] Actualizar tipos TypeScript en BranchBarChart para remover tickets_count
+- [x] Actualizar tipos TypeScript en SalesLineChart para remover tickets_count
+- [x] Eliminar tarjeta KPI "Total Tickets" de Home.tsx
+- [x] Eliminar tarjeta KPI "Ticket Promedio" de Home.tsx
+- [x] Cambiar grid de KPIs de 3 columnas a 1 columna
+- [x] Eliminar ShoppingCart de imports en Home.tsx
+- [x] Actualizar BranchBarChart para remover columnas de tickets y ticket promedio
+- [x] Actualizar SalesLineChart para remover línea de tickets y eje Y derecho
+- [x] Eliminar cálculo de "Ticket Promedio" de BranchBarChart
+- [x] Verificar que no queden referencias a tickets en el código (TypeScript sin errores)
+- [ ] Guardar checkpoint con métrica de tickets eliminada

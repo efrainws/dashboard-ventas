@@ -19,7 +19,6 @@ export interface SalesDataPoint {
   branch_name: string;
   branch_sap_id: string;
   sales_amount: string;
-  tickets_count: string;
 }
 
 interface BranchBarChartProps {
@@ -49,7 +48,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
   const branchData = useMemo(() => {
     const grouped = new Map<
       string,
-      { name: string; sapId: string; sales: number; tickets: number }
+      { name: string; sapId: string; sales: number }
     >();
 
     data.forEach((row) => {
@@ -61,13 +60,11 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
         name: branchName,
         sapId: sapId,
         sales: 0,
-        tickets: 0,
       };
       grouped.set(branchId, {
         name: branchName,
         sapId: sapId,
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
-        tickets: existing.tickets + parseInt(row.tickets_count || "0"),
       });
     });
 
@@ -79,8 +76,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
         sapId: item.sapId,
         displayName: `${item.name} (${item.sapId})`,
         sales: item.sales,
-        tickets: item.tickets,
-        avgTicket: item.tickets > 0 ? item.sales / item.tickets : 0,
       }));
 
     return result;
@@ -203,8 +198,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                   <tr>
                     <th className="text-left p-2 font-medium">Sucursal</th>
                     <th className="text-right p-2 font-medium">Ventas</th>
-                    <th className="text-right p-2 font-medium">Tickets</th>
-                    <th className="text-right p-2 font-medium">Ticket Prom.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,8 +211,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                         {item.displayName}
                       </td>
                       <td className="text-right p-2">{formatCurrency(item.sales)}</td>
-                      <td className="text-right p-2">{formatNumber(item.tickets)}</td>
-                      <td className="text-right p-2">{formatCurrency(item.avgTicket)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -229,15 +220,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                     <td className="text-right p-2">
                       {formatCurrency(
                         branchData.reduce((sum, item) => sum + item.sales, 0)
-                      )}
-                    </td>
-                    <td className="text-right p-2">
-                      {formatNumber(branchData.reduce((sum, item) => sum + item.tickets, 0))}
-                    </td>
-                    <td className="text-right p-2">
-                      {formatCurrency(
-                        branchData.reduce((sum, item) => sum + item.sales, 0) /
-                          branchData.reduce((sum, item) => sum + item.tickets, 0)
                       )}
                     </td>
                   </tr>

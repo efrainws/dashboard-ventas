@@ -51,8 +51,6 @@ export function useAggregatedSales(filters?: AggregatedSalesFilters) {
     if (!data?.data) {
       return {
         totalSales: 0,
-        totalTickets: 0,
-        avgTicket: 0,
         branches: [],
         categories: [],
       };
@@ -60,8 +58,6 @@ export function useAggregatedSales(filters?: AggregatedSalesFilters) {
 
     const sales = data.data;
     const totalSales = sales.reduce((sum, row) => sum + parseFloat(row.sales_amount || '0'), 0);
-    const totalTickets = sales.reduce((sum, row) => sum + parseInt(row.tickets_count || '0'), 0);
-    const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
 
     // Extraer sucursales únicas
     const branchesMap = new Map();
@@ -91,8 +87,6 @@ export function useAggregatedSales(filters?: AggregatedSalesFilters) {
 
     return {
       totalSales,
-      totalTickets,
-      avgTicket,
       branches,
       categories,
     };
