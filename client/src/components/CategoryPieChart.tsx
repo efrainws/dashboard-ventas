@@ -15,18 +15,23 @@ interface CategoryPieChartProps {
   description?: string;
 }
 
-// Colores para las categorías (paleta Flora y Fauna)
+// Colores para las categorías (paleta ampliada Flora y Fauna)
 const COLORS = [
-  "hsl(var(--chart-1))", // Esmeralda
-  "hsl(var(--chart-2))", // Cobalto
-  "hsl(var(--chart-3))", // Celeste
-  "hsl(var(--chart-4))", // Mostaza
-  "hsl(var(--chart-5))", // Rosado
-  "var(--ff-granate)",   // Granate
-  "var(--ff-esmeralda)", // Esmeralda (alternativo)
-  "var(--ff-cobalto)",   // Cobalto (alternativo)
-  "var(--ff-celeste)",   // Celeste (alternativo)
-  "var(--ff-mostaza)",   // Mostaza (alternativo)
+  "var(--ff-esmeralda)",       // Esmeralda
+  "var(--ff-cobalto)",         // Cobalto
+  "var(--ff-celeste)",         // Celeste
+  "var(--ff-mostaza)",         // Mostaza
+  "var(--ff-rosado)",          // Rosado
+  "var(--ff-granate)",         // Granate
+  "var(--ff-esmeralda-light)", // Esmeralda claro
+  "var(--ff-cobalto-light)",   // Cobalto claro
+  "var(--ff-celeste-light)",   // Celeste claro
+  "var(--ff-mostaza-light)",   // Mostaza claro
+  "var(--ff-rosado-light)",    // Rosado claro
+  "var(--ff-granate-light)",   // Granate claro
+  "var(--ff-esmeralda-dark)",  // Esmeralda oscuro
+  "var(--ff-cobalto-dark)",    // Cobalto oscuro
+  "var(--ff-celeste-dark)",    // Celeste oscuro
 ];
 
 export function CategoryPieChart({ data, title, description }: CategoryPieChartProps) {

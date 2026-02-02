@@ -57,6 +57,32 @@
   --ff-hueso: #F5F4F1;
   --ff-humo: #919291;
   --ff-carbon: #232523;
+  --ff-blanco: #FFFFFF;
+
+  /* Variaciones de colores para gráficos */
+  /* Esmeralda */
+  --ff-esmeralda-light: #4DA896;  /* Mezclado con Beige */
+  --ff-esmeralda-dark: #005A47;   /* Mezclado con Carbon */
+  
+  /* Cobalto */
+  --ff-cobalto-light: #6B9AB5;    /* Mezclado con Beige */
+  --ff-cobalto-dark: #124A6B;     /* Mezclado con Carbon */
+  
+  /* Celeste */
+  --ff-celeste-light: #9DD3D4;    /* Mezclado con Beige */
+  --ff-celeste-dark: #3F8C8D;     /* Mezclado con Carbon */
+  
+  /* Mostaza */
+  --ff-mostaza-light: #D9BC5C;    /* Mezclado con Beige */
+  --ff-mostaza-dark: #8B6B04;     /* Mezclado con Carbon */
+  
+  /* Rosado */
+  --ff-rosado-light: #F0D9DD;     /* Mezclado con Beige */
+  --ff-rosado-dark: #B8848F;      /* Mezclado con Carbon */
+  
+  /* Granate */
+  --ff-granate-light: #D47286;    /* Mezclado con Beige */
+  --ff-granate-dark: #8A1F31;     /* Mezclado con Carbon */
 }
 
 /* =========================
@@ -66,11 +92,11 @@
   --radius: 0.65rem;
   
   /* Backgrounds */
-  --background: oklch(from var(--ff-beige) l c h);
+  --background: oklch(from var(--ff-hueso) l c h);
   --foreground: oklch(from var(--ff-carbon) l c h);
-  --card: oklch(from var(--ff-hueso) l c h);
+  --card: oklch(from var(--ff-blanco) l c h);
   --card-foreground: oklch(from var(--ff-carbon) l c h);
-  --popover: oklch(from var(--ff-hueso) l c h);
+  --popover: oklch(from var(--ff-blanco) l c h);
   --popover-foreground: oklch(from var(--ff-carbon) l c h);
   
   /* Primary (Carbon) */
@@ -83,9 +109,9 @@
   --muted: oklch(from var(--ff-beige) l c h);
   --muted-foreground: oklch(from var(--ff-humo) l c h);
   
-  /* Accent */
-  --accent: oklch(from var(--ff-cobalto) l c h);
-  --accent-foreground: oklch(from var(--ff-hueso) l c h);
+  /* Accent (Carbon para botones de acento) */
+  --accent: oklch(from var(--ff-carbon) l c h);
+  --accent-foreground: oklch(from var(--ff-blanco) l c h);
   
   /* Destructive */
   --destructive: oklch(from var(--ff-granate) l c h);
@@ -104,11 +130,11 @@
   --chart-5: oklch(from var(--ff-rosado) l c h);
   
   /* Sidebar */
-  --sidebar: oklch(from var(--ff-beige) l c h);
+  --sidebar: oklch(from var(--ff-hueso) l c h);
   --sidebar-foreground: oklch(from var(--ff-carbon) l c h);
   --sidebar-primary: oklch(from var(--ff-carbon) l c h);
-  --sidebar-primary-foreground: oklch(from var(--ff-hueso) l c h);
-  --sidebar-accent: oklch(from var(--ff-hueso) l c h);
+  --sidebar-primary-foreground: oklch(from var(--ff-blanco) l c h);
+  --sidebar-accent: oklch(from var(--ff-blanco) l c h);
   --sidebar-accent-foreground: oklch(from var(--ff-carbon) l c h);
   --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
   --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
@@ -136,9 +162,9 @@
   --muted: oklch(from var(--ff-carbon) l c h);
   --muted-foreground: oklch(from var(--ff-beige) l c h);
   
-  /* Accent */
-  --accent: oklch(from var(--ff-cobalto) l c h);
-  --accent-foreground: oklch(from var(--ff-hueso) l c h);
+  /* Accent (Carbon para botones de acento) */
+  --accent: oklch(from var(--ff-carbon) l c h);
+  --accent-foreground: oklch(from var(--ff-blanco) l c h);
   
   /* Destructive */
   --destructive: oklch(from var(--ff-granate) l c h);

@@ -199,20 +199,20 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                 yAxisId="left"
                 type="monotone"
                 dataKey="sales"
-                stroke="hsl(var(--chart-1))"
+                stroke="var(--ff-esmeralda)"
                 strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 4, fill: "var(--ff-esmeralda)" }}
+                activeDot={{ r: 6, fill: "var(--ff-esmeralda-dark)" }}
                 name="sales"
               />
               <Line
                 yAxisId="right"
                 type="monotone"
                 dataKey="tickets"
-                stroke="hsl(var(--chart-2))"
+                stroke="var(--ff-cobalto)"
                 strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 4, fill: "var(--ff-cobalto)" }}
+                activeDot={{ r: 6, fill: "var(--ff-cobalto-dark)" }}
                 name="tickets"
               />
             </LineChart>

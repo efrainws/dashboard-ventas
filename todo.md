@@ -254,3 +254,29 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir fondo secundario/cards: debe ser Hueso #F5F4F1 (actualmente es Beige)
 - [x] Verificar que el cambio se aplique correctamente en toda la interfaz
 - [x] Guardar checkpoint con corrección aplicada
+
+
+## Ajuste Final de Colores - Light Mode
+Fecha: 1 de febrero de 2026
+
+### Fondos y Botones
+- [x] Cambiar fondo principal a Hueso #F5F4F1
+- [x] Cambiar fondo secundario/cards a Blanco #FFFFFF
+- [x] Usar Carbon #232523 para botones de acento (filtros, acciones principales)
+
+### Paleta Ampliada para Gráficos
+- [x] Crear variaciones de Esmeralda mezclando con Beige (más claro) y Carbon (más oscuro)
+- [x] Crear variaciones de Cobalto mezclando con Beige y Carbon
+- [x] Crear variaciones de Celeste mezclando con Beige y Carbon
+- [x] Crear variaciones de Mostaza mezclando con Beige y Carbon
+- [x] Crear variaciones de Rosado mezclando con Beige y Carbon
+- [x] Crear variaciones de Granate mezclando con Beige y Carbon
+- [x] Actualizar SalesLineChart con nuevas variaciones
+- [x] Actualizar CategoryPieChart con paleta ampliada (15 colores)
+- [x] Actualizar BranchBarChart con paleta ampliada (12 colores)
+
+### Testing
+- [x] Verificar contraste entre fondos y texto (Hueso #F5F4F1 + Blanco #FFFFFF con Carbon #232523 = excelente)
+- [x] Verificar que los gráficos tengan suficiente variedad de colores (15 colores en tarta, 12 en barras)
+- [x] Verificar que los botones de acento sean visibles (Carbon con foreground Blanco)
+- [x] Guardar checkpoint con ajustes finales
