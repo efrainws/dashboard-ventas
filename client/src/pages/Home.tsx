@@ -119,9 +119,9 @@ export default function Home() {
               className="h-4 w-auto self-start" 
             />
             <div className="flex flex-col space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard de Ventas</h1>
+              <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR CATEGORÍAS</h1>
             <p className="text-muted-foreground">
-              Ventas agregadas por hora, fecha, tienda y categoría abuelo
+              Ventas agregadas por fecha, tienda y categoría abuelo
             </p>
             {metadata && (
               <p className="text-xs text-muted-foreground">
@@ -132,6 +132,9 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
+              Ver Análisis por Horas
+            </Button>
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
               <span className="font-medium">{user?.username}</span>
               <span className="text-xs opacity-70 capitalize">({user?.role})</span>

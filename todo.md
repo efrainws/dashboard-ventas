@@ -399,4 +399,39 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar tipos TypeScript en SalesLineChart (hour_ts → doc_date)
 - [x] Actualizar tipos TypeScript en BranchBarChart (no usa hour_ts, ya usa doc_date indirectamente)
 - [x] Verificar que los gráficos funcionen correctamente con datos por fecha (Total registros: 2,356 vs 25,946 anterior - reducción de ~90%)
-- [ ] Guardar checkpoint con query simplificado
+- [x] Guardar checkpoint con query simplificado
+
+## Creación de Dashboard de Análisis por Horas (2026-02-02)
+
+### Backend - Nuevo Endpoint SQL
+- [x] Crear nuevo procedimiento `getHourlySales` en salesRouter.ts
+- [x] Query con agrupación por hora (`date_trunc('hour', doc_date)`)
+- [x] Incluir `COUNT(DISTINCT sale_id) AS tickets_count`
+- [x] Omitir campos de categoría (sin joins a categories)
+- [x] Filtros: fecha_min, fecha_max, branch_id (sin category_id)
+- [x] GROUP BY: hour_ts, branch_id, branch_sap_id, branch_name, branch_address
+
+### Frontend - Nuevo Dashboard
+- [x] Crear página `HourlyAnalysis.tsx` para análisis por horas
+- [x] Crear hook `useHourlySales.ts` para consumir nuevo endpoint
+- [x] Implementar DateRangePicker unificado (date-range-picker.tsx)
+- [x] Crear componente `HourlyLineChart.tsx` (ventas + tickets con doble eje Y)
+- [x] KPIs integrados en HourlyAnalysis.tsx (ventas, tickets, ticket promedio)
+- [x] Filtros: DateRangePicker + selector de sucursal + botón limpiar
+- [x] Mantener estética corporativa (colores Flora y Fauna, modo oscuro, logo adaptativo)
+
+### Navegación y Rutas
+- [x] Actualizar App.tsx para agregar ruta `/hourly-analysis`
+- [x] Renombrar título del dashboard actual a "ANÁLISIS POR CATEGORÍAS"
+- [x] Agregar navegación entre dashboards (botones en header)
+- [x] Actualizar descripción del dashboard actual ("por fecha" en lugar de "por hora")
+- [x] Agregar botón en Home para ir a HourlyAnalysis
+- [x] Agregar botón en HourlyAnalysis para volver a Home
+
+### Verificación
+- [x] Probar ambos dashboards funcionando independientemente
+- [x] Verificar filtros y gráficos en dashboard por horas (KPIs, DateRangePicker, HourlyLineChart)
+- [x] Verificar que modo oscuro funcione en ambos dashboards (logo adaptativo implementado)
+- [x] Verificar navegación entre dashboards (botones funcionando)
+- [x] Verificar datos: Home 2,356 registros (por fecha), HourlyAnalysis 4,971 registros (por hora)
+- [ ] Guardar checkpoint con ambos dashboards implementados
