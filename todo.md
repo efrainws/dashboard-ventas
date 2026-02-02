@@ -336,3 +336,10 @@ Fecha: 1 de febrero de 2026
 - [x] Título "DASHBOARD DE VENTAS" y descripción en la segunda línea
 - [x] Verificar espaciado y alineación
 - [x] Guardar checkpoint con cambios aplicados
+
+## Ajuste de Alineación del Logo (2026-02-02)
+
+- [x] Mover el logo completamente a la izquierda del contenedor
+- [x] Asegurar que el logo esté alineado al borde izquierdo (usando self-start)
+- [x] Verificar que el título mantenga su posición
+- [x] Guardar checkpoint con cambios aplicados
