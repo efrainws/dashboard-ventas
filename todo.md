@@ -324,3 +324,7 @@ Fecha: 1 de febrero de 2026
 - [x] Ajustar tamaño y espaciado del logo (h-12 con gap-4)
 - [x] Verificar que el logo se vea correctamente en el dashboard (visible en esquina superior izquierda)
 - [x] Guardar checkpoint con logo implementado
+
+## Ajuste de Tamaño de Logo (2026-02-02)
+
+- [x] Reducir tamaño del logo de h-12 a h-4 (aproximadamente 30% del tamaño original)
