@@ -452,4 +452,11 @@ Fecha: 1 de febrero de 2026
 
 ### Verificación
 - [x] Revisar todos los textos visibles en la UI (screenshot muestra "departamento" en descripción)
-- [ ] Guardar checkpoint con cambios aplicados
+- [x] Guardar checkpoint con cambios aplicados
+
+## Actualización de Etiqueta de Filtro "Categoría" → "Departamento" (2026-02-02)
+
+- [x] Localizar DashboardFilters.tsx
+- [x] Cambiar etiqueta "Categoría" por "Departamento" (4 referencias actualizadas)
+- [x] Verificar cambio en la UI (screenshot muestra "Departamento" y "Todos los departamentos")
+- [ ] Guardar checkpoint

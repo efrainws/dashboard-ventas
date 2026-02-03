@@ -66,7 +66,7 @@ export function DashboardFilters({
           <div>
             <CardTitle>Filtros</CardTitle>
             <CardDescription>
-              Selecciona rangos de fechas, sucursales y categorías para explorar los datos
+              Selecciona rangos de fechas, sucursales y departamentos para explorar los datos
             </CardDescription>
           </div>
           {hasActiveFilters && (
@@ -159,15 +159,15 @@ export function DashboardFilters({
             </Select>
           </div>
 
-          {/* Categoría */}
+          {/* Departamento */}
           <div className="space-y-2">
-            <Label htmlFor="category">Categoría</Label>
+            <Label htmlFor="category">Departamento</Label>
             <Select value={selectedCategory} onValueChange={onCategoryChange}>
               <SelectTrigger id="category">
-                <SelectValue placeholder="Todas las categorías" />
+                <SelectValue placeholder="Todos los departamentos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas las categorías</SelectItem>
+                <SelectItem value="all">Todos los departamentos</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
