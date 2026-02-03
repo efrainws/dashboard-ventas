@@ -34,27 +34,29 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      // Usar la fecha directamente sin conversión de zona horaria
-      const dayKey = String(row.doc_date).split("T")[0]; // YYYY-MM-DD
+      // Convertir doc_date a Date si es string, o usarlo directamente si ya es Date
+      const docDate = typeof row.doc_date === 'string' ? new Date(row.doc_date) : row.doc_date;
+      // Extraer fecha en formato YYYY-MM-DD usando UTC
+      const year = docDate.getUTCFullYear();
+      const month = String(docDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(docDate.getUTCDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
 
-      const existing = grouped.get(dayKey) || { sales: 0 };
-      grouped.set(dayKey, {
+      const existing = grouped.get(dateKey) || { sales: 0 };
+      grouped.set(dateKey, {
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
       });
     });
 
     return Array.from(grouped.entries())
       .map(([date, values]) => {
-        // Parsear fecha como UTC para evitar desfase de zona horaria
-        const [year, month, day] = date.split("-").map(Number);
-        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        // Formatear fecha manualmente para evitar problemas de zona horaria
+        const [year, month, day] = date.split("-");
+        const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+        const displayDate = `${day} ${monthNames[parseInt(month) - 1]}`;
         return {
           date,
-          displayDate: utcDate.toLocaleDateString("es-PE", {
-            day: "2-digit",
-            month: "short",
-            timeZone: "UTC",
-          }),
+          displayDate,
           sales: values.sales,
         };
       })
@@ -66,8 +68,12 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      // Extraer año-mes directamente de la cadena ISO
-      const monthKey = String(row.doc_date).substring(0, 7); // YYYY-MM
+      // Convertir doc_date a Date si es string
+      const docDate = typeof row.doc_date === 'string' ? new Date(row.doc_date) : row.doc_date;
+      // Extraer año-mes usando UTC
+      const year = docDate.getUTCFullYear();
+      const month = String(docDate.getUTCMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`; // YYYY-MM
 
       const existing = grouped.get(monthKey) || { sales: 0 };
       grouped.set(monthKey, {
@@ -77,16 +83,13 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
 
     return Array.from(grouped.entries())
       .map(([month, values]) => {
-        // Parsear mes como UTC
-        const [year, monthNum] = month.split("-").map(Number);
-        const utcDate = new Date(Date.UTC(year, monthNum - 1, 1));
+        // Formatear mes manualmente
+        const [year, monthNum] = month.split("-");
+        const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+        const displayMonth = `${monthNames[parseInt(monthNum) - 1]} ${year}`;
         return {
           month,
-          displayMonth: utcDate.toLocaleDateString("es-PE", {
-            month: "long",
-            year: "numeric",
-            timeZone: "UTC",
-          }),
+          displayMonth,
           sales: values.sales,
         };
       })
@@ -149,14 +152,15 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey={xAxisKey}
                 className="text-xs"
                 angle={viewMode === "day" ? -45 : 0}
                 textAnchor={viewMode === "day" ? "end" : "middle"}
-                height={viewMode === "day" ? 80 : 30}
+                height={100}
+                interval={viewMode === "day" ? "preserveStartEnd" : 0}
               />
               <YAxis
                 className="text-xs"

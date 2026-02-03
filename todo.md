@@ -135,7 +135,7 @@
 - [x] Actualizar App.tsx para eliminar rutas y referencias a componentes eliminados
 - [x] Actualizar server/routers.ts para eliminar referencia a salesRouter
 - [x] Verificar que la aplicación funcione sin errores (0 errores de TypeScript, servidor corriendo)
-- [ ] Guardar checkpoint con los cambios
+- [x] Guardar checkpoint con los cambios
 
 
 ## Nueva Tarea - Implementar Consulta PostgreSQL Optimizada
@@ -151,7 +151,7 @@
 - [x] Actualizar credenciales de PostgreSQL (base de datos: production-middleware-florayfauna)
 - [x] Configurar SSL para conexión a RDS
 - [x] Ajustar rango de fechas por defecto a enero 2026
-- [ ] Guardar checkpoint con la implementación completa
+- [x] Guardar checkpoint con la implementación completa
 
 
 ## Nueva Tarea - Implementar Filtros Interactivos (31/01/2026)
@@ -472,4 +472,15 @@ Fecha: 1 de febrero de 2026
 - [x] HourlyLineChart: Corregir formateo de horas usando getUTCHours()
 - [x] Implementar formateo UTC consistente en ambos componentes
 - [x] Verificar corrección en ambos dashboards (error corregido, dashboard carga correctamente)
+- [x] Guardar checkpoint
+
+## Corrección de "Invalid Date" en Gráfico de Ventas (2026-02-03)
+
+**Problema:** El gráfico de progresión de ventas muest## Corrección de "Invalid Date" en Gráfico de Progresión de Ventas
+
+- [x] Revisar código de formateo de fechas en SalesLineChart
+- [x] Corregir parseo de fechas usando getUTCFullYear/getUTCMonth/getUTCDate para manejar objetos Date
+- [x] Verificar que las fechas se muestren correctamente ("02 ene", "03 ene", etc.)
+- [x] Aumentar márgenes del gráfico (bottom: 80) para visibilidad de etiquetas rotadas
+- [x] Eliminar console.log de depuración
 - [ ] Guardar checkpoint
