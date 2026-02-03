@@ -1,0 +1,472 @@
+import { useState } from 'react';
+import { trpc } from '@/lib/trpc';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { useLocation } from 'wouter';
+import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon } from 'lucide-react';
+import { toast as showToast } from 'sonner';
+
+type User = {
+  id: number;
+  username: string | null;
+  name: string | null;
+  email: string | null;
+  role: 'user' | 'admin';
+  loginMethod: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  lastSignedIn: Date;
+};
+
+type DialogMode = 'create' | 'edit' | 'password' | null;
+
+export default function UserManagement() {
+  const { user: currentUser, loading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
+
+  const [dialogMode, setDialogMode] = useState<DialogMode>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
+
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    name: '',
+    email: '',
+    role: 'user' as 'user' | 'admin',
+  });
+
+  // Queries
+  const { data: usersData, isLoading: usersLoading } = trpc.users.listUsers.useQuery();
+
+  // Mutations
+  const createMutation = trpc.users.createUser.useMutation({
+    onSuccess: () => {
+      showToast.success('Usuario creado exitosamente');
+      utils.users.listUsers.invalidate();
+      closeDialog();
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+    },
+  });
+
+  const updateMutation = trpc.users.updateUser.useMutation({
+    onSuccess: () => {
+      showToast.success('Usuario actualizado exitosamente');
+      utils.users.listUsers.invalidate();
+      closeDialog();
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+    },
+  });
+
+  const updatePasswordMutation = trpc.users.updatePassword.useMutation({
+    onSuccess: () => {
+      showToast.success('Contraseña actualizada exitosamente');
+      closeDialog();
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+    },
+  });
+
+  const deleteMutation = trpc.users.deleteUser.useMutation({
+    onSuccess: () => {
+      showToast.success('Usuario eliminado exitosamente');
+      utils.users.listUsers.invalidate();
+      setDeleteUserId(null);
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+    },
+  });
+
+  // Verificar permisos
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#2D5016]" />
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    setLocation('/');
+    return null;
+  }
+
+  const openCreateDialog = () => {
+    setFormData({
+      username: '',
+      password: '',
+      name: '',
+      email: '',
+      role: 'user',
+    });
+    setDialogMode('create');
+  };
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user);
+    setFormData({
+      username: user.username || '',
+      password: '',
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role,
+    });
+    setDialogMode('edit');
+  };
+
+  const openPasswordDialog = (user: User) => {
+    setSelectedUser(user);
+    setFormData({
+      ...formData,
+      password: '',
+    });
+    setDialogMode('password');
+  };
+
+  const closeDialog = () => {
+    setDialogMode(null);
+    setSelectedUser(null);
+    setFormData({
+      username: '',
+      password: '',
+      name: '',
+      email: '',
+      role: 'user',
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (dialogMode === 'create') {
+      createMutation.mutate({
+        username: formData.username,
+        password: formData.password,
+        name: formData.name,
+        email: formData.email || undefined,
+        role: formData.role,
+      });
+    } else if (dialogMode === 'edit' && selectedUser) {
+      updateMutation.mutate({
+        id: selectedUser.id,
+        username: formData.username || undefined,
+        name: formData.name || undefined,
+        email: formData.email || undefined,
+        role: formData.role,
+      });
+    } else if (dialogMode === 'password' && selectedUser) {
+      updatePasswordMutation.mutate({
+        id: selectedUser.id,
+        newPassword: formData.password,
+      });
+    }
+  };
+
+  const handleDelete = (userId: number) => {
+    deleteMutation.mutate({ id: userId });
+  };
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('es-PE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F5F1E8]">
+      <div className="container py-8 space-y-8">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-[#2D5016]" style={{ fontFamily: 'Playfair Display, serif' }}>
+              Administración de Usuarios
+            </h1>
+            <p className="text-muted-foreground">
+              Gestiona los usuarios del sistema y sus permisos
+            </p>
+          </div>
+          <Button
+            onClick={openCreateDialog}
+            className="bg-[#2D5016] hover:bg-[#2D5016]/90 text-white"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuevo Usuario
+          </Button>
+        </div>
+
+        {/* Tabla de Usuarios */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#2D5016]/10">
+          {usersLoading ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#2D5016]" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[#2D5016]/10">
+                  <TableHead className="text-[#2D5016] font-semibold">Usuario</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold">Nombre</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold">Email</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold">Rol</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold">Método</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold">Último Acceso</TableHead>
+                  <TableHead className="text-[#2D5016] font-semibold text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usersData?.users.map((user) => (
+                  <TableRow key={user.id} className="border-b border-[#2D5016]/5 hover:bg-[#F5F1E8]/50">
+                    <TableCell className="font-medium">{user.username}</TableCell>
+                    <TableCell>{user.name}</TableCell>
+                    <TableCell>{user.email || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {user.role === 'admin' ? (
+                          <Shield className="h-4 w-4 text-[#2D5016]" />
+                        ) : (
+                          <UserIcon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="capitalize">{user.role}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize">{user.loginMethod || '-'}</TableCell>
+                    <TableCell>{formatDate(user.lastSignedIn)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(user)}
+                          className="hover:bg-[#2D5016]/10"
+                        >
+                          <Pencil className="h-4 w-4 text-[#2D5016]" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openPasswordDialog(user)}
+                          className="hover:bg-[#2D5016]/10"
+                        >
+                          <Key className="h-4 w-4 text-[#2D5016]" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteUserId(user.id)}
+                          disabled={user.id === currentUser.id}
+                          className="hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
+
+      {/* Dialog para Crear/Editar Usuario */}
+      <Dialog open={dialogMode === 'create' || dialogMode === 'edit'} onOpenChange={closeDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle className="text-[#2D5016]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                {dialogMode === 'create' ? 'Crear Nuevo Usuario' : 'Editar Usuario'}
+              </DialogTitle>
+              <DialogDescription>
+                {dialogMode === 'create'
+                  ? 'Completa la información para crear un nuevo usuario'
+                  : 'Actualiza la información del usuario'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="username">Nombre de Usuario</Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  required
+                />
+              </div>
+              {dialogMode === 'create' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nombre Completo</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="role">Rol</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value: 'user' | 'admin') => setFormData({ ...formData, role: value })}
+                >
+                  <SelectTrigger id="role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">Usuario</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDialog}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[#2D5016] hover:bg-[#2D5016]/90"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {dialogMode === 'create' ? 'Crear Usuario' : 'Guardar Cambios'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Cambiar Contraseña */}
+      <Dialog open={dialogMode === 'password'} onOpenChange={closeDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle className="text-[#2D5016]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Cambiar Contraseña
+              </DialogTitle>
+              <DialogDescription>
+                Ingresa la nueva contraseña para {selectedUser?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDialog}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[#2D5016] hover:bg-[#2D5016]/90"
+                disabled={updatePasswordMutation.isPending}
+              >
+                {updatePasswordMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Actualizar Contraseña
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmación para Eliminar */}
+      <AlertDialog open={deleteUserId !== null} onOpenChange={() => setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#2D5016]">¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El usuario será eliminado permanentemente del sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteUserId && handleDelete(deleteUserId)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar Usuario
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

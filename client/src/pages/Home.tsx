@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun } from "lucide-react";
+import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
@@ -152,6 +152,12 @@ export default function Home() {
               <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
                 Ver Análisis por Horas
               </Button>
+              {user?.role === 'admin' && (
+                <Button variant="outline" size="sm" onClick={() => setLocation('/admin/users')}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Administrar Usuarios
+                </Button>
+              )}
               <Button variant="outline" size="icon" onClick={toggleTheme}>
                 {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>

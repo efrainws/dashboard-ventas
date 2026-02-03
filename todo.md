@@ -562,4 +562,36 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir la consulta SQL para usar la zona horaria correcta de Perú (UTC-5)
 - [x] Verificar que las horas se muestren correctamente (tienda abre a las 8:00, no 13:00)
 - [x] Probar en el navegador que el gráfico muestre las horas correctas
+- [x] Guardar checkpoint
+
+## Pantalla de Administración de Usuarios (2026-02-03)
+
+### Backend - Procedimientos tRPC
+- [x] Crear userRouter.ts con procedimientos para gestión de usuarios
+- [x] Implementar adminProcedure para proteger endpoints de admin
+- [x] Crear procedimiento listUsers (listar todos los usuarios)
+- [x] Crear procedimiento createUser (crear nuevo usuario con contraseña)
+- [x] Crear procedimiento updateUser (actualizar información de usuario)
+- [x] Crear procedimiento updatePassword (cambiar contraseña de usuario)
+- [x] Crear procedimiento deleteUser (eliminar usuario)
+- [x] Integrar userRouter en routers.ts
+
+### Frontend - Interfaz de Usuario
+- [x] Crear página UserManagement.tsx con diseño consistente
+- [x] Implementar tabla de usuarios con información básica
+- [x] Crear formulario de creación de usuario (modal/dialog)
+- [x] Crear formulario de edición de usuario (modal/dialog)
+- [x] Crear formulario de cambio de contraseña (modal/dialog)
+- [x] Implementar confirmación para eliminar usuario
+- [x] Agregar validaciones de formularios
+- [x] Agregar ruta /admin/users en App.tsx
+- [x] Agregar enlace en navegación (solo visible para admins)
+
+### Testing y Verificación
+- [x] Escribir tests para procedimientos de usuarios
+- [x] Probar creación de usuario en navegador
+- [x] Probar edición de usuario en navegador
+- [x] Probar cambio de contraseña en navegador
+- [x] Probar eliminación de usuario en navegador
+- [x] Verificar que solo admins pueden acceder a /admin/users
 - [ ] Guardar checkpoint

@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import Home from "./pages/Home";
 import HourlyAnalysis from "./pages/HourlyAnalysis";
+import UserManagement from "./pages/UserManagement";
 import Login from "./pages/Login";
 import { Loader2 } from "lucide-react";
 
@@ -38,6 +39,9 @@ function Router() {
       </Route>
       <Route path="/hourly-analysis">
         {() => <ProtectedRoute component={HourlyAnalysis} path="/hourly-analysis" />}
+      </Route>
+      <Route path="/admin/users">
+        {() => <ProtectedRoute component={UserManagement} path="/admin/users" />}
       </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
