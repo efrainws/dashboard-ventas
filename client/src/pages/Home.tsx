@@ -20,7 +20,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
-      window.location.href = getLoginUrl();
+      setLocation('/login');
     },
   });
 

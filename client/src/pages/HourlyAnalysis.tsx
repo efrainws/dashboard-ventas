@@ -22,12 +22,12 @@ import type { DateRange } from "react-day-picker";
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
   const { effectiveTheme, toggleTheme } = useTheme();
+  const [, setLocation] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
-      window.location.href = getLoginUrl();
+      setLocation('/login');
     },
   });
-  const [, setLocation] = useLocation();
 
   // Estados de filtros
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);

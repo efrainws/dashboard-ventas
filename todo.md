@@ -638,4 +638,11 @@ Fecha: 1 de febrero de 2026
 
 - [x] Leer Login.tsx para identificar elementos a eliminar
 - [x] Eliminar elementos <p> en las líneas 101, 102, 103 (sección de credenciales de prueba)
+- [x] Guardar checkpoint
+
+## Cambiar Redirección de Logout a Página Local (2026-02-03)
+
+- [x] Modificar Home.tsx para redirigir a /login después de logout
+- [x] Modificar HourlyAnalysis.tsx para redirigir a /login después de logout
+- [x] Verificar que la redirección funcione correctamente
 - [ ] Guardar checkpoint
