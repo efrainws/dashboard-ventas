@@ -537,4 +537,11 @@ Fecha: 1 de febrero de 2026
 - [x] Diagnosticar problema: ThemeProvider necesita switchable={true}
 - [x] Agregar switchable={true} a ThemeProvider en App.tsx
 - [x] Probar funcionalidad del botón en ambos dashboards (dashboard carga correctamente)
+- [x] Guardar checkpoint
+
+## Corrección de Ruta del Logo en Modo Oscuro (2026-02-03)
+
+- [x] Home.tsx: Cambiar "/Logoblanco.svg" por "/Logo claro chico.svg"
+- [x] HourlyAnalysis.tsx: Cambiar "/Logoblanco.svg" por "/Logo claro chico.svg"
+- [x] Verificar que el logo se muestre correctamente en modo oscuro
 - [ ] Guardar checkpoint

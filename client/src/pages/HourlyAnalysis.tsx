@@ -93,7 +93,7 @@ export default function HourlyAnalysis() {
   }, [dateRange]);
 
   // Logo según tema
-  const logoSrc = effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg";
+  const logoSrc = effectiveTheme === "dark" ? "/Logo claro chico.svg" : "/Logonegro.svg";
 
   return (
     <div className="min-h-screen bg-background">

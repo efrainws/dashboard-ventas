@@ -114,7 +114,7 @@ export default function Home() {
           {/* Logo, Usuario y Logout */}
           <div className="flex justify-between items-center">
             <img 
-              src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
+              src={effectiveTheme === "dark" ? "/Logo claro chico.svg" : "/Logonegro.svg"} 
               alt="Flora & Fauna" 
               className="h-4 w-auto" 
             />
