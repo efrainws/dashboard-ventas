@@ -30,8 +30,9 @@ export function HourlyLineChart({ data, title, description }: HourlyLineChartPro
     const grouped = new Map<number, { sales: number; tickets: number }>();
 
     data.forEach((row) => {
+      // Parsear como UTC para evitar desfase de zona horaria
       const date = new Date(row.hour_ts);
-      const hour = date.getHours(); // 0-23
+      const hour = date.getUTCHours(); // 0-23 en UTC
 
       const existing = grouped.get(hour) || { sales: 0, tickets: 0 };
       grouped.set(hour, {

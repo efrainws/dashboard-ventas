@@ -34,8 +34,8 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      const date = new Date(row.doc_date);
-      const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
+      // Usar la fecha directamente sin conversión de zona horaria
+      const dayKey = String(row.doc_date).split("T")[0]; // YYYY-MM-DD
 
       const existing = grouped.get(dayKey) || { sales: 0 };
       grouped.set(dayKey, {
@@ -44,14 +44,20 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     });
 
     return Array.from(grouped.entries())
-      .map(([date, values]) => ({
-        date,
-        displayDate: new Date(date).toLocaleDateString("es-PE", {
-          day: "2-digit",
-          month: "short",
-        }),
-        sales: values.sales,
-      }))
+      .map(([date, values]) => {
+        // Parsear fecha como UTC para evitar desfase de zona horaria
+        const [year, month, day] = date.split("-").map(Number);
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        return {
+          date,
+          displayDate: utcDate.toLocaleDateString("es-PE", {
+            day: "2-digit",
+            month: "short",
+            timeZone: "UTC",
+          }),
+          sales: values.sales,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
@@ -60,8 +66,8 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     const grouped = new Map<string, { sales: number }>();
 
     data.forEach((row) => {
-      const date = new Date(row.doc_date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
+      // Extraer año-mes directamente de la cadena ISO
+      const monthKey = String(row.doc_date).substring(0, 7); // YYYY-MM
 
       const existing = grouped.get(monthKey) || { sales: 0 };
       grouped.set(monthKey, {
@@ -70,14 +76,20 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     });
 
     return Array.from(grouped.entries())
-      .map(([month, values]) => ({
-        month,
-        displayMonth: new Date(month + "-01").toLocaleDateString("es-PE", {
-          month: "long",
-          year: "numeric",
-        }),
-        sales: values.sales,
-      }))
+      .map(([month, values]) => {
+        // Parsear mes como UTC
+        const [year, monthNum] = month.split("-").map(Number);
+        const utcDate = new Date(Date.UTC(year, monthNum - 1, 1));
+        return {
+          month,
+          displayMonth: utcDate.toLocaleDateString("es-PE", {
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC",
+          }),
+          sales: values.sales,
+        };
+      })
       .sort((a, b) => a.month.localeCompare(b.month));
   }, [data]);
 

@@ -459,4 +459,17 @@ Fecha: 1 de febrero de 2026
 - [x] Localizar DashboardFilters.tsx
 - [x] Cambiar etiqueta "Categoría" por "Departamento" (4 referencias actualizadas)
 - [x] Verificar cambio en la UI (screenshot muestra "Departamento" y "Todos los departamentos")
+- [x] Guardar checkpoint
+
+## Corrección de Visualización de Fechas en Gráficos (2026-02-03)
+
+**Problema:** Las fechas UTC se están mostrando con un día de desfase debido a conversión de zona horaria (2026-01-02T00:00:00.000Z se muestra como 01-01-2026)
+
+- [x] Identificar todos los componentes que formatean fechas (4 componentes encontrados)
+- [x] SalesLineChart: Corregir formateo de fechas en eje X (usar split y Date.UTC con timeZone: "UTC")
+- [x] BranchBarChart: No usa fechas directamente (agrega por sucursal)
+- [x] CategoryPieChart: No usa fechas directamente (agrega por categoría)
+- [x] HourlyLineChart: Corregir formateo de horas usando getUTCHours()
+- [x] Implementar formateo UTC consistente en ambos componentes
+- [x] Verificar corrección en ambos dashboards (error corregido, dashboard carga correctamente)
 - [ ] Guardar checkpoint
