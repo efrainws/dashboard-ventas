@@ -106,6 +106,9 @@ export default function Home() {
     return "Enero 2026 (por defecto)";
   }, [dateRange]);
 
+  // Logo según tema
+  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 space-y-8">
@@ -114,7 +117,7 @@ export default function Home() {
           {/* Logo, Usuario y Logout */}
           <div className="flex justify-between items-center">
             <img 
-              src={effectiveTheme === "dark" ? "/Logo claro chico.svg" : "/Logonegro.svg"} 
+              src={logoSrc}
               alt="Flora & Fauna" 
               className="h-4 w-auto" 
             />

@@ -544,4 +544,12 @@ Fecha: 1 de febrero de 2026
 - [x] Home.tsx: Cambiar "/Logoblanco.svg" por "/Logo claro chico.svg"
 - [x] HourlyAnalysis.tsx: Cambiar "/Logoblanco.svg" por "/Logo claro chico.svg"
 - [x] Verificar que el logo se muestre correctamente en modo oscuro
+- [x] Guardar checkpoint
+
+## Corrección Final del Logo en Modo Oscuro (2026-02-03)
+
+- [x] Copiar Logoclarochico.svg de /home/ubuntu/upload/ a /home/ubuntu/dashboard-ventas/client/public/
+- [x] Actualizar Home.tsx para usar "/Logoclarochico.svg" (sin espacios)
+- [x] Actualizar HourlyAnalysis.tsx para usar "/Logoclarochico.svg" (sin espacios)
+- [x] Verificar que el logo se muestre correctamente en modo oscuro
 - [ ] Guardar checkpoint
