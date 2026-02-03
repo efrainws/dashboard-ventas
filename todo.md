@@ -483,4 +483,9 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar que las fechas se muestren correctamente ("02 ene", "03 ene", etc.)
 - [x] Aumentar márgenes del gráfico (bottom: 80) para visibilidad de etiquetas rotadas
 - [x] Eliminar console.log de depuración
+- [x] Guardar checkpoint
+## Eliminación de Etiqueta del Eje Y en BranchBarChart (2026-02-03)
+
+- [x] Eliminar label "Ventas (S/)" del YAxis en BranchBarChart.tsx
+- [x] Verificar que el gráfico mantenga buena legibilidad sin la etiqueta (screenshot confirma que se ve bien)
 - [ ] Guardar checkpoint

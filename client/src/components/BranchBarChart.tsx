@@ -155,12 +155,6 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                 <YAxis
                   className="text-xs"
                   tickFormatter={formatCurrencyShort}
-                  label={{
-                    value: "Ventas (S/)",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: { textAnchor: "middle" },
-                  }}
                 />
                 <Tooltip
                   contentStyle={{
