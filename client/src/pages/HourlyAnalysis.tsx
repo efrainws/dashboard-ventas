@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar } from "lucide-react";
+import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun } from "lucide-react";
 import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales";
 import { HourlyLineChart } from "@/components/HourlyLineChart";
 import { useState, useMemo } from "react";
@@ -20,7 +20,7 @@ import type { DateRange } from "react-day-picker";
 
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
-  const { effectiveTheme } = useTheme();
+  const { effectiveTheme, toggleTheme } = useTheme();
   const logoutMutation = trpc.auth.logout.useMutation();
   const [, setLocation] = useLocation();
 
@@ -100,31 +100,39 @@ export default function HourlyAnalysis() {
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex flex-col space-y-4">
-          <div className="flex items-center justify-between">
-            <img src={logoSrc} alt="Flora & Fauna" className="h-4 self-start" />
+          {/* Logo */}
+          <img src={logoSrc} alt="Flora & Fauna" className="h-4 w-auto self-start" />
+          
+          {/* Título y Botones */}
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR HORAS</h1>
+              <p className="text-muted-foreground">
+                Ventas y transacciones agregadas por hora del día
+              </p>
+              {metadata && (
+                <p className="text-xs text-muted-foreground">
+                  Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | Total registros: {formatNumber(metadata.total_rows)}
+                </p>
+              )}
+            </div>
+            
             <div className="flex items-center gap-4">
               <Button variant="default" size="sm" onClick={() => setLocation('/')}>
                 Ver Análisis por Categorías
               </Button>
-              <span className="text-sm text-muted-foreground">
-                {user?.name} ({user?.role})
-              </span>
+              <Button variant="outline" size="icon" onClick={toggleTheme}>
+                {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
+                <span className="font-medium">{user?.username}</span>
+                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
+              </div>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Cerrar Sesión
               </Button>
             </div>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR HORAS</h1>
-            <p className="text-muted-foreground">
-              Ventas y transacciones agregadas por hora del día
-            </p>
-            {metadata && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | Total registros: {formatNumber(metadata.total_rows)}
-              </p>
-            )}
           </div>
         </div>
 

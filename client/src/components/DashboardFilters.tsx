@@ -8,23 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, X } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { X } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 
 export interface DashboardFiltersProps {
   // Rango de fechas
-  dateFrom: Date | undefined;
-  dateTo: Date | undefined;
-  onDateFromChange: (date: Date | undefined) => void;
-  onDateToChange: (date: Date | undefined) => void;
+  dateRange: DateRange | undefined;
+  onDateRangeChange: (range: DateRange | undefined) => void;
 
   // Sucursal
   selectedBranch: string;
@@ -41,10 +32,8 @@ export interface DashboardFiltersProps {
 }
 
 export function DashboardFilters({
-  dateFrom,
-  dateTo,
-  onDateFromChange,
-  onDateToChange,
+  dateRange,
+  onDateRangeChange,
   selectedBranch,
   branches,
   onBranchChange,
@@ -54,8 +43,7 @@ export function DashboardFilters({
   onClearFilters,
 }: DashboardFiltersProps) {
   const hasActiveFilters =
-    dateFrom !== undefined ||
-    dateTo !== undefined ||
+    dateRange !== undefined ||
     selectedBranch !== "all" ||
     selectedCategory !== "all";
 
@@ -78,67 +66,14 @@ export function DashboardFilters({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {/* Fecha Desde */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Rango de Fechas */}
           <div className="space-y-2">
-            <Label htmlFor="date-from">Fecha Desde</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date-from"
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dateFrom && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar fecha"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateFrom}
-                  onSelect={onDateFromChange}
-                  initialFocus
-                  locale={es}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Fecha Hasta */}
-          <div className="space-y-2">
-            <Label htmlFor="date-to">Fecha Hasta</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date-to"
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dateTo && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar fecha"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateTo}
-                  onSelect={onDateToChange}
-                  initialFocus
-                  locale={es}
-                  disabled={(date) => {
-                    // Deshabilitar fechas anteriores a dateFrom
-                    return dateFrom ? date < dateFrom : false;
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label>Rango de Fechas</Label>
+            <DatePickerWithRange
+              date={dateRange}
+              onDateChange={onDateRangeChange}
+            />
           </div>
 
           {/* Sucursal */}

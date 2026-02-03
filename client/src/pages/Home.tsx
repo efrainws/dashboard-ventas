@@ -4,17 +4,18 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter } from "lucide-react";
+import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
 import { CategoryPieChart } from "@/components/CategoryPieChart";
 import { BranchBarChart } from "@/components/BranchBarChart";
 import { useState, useMemo } from "react";
+import type { DateRange } from "react-day-picker";
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
-  const { effectiveTheme } = useTheme();
+  const { effectiveTheme, toggleTheme } = useTheme();
   const [, setLocation] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -23,14 +24,13 @@ export default function Home() {
   });
 
   // Estado para filtros
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Construir filtros para la consulta
   const filters = useMemo<AggregatedSalesFilters | undefined>(() => {
-    const hasFilters = dateFrom || dateTo || selectedBranch !== "all" || selectedCategory !== "all";
+    const hasFilters = dateRange || selectedBranch !== "all" || selectedCategory !== "all";
     
     if (!hasFilters) {
       return undefined; // Usar valores por defecto del hook
@@ -39,12 +39,12 @@ export default function Home() {
     // Construir objeto de filtros solo con valores definidos
     const result: AggregatedSalesFilters = {};
     
-    if (dateFrom) {
-      result.fecha_min = dateFrom.toISOString();
+    if (dateRange?.from) {
+      result.fecha_min = dateRange.from.toISOString();
     }
     
-    if (dateTo) {
-      result.fecha_max = dateTo.toISOString();
+    if (dateRange?.to) {
+      result.fecha_max = dateRange.to.toISOString();
     }
     
     if (selectedBranch !== "all") {
@@ -56,7 +56,7 @@ export default function Home() {
     }
 
     return result;
-  }, [dateFrom, dateTo, selectedBranch, selectedCategory]);
+  }, [dateRange, selectedBranch, selectedCategory]);
 
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
@@ -66,8 +66,7 @@ export default function Home() {
   };
 
   const handleClearFilters = () => {
-    setDateFrom(undefined);
-    setDateTo(undefined);
+    setDateRange(undefined);
     setSelectedBranch("all");
     setSelectedCategory("all");
   };
@@ -97,61 +96,66 @@ export default function Home() {
 
   // Determinar el texto del rango de fechas
   const dateRangeText = useMemo(() => {
-    if (dateFrom && dateTo) {
-      return `${dateFrom.toLocaleDateString('es-PE')} - ${dateTo.toLocaleDateString('es-PE')}`;
-    } else if (dateFrom) {
-      return `Desde ${dateFrom.toLocaleDateString('es-PE')}`;
-    } else if (dateTo) {
-      return `Hasta ${dateTo.toLocaleDateString('es-PE')}`;
+    if (dateRange?.from && dateRange?.to) {
+      return `${dateRange.from.toLocaleDateString('es-PE')} - ${dateRange.to.toLocaleDateString('es-PE')}`;
+    } else if (dateRange?.from) {
+      return `Desde ${dateRange.from.toLocaleDateString('es-PE')}`;
+    } else if (dateRange?.to) {
+      return `Hasta ${dateRange.to.toLocaleDateString('es-PE')}`;
     }
     return "Enero 2026 (por defecto)";
-  }, [dateFrom, dateTo]);
+  }, [dateRange]);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-start">
-          <div className="flex flex-col space-y-4 w-full">
-            <img 
-              src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
-              alt="Flora & Fauna" 
-              className="h-4 w-auto self-start" 
-            />
+        <div className="flex flex-col space-y-4">
+          {/* Logo */}
+          <img 
+            src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
+            alt="Flora & Fauna" 
+            className="h-4 w-auto self-start" 
+          />
+          
+          {/* Título y Botones */}
+          <div className="flex justify-between items-start">
             <div className="flex flex-col space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR CATEGORÍAS</h1>
-            <p className="text-muted-foreground">
-              Ventas agregadas por fecha, tienda y departamento
-            </p>
-            {metadata && (
-              <p className="text-xs text-muted-foreground">
-                Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | 
-                Total registros: {formatNumber(metadata.total_rows)}
+              <p className="text-muted-foreground">
+                Ventas agregadas por fecha, tienda y departamento
               </p>
-            )}
+              {metadata && (
+                <p className="text-xs text-muted-foreground">
+                  Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | 
+                  Total registros: {formatNumber(metadata.total_rows)}
+                </p>
+              )}
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
-              Ver Análisis por Horas
-            </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
-              <span className="font-medium">{user?.username}</span>
-              <span className="text-xs opacity-70 capitalize">({user?.role})</span>
+            
+            <div className="flex items-center gap-4">
+              <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
+                Ver Análisis por Horas
+              </Button>
+              <Button variant="outline" size="icon" onClick={toggleTheme}>
+                {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
+                <span className="font-medium">{user?.username}</span>
+                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Cerrar Sesión
-            </Button>
           </div>
         </div>
 
         {/* Filtros */}
         <DashboardFilters
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateFromChange={setDateFrom}
-          onDateToChange={setDateTo}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
           selectedBranch={selectedBranch}
           branches={metrics.branches}
           onBranchChange={setSelectedBranch}

@@ -496,4 +496,27 @@ Fecha: 1 de febrero de 2026
 - [x] BranchBarChart: Eliminar Legend de los imports
 - [x] SalesLineChart: Eliminar label "Ventas (S/)" del eje Y
 - [x] Verificar ambos gráficos (screenshot confirma eliminación correcta)
+- [x] Guardar checkpoint
+
+## Reorganización de UI y Controles (2026-02-03)
+
+### Unificación de Selector de Fechas
+- [x] DashboardFilters: Reemplazar dos selectores separados por DateRangePicker único
+- [x] Actualizar interface DashboardFiltersProps (dateRange + onDateRangeChange)
+- [x] Home.tsx: Actualizar estado y lógica de filtros para usar DateRange
+- [x] Actualizar handleClearFilters y dateRangeText
+- [ ] Verificar que filtros funcionen correctamente
+
+### Reorganización del Header
+- [x] Home.tsx: Mover botón "Ver Análisis por Horas" a la línea del título
+- [x] Agregar toggle de tema (Moon/Sun icon) junto al botón de navegación
+- [x] Implementar funcionalidad de cambio de tema (toggleTheme)
+- [x] HourlyAnalysis.tsx: Aplicar mismos cambios (botón navegación + toggle tema)
+- [x] Reorganizar estructura del header (logo arriba, título y botones en segunda línea)
+
+### Verificación
+- [x] Probar selector de fechas unificado ("Rango de Fechas" visible con 3 columnas)
+- [x] Probar toggle de tema en ambos dashboards (botón Moon/Sun visible)
+- [x] Verificar reorganización del header (botones en línea del título)
+- [x] Verificar responsive design (screenshot muestra layout correcto)
 - [ ] Guardar checkpoint
