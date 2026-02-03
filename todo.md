@@ -552,4 +552,14 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar Home.tsx para usar "/Logoclarochico.svg" (sin espacios)
 - [x] Actualizar HourlyAnalysis.tsx para usar "/Logoclarochico.svg" (sin espacios)
 - [x] Verificar que el logo se muestre correctamente en modo oscuro
+- [x] Guardar checkpoint
+
+## Corrección de Zona Horaria en Análisis por Horas (2026-02-03)
+
+- [x] Investigar consulta SQL en server/postgres.ts para ver cómo se extrae la hora
+- [x] Verificar si el problema está en la base de datos o en la visualización
+- [x] Identificar dónde se está aplicando el ajuste UTC+0 en lugar de UTC-5
+- [x] Corregir la consulta SQL para usar la zona horaria correcta de Perú (UTC-5)
+- [x] Verificar que las horas se muestren correctamente (tienda abre a las 8:00, no 13:00)
+- [x] Probar en el navegador que el gráfico muestre las horas correctas
 - [ ] Guardar checkpoint

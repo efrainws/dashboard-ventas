@@ -154,7 +154,7 @@ export const salesRouter = router({
           WHERE sh.doc_date IS NOT NULL
         )
         SELECT
-          date_trunc('hour', doc_date) AS hour_ts,
+          date_trunc('hour', doc_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') AS hour_ts,
           branch_id,
           branch_sap_id,
           branch_name,
