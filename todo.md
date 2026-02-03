@@ -519,4 +519,12 @@ Fecha: 1 de febrero de 2026
 - [x] Probar toggle de tema en ambos dashboards (botón Moon/Sun visible)
 - [x] Verificar reorganización del header (botones en línea del título)
 - [x] Verificar responsive design (screenshot muestra layout correcto)
+- [x] Guardar checkpoint
+
+## Reorganización de Header - Usuario y Logout (2026-02-03)
+
+- [x] Home.tsx: Mover indicador de usuario y botón "Cerrar Sesión" a la línea del logo
+- [x] HourlyAnalysis.tsx: Aplicar mismo cambio
+- [x] Mantener título y botones de navegación/tema en segunda línea
+- [x] Verificar layout en ambos dashboards (screenshot muestra usuario y logout en línea del logo)
 - [ ] Guardar checkpoint

@@ -111,14 +111,26 @@ export default function Home() {
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex flex-col space-y-4">
-          {/* Logo */}
-          <img 
-            src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
-            alt="Flora & Fauna" 
-            className="h-4 w-auto self-start" 
-          />
+          {/* Logo, Usuario y Logout */}
+          <div className="flex justify-between items-center">
+            <img 
+              src={effectiveTheme === "dark" ? "/Logoblanco.svg" : "/Logonegro.svg"} 
+              alt="Flora & Fauna" 
+              className="h-4 w-auto" 
+            />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
+                <span className="font-medium">{user?.username}</span>
+                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+              </Button>
+            </div>
+          </div>
           
-          {/* Título y Botones */}
+          {/* Título y Botones de Navegación/Tema */}
           <div className="flex justify-between items-start">
             <div className="flex flex-col space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR CATEGORÍAS</h1>
@@ -139,14 +151,6 @@ export default function Home() {
               </Button>
               <Button variant="outline" size="icon" onClick={toggleTheme}>
                 {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
-                <span className="font-medium">{user?.username}</span>
-                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
               </Button>
             </div>
           </div>
