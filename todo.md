@@ -632,4 +632,10 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar import de getLoginUrl en ambas páginas
 - [x] Corregir redirección después de logout para usar getLoginUrl()
 - [x] Probar cerrar sesión en el navegador
+- [x] Guardar checkpoint
+
+## Eliminar Elementos de Login.tsx (2026-02-03)
+
+- [x] Leer Login.tsx para identificar elementos a eliminar
+- [x] Eliminar elementos <p> en las líneas 101, 102, 103 (sección de credenciales de prueba)
 - [ ] Guardar checkpoint

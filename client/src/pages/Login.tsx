@@ -97,11 +97,7 @@ export default function Login() {
                 'Ingresar'
               )}
             </Button>
-            <div className="text-xs text-center text-muted-foreground mt-4">
-              <p>Credenciales de prueba:</p>
-              <p>Admin: admin / admin123</p>
-              <p>Visualizador: user / user123</p>
-            </div>
+
           </form>
         </CardContent>
       </Card>
