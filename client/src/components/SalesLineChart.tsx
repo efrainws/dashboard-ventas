@@ -165,12 +165,6 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
               <YAxis
                 className="text-xs"
                 tickFormatter={formatCurrency}
-                label={{
-                  value: "Ventas (S/)",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { textAnchor: "middle" },
-                }}
               />
               <Tooltip
                 contentStyle={{

@@ -488,4 +488,12 @@ Fecha: 1 de febrero de 2026
 
 - [x] Eliminar label "Ventas (S/)" del YAxis en BranchBarChart.tsx
 - [x] Verificar que el gráfico mantenga buena legibilidad sin la etiqueta (screenshot confirma que se ve bien)
+- [x] Guardar checkpoint
+
+## Eliminación de Leyendas en Gráficos (2026-02-03)
+
+- [x] BranchBarChart: Eliminar componente Legend del gráfico
+- [x] BranchBarChart: Eliminar Legend de los imports
+- [x] SalesLineChart: Eliminar label "Ventas (S/)" del eje Y
+- [x] Verificar ambos gráficos (screenshot confirma eliminación correcta)
 - [ ] Guardar checkpoint

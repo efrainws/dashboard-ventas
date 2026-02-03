@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
   LabelList,
@@ -170,13 +169,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                   }}
                   labelFormatter={(label) => label}
                 />
-                <Legend
-                  wrapperStyle={{ paddingTop: "20px" }}
-                  formatter={(value) => {
-                    if (value === "sales") return "Ventas";
-                    return value;
-                  }}
-                />
+
                 <Bar dataKey="sales" name="sales" radius={[8, 8, 0, 0]}>
                   {branchData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
