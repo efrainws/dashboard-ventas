@@ -616,4 +616,11 @@ Fecha: 1 de febrero de 2026
 ## Actualizar Color de Fondo (2026-02-03)
 
 - [x] Cambiar color de fondo de #F5F1E9 a #F5F4F1 en UserManagement.tsx
+- [x] Guardar checkpoint
+
+## Quitar Ajuste Horario en Análisis (2026-02-03)
+
+- [x] Identificar consultas SQL con ajuste horario AT TIME ZONE 'America/Lima'
+- [x] Modificar consulta de análisis por horas en salesRouter.ts
+- [x] Verificar que las horas se muestren correctamente sin ajuste
 - [ ] Guardar checkpoint
