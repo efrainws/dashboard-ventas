@@ -527,4 +527,14 @@ Fecha: 1 de febrero de 2026
 - [x] HourlyAnalysis.tsx: Aplicar mismo cambio
 - [x] Mantener título y botones de navegación/tema en segunda línea
 - [x] Verificar layout en ambos dashboards (screenshot muestra usuario y logout en línea del logo)
+- [x] Guardar checkpoint
+
+## Corrección del Toggle de Tema (2026-02-03)
+
+- [x] Revisar implementación de toggleTheme en Home.tsx (correcta)
+- [x] Revisar implementación de toggleTheme en HourlyAnalysis.tsx (correcta)
+- [x] Verificar que useTheme esté correctamente importado y usado (correcto)
+- [x] Diagnosticar problema: ThemeProvider necesita switchable={true}
+- [x] Agregar switchable={true} a ThemeProvider en App.tsx
+- [x] Probar funcionalidad del botón en ambos dashboards (dashboard carga correctamente)
 - [ ] Guardar checkpoint

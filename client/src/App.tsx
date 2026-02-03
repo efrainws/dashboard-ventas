@@ -49,7 +49,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="system">
+      <ThemeProvider defaultTheme="system" switchable={true}>
         <TooltipProvider>
           <Toaster />
           <Router />
