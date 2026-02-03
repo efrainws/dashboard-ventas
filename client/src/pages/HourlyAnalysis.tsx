@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,11 @@ import type { DateRange } from "react-day-picker";
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
   const { effectiveTheme, toggleTheme } = useTheme();
-  const logoutMutation = trpc.auth.logout.useMutation();
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      window.location.href = getLoginUrl();
+    },
+  });
   const [, setLocation] = useLocation();
 
   // Estados de filtros
@@ -50,8 +55,8 @@ export default function HourlyAnalysis() {
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useHourlySales(filters);
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
   };
 
   const handleClearFilters = () => {

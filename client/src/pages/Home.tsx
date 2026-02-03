@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
-      setLocation('/login');
+      window.location.href = getLoginUrl();
     },
   });
 
@@ -61,8 +62,8 @@ export default function Home() {
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
   };
 
   const handleClearFilters = () => {

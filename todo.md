@@ -623,4 +623,13 @@ Fecha: 1 de febrero de 2026
 - [x] Identificar consultas SQL con ajuste horario AT TIME ZONE 'America/Lima'
 - [x] Modificar consulta de análisis por horas en salesRouter.ts
 - [x] Verificar que las horas se muestren correctamente sin ajuste
+- [x] Guardar checkpoint
+
+## Corregir Botón de Cerrar Sesión (2026-02-03)
+
+- [x] Revisar implementación del botón de cerrar sesión en Home.tsx
+- [x] Revisar implementación del botón de cerrar sesión en HourlyAnalysis.tsx
+- [x] Agregar import de getLoginUrl en ambas páginas
+- [x] Corregir redirección después de logout para usar getLoginUrl()
+- [x] Probar cerrar sesión en el navegador
 - [ ] Guardar checkpoint
