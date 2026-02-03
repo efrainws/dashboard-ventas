@@ -594,4 +594,12 @@ Fecha: 1 de febrero de 2026
 - [x] Probar cambio de contraseña en navegador
 - [x] Probar eliminación de usuario en navegador
 - [x] Verificar que solo admins pueden acceder a /admin/users
+- [x] Guardar checkpoint
+
+## Aplicar Temática Consistente a Página de Usuarios (2026-02-03)
+
+- [x] Actualizar colores de fondo y texto en UserManagement.tsx
+- [x] Aplicar tipografía Playfair Display para títulos
+- [x] Ajustar colores de botones y tarjetas (Hueso/Verde Bosque)
+- [x] Verificar consistencia visual con Home.tsx y HourlyAnalysis.tsx
 - [ ] Guardar checkpoint
