@@ -602,4 +602,13 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar tipografía Playfair Display para títulos
 - [x] Ajustar colores de botones y tarjetas (Hueso/Verde Bosque)
 - [x] Verificar consistencia visual con Home.tsx y HourlyAnalysis.tsx
+- [x] Guardar checkpoint
+
+## Actualizar Paleta de Colores y Tipografías Correctas (2026-02-03)
+
+- [x] Cambiar botones de Verde Bosque a Grafito #232523
+- [x] Actualizar tipografía de títulos a Italian Plate
+- [x] Actualizar tipografía de textos a Sailec
+- [x] Cambiar iconos de eliminar de rojo a granate
+- [x] Verificar que el fondo Hueso #F5F1E8 esté correcto
 - [ ] Guardar checkpoint
