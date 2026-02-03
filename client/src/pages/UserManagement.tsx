@@ -122,7 +122,7 @@ export default function UserManagement() {
   // Verificar permisos
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F4F1]">
         <Loader2 className="h-8 w-8 animate-spin text-[#232523]" />
       </div>
     );
@@ -217,7 +217,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#F5F4F1]">
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -259,7 +259,7 @@ export default function UserManagement() {
               </TableHeader>
               <TableBody>
                 {usersData?.users.map((user) => (
-                  <TableRow key={user.id} className="border-b border-[#232523]/5 hover:bg-[#F5F1E8]/50">
+                  <TableRow key={user.id} className="border-b border-[#232523]/5 hover:bg-[#F5F4F1]/50">
                     <TableCell className="font-medium">{user.username}</TableCell>
                     <TableCell>{user.name}</TableCell>
                     <TableCell>{user.email || '-'}</TableCell>

@@ -611,4 +611,9 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar tipografía de textos a Sailec
 - [x] Cambiar iconos de eliminar de rojo a granate
 - [x] Verificar que el fondo Hueso #F5F1E8 esté correcto
+- [x] Guardar checkpoint
+
+## Actualizar Color de Fondo (2026-02-03)
+
+- [x] Cambiar color de fondo de #F5F1E9 a #F5F4F1 en UserManagement.tsx
 - [ ] Guardar checkpoint
