@@ -646,3 +646,32 @@ Fecha: 1 de febrero de 2026
 - [x] Modificar HourlyAnalysis.tsx para redirigir a /login después de logout
 - [x] Verificar que la redirección funcione correctamente
 - [ ] Guardar checkpoint
+
+## Implementar Argon2id para Almacenamiento Seguro de Contraseñas (2026-02-03)
+
+### Auditoría
+- [x] Identificar archivos que manejan autenticación y hashing de contraseñas
+- [x] Revisar algoritmo de hashing actual (bcrypt con 10 rounds)
+- [x] Documentar implementación actual y vulnerabilidades (no usa Argon2id, no tiene pepper)
+
+### Implementación Argon2id
+- [x] Instalar dependencia @node-rs/argon2 (implementación nativa de Argon2)
+- [x] Crear módulo de utilidades de hashing (server/auth/passwordHash.ts)
+- [x] Implementar función hashPassword con Argon2id + pepper
+- [x] Implementar función verifyPassword con Argon2id
+- [x] Configurar parámetros seguros (memory: 64MB, time: 3, parallelism: 4)
+- [x] Agregar variable de entorno PASSWORD_PEPPER
+
+### Actualización de Código
+- [x] Actualizar procedimiento createUser para usar nuevo hash
+- [x] Actualizar procedimiento updatePassword para usar nuevo hash
+- [x] Actualizar lógica de login para usar verifyPassword
+
+### Tests de Seguridad
+- [x] Test: hashPassword genera hashes únicos con mismo input
+- [x] Test: verifyPassword valida contraseñas correctas
+- [x] Test: verifyPassword rechaza contraseñas incorrectas
+- [x] Test: pepper es requerido y usado correctamente
+- [x] Test: hashes tienen formato Argon2id correcto
+- [x] Ejecutar todos los tests y verificar que pasen (22/22 tests pasados)
+- [ ] Guardar checkpoint
