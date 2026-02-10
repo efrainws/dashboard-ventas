@@ -29,8 +29,17 @@ export default function HourlyAnalysis() {
     },
   });
 
-  // Estados de filtros
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  // Estados de filtros - Por defecto: día de ayer
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    
+    const yesterdayEnd = new Date(yesterday);
+    yesterdayEnd.setHours(23, 59, 59, 999);
+    
+    return { from: yesterday, to: yesterdayEnd };
+  });
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
 
   // Construir filtros para el hook

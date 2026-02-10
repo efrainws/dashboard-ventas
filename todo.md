@@ -675,3 +675,10 @@ Fecha: 1 de febrero de 2026
 - [x] Test: hashes tienen formato Argon2id correcto
 - [x] Ejecutar todos los tests y verificar que pasen (22/22 tests pasados)
 - [ ] Guardar checkpoint
+
+## Cambiar Fecha por Defecto a Ayer (2026-02-04)
+
+- [x] Modificar Home.tsx para establecer rango de fechas por defecto al día de ayer
+- [x] Modificar HourlyAnalysis.tsx para establecer rango de fechas por defecto al día de ayer
+- [x] Verificar que los datos se carguen correctamente con la fecha de ayer
+- [ ] Guardar checkpoint
