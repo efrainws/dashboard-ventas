@@ -690,4 +690,12 @@ Fecha: 1 de febrero de 2026
 - [x] Modificar consulta SQL de getHourlySales para ordenar por branch_sap_id (numérico)
 - [x] Eliminar console.logs temporales de debugging
 - [x] Probar en el navegador que las sucursales aparezcan ordenadas (FF01, FF02, FF03...)
+- [x] Guardar checkpoint
+
+## Actualizar Colores de Gráficos de Líneas (2026-02-10)
+
+- [x] Identificar componentes de gráfico de líneas (SalesLineChart.tsx y HourlyLineChart.tsx)
+- [x] Cambiar color de línea de ventas a #008064 (verde) en ambos gráficos
+- [x] Cambiar color de línea de transacciones a #BC2C46 (granate) en HourlyLineChart
+- [x] Verificar que los colores se apliquen correctamente en el navegador (verde para ventas, granate para transacciones)
 - [ ] Guardar checkpoint

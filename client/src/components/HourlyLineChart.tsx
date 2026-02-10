@@ -144,20 +144,20 @@ export function HourlyLineChart({ data, title, description }: HourlyLineChartPro
                 yAxisId="left"
                 type="monotone"
                 dataKey="sales"
-                stroke="var(--ff-esmeralda)"
+                stroke="#008064"
                 strokeWidth={2}
-                dot={{ r: 4, fill: "var(--ff-esmeralda)" }}
-                activeDot={{ r: 6, fill: "var(--ff-esmeralda-dark)" }}
+                dot={{ r: 4, fill: "#008064" }}
+                activeDot={{ r: 6, fill: "#006850" }}
                 name="sales"
               />
               <Line
                 yAxisId="right"
                 type="monotone"
                 dataKey="tickets"
-                stroke="var(--ff-cobalto)"
+                stroke="#BC2C46"
                 strokeWidth={2}
-                dot={{ r: 4, fill: "var(--ff-cobalto)" }}
-                activeDot={{ r: 6, fill: "var(--ff-cobalto-dark)" }}
+                dot={{ r: 4, fill: "#BC2C46" }}
+                activeDot={{ r: 6, fill: "#9A2338" }}
                 name="tickets"
               />
             </LineChart>

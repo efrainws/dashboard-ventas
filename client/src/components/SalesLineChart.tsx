@@ -177,9 +177,9 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
               <Line
                 type="monotone"
                 dataKey="sales"
-                stroke="var(--ff-esmeralda)"
+                stroke="#008064"
                 strokeWidth={2}
-                dot={{ r: 4, fill: "var(--ff-esmeralda)" }}
+                dot={{ r: 4, fill: "#008064" }}
                 activeDot={{ r: 6, fill: "var(--ff-esmeralda-dark)" }}
                 name="sales"
               />
