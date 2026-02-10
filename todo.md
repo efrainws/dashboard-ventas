@@ -681,4 +681,13 @@ Fecha: 1 de febrero de 2026
 - [x] Modificar Home.tsx para establecer rango de fechas por defecto al día de ayer
 - [x] Modificar HourlyAnalysis.tsx para establecer rango de fechas por defecto al día de ayer
 - [x] Verificar que los datos se carguen correctamente con la fecha de ayer
+- [x] Guardar checkpoint
+
+## Ordenar Filtro de Sucursales por branch_sap_id (2026-02-10)
+
+- [x] Identificar dónde se obtienen y ordenan las sucursales (consultas SQL en salesRouter.ts)
+- [x] Modificar consulta SQL de getAggregatedSales para ordenar por branch_sap_id (numérico)
+- [x] Modificar consulta SQL de getHourlySales para ordenar por branch_sap_id (numérico)
+- [x] Eliminar console.logs temporales de debugging
+- [x] Probar en el navegador que las sucursales aparezcan ordenadas (FF01, FF02, FF03...)
 - [ ] Guardar checkpoint

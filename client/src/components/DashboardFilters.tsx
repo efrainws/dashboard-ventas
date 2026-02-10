@@ -85,7 +85,7 @@ export function DashboardFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las sucursales</SelectItem>
-                {branches.map((branch) => (
+                {branches.map((branch, index) => (
                   <SelectItem key={branch.id} value={branch.id}>
                     {branch.name} ({branch.sap_id})
                   </SelectItem>

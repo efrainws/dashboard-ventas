@@ -87,7 +87,7 @@ export const salesRouter = router({
           doc_date::date, branch_id, branch_sap_id,
           branch_name, branch_address,
           category_abuelo_id, category_abuelo_name
-        ORDER BY doc_date, branch_name, category_abuelo_name;
+        ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER), category_abuelo_name;
       `;
 
       try {
@@ -168,7 +168,7 @@ export const salesRouter = router({
         GROUP BY
           hour_ts, branch_id, branch_sap_id,
           branch_name, branch_address
-        ORDER BY hour_ts, branch_name;
+        ORDER BY hour_ts, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER);
       `;
 
       try {

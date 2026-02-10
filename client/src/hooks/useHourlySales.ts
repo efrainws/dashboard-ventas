@@ -72,7 +72,12 @@ export function useHourlySales(filters?: HourlySalesFilters) {
         });
       }
     });
-    const branches = Array.from(branchesMap.values());
+    const branches = Array.from(branchesMap.values()).sort((a, b) => {
+      // Ordenar por branch_sap_id (numérico)
+      const sapA = parseInt(a.sap_id || '0', 10);
+      const sapB = parseInt(b.sap_id || '0', 10);
+      return sapA - sapB;
+    });
 
     return {
       totalSales,
