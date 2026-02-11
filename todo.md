@@ -699,3 +699,67 @@ Fecha: 1 de febrero de 2026
 - [x] Cambiar color de línea de transacciones a #BC2C46 (granate) en HourlyLineChart
 - [x] Verificar que los colores se apliquen correctamente en el navegador (verde para ventas, granate para transacciones)
 - [ ] Guardar checkpoint
+
+## Agregar Dimensión Canal de Ventas (sales_channel) (2026-02-11)
+
+### Backend - SQL y Tipos
+- [x] Actualizar consulta SQL en salesRouter.ts para agregar campo calculado sales_channel
+- [x] Agregar sales_channel en SELECT y GROUP BY del query de análisis por horas
+- [x] Actualizar tipo TypeScript HourlySale para incluir sales_channel (inferido automáticamente de tRPC)
+- [x] Actualizar shared/types.ts si es necesario (no requerido)
+
+### Frontend - Filtro y UI
+- [x] Agregar estado de filtro salesChannel en HourlyAnalysis.tsx
+- [x] Crear filtro Select "Canal de Ventas" con opciones Presencial/eCommerce/Todos
+- [x] Implementar lógica de filtrado por sales_channel en frontend
+- [x] Valores por defecto: ['Presencial', 'eCommerce'] (ambos seleccionados)
+
+### Testing y Verificación
+- [x] Escribir tests para verificar lógica de sales_channel
+- [x] Probar filtro en navegador con diferentes combinaciones
+- [x] Verificar que datos se filtren correctamente
+- [ ] Guardar checkpoint
+
+
+## Optimización con Python para Grandes Volúmenes de Datos (2026-02-11)
+
+### Scripts de Optimización Creados
+- [x] Crear script optimize_database.py para análisis de base de datos
+- [x] Implementar análisis de estadísticas de tablas
+- [x] Implementar análisis de índices existentes y su uso
+- [x] Implementar sugerencias de índices óptimos
+- [x] Implementar benchmark de consultas principales
+- [x] Generar reporte completo de optimización
+
+### Scripts de Procesamiento por Lotes
+- [x] Crear script batch_processor.py para procesamiento eficiente
+- [x] Implementar procesamiento por lotes (10,000 registros)
+- [x] Implementar agregación de ventas por día
+- [x] Implementar agregación de ventas por hora
+- [x] Implementar generación de estadísticas resumidas
+- [x] Implementar exportación a JSON para caché
+- [x] Implementar creación de tabla de agregación diaria
+- [x] Implementar población de tabla con datos históricos
+
+### Documentación
+- [x] Crear README.md con guía completa de optimización
+- [x] Documentar uso de scripts
+- [x] Documentar estrategia de optimización completa
+- [x] Documentar resultados esperados
+- [x] Documentar solución de problemas
+
+### Resultados del Análisis
+- [x] Analizar base de datos actual (186K filas en sales_header, 675K en sales_detail)
+- [x] Identificar 5 índices óptimos para crear
+- [x] Benchmark consultas actuales (0.30s categorías, 0.06s horas)
+- [x] Generar estadísticas del último mes (60,750 transacciones, S/ 3.5M)
+
+### Próximos Pasos (Pendientes)
+- [ ] Aplicar índices sugeridos con --apply
+- [ ] Crear tabla de agregación diaria en producción
+- [ ] Poblar tabla con datos históricos completos
+- [ ] Modificar salesRouter.ts para usar tabla agregada
+- [ ] Configurar job nocturno de actualización
+- [ ] Implementar caché Redis para consultas frecuentes
+- [ ] Monitorear rendimiento post-optimización
+- [ ] Guardar checkpoint con scripts de optimización

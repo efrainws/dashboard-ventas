@@ -41,6 +41,7 @@ export default function HourlyAnalysis() {
     return { from: yesterday, to: yesterdayEnd };
   });
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce"]);
 
   // Construir filtros para el hook
   const filters = useMemo<HourlySalesFilters>(() => {
@@ -64,6 +65,30 @@ export default function HourlyAnalysis() {
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useHourlySales(filters);
 
+  // Filtrar datos por canal de ventas en el frontend
+  const filteredData = useMemo(() => {
+    if (!data || selectedChannels.length === 2) {
+      return data; // Si ambos canales están seleccionados, no filtrar
+    }
+    return data.filter(row => selectedChannels.includes(row.sales_channel));
+  }, [data, selectedChannels]);
+
+  // Recalcular métricas con datos filtrados
+  const filteredMetrics = useMemo(() => {
+    if (!filteredData) {
+      return metrics;
+    }
+    const totalSales = filteredData.reduce((sum, row) => sum + parseFloat(row.sales_amount || '0'), 0);
+    const totalTickets = filteredData.reduce((sum, row) => sum + parseInt(row.tickets_count || '0'), 0);
+    const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
+    return {
+      ...metrics,
+      totalSales,
+      totalTickets,
+      avgTicket,
+    };
+  }, [filteredData, metrics]);
+
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
   };
@@ -71,6 +96,7 @@ export default function HourlyAnalysis() {
   const handleClearFilters = () => {
     setDateRange(undefined);
     setSelectedBranch("all");
+    setSelectedChannels(["Presencial", "eCommerce"]);
   };
 
   if (authLoading) {
@@ -173,7 +199,7 @@ export default function HourlyAnalysis() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 {/* DateRangePicker unificado */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Rango de Fechas</label>
@@ -197,6 +223,30 @@ export default function HourlyAnalysis() {
                           {branch.name} ({branch.sap_id})
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Selector de Canal de Ventas */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Canal de Ventas</label>
+                  <Select 
+                    value={selectedChannels.length === 2 ? "all" : selectedChannels[0] || "all"}
+                    onValueChange={(value) => {
+                      if (value === "all") {
+                        setSelectedChannels(["Presencial", "eCommerce"]);
+                      } else {
+                        setSelectedChannels([value]);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los canales" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los canales</SelectItem>
+                      <SelectItem value="Presencial">Presencial</SelectItem>
+                      <SelectItem value="eCommerce">eCommerce</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -226,7 +276,7 @@ export default function HourlyAnalysis() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(metrics.totalSales)}</div>
+                  <div className="text-2xl font-bold">{formatCurrency(filteredMetrics.totalSales)}</div>
                   <p className="text-xs text-muted-foreground">{dateRangeText}</p>
                 </CardContent>
               </Card>
@@ -237,7 +287,7 @@ export default function HourlyAnalysis() {
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatNumber(metrics.totalTickets)}</div>
+                  <div className="text-2xl font-bold">{formatNumber(filteredMetrics.totalTickets)}</div>
                   <p className="text-xs text-muted-foreground">Tickets únicos</p>
                 </CardContent>
               </Card>
@@ -248,14 +298,14 @@ export default function HourlyAnalysis() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(metrics.avgTicket)}</div>
+                  <div className="text-2xl font-bold">{formatCurrency(filteredMetrics.avgTicket)}</div>
                   <p className="text-xs text-muted-foreground">Por transacción</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Gráfico de línea: Ventas y Transacciones por Hora */}
-            <HourlyLineChart data={data} />
+            <HourlyLineChart data={filteredData} />
           </>
         )}
 

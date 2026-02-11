@@ -147,7 +147,12 @@ export const salesRouter = router({
             INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
             INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
             b.sap_id                               AS branch_sap_id,
-            sd.total AS line_total
+            sd.total AS line_total,
+            CASE
+              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+                THEN 'eCommerce'
+              ELSE 'Presencial'
+            END AS sales_channel
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
@@ -159,6 +164,7 @@ export const salesRouter = router({
           branch_sap_id,
           branch_name,
           branch_address,
+          sales_channel,
           SUM(line_total) AS sales_amount,
           COUNT(DISTINCT sale_id) AS tickets_count
         FROM base
@@ -167,7 +173,8 @@ export const salesRouter = router({
           ${additionalFilters.join('\n          ')}
         GROUP BY
           hour_ts, branch_id, branch_sap_id,
-          branch_name, branch_address
+          branch_name, branch_address,
+          sales_channel
         ORDER BY hour_ts, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER);
       `;
 

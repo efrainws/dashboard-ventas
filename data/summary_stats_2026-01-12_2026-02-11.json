@@ -1,0 +1,14 @@
+{
+  "total_transactions": 60750,
+  "total_branches": 12,
+  "total_days": 30,
+  "total_sales": 3576345.672,
+  "avg_ticket": 58.86988760493827,
+  "min_ticket": -337.3,
+  "max_ticket": 1869.49,
+  "stddev_ticket": 79.70588603511673,
+  "ecommerce_transactions": 454,
+  "ecommerce_sales": 55153.94,
+  "presencial_transactions": 60296,
+  "presencial_sales": 3521191.732
+}
