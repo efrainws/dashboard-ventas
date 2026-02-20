@@ -78,7 +78,8 @@ export const salesRouter = router({
             leaf_category_name,
             'Sin Categoría'
           ))) AS category_abuelo_name,
-          SUM(line_total) AS sales_amount
+          SUM(line_total) AS sales_amount,
+          COUNT(DISTINCT sale_id) AS tickets_count
         FROM base
         WHERE doc_date >= $1
           AND doc_date <  $2

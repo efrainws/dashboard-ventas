@@ -773,4 +773,17 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar filtros de tienda y canal de ventas
 - [x] Mantener estilo consistente con KPI de Ticket Promedio
 - [x] Probar con diferentes filtros (tienda, canal, rango de fechas)
+- [x] Guardar checkpoint
+
+
+## Mejoras en Tabla de Comparación por Sucursal (2026-02-20)
+
+### Análisis por Categorías
+- [x] Agregar columna "Número de Transacciones" a tabla de sucursales
+- [x] Agregar columna "Ticket Promedio" a tabla de sucursales
+- [x] Agregar columna "Venta Promedio Diaria" a tabla de sucursales
+- [x] Reorganizar layout: tabla de sucursales ocupa ancho completo
+- [x] Mover "Distribución por Categoría" debajo de la tabla
+- [x] Probar con diferentes filtros
+- [x] Escribir y ejecutar tests de validación
 - [ ] Guardar checkpoint

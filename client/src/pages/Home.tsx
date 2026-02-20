@@ -227,14 +227,11 @@ export default function Home() {
               {/* Gráfico de línea: Progresión de ventas */}
               <SalesLineChart data={data} />
 
-              {/* Gráficos de distribución */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Gráfico de tarta: Distribución por categoría */}
-                <CategoryPieChart data={data} />
+              {/* Gráfico de barras: Comparación por sucursal (ancho completo) */}
+              <BranchBarChart data={data} />
 
-                {/* Gráfico de barras: Comparación por sucursal */}
-                <BranchBarChart data={data} />
-              </div>
+              {/* Gráfico de tarta: Distribución por categoría */}
+              <CategoryPieChart data={data} />
             </div>
 
             {/* Información de datos */}

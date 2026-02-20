@@ -18,6 +18,8 @@ export interface SalesDataPoint {
   branch_name: string;
   branch_sap_id: string;
   sales_amount: string;
+  tickets_count?: string;
+  doc_date?: string;
 }
 
 interface BranchBarChartProps {
@@ -47,35 +49,55 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
   const branchData = useMemo(() => {
     const grouped = new Map<
       string,
-      { name: string; sapId: string; sales: number }
+      { name: string; sapId: string; sales: number; tickets: number; dates: Set<string> }
     >();
 
     data.forEach((row) => {
       const branchId = row.branch_id;
       const branchName = row.branch_name || "Sin Nombre";
       const sapId = row.branch_sap_id || "";
+      const dateStr = row.doc_date || "";
 
       const existing = grouped.get(branchId) || {
         name: branchName,
         sapId: sapId,
         sales: 0,
+        tickets: 0,
+        dates: new Set<string>(),
       };
+      
+      if (dateStr) {
+        existing.dates.add(dateStr);
+      }
+      
       grouped.set(branchId, {
         name: branchName,
         sapId: sapId,
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
+        tickets: existing.tickets + parseInt(row.tickets_count || "0", 10),
+        dates: existing.dates,
       });
     });
 
     // Convertir a array y ordenar por ventas (mayor a menor)
     const result = Array.from(grouped.values())
       .sort((a, b) => b.sales - a.sales)
-      .map((item) => ({
-        name: item.name,
-        sapId: item.sapId,
-        displayName: `${item.name} (${item.sapId})`,
-        sales: item.sales,
-      }));
+      .map((item) => {
+        const daysCount = item.dates.size;
+        const avgTicket = item.tickets > 0 ? item.sales / item.tickets : 0;
+        const avgSalesPerDay = daysCount > 0 ? item.sales / daysCount : 0;
+        
+        return {
+          name: item.name,
+          sapId: item.sapId,
+          displayName: `${item.name} (${item.sapId})`,
+          sales: item.sales,
+          tickets: item.tickets,
+          avgTicket,
+          avgSalesPerDay,
+          daysCount,
+        };
+      });
 
     return result;
   }, [data]);
@@ -185,6 +207,9 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                   <tr>
                     <th className="text-left p-2 font-medium">Sucursal</th>
                     <th className="text-right p-2 font-medium">Ventas</th>
+                    <th className="text-right p-2 font-medium">Transacciones</th>
+                    <th className="text-right p-2 font-medium">Ticket Promedio</th>
+                    <th className="text-right p-2 font-medium">Venta Prom. Diaria</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -198,6 +223,9 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                         {item.displayName}
                       </td>
                       <td className="text-right p-2">{formatCurrency(item.sales)}</td>
+                      <td className="text-right p-2">{formatNumber(item.tickets)}</td>
+                      <td className="text-right p-2">{formatCurrency(item.avgTicket)}</td>
+                      <td className="text-right p-2">{formatCurrency(item.avgSalesPerDay)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -207,6 +235,22 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                     <td className="text-right p-2">
                       {formatCurrency(
                         branchData.reduce((sum, item) => sum + item.sales, 0)
+                      )}
+                    </td>
+                    <td className="text-right p-2">
+                      {formatNumber(
+                        branchData.reduce((sum, item) => sum + item.tickets, 0)
+                      )}
+                    </td>
+                    <td className="text-right p-2">
+                      {formatCurrency(
+                        branchData.reduce((sum, item) => sum + item.sales, 0) /
+                        branchData.reduce((sum, item) => sum + item.tickets, 0)
+                      )}
+                    </td>
+                    <td className="text-right p-2">
+                      {formatCurrency(
+                        branchData.reduce((sum, item) => sum + item.avgSalesPerDay, 0)
                       )}
                     </td>
                   </tr>
