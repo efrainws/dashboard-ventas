@@ -81,11 +81,24 @@ export default function HourlyAnalysis() {
     const totalSales = filteredData.reduce((sum, row) => sum + parseFloat(row.sales_amount || '0'), 0);
     const totalTickets = filteredData.reduce((sum, row) => sum + parseInt(row.tickets_count || '0'), 0);
     const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
+    
+    // Calcular cantidad de días únicos en el rango
+    const uniqueDates = new Set(filteredData.map(row => {
+      const dateStr = typeof row.hour_ts === 'string' 
+        ? row.hour_ts.split('T')[0] 
+        : new Date(row.hour_ts).toISOString().split('T')[0];
+      return dateStr;
+    }));
+    const daysCount = uniqueDates.size;
+    const avgSalesPerDay = daysCount > 0 ? totalSales / daysCount : 0;
+    
     return {
       ...metrics,
       totalSales,
       totalTickets,
       avgTicket,
+      avgSalesPerDay,
+      daysCount,
     };
   }, [filteredData, metrics]);
 
@@ -269,7 +282,7 @@ export default function HourlyAnalysis() {
         {/* KPIs principales */}
         {!isLoading && !error && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
@@ -300,6 +313,17 @@ export default function HourlyAnalysis() {
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(filteredMetrics.avgTicket)}</div>
                   <p className="text-xs text-muted-foreground">Por transacción</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Promedio por Día</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency((filteredMetrics as any).avgSalesPerDay || 0)}</div>
+                  <p className="text-xs text-muted-foreground">{(filteredMetrics as any).daysCount || 0} {((filteredMetrics as any).daysCount || 0) === 1 ? 'día' : 'días'}</p>
                 </CardContent>
               </Card>
             </div>

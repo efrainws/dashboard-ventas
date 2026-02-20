@@ -763,3 +763,14 @@ Fecha: 1 de febrero de 2026
 - [ ] Implementar caché Redis para consultas frecuentes
 - [ ] Monitorear rendimiento post-optimización
 - [ ] Guardar checkpoint con scripts de optimización
+
+
+## Nuevo KPI: Promedio de Ventas por Día (2026-02-11)
+
+### Análisis por Horas
+- [x] Agregar KPI "Promedio de Ventas por Día" en HourlyAnalysis.tsx
+- [x] Calcular: Total ventas / Cantidad de días en el rango
+- [x] Aplicar filtros de tienda y canal de ventas
+- [x] Mantener estilo consistente con KPI de Ticket Promedio
+- [x] Probar con diferentes filtros (tienda, canal, rango de fechas)
+- [ ] Guardar checkpoint
