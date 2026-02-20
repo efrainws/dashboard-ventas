@@ -45,47 +45,52 @@ const COLORS = [
 ];
 
 export function BranchBarChart({ data, title, description }: BranchBarChartProps) {
-  // Agregar ventas por sucursal
+  // Agregar ventas por sucursal y calcular días únicos globales
   const branchData = useMemo(() => {
     const grouped = new Map<
       string,
-      { name: string; sapId: string; sales: number; tickets: number; dates: Set<string> }
+      { name: string; sapId: string; sales: number; tickets: number }
     >();
+    
+    // Calcular días únicos globales (no por sucursal)
+    const globalDates = new Set<string>();
 
     data.forEach((row) => {
       const branchId = row.branch_id;
       const branchName = row.branch_name || "Sin Nombre";
       const sapId = row.branch_sap_id || "";
-      const dateStr = row.doc_date || "";
+      const docDate = row.doc_date;
+
+      // Agregar fecha al conjunto global (convertir a string)
+      if (docDate) {
+        const dateStr = String(docDate).split('T')[0];
+        globalDates.add(dateStr);
+      }
 
       const existing = grouped.get(branchId) || {
         name: branchName,
         sapId: sapId,
         sales: 0,
         tickets: 0,
-        dates: new Set<string>(),
       };
-      
-      if (dateStr) {
-        existing.dates.add(dateStr);
-      }
       
       grouped.set(branchId, {
         name: branchName,
         sapId: sapId,
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
         tickets: existing.tickets + parseInt(row.tickets_count || "0", 10),
-        dates: existing.dates,
       });
     });
+
+    // Cantidad de días únicos en el análisis completo
+    const globalDaysCount = globalDates.size;
 
     // Convertir a array y ordenar por ventas (mayor a menor)
     const result = Array.from(grouped.values())
       .sort((a, b) => b.sales - a.sales)
       .map((item) => {
-        const daysCount = item.dates.size;
         const avgTicket = item.tickets > 0 ? item.sales / item.tickets : 0;
-        const avgSalesPerDay = daysCount > 0 ? item.sales / daysCount : 0;
+        const avgSalesPerDay = globalDaysCount > 0 ? item.sales / globalDaysCount : 0;
         
         return {
           name: item.name,
@@ -95,7 +100,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
           tickets: item.tickets,
           avgTicket,
           avgSalesPerDay,
-          daysCount,
+          globalDaysCount,
         };
       });
 
@@ -250,7 +255,9 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                     </td>
                     <td className="text-right p-2">
                       {formatCurrency(
-                        branchData.reduce((sum, item) => sum + item.avgSalesPerDay, 0)
+                        branchData.length > 0
+                          ? branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount
+                          : 0
                       )}
                     </td>
                   </tr>

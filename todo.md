@@ -786,4 +786,33 @@ Fecha: 1 de febrero de 2026
 - [x] Mover "Distribución por Categoría" debajo de la tabla
 - [x] Probar con diferentes filtros
 - [x] Escribir y ejecutar tests de validación
+- [x] Guardar checkpoint
+
+
+## Corrección de Venta Promedio Diaria - Análisis por Categorías (2026-02-20)
+
+### Problema Identificado
+- [ ] El cálculo actual suma los promedios individuales de cada sucursal
+- [ ] Debe calcular: Total de ventas ÷ Cantidad de días únicos en el análisis
+- [ ] Ejemplo: S/ 393,855 (2 días) → S/ 196,927.50 por día
+- [ ] Ejemplo: S/ 198,479 (1 día) → S/ 198,479 por día
+
+### Solución
+- [ ] Modificar BranchBarChart para calcular días únicos globalmente
+- [ ] Actualizar fila de totales con cálculo correcto
+- [ ] Probar con diferentes rangos de fechas
+- [ ] Guardar checkpoint
+
+
+## Corrección de Venta Promedio Diaria en Análisis por Categorías (2026-02-20)
+
+### Problema Identificado
+- [x] Venta promedio diaria total está sumando promedios individuales
+- [x] Debería dividir total de ventas entre días únicos del análisis
+
+### Solución
+- [x] Corregir cálculo de globalDaysCount en BranchBarChart
+- [x] Convertir doc_date a string para que Set funcione correctamente
+- [x] Probar con 1 día (debe mostrar total de ventas)
+- [x] Probar con 2 días (debe dividir entre 2)
 - [ ] Guardar checkpoint
