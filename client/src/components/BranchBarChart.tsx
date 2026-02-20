@@ -61,9 +61,11 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
       const sapId = row.branch_sap_id || "";
       const docDate = row.doc_date;
 
-      // Agregar fecha al conjunto global (convertir a string)
+      // Agregar fecha al conjunto global (convertir a string con offset UTC-5)
       if (docDate) {
-        const dateStr = String(docDate).split('T')[0];
+        const date = new Date(docDate);
+        const utcMinus5 = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+        const dateStr = utcMinus5.toISOString().split('T')[0];
         globalDates.add(dateStr);
       }
 

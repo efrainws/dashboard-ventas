@@ -48,11 +48,15 @@ export default function HourlyAnalysis() {
     const result: HourlySalesFilters = {};
     
     if (dateRange?.from) {
-      result.fecha_min = new Date(dateRange.from.setHours(0, 0, 0, 0)).toISOString();
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      result.fecha_min = fromDate.toISOString();
     }
     
     if (dateRange?.to) {
-      result.fecha_max = new Date(dateRange.to.setHours(23, 59, 59, 999)).toISOString();
+      const toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+      result.fecha_max = toDate.toISOString();
     }
     
     if (selectedBranch !== "all") {
@@ -83,10 +87,13 @@ export default function HourlyAnalysis() {
     const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
     
     // Calcular cantidad de días únicos en el rango
+    // Importante: Extraer fecha local (UTC-5) para evitar contar días adicionales por diferencia horaria
     const uniqueDates = new Set(filteredData.map(row => {
-      const dateStr = typeof row.hour_ts === 'string' 
-        ? row.hour_ts.split('T')[0] 
-        : new Date(row.hour_ts).toISOString().split('T')[0];
+      const date = typeof row.hour_ts === 'string' ? new Date(row.hour_ts) : row.hour_ts;
+      // Ajustar a UTC-5 (zona horaria de Colombia/Perú)
+      const localDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+      // Extraer solo la fecha en formato YYYY-MM-DD
+      const dateStr = localDate.toISOString().split('T')[0];
       return dateStr;
     }));
     const daysCount = uniqueDates.size;

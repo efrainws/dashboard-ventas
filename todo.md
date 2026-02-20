@@ -815,4 +815,28 @@ Fecha: 1 de febrero de 2026
 - [x] Convertir doc_date a string para que Set funcione correctamente
 - [x] Probar con 1 día (debe mostrar total de ventas)
 - [x] Probar con 2 días (debe dividir entre 2)
+- [x] Guardar checkpoint
+
+
+## Corrección de Cálculos de Días y Promedios (2026-02-20)
+
+### Problema 1: Análisis por Hora - Contador de Días Incorrecto
+- [x] Revisar cálculo de días únicos en HourlyAnalysis.tsx
+- [x] El contador muestra "3 días" cuando solo hay 2 días seleccionados (3 y 4 feb)
+- [x] Verificar si está incluyendo el día actual incorrectamente
+- [x] Corregir lógica de conteo de días únicos (problema: setHours mutaba el objeto Date original)
+- [x] Probar con rango 3-4 feb (debe mostrar 2 días) ✓
+
+### Problema 2: Análisis por Categorías - Total de Venta Promedio Diaria Incorrecto
+- [x] Revisar cálculo de total en BranchBarChart.tsx (línea de totales)
+- [x] Total muestra S/ 272,611 pero debería ser S/ 200,871
+- [x] Cálculo correcto: S/ 3,816,548 ÷ 19 días = S/ 200,871
+- [x] Actualmente está sumando promedios individuales en lugar de dividir total entre días
+- [x] Corregir fórmula usando offset UTC-5 para extraer fechas correctamente
+- [x] Probar con rango 1-19 feb (debe mostrar S/ 200,871) ✓
+
+### Testing
+- [x] Probar análisis por hora con diferentes rangos de fechas
+- [x] Probar análisis por categorías con diferentes rangos de fechas
+- [x] Verificar que ambos cálculos sean consistentes
 - [ ] Guardar checkpoint
