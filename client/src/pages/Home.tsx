@@ -50,11 +50,15 @@ export default function Home() {
     const result: AggregatedSalesFilters = {};
     
     if (dateRange?.from) {
-      result.fecha_min = dateRange.from.toISOString();
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      result.fecha_min = fromDate.toISOString();
     }
     
     if (dateRange?.to) {
-      result.fecha_max = dateRange.to.toISOString();
+      const toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+      result.fecha_max = toDate.toISOString();
     }
     
     if (selectedBranch !== "all") {

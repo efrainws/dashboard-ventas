@@ -839,4 +839,23 @@ Fecha: 1 de febrero de 2026
 - [x] Probar análisis por hora con diferentes rangos de fechas
 - [x] Probar análisis por categorías con diferentes rangos de fechas
 - [x] Verificar que ambos cálculos sean consistentes
+- [x] Guardar checkpoint
+
+
+## Estandarización de Filtros de Fecha (2026-02-20)
+
+### Problema Identificado
+- [x] Filtrado por fecha funciona diferente entre análisis por categorías y análisis por hora
+- [x] Análisis por hora: envía fecha_max con 23:59:59 (correcto para operador `<`)
+- [x] Análisis por categorías: envía fecha_max sin ajustar horas (incorrecto, excluye el último día)
+- [x] Ambos queries usan operador `<` en SQL: `AND doc_date < $2`
+
+### Solución
+- [x] Revisar lógica de construcción de filtros en HourlyAnalysis.tsx
+- [x] Revisar lógica de construcción de filtros en Home.tsx (análisis por categorías)
+- [x] Modificar Home.tsx para que establezca horas a 23:59:59 antes de enviar al query
+- [x] Probar con mismo rango de fechas en ambos análisis (deben mostrar mismos totales) ✓
+  * Análisis por categorías (1-31 ene): S/ 6,158,792.77
+  * Análisis por hora (1-31 ene): S/ 6,158,792.77
+  * Diferencia: S/ 0.00 ✓
 - [ ] Guardar checkpoint
