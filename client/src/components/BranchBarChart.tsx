@@ -20,6 +20,7 @@ export interface SalesDataPoint {
   sales_amount: string;
   tickets_count?: string;
   doc_date?: string;
+  sale_ids?: string[]; // Array de sale_ids únicos para conteo correcto
 }
 
 interface BranchBarChartProps {
@@ -49,7 +50,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
   const branchData = useMemo(() => {
     const grouped = new Map<
       string,
-      { name: string; sapId: string; sales: number; tickets: number }
+      { name: string; sapId: string; sales: number; saleIds: Set<string> }
     >();
     
     // Calcular días únicos globales (no por sucursal)
@@ -73,14 +74,19 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
         name: branchName,
         sapId: sapId,
         sales: 0,
-        tickets: 0,
+        saleIds: new Set<string>(),
       };
+      
+      // Agregar sale_ids únicos al Set
+      if (row.sale_ids) {
+        row.sale_ids.forEach(saleId => existing.saleIds.add(saleId));
+      }
       
       grouped.set(branchId, {
         name: branchName,
         sapId: sapId,
         sales: existing.sales + parseFloat(row.sales_amount || "0"),
-        tickets: existing.tickets + parseInt(row.tickets_count || "0", 10),
+        saleIds: existing.saleIds,
       });
     });
 
@@ -91,7 +97,8 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
     const result = Array.from(grouped.values())
       .sort((a, b) => b.sales - a.sales)
       .map((item) => {
-        const avgTicket = item.tickets > 0 ? item.sales / item.tickets : 0;
+        const tickets = item.saleIds.size; // Contar sale_ids únicos
+        const avgTicket = tickets > 0 ? item.sales / tickets : 0;
         const avgSalesPerDay = globalDaysCount > 0 ? item.sales / globalDaysCount : 0;
         
         return {
@@ -99,7 +106,7 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
           sapId: item.sapId,
           displayName: `${item.name} (${item.sapId})`,
           sales: item.sales,
-          tickets: item.tickets,
+          tickets: tickets,
           avgTicket,
           avgSalesPerDay,
           globalDaysCount,
@@ -245,14 +252,31 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                       )}
                     </td>
                     <td className="text-right p-2">
+                      {/* Contar tickets únicos globales */}
                       {formatNumber(
-                        branchData.reduce((sum, item) => sum + item.tickets, 0)
+                        (() => {
+                          const allSaleIds = new Set<string>();
+                          data.forEach(row => {
+                            if (row.sale_ids) {
+                              row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
+                            }
+                          });
+                          return allSaleIds.size;
+                        })()
                       )}
                     </td>
                     <td className="text-right p-2">
                       {formatCurrency(
-                        branchData.reduce((sum, item) => sum + item.sales, 0) /
-                        branchData.reduce((sum, item) => sum + item.tickets, 0)
+                        (() => {
+                          const totalSales = branchData.reduce((sum, item) => sum + item.sales, 0);
+                          const allSaleIds = new Set<string>();
+                          data.forEach(row => {
+                            if (row.sale_ids) {
+                              row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
+                            }
+                          });
+                          return totalSales / allSaleIds.size;
+                        })()
                       )}
                     </td>
                     <td className="text-right p-2">

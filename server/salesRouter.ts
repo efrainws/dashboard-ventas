@@ -79,7 +79,9 @@ export const salesRouter = router({
             'Sin Categoría'
           ))) AS category_abuelo_name,
           SUM(line_total) AS sales_amount,
-          COUNT(DISTINCT sale_id) AS tickets_count
+          COUNT(DISTINCT sale_id) AS tickets_count,
+          -- Incluir array de sale_ids únicos para conteo correcto en frontend
+          array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
         WHERE doc_date >= $1
           AND doc_date <  $2

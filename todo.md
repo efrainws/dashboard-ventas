@@ -858,4 +858,23 @@ Fecha: 1 de febrero de 2026
   * Análisis por categorías (1-31 ene): S/ 6,158,792.77
   * Análisis por hora (1-31 ene): S/ 6,158,792.77
   * Diferencia: S/ 0.00 ✓
+- [x] Guardar checkpoint
+
+
+## Corrección de Conteo de Transacciones en Análisis por Categorías (2026-02-23)
+
+### Problema Identificado
+- [x] Análisis por categorías muestra 765 transacciones para FF02 el 19/02/26
+- [x] Análisis por hora muestra 467 tickets únicos para los mismos filtros
+- [x] El análisis por categorías está contando registros agregados en lugar de tickets únicos
+- [x] Debe contar `sale_id` únicos, no filas de la tabla agregada
+
+### Solución
+- [x] Revisar consulta SQL en salesRouter.ts (getAggregatedSales)
+- [x] Modificar consulta para incluir array_agg(DISTINCT sale_id) AS sale_ids
+- [x] Actualizar interfaz SalesDataPoint para incluir sale_ids
+- [x] Modificar BranchBarChart.tsx para usar Set<string> y contar sale_ids únicos
+- [x] Actualizar cálculo de totales en la tabla para contar tickets únicos globales
+- [x] Probar con filtros: FF02, 19/02/26 (muestra 467 tickets ✓)
+- [x] Escribir y ejecutar tests de validación (3 tests pasados ✓)
 - [ ] Guardar checkpoint
