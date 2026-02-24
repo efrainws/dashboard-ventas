@@ -108,8 +108,15 @@ export default function Home() {
   // Calcular número de días en el rango
   const numberOfDays = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) return 1;
-    const diffTime = Math.abs(dateRange.to.getTime() - dateRange.from.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir ambos días
+    
+    // Normalizar fechas a medianoche para comparación correcta
+    const fromDate = new Date(dateRange.from);
+    fromDate.setHours(0, 0, 0, 0);
+    const toDate = new Date(dateRange.to);
+    toDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir el día inicial
     return diffDays;
   }, [dateRange]);
 

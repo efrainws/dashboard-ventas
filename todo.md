@@ -1000,3 +1000,11 @@ Fecha: 1 de febrero de 2026
 - [x] Crear endpoints getBranchComparison y getCategoryComparison en salesRouter
 - [x] Verificar que los iconos se muestren correctamente con los colores personalizados
 - [x] Guardar checkpoint con los cambios
+
+
+## Corrección - KPI Promedio por Día (24/02/2026)
+- [x] Analizar el cálculo actual de numberOfDays en Home.tsx
+- [x] Corregir la lógica para que un rango de un solo día cuente como 1 día (no 2)
+- [x] Usar Math.floor en lugar de Math.ceil y normalizar fechas a medianoche
+- [x] Verificado en navegador - KPI muestra S/ 25,884 correctamente para 1 día
+- [x] Guardar checkpoint con la corrección
