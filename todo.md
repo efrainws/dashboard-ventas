@@ -978,3 +978,14 @@ Fecha: 1 de febrero de 2026
 - [x] Cambiar color de cambios positivos de verde a #008064
 - [x] Verificar que los cambios se apliquen correctamente en el navegador
 - [x] Guardar checkpoint con los cambios
+
+
+## Nueva Tarea - Implementar Iconos de Tendencias en Análisis por Categorías (24/02/2026)
+- [x] Revisar implementación actual de KPIs en la página de análisis por categorías
+- [x] Crear endpoint tRPC para obtener comparación con período anterior (ya existe: getAggregatedComparison)
+- [x] Actualizar página Home.tsx para usar KPICard con comparación de período anterior
+- [x] Implementar lógica de cálculo de período anterior basado en el rango de fechas actual
+- [x] Actualizar useAggregatedSales para incluir totalTickets en las métricas
+- [x] Verificar que los iconos de tendencia se muestren correctamente con los colores personalizados
+- [x] Probar con diferentes rangos de fechas
+- [x] Guardar checkpoint con los cambios

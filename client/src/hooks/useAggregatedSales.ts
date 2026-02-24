@@ -58,6 +58,15 @@ export function useAggregatedSales(filters?: AggregatedSalesFilters) {
 
     const sales = data.data;
     const totalSales = sales.reduce((sum, row) => sum + parseFloat(row.sales_amount || '0'), 0);
+    
+    // Calcular total de tickets únicos
+    const uniqueSaleIds = new Set<string>();
+    sales.forEach(row => {
+      if (row.sale_ids && Array.isArray(row.sale_ids)) {
+        row.sale_ids.forEach((id: string) => uniqueSaleIds.add(id));
+      }
+    });
+    const totalTickets = uniqueSaleIds.size;
 
     // Extraer sucursales únicas
     const branchesMap = new Map();
@@ -92,6 +101,7 @@ export function useAggregatedSales(filters?: AggregatedSalesFilters) {
 
     return {
       totalSales,
+      totalTickets,
       branches,
       categories,
     };

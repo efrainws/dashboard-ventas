@@ -5,12 +5,13 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users } from "lucide-react";
+import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users, ShoppingCart } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
 import { CategoryPieChart } from "@/components/CategoryPieChart";
 import { BranchBarChart } from "@/components/BranchBarChart";
+import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -88,6 +89,21 @@ export default function Home() {
 
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
+
+  // Obtener comparación con período anterior
+  const comparisonQuery = trpc.sales.getAggregatedComparison.useQuery(
+    filters && filters.fecha_min && filters.fecha_max
+      ? {
+          fecha_min: filters.fecha_min,
+          fecha_max: filters.fecha_max,
+          branch_id: filters.branch_id,
+          category_id: filters.category_id,
+        }
+      : {
+          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+          fecha_max: new Date().toISOString(),
+        }
+  );
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -227,17 +243,37 @@ export default function Home() {
         {/* KPIs principales */}
         {!isLoading && !error && (
           <>
-            <div className="grid gap-4 md:grid-cols-1">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(metrics.totalSales)}</div>
-                  <p className="text-xs text-muted-foreground">{dateRangeText}</p>
-                </CardContent>
-              </Card>
+            <div className="grid gap-4 md:grid-cols-3">
+              <KPICard
+                title="Ventas Totales"
+                value={metrics.totalSales}
+                previousValue={comparisonQuery.data?.previous.total_sales}
+                format="currency"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
+
+              <KPICard
+                title="Total Transacciones"
+                value={metrics.totalTickets || 0}
+                previousValue={comparisonQuery.data?.previous.total_tickets}
+                format="number"
+                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
+
+              <KPICard
+                title="Ticket Promedio"
+                value={(metrics.totalTickets || 0) > 0 ? metrics.totalSales / (metrics.totalTickets || 1) : 0}
+                previousValue={
+                  comparisonQuery.data && comparisonQuery.data.previous.total_tickets > 0
+                    ? comparisonQuery.data.previous.total_sales / comparisonQuery.data.previous.total_tickets
+                    : undefined
+                }
+                format="currency"
+                icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
             </div>
 
             {/* Gráficos de visualización */}
