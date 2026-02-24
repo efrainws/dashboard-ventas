@@ -79,8 +79,8 @@ export function KPICard({
               </>
             ) : change.isPositive ? (
               <>
-                <TrendingUp className="h-3 w-3 text-green-600" />
-                <span className="text-green-600 font-medium">
+                <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                <span className="font-medium" style={{ color: '#008064' }}>
                   +{change.percent.toFixed(1)}%
                 </span>
                 <span className="text-muted-foreground">
@@ -89,8 +89,8 @@ export function KPICard({
               </>
             ) : (
               <>
-                <TrendingDown className="h-3 w-3 text-red-600" />
-                <span className="text-red-600 font-medium">
+                <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                <span className="font-medium" style={{ color: '#BC2C46' }}>
                   {change.percent.toFixed(1)}%
                 </span>
                 <span className="text-muted-foreground">
