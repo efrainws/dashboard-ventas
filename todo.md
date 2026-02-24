@@ -904,3 +904,69 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar ordenamiento de sucursales en dropdown de análisis por horas ✓
   * Ordenamiento correcto por SAP ID: FF01, FF02, FF03, ..., FF12
 - [ ] Guardar checkpoint
+
+
+## Comparación con Período Anterior en KPIs (2026-02-24)
+
+### Análisis por Categorías
+- [x] Crear getAggregatedComparison para consultar período actual y anterior
+- [x] Calcular duración del período actual y obtener período anterior de igual duración
+- [ ] Actualizar Home.tsx para mostrar variación porcentual en KPIs
+- [ ] Agregar indicadores visuales (↑ verde, ↓ rojo) según variación
+- [ ] Mostrar cambio absoluto además de porcentual
+
+### Análisis por Horas
+- [x] Crear getHourlyComparison para consultar período actual y anterior
+- [x] Calcular duración del período actual y obtener período anterior de igual duración
+- [ ] Actualizar HourlyAnalysis.tsx para mostrar variación porcentual en KPIs
+- [ ] Agregar indicadores visuales (↑ verde, ↓ rojo) según variación
+- [ ] Mostrar cambio absoluto además de porcentual
+
+### Testing
+- [ ] Probar comparación con diferentes rangos de fechas
+- [ ] Verificar que cálculos de variación sean correctos
+- [ ] Probar con filtros de sucursal y canal
+- [ ] Guardar checkpoint
+
+
+## Nueva Tarea - Optimización para Grandes Volúmenes de Datos con Python (24/02/2026)
+
+### Scripts de Optimización Creados
+- [x] Corregir error de sintaxis en HourlyAnalysis.tsx (código duplicado eliminado)
+- [x] Crear script validate_data_integrity.py para validación de integridad de datos
+  - [x] Implementar validación de integridad referencial entre tablas
+  - [x] Implementar validación de consistencia de totales (header vs detalles)
+  - [x] Implementar validación de rangos de datos (negativos, outliers, fechas futuras)
+  - [x] Implementar detección de registros duplicados
+  - [x] Clasificar problemas por severidad (crítico, advertencia, informativo)
+  - [x] Generar reportes JSON detallados con ejemplos de problemas
+- [x] Crear script advanced_batch_processor.py para procesamiento avanzado
+  - [x] Implementar cursores del lado del servidor para minimizar uso de memoria
+  - [x] Implementar sistema de caché inteligente con compresión gzip
+  - [x] Implementar procesamiento paralelo con multiprocessing
+  - [x] Implementar agregación por día con métricas avanzadas (mediana, desviación estándar)
+  - [x] Implementar agregación por hora para análisis de patrones diarios
+  - [x] Implementar agregación por categoría
+  - [x] Implementar ventanas deslizantes para análisis de tendencias
+  - [x] Implementar exportación comprimida de resultados
+  - [x] Implementar creación de vistas materializadas para consultas ultra-rápidas
+  - [x] Configurar procesamiento paralelo con 4 workers
+  - [x] Configurar lotes de 10,000 registros para optimizar memoria
+
+### Documentación
+- [x] Crear documentación completa en docs/OPTIMIZACION_PYTHON.md
+  - [x] Documentar arquitectura de optimización en 3 capas
+  - [x] Documentar cada script con funcionalidades y uso
+  - [x] Documentar índices recomendados con impacto esperado
+  - [x] Documentar estrategia de implementación en 4 fases
+  - [x] Documentar métricas de monitoreo y mantenimiento
+  - [x] Documentar resultados esperados (mejoras de 70-90% en rendimiento)
+  - [x] Documentar recomendaciones adicionales (particionamiento, archivado, réplicas)
+
+### Resultados Esperados
+- Reducción de 70-80% en tiempo de consultas de análisis por categorías
+- Reducción de 75-85% en tiempo de consultas de análisis por horas
+- Reportes históricos instantáneos mediante caché
+- Uso de memoria constante incluso con millones de registros
+- Capacidad de procesar hasta 1 millón de transacciones mensuales
+- Soporte para 20 usuarios concurrentes sin degradación

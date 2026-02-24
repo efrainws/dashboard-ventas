@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun, Users } from "lucide-react";
 import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales";
 import { HourlyLineChart } from "@/components/HourlyLineChart";
+import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import { useFilters } from "@/contexts/FiltersContext";
 import {
@@ -82,6 +83,19 @@ export default function HourlyAnalysis() {
 
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useHourlySales(filters);
+
+  // Obtener comparación con período anterior
+  const comparisonQuery = trpc.sales.getHourlyComparison.useQuery(
+    {
+      fecha_min: filters.fecha_min || '',
+      fecha_max: filters.fecha_max || '',
+      branch_id: filters.branch_id,
+      sales_channel: selectedChannels.length === 1 ? selectedChannels[0] : undefined,
+    },
+    {
+      enabled: !!filters.fecha_min && !!filters.fecha_max,
+    }
+  );
 
   // Filtrar datos por canal de ventas en el frontend
   const filteredData = useMemo(() => {
@@ -311,49 +325,49 @@ export default function HourlyAnalysis() {
         {!isLoading && !error && (
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(filteredMetrics.totalSales)}</div>
-                  <p className="text-xs text-muted-foreground">{dateRangeText}</p>
-                </CardContent>
-              </Card>
+              <KPICard
+                title="Ventas Totales"
+                value={filteredMetrics.totalSales}
+                previousValue={comparisonQuery.data?.previous.total_sales}
+                format="currency"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Transacciones</CardTitle>
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatNumber(filteredMetrics.totalTickets)}</div>
-                  <p className="text-xs text-muted-foreground">Tickets únicos</p>
-                </CardContent>
-              </Card>
+              <KPICard
+                title="Total Transacciones"
+                value={filteredMetrics.totalTickets}
+                previousValue={comparisonQuery.data?.previous.total_tickets}
+                format="number"
+                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(filteredMetrics.avgTicket)}</div>
-                  <p className="text-xs text-muted-foreground">Por transacción</p>
-                </CardContent>
-              </Card>
+              <KPICard
+                title="Ticket Promedio"
+                value={filteredMetrics.avgTicket}
+                previousValue={
+                  comparisonQuery.data && comparisonQuery.data.previous.total_tickets > 0
+                    ? comparisonQuery.data.previous.total_sales / comparisonQuery.data.previous.total_tickets
+                    : undefined
+                }
+                format="currency"
+                icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Promedio por Día</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency((filteredMetrics as any).avgSalesPerDay || 0)}</div>
-                  <p className="text-xs text-muted-foreground">{(filteredMetrics as any).daysCount || 0} {((filteredMetrics as any).daysCount || 0) === 1 ? 'día' : 'días'}</p>
-                </CardContent>
-              </Card>
+              <KPICard
+                title="Promedio por Día"
+                value={(filteredMetrics as any).avgSalesPerDay || 0}
+                previousValue={
+                  comparisonQuery.data && (filteredMetrics as any).daysCount > 0
+                    ? comparisonQuery.data.previous.total_sales / (filteredMetrics as any).daysCount
+                    : undefined
+                }
+                format="currency"
+                icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
             </div>
 
             {/* Gráfico de línea: Ventas y Transacciones por Hora */}

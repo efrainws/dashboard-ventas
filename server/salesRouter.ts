@@ -200,4 +200,214 @@ export const salesRouter = router({
         throw new Error('Error al consultar ventas por hora');
       }
     }),
+
+  /**
+   * Obtiene métricas resumidas del período actual y anterior para comparación
+   * Calcula automáticamente el período anterior basado en la duración del período actual
+   */
+  getAggregatedComparison: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string().datetime(),
+        fecha_max: z.string().datetime(),
+        branch_id: z.string().optional(),
+        category_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, category_id } = input;
+
+      // Calcular duración del período actual y período anterior
+      const currentStart = new Date(fecha_min);
+      const currentEnd = new Date(fecha_max);
+      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      const previousStart = new Date(currentStart.getTime() - durationMs);
+      const previousEnd = currentStart;
+
+      // Construir filtros adicionales
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      if (category_id && category_id !== 'all') {
+        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
+        queryParams.push(category_id);
+        paramIndex++;
+      }
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sh.branch_id,
+            sd.total AS line_total,
+            cp.category_id AS leaf_category_id,
+            c.parent_category_id,
+            p.parent_category_id AS grandparent_category_id,
+            CASE
+              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+                THEN 'current'
+              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+                THEN 'previous'
+              ELSE NULL
+            END AS period
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN categories_products cp
+            ON cp.product_id = sd.product_id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN categories c ON c.id = cp.category_id
+          LEFT JOIN categories p ON p.id = c.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
+              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+            )
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          period,
+          SUM(line_total) AS total_sales,
+          COUNT(DISTINCT sale_id) AS total_tickets
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY period;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        
+        const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
+        const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
+
+        return {
+          success: true,
+          current: {
+            total_sales: parseFloat(currentMetrics.total_sales || 0),
+            total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
+          },
+          previous: {
+            total_sales: parseFloat(previousMetrics.total_sales || 0),
+            total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
+          },
+          metadata: {
+            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
+            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing comparison query:', error);
+        throw new Error('Error al consultar comparación de períodos');
+      }
+    }),
+
+  /**
+   * Obtiene métricas resumidas del período actual y anterior para análisis por horas
+   */
+  getHourlyComparison: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string().datetime(),
+        fecha_max: z.string().datetime(),
+        branch_id: z.string().optional(),
+        sales_channel: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, sales_channel } = input;
+
+      // Calcular duración del período actual y período anterior
+      const currentStart = new Date(fecha_min);
+      const currentEnd = new Date(fecha_max);
+      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      const previousStart = new Date(currentStart.getTime() - durationMs);
+      const previousEnd = currentStart;
+
+      // Construir filtros adicionales
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      if (sales_channel && sales_channel !== 'all') {
+        additionalFilters.push(`AND sales_channel = $${paramIndex}`);
+        queryParams.push(sales_channel);
+        paramIndex++;
+      }
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sh.branch_id,
+            sd.total AS line_total,
+            CASE
+              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+                THEN 'eCommerce'
+              ELSE 'Presencial'
+            END AS sales_channel,
+            CASE
+              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+                THEN 'current'
+              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+                THEN 'previous'
+              ELSE NULL
+            END AS period
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
+              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+            )
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          period,
+          SUM(line_total) AS total_sales,
+          COUNT(DISTINCT sale_id) AS total_tickets
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY period;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        
+        const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
+        const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
+
+        return {
+          success: true,
+          current: {
+            total_sales: parseFloat(currentMetrics.total_sales || 0),
+            total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
+          },
+          previous: {
+            total_sales: parseFloat(previousMetrics.total_sales || 0),
+            total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
+          },
+          metadata: {
+            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
+            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing hourly comparison query:', error);
+        throw new Error('Error al consultar comparación de períodos por hora');
+      }
+    }),
 });
