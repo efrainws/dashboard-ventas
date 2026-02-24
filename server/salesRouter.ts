@@ -410,4 +410,255 @@ export const salesRouter = router({
         throw new Error('Error al consultar comparación de períodos por hora');
       }
     }),
+
+  /**
+   * Obtiene comparación detallada por sucursal entre período actual y anterior
+   */
+  getBranchComparison: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string().datetime(),
+        fecha_max: z.string().datetime(),
+        category_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, category_id } = input;
+
+      // Calcular período anterior
+      const currentStart = new Date(fecha_min);
+      const currentEnd = new Date(fecha_max);
+      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      const previousStart = new Date(currentStart.getTime() - durationMs);
+      const previousEnd = currentStart;
+
+      // Construir filtros adicionales
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (category_id && category_id !== 'all') {
+        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
+        queryParams.push(category_id);
+        paramIndex++;
+      }
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sh.branch_id,
+            INITCAP(LOWER(COALESCE(b.name,''))) AS branch_name,
+            b.sap_id AS branch_sap_id,
+            sd.total AS line_total,
+            cp.category_id AS leaf_category_id,
+            c.parent_category_id,
+            p.parent_category_id AS grandparent_category_id,
+            CASE
+              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+                THEN 'current'
+              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+                THEN 'previous'
+              ELSE NULL
+            END AS period
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
+          LEFT JOIN categories_products cp
+            ON cp.product_id = sd.product_id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN categories c ON c.id = cp.category_id
+          LEFT JOIN categories p ON p.id = c.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
+              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+            )
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          period,
+          branch_id,
+          branch_name,
+          branch_sap_id,
+          SUM(line_total) AS total_sales,
+          COUNT(DISTINCT sale_id) AS total_tickets
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY period, branch_id, branch_name, branch_sap_id
+        ORDER BY branch_sap_id;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        
+        // Agrupar por sucursal
+        const branchMap = new Map<string, any>();
+        
+        result.rows.forEach(row => {
+          const branchId = row.branch_id;
+          if (!branchMap.has(branchId)) {
+            branchMap.set(branchId, {
+              branch_id: branchId,
+              branch_name: row.branch_name,
+              branch_sap_id: row.branch_sap_id,
+              current: { total_sales: 0, total_tickets: 0 },
+              previous: { total_sales: 0, total_tickets: 0 },
+            });
+          }
+          
+          const branch = branchMap.get(branchId);
+          if (row.period === 'current') {
+            branch.current = {
+              total_sales: parseFloat(row.total_sales || 0),
+              total_tickets: parseInt(row.total_tickets || 0, 10),
+            };
+          } else if (row.period === 'previous') {
+            branch.previous = {
+              total_sales: parseFloat(row.total_sales || 0),
+              total_tickets: parseInt(row.total_tickets || 0, 10),
+            };
+          }
+        });
+
+        return {
+          success: true,
+          data: Array.from(branchMap.values()),
+          metadata: {
+            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
+            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing branch comparison query:', error);
+        throw new Error('Error al consultar comparación por sucursal');
+      }
+    }),
+
+  /**
+   * Obtiene comparación detallada por categoría entre período actual y anterior
+   */
+  getCategoryComparison: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string().datetime(),
+        fecha_max: z.string().datetime(),
+        branch_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id } = input;
+
+      // Calcular período anterior
+      const currentStart = new Date(fecha_min);
+      const currentEnd = new Date(fecha_max);
+      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      const previousStart = new Date(currentStart.getTime() - durationMs);
+      const previousEnd = currentStart;
+
+      // Construir filtros adicionales
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sh.branch_id,
+            sd.total AS line_total,
+            cp.category_id AS leaf_category_id,
+            c.name AS leaf_category_name,
+            p.id AS parent_category_id,
+            p.name AS parent_category_name,
+            g.id AS grandparent_category_id,
+            g.name AS grandparent_category_name,
+            CASE
+              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+                THEN 'current'
+              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+                THEN 'previous'
+              ELSE NULL
+            END AS period
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN categories_products cp
+            ON cp.product_id = sd.product_id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN categories c ON c.id = cp.category_id
+          LEFT JOIN categories p ON p.id = c.parent_category_id
+          LEFT JOIN categories g ON g.id = p.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
+              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+            )
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          period,
+          COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) AS category_id,
+          INITCAP(LOWER(COALESCE(
+            grandparent_category_name,
+            parent_category_name,
+            leaf_category_name,
+            'Sin Categoría'
+          ))) AS category_name,
+          SUM(line_total) AS total_sales
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY period, category_id, category_name
+        ORDER BY category_name;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        
+        // Agrupar por categoría
+        const categoryMap = new Map<string, any>();
+        
+        result.rows.forEach(row => {
+          const categoryId = row.category_id;
+          if (!categoryMap.has(categoryId)) {
+            categoryMap.set(categoryId, {
+              category_id: categoryId,
+              category_name: row.category_name,
+              current: { total_sales: 0 },
+              previous: { total_sales: 0 },
+            });
+          }
+          
+          const category = categoryMap.get(categoryId);
+          if (row.period === 'current') {
+            category.current = {
+              total_sales: parseFloat(row.total_sales || 0),
+            };
+          } else if (row.period === 'previous') {
+            category.previous = {
+              total_sales: parseFloat(row.total_sales || 0),
+            };
+          }
+        });
+
+        return {
+          success: true,
+          data: Array.from(categoryMap.values()),
+          metadata: {
+            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
+            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing category comparison query:', error);
+        throw new Error('Error al consultar comparación por categoría');
+      }
+    }),
 });

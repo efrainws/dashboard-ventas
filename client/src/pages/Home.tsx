@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users, ShoppingCart } from "lucide-react";
+import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users, ShoppingCart, Calendar } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
@@ -98,6 +98,42 @@ export default function Home() {
           fecha_max: filters.fecha_max,
           branch_id: filters.branch_id,
           category_id: filters.category_id,
+        }
+      : {
+          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+          fecha_max: new Date().toISOString(),
+        }
+  );
+
+  // Calcular número de días en el rango
+  const numberOfDays = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return 1;
+    const diffTime = Math.abs(dateRange.to.getTime() - dateRange.from.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir ambos días
+    return diffDays;
+  }, [dateRange]);
+
+  // Obtener comparación por sucursal
+  const branchComparisonQuery = trpc.sales.getBranchComparison.useQuery(
+    filters && filters.fecha_min && filters.fecha_max
+      ? {
+          fecha_min: filters.fecha_min,
+          fecha_max: filters.fecha_max,
+          category_id: filters.category_id,
+        }
+      : {
+          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+          fecha_max: new Date().toISOString(),
+        }
+  );
+
+  // Obtener comparación por categoría
+  const categoryComparisonQuery = trpc.sales.getCategoryComparison.useQuery(
+    filters && filters.fecha_min && filters.fecha_max
+      ? {
+          fecha_min: filters.fecha_min,
+          fecha_max: filters.fecha_max,
+          branch_id: filters.branch_id,
         }
       : {
           fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
@@ -243,7 +279,7 @@ export default function Home() {
         {/* KPIs principales */}
         {!isLoading && !error && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <KPICard
                 title="Ventas Totales"
                 value={metrics.totalSales}
@@ -274,6 +310,19 @@ export default function Home() {
                 icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
                 showComparison={!!comparisonQuery.data}
               />
+
+              <KPICard
+                title="Promedio por Día"
+                value={numberOfDays > 0 ? metrics.totalSales / numberOfDays : 0}
+                previousValue={
+                  comparisonQuery.data && numberOfDays > 0
+                    ? comparisonQuery.data.previous.total_sales / numberOfDays
+                    : undefined
+                }
+                format="currency"
+                icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+                showComparison={!!comparisonQuery.data}
+              />
             </div>
 
             {/* Gráficos de visualización */}
@@ -282,10 +331,16 @@ export default function Home() {
               <SalesLineChart data={data} />
 
               {/* Gráfico de barras: Comparación por sucursal (ancho completo) */}
-              <BranchBarChart data={data} />
+              <BranchBarChart 
+                data={data} 
+                comparisonData={branchComparisonQuery.data?.data}
+              />
 
               {/* Gráfico de tarta: Distribución por categoría */}
-              <CategoryPieChart data={data} />
+              <CategoryPieChart 
+                data={data}
+                comparisonData={categoryComparisonQuery.data?.data}
+              />
             </div>
 
             {/* Información de datos */}

@@ -989,3 +989,14 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar que los iconos de tendencia se muestren correctamente con los colores personalizados
 - [x] Probar con diferentes rangos de fechas
 - [x] Guardar checkpoint con los cambios
+
+
+## Nueva Tarea - Agregar KPI Promedio por Día e Iconos en Tablas (24/02/2026)
+- [x] Agregar KPI de "Promedio por Día" en Home.tsx (análisis por categorías)
+- [x] Calcular promedio por día basado en el rango de fechas seleccionado
+- [x] Agregar comparación con período anterior para el KPI de promedio por día
+- [x] Actualizar tabla de "Comparación por Sucursal" para incluir iconos de tendencias
+- [x] Actualizar tabla de "Distribución por Categoría" para incluir iconos de tendencias
+- [x] Crear endpoints getBranchComparison y getCategoryComparison en salesRouter
+- [x] Verificar que los iconos se muestren correctamente con los colores personalizados
+- [x] Guardar checkpoint con los cambios

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChartIcon } from "lucide-react";
+import { PieChartIcon, TrendingUp, TrendingDown } from "lucide-react";
 
 export interface SalesDataPoint {
   category_abuelo_id: string;
@@ -9,8 +9,16 @@ export interface SalesDataPoint {
   sales_amount: string;
 }
 
+interface CategoryComparison {
+  category_id: string;
+  category_name: string;
+  current: { total_sales: number };
+  previous: { total_sales: number };
+}
+
 interface CategoryPieChartProps {
   data: SalesDataPoint[];
+  comparisonData?: CategoryComparison[];
   title?: string;
   description?: string;
 }
@@ -34,7 +42,7 @@ const COLORS = [
   "var(--ff-celeste-dark)",    // Celeste oscuro
 ];
 
-export function CategoryPieChart({ data, title, description }: CategoryPieChartProps) {
+export function CategoryPieChart({ data, comparisonData, title, description }: CategoryPieChartProps) {
   // Agregar ventas por categoría
   const categoryData = useMemo(() => {
     const grouped = new Map<string, { name: string; sales: number }>();
@@ -180,7 +188,25 @@ export function CategoryPieChart({ data, title, description }: CategoryPieChartP
                         />
                         {item.name}
                       </td>
-                      <td className="text-right p-2">{formatCurrency(item.value)}</td>
+                      <td className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {formatCurrency(item.value)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.category_name === item.name);
+                            if (comparison && comparison.previous.total_sales > 0) {
+                              const change = ((comparison.current.total_sales - comparison.previous.total_sales) / comparison.previous.total_sales) * 100;
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="text-right p-2 font-medium">
                         {formatPercentage(item.value)}
                       </td>

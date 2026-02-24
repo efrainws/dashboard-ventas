@@ -11,7 +11,7 @@ import {
   LabelList,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 
 export interface SalesDataPoint {
   branch_id: string;
@@ -23,8 +23,17 @@ export interface SalesDataPoint {
   sale_ids?: string[]; // Array de sale_ids únicos para conteo correcto
 }
 
+interface BranchComparison {
+  branch_id: string;
+  branch_name: string;
+  branch_sap_id: string;
+  current: { total_sales: number; total_tickets: number };
+  previous: { total_sales: number; total_tickets: number };
+}
+
 interface BranchBarChartProps {
   data: SalesDataPoint[];
+  comparisonData?: BranchComparison[];
   title?: string;
   description?: string;
 }
@@ -45,7 +54,7 @@ const COLORS = [
   "var(--ff-granate-light)",   // Granate claro
 ];
 
-export function BranchBarChart({ data, title, description }: BranchBarChartProps) {
+export function BranchBarChart({ data, comparisonData, title, description }: BranchBarChartProps) {
   // Agregar ventas por sucursal y calcular días únicos globales
   const branchData = useMemo(() => {
     const grouped = new Map<
@@ -236,7 +245,25 @@ export function BranchBarChart({ data, title, description }: BranchBarChartProps
                         />
                         {item.displayName}
                       </td>
-                      <td className="text-right p-2">{formatCurrency(item.sales)}</td>
+                      <td className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {formatCurrency(item.sales)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                            if (comparison && comparison.previous.total_sales > 0) {
+                              const change = ((comparison.current.total_sales - comparison.previous.total_sales) / comparison.previous.total_sales) * 100;
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="text-right p-2">{formatNumber(item.tickets)}</td>
                       <td className="text-right p-2">{formatCurrency(item.avgTicket)}</td>
                       <td className="text-right p-2">{formatCurrency(item.avgSalesPerDay)}</td>
