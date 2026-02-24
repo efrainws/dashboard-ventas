@@ -877,4 +877,30 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar cálculo de totales en la tabla para contar tickets únicos globales
 - [x] Probar con filtros: FF02, 19/02/26 (muestra 467 tickets ✓)
 - [x] Escribir y ejecutar tests de validación (3 tests pasados ✓)
+- [x] Guardar checkpoint
+
+
+## Filtros Persistentes y Ordenamiento de Sucursales (2026-02-23)
+
+### Filtros Persistentes entre Análisis
+- [x] Crear FiltersContext para compartir estado de filtros globalmente
+- [x] Incluir dateRange y branchId en el contexto
+- [x] Actualizar Home.tsx (análisis por categorías) para usar FiltersContext
+- [x] Actualizar HourlyAnalysis.tsx para usar FiltersContext
+- [x] Verificar que los filtros persistan al cambiar entre análisis ✓
+
+### Ordenamiento de Sucursales
+- [x] Modificar análisis por horas para ordenar sucursales por branch_sap_id
+- [x] Implementar ordenamiento numérico (extrae números de SAP ID)
+- [ ] Probar que el dropdown muestre sucursales en orden correcto
+
+### Testing
+- [x] Aplicar filtro de fecha en análisis por categorías (1-5 feb), cambiar a análisis por horas ✓
+  * Fecha persistía correctamente: 01 feb. 2026 - 05 feb. 2026
+  * Ventas totales coinciden: S/ 482,060.62
+- [x] Aplicar filtro de sucursal en análisis por horas (Primavera FF03), cambiar a análisis por categorías ✓
+  * Sucursal persistía correctamente: Primavera (FF03)
+  * Ventas totales coinciden: S/ 3,527.17
+- [x] Verificar ordenamiento de sucursales en dropdown de análisis por horas ✓
+  * Ordenamiento correcto por SAP ID: FF01, FF02, FF03, ..., FF12
 - [ ] Guardar checkpoint

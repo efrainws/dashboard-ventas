@@ -11,8 +11,9 @@ import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
 import { CategoryPieChart } from "@/components/CategoryPieChart";
 import { BranchBarChart } from "@/components/BranchBarChart";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
+import { useFilters } from "@/contexts/FiltersContext";
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -24,8 +25,12 @@ export default function Home() {
     },
   });
 
-  // Estado para filtros - Por defecto: día de ayer
+  // Usar filtros del contexto global
+  const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
+  
+  // Estado local para filtros - Por defecto: día de ayer
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    if (globalDateRange) return globalDateRange;
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
@@ -35,8 +40,17 @@ export default function Home() {
     
     return { from: yesterday, to: yesterdayEnd };
   });
-  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Sincronizar con contexto global
+  useEffect(() => {
+    setGlobalDateRange(dateRange);
+  }, [dateRange, setGlobalDateRange]);
+
+  useEffect(() => {
+    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
+  }, [selectedBranch, setGlobalBranchId]);
 
   // Construir filtros para la consulta
   const filters = useMemo<AggregatedSalesFilters | undefined>(() => {

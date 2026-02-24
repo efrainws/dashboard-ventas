@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun, Users } from "lucide-react";
 import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales";
 import { HourlyLineChart } from "@/components/HourlyLineChart";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useFilters } from "@/contexts/FiltersContext";
 import {
   Select,
   SelectContent,
@@ -29,8 +30,12 @@ export default function HourlyAnalysis() {
     },
   });
 
+  // Usar filtros del contexto global
+  const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
+  
   // Estados de filtros - Por defecto: día de ayer
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    if (globalDateRange) return globalDateRange;
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
@@ -40,8 +45,17 @@ export default function HourlyAnalysis() {
     
     return { from: yesterday, to: yesterdayEnd };
   });
-  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce"]);
+
+  // Sincronizar con contexto global
+  useEffect(() => {
+    setGlobalDateRange(dateRange);
+  }, [dateRange, setGlobalDateRange]);
+
+  useEffect(() => {
+    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
+  }, [selectedBranch, setGlobalBranchId]);
 
   // Construir filtros para el hook
   const filters = useMemo<HourlySalesFilters>(() => {
@@ -238,11 +252,18 @@ export default function HourlyAnalysis() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas las sucursales</SelectItem>
-                      {metrics.branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.name} ({branch.sap_id})
-                        </SelectItem>
-                      ))}
+                      {metrics.branches
+                        .sort((a, b) => {
+                          // Ordenar por branch_sap_id numéricamente
+                          const sapIdA = parseInt(a.sap_id.replace(/\D/g, ''), 10) || 0;
+                          const sapIdB = parseInt(b.sap_id.replace(/\D/g, ''), 10) || 0;
+                          return sapIdA - sapIdB;
+                        })
+                        .map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id}>
+                            {branch.name} ({branch.sap_id})
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
