@@ -1033,3 +1033,52 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir la consulta SQL en getHourlyComparison - Movido filtro de sales_channel al WHERE final
 - [x] Probar la consulta en el navegador para verificar que funcione - KPIs se muestran correctamente
 - [x] Guardar checkpoint con la corrección
+
+
+## Nuevo Feature - Página Ventas vs Meta (25/02/2026)
+
+### Base de Datos
+- [x] Crear tabla store_monthly_targets en drizzle/schema.ts
+- [x] Ejecutar pnpm db:push para aplicar migración
+
+### Backend (tRPC)
+- [x] Crear endpoint getSalesVsTarget para consultar ventas por tienda vs meta prorrateada
+- [x] Crear endpoint getStoreTargets para listar metas configuradas
+- [x] Crear endpoint upsertStoreTarget para crear/actualizar metas (protegido: admin)
+- [x] Crear endpoint deleteStoreTarget para eliminar metas (protegido: admin)
+- [x] Implementar lógica de prorrateo de meta mensual según días del período
+- [x] Registrar targetsRouter en routers.ts
+
+### Frontend - Componentes
+- [x] Crear componente StoreTargetCard con progress ring y métricas
+- [x] Crear componente TargetEditModal para edición de metas
+- [x] Crear componente ProgressRing para visualización de cumplimiento
+- [x] Instalar sonner para notificaciones toast
+
+### Frontend - Página
+- [x] Crear página SalesVsTarget.tsx con filtros de fecha y tienda
+- [x] Implementar grid de tarjetas ordenadas por % cumplimiento
+- [x] Agregar botón "Editar metas" visible solo para admin
+- [x] Implementar estados: cargando, sin datos, meta no configurada
+- [x] Usar tipografías Italian Plate (KPIs) y Sailec (labels)
+- [x] Mantener colores existentes del dashboard (#008064 positivo, #BC2C46 negativo)
+
+### Navegación
+- [x] Agregar ruta /sales-vs-target en App.tsx
+- [x] Agregar botón de navegación en Home.tsx
+
+### Testing
+- [ ] Verificar cálculo de prorrateo con rangos de un mes
+- [ ] Verificar cálculo de prorrateo con rangos que cruzan meses
+- [ ] Verificar permisos de edición por rol
+- [ ] Verificar filtros multi-select de tiendas
+
+### Checkpoint
+- [ ] Guardar checkpoint con el feature completo
+
+
+### Verificación Inicial (25/02/2026)
+- [x] Página carga correctamente en /sales-vs-target
+- [x] Filtros se muestran correctamente
+- [x] Botón "Editar Metas" visible para admin
+- [x] Estado de carga funciona correctamente

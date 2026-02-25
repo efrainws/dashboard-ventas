@@ -15,6 +15,13 @@
       "when": 1769504747834,
       "tag": "0001_deep_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772050223205,
+      "tag": "0002_lumpy_morbius",
+      "breakpoints": true
     }
   ]
 }

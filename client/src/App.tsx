@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import HourlyAnalysis from "./pages/HourlyAnalysis";
 import UserManagement from "./pages/UserManagement";
 import Login from "./pages/Login";
+import SalesVsTarget from "./pages/SalesVsTarget";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType; path: string }) {
@@ -40,6 +41,9 @@ function Router() {
       </Route>
       <Route path="/hourly-analysis">
         {() => <ProtectedRoute component={HourlyAnalysis} path="/hourly-analysis" />}
+      </Route>
+      <Route path="/sales-vs-target">
+        {() => <ProtectedRoute component={SalesVsTarget} path="/sales-vs-target" />}
       </Route>
       <Route path="/admin/users">
         {() => <ProtectedRoute component={UserManagement} path="/admin/users" />}

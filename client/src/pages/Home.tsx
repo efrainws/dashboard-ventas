@@ -239,6 +239,9 @@ export default function Home() {
               <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
                 Ver Análisis por Horas
               </Button>
+              <Button variant="default" size="sm" onClick={() => setLocation('/sales-vs-target')}>
+                Ventas vs Meta
+              </Button>
               {user?.role === 'admin' && (
                 <Button variant="outline" size="sm" onClick={() => setLocation('/admin/users')}>
                   <Users className="mr-2 h-4 w-4" />

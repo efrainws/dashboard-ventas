@@ -29,4 +29,21 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Store monthly sales targets for tracking performance vs goals.
+ * Each row represents a target for a specific store in a specific month.
+ */
+export const storeMonthlyTargets = mysqlTable("store_monthly_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Month in YYYY-MM format (e.g., "2026-02") */
+  month: varchar("month", { length: 7 }).notNull(),
+  /** Store ID from external PostgreSQL database */
+  storeId: varchar("store_id", { length: 64 }).notNull(),
+  /** Monthly sales target amount */
+  monthlyTargetAmount: int("monthly_target_amount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StoreMonthlyTarget = typeof storeMonthlyTargets.$inferSelect;
+export type InsertStoreMonthlyTarget = typeof storeMonthlyTargets.$inferInsert;
