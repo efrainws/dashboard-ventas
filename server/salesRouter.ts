@@ -152,6 +152,11 @@ export const salesRouter = router({
             b.sap_id                               AS branch_sap_id,
             sd.total AS line_total,
             CASE
+              WHEN EXISTS (
+                SELECT 1 FROM methods_payment mp
+                WHERE mp.header_id = sh.id
+                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+              ) THEN 'Rappi'
               WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
                 THEN 'eCommerce'
               ELSE 'Presencial'
@@ -355,6 +360,11 @@ export const salesRouter = router({
             sh.branch_id,
             sd.total AS line_total,
             CASE
+              WHEN EXISTS (
+                SELECT 1 FROM methods_payment mp
+                WHERE mp.header_id = sh.id
+                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+              ) THEN 'Rappi'
               WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
                 THEN 'eCommerce'
               ELSE 'Presencial'

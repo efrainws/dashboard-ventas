@@ -47,7 +47,7 @@ export default function HourlyAnalysis() {
     return { from: yesterday, to: yesterdayEnd };
   });
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
-  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce"]);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce", "Rappi"]);
 
   // Sincronizar con contexto global
   useEffect(() => {
@@ -99,8 +99,8 @@ export default function HourlyAnalysis() {
 
   // Filtrar datos por canal de ventas en el frontend
   const filteredData = useMemo(() => {
-    if (!data || selectedChannels.length === 2) {
-      return data; // Si ambos canales están seleccionados, no filtrar
+    if (!data || selectedChannels.length === 3) {
+      return data; // Si todos los canales están seleccionados, no filtrar
     }
     return data.filter(row => selectedChannels.includes(row.sales_channel));
   }, [data, selectedChannels]);
@@ -144,7 +144,7 @@ export default function HourlyAnalysis() {
   const handleClearFilters = () => {
     setDateRange(undefined);
     setSelectedBranch("all");
-    setSelectedChannels(["Presencial", "eCommerce"]);
+    setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
   };
 
   if (authLoading) {
@@ -286,10 +286,10 @@ export default function HourlyAnalysis() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Canal de Ventas</label>
                   <Select 
-                    value={selectedChannels.length === 2 ? "all" : selectedChannels[0] || "all"}
+                    value={selectedChannels.length === 3 ? "all" : selectedChannels[0] || "all"}
                     onValueChange={(value) => {
                       if (value === "all") {
-                        setSelectedChannels(["Presencial", "eCommerce"]);
+                        setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
                       } else {
                         setSelectedChannels([value]);
                       }
@@ -302,6 +302,7 @@ export default function HourlyAnalysis() {
                       <SelectItem value="all">Todos los canales</SelectItem>
                       <SelectItem value="Presencial">Presencial</SelectItem>
                       <SelectItem value="eCommerce">eCommerce</SelectItem>
+                      <SelectItem value="Rappi">Rappi</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

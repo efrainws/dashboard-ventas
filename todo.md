@@ -1016,3 +1016,13 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar CategoryPieChart para mostrar iconos en columna de Porcentaje (%)
 - [x] Verificar que los iconos se muestren correctamente con los colores personalizados
 - [x] Guardar checkpoint con los cambios
+
+
+## Nueva Tarea - Agregar Canal "Rappi" en Análisis por Hora (25/02/2026)
+- [x] Revisar estructura de la tabla methods_payment en la base de datos
+- [x] Actualizar consulta SQL de getHourlySales para identificar canal Rappi
+- [x] Actualizar consulta SQL de getHourlyComparison para incluir canal Rappi
+- [x] Agregar filtro de "Canal" en el frontend de HourlyAnalysis.tsx
+- [x] Actualizar lógica de filtrado para incluir canal Rappi
+- [x] Verificar que el filtro funcione correctamente en el navegador - Confirmado que muestra 4 opciones
+- [x] Guardar checkpoint con los cambios
