@@ -50,7 +50,7 @@ export function StoreTargetCard({
               <span
                 className="font-semibold"
                 style={{
-                  color: completionPercentage >= 100 ? '#008064' : completionPercentage >= 70 ? '#000' : '#BC2C46',
+                  color: completionPercentage >= 100 ? '#008064' : completionPercentage >= 90 ? '#1A6894' : completionPercentage >= 75 ? '#C49705' : '#BC2C46',
                 }}
               >
                 {completionPercentage.toFixed(1)}%
@@ -61,7 +61,7 @@ export function StoreTargetCard({
                 className="h-full transition-all"
                 style={{
                   width: `${Math.min(completionPercentage, 100)}%`,
-                  backgroundColor: completionPercentage >= 100 ? '#008064' : '#1A6894',
+                  backgroundColor: completionPercentage >= 100 ? '#008064' : completionPercentage >= 90 ? '#1A6894' : completionPercentage >= 75 ? '#C49705' : '#BC2C46',
                 }}
               />
             </div>

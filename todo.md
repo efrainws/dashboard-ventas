@@ -1144,4 +1144,16 @@ Fecha: 1 de febrero de 2026
 - [x] Asegurar que el color contraste bien con el fondo blanco
 - [x] Verificar que la barra sea visible en todos los rangos de cumplimiento (0-100%+)
 - [x] Probar con diferentes porcentajes de cumplimiento (89.7%, 88.8%, 77.3%, 70.9%, 63.4%, 40.6%)
-- [ ] Guardar checkpoint con la corrección
+- [x] Guardar checkpoint con la corrección
+
+
+## Nueva Tarea - Implementar Colores Progresivos en Barra de Progreso (25/02/2026)
+- [x] Actualizar StoreTargetCard.tsx con lógica de colores por rangos
+- [x] Implementar rango 0-75%: Granate #BC2C46
+- [x] Implementar rango 75-90%: Mostaza #C49705
+- [x] Implementar rango 90-100%: Cobalto #1A6894
+- [x] Implementar rango 100%+: Esmeralda #008064
+- [x] Aplicar los mismos colores al texto del porcentaje de cumplimiento
+- [x] Verificar visibilidad en todos los rangos observables
+- [x] Probar con diferentes porcentajes de cumplimiento (89.7%, 88.8%, 77.3%, 70.9%, 63.4%, 40.6%)
+- [ ] Guardar checkpoint con colores progresivos
