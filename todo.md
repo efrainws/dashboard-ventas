@@ -1129,3 +1129,10 @@ Fecha: 1 de febrero de 2026
 - [x] Eliminar sección duplicada de Cumplimiento (ahora está en la barra)
 - [x] Verificar cambios en el navegador - Modal ampliado y barra de progreso funcionan correctamente
 - [x] Guardar checkpoint con las correcciones
+
+
+## Nueva Tarea - Ordenar Tiendas por Código SAP (25/02/2026)
+- [x] Ordenar tiendas por sap_id en el backend (getSalesVsTarget y getAllStores)
+- [x] Verificar que el filtro de tiendas muestre las opciones ordenadas por SAP
+- [x] Verificar que el grid de tarjetas muestre las tiendas ordenadas por SAP
+- [ ] Guardar checkpoint con el ordenamiento

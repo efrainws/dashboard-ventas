@@ -43,7 +43,7 @@ export const targetsRouter = router({
         WHERE sh.doc_date >= $1 AND sh.doc_date < $2
           ${storeFilter}
         GROUP BY sh.branch_id, b.name, b.sap_id
-        ORDER BY store_name;
+        ORDER BY b.sap_id;
       `;
 
       try {
@@ -312,7 +312,7 @@ export const targetsRouter = router({
             INITCAP(LOWER(COALESCE(name, ''))) AS store_name,
             COALESCE(sap_id, '') AS store_sap_id
           FROM branches
-          ORDER BY name;
+          ORDER BY sap_id;
         `;
 
         const result = await pool.query(query);
