@@ -42,10 +42,12 @@ export function StoreTargetCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Progress Ring */}
-        <div className="flex justify-center">
-          <ProgressRing percentage={completionPercentage} />
-        </div>
+        {/* Progress Ring - Solo mostrar si hay meta configurada */}
+        {hasTarget && (
+          <div className="flex justify-center">
+            <ProgressRing percentage={completionPercentage} />
+          </div>
+        )}
 
         {/* Métricas */}
         <div className="space-y-2">

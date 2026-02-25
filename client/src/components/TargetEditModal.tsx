@@ -92,14 +92,15 @@ export function TargetEditModal({
   useEffect(() => {
     if (targetsData && storesData) {
       const targets: EditableTarget[] = targetsData.targets.map((t: any) => {
-        const store = storesData.stores.find((s: any) => s.store_id === t.store_id);
+        // Drizzle devuelve camelCase: storeId, monthlyTargetAmount
+        const store = storesData.stores.find((s: any) => s.store_id === t.storeId);
         return {
           id: t.id, // ID de la base de datos
           month: t.month,
-          store_id: t.store_id,
+          store_id: t.storeId,
           store_name: store?.store_name || "Desconocida",
           store_sap_id: store?.store_sap_id || "",
-          monthly_target_amount: t.monthly_target_amount,
+          monthly_target_amount: t.monthlyTargetAmount,
           isNew: false,
           isModified: false,
         };
@@ -240,10 +241,11 @@ export function TargetEditModal({
       
       toast.success(`${modifiedTargets.length} meta(s) guardada(s) correctamente`);
       
-      // Marcar todas como no modificadas
-      setEditableTargets(prev =>
-        prev.map(t => ({ ...t, isNew: false, isModified: false }))
-      );
+      // Refrescar datos desde el servidor para obtener los IDs y datos actualizados
+      await refetch();
+      
+      // Llamar onSuccess para refrescar la página principal
+      if (onSuccess) onSuccess();
     } catch (error) {
       toast.error("Error al guardar algunas metas");
     }
@@ -258,7 +260,7 @@ export function TargetEditModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: 'Sailec, sans-serif' }}>
             Gestión de Metas Mensuales

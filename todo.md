@@ -1110,3 +1110,13 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir handleDeleteTarget para usar el id en lugar de month/store_id
 - [x] Verificar que la eliminación funcione correctamente - Eliminación exitosa sin errores
 - [x] Guardar checkpoint con la corrección
+
+
+## Correcciones - Modal y Visualización de Metas (25/02/2026)
+- [x] Aumentar ancho del modal de creación de metas de max-w-6xl a max-w-7xl
+- [x] Corregir visualización de datos después de crear meta - Agregado refetch() después de guardar
+- [x] Llamar onSuccess() para refrescar la página principal con los datos actualizados
+- [x] Corregir mapeo de datos en useEffect para usar camelCase de Drizzle (storeId, monthlyTargetAmount)
+- [x] Arreglar componente gráfico de progress ring - Solo mostrar cuando hay meta configurada
+- [x] Verificar todas las correcciones en el navegador - Todas funcionan correctamente
+- [x] Guardar checkpoint con las correcciones
