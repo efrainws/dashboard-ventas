@@ -40,7 +40,7 @@ export const targetsRouter = router({
         FROM sales_header sh
         JOIN sales_detail sd ON sd.header_id = sh.id
         LEFT JOIN branches b ON b.id = sh.branch_id
-        WHERE sh.doc_date >= $1 AND sh.doc_date < $2
+        WHERE sh.doc_date::date >= $1::date AND sh.doc_date::date <= $2::date
           ${storeFilter}
         GROUP BY sh.branch_id, b.name, b.sap_id
         ORDER BY b.sap_id;

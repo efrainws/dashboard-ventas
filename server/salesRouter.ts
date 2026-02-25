@@ -83,8 +83,8 @@ export const salesRouter = router({
           -- Incluir array de sale_ids únicos para conteo correcto en frontend
           array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
-        WHERE doc_date >= $1
-          AND doc_date <  $2
+        WHERE doc_date::date >= $1::date
+          AND doc_date::date <= $2::date
           ${additionalFilters.join('\n          ')}
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
@@ -176,8 +176,8 @@ export const salesRouter = router({
           SUM(line_total) AS sales_amount,
           COUNT(DISTINCT sale_id) AS tickets_count
         FROM base
-        WHERE doc_date >= $1
-          AND doc_date <  $2
+        WHERE doc_date::date >= $1::date
+          AND doc_date::date <= $2::date
           ${additionalFilters.join('\n          ')}
         GROUP BY
           hour_ts, branch_id, branch_sap_id,

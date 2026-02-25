@@ -1156,4 +1156,15 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar los mismos colores al texto del porcentaje de cumplimiento
 - [x] Verificar visibilidad en todos los rangos observables
 - [x] Probar con diferentes porcentajes de cumplimiento (89.7%, 88.8%, 77.3%, 70.9%, 63.4%, 40.6%)
-- [ ] Guardar checkpoint con colores progresivos
+- [x] Guardar checkpoint con colores progresivos
+
+
+## Problema Reportado - Fecha Única No Muestra Datos (25/02/2026)
+- [x] Reproducir el problema seleccionando una fecha única en el navegador (23 feb 2026)
+- [x] Revisar lógica de filtrado en SalesVsTarget.tsx
+- [x] Revisar endpoint getSalesVsTarget en targetsRouter.ts
+- [x] Identificar si el problema está en el frontend o backend (backend - operador < en SQL)
+- [x] Implementar corrección (cambiar < por <= en consultas SQL de targetsRouter.ts y salesRouter.ts)
+- [x] Verificar que funcione con fecha única (24 feb 2026 - datos mostrados correctamente)
+- [x] Verificar que no afecte rangos de fechas normales (rango 01-25 feb funciona correctamente)
+- [ ] Guardar checkpoint con la corrección
