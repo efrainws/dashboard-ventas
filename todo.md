@@ -1135,4 +1135,13 @@ Fecha: 1 de febrero de 2026
 - [x] Ordenar tiendas por sap_id en el backend (getSalesVsTarget y getAllStores)
 - [x] Verificar que el filtro de tiendas muestre las opciones ordenadas por SAP
 - [x] Verificar que el grid de tarjetas muestre las tiendas ordenadas por SAP
-- [ ] Guardar checkpoint con el ordenamiento
+- [x] Guardar checkpoint con el ordenamiento
+
+
+## Nueva Tarea - Corregir Visibilidad de Barra de Progreso (25/02/2026)
+- [x] Revisar StoreTargetCard.tsx para identificar el problema de color
+- [x] Cambiar color de la barra de progreso a un color neutro (Cobalto #1A6894)
+- [x] Asegurar que el color contraste bien con el fondo blanco
+- [x] Verificar que la barra sea visible en todos los rangos de cumplimiento (0-100%+)
+- [x] Probar con diferentes porcentajes de cumplimiento (89.7%, 88.8%, 77.3%, 70.9%, 63.4%, 40.6%)
+- [ ] Guardar checkpoint con la corrección

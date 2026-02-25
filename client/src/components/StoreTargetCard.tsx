@@ -61,7 +61,7 @@ export function StoreTargetCard({
                 className="h-full transition-all"
                 style={{
                   width: `${Math.min(completionPercentage, 100)}%`,
-                  backgroundColor: completionPercentage >= 100 ? '#008064' : completionPercentage >= 70 ? 'hsl(var(--primary))' : '#BC2C46',
+                  backgroundColor: completionPercentage >= 100 ? '#008064' : '#1A6894',
                 }}
               />
             </div>
