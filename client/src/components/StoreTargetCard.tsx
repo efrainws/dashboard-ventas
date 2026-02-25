@@ -54,7 +54,7 @@ export function StoreTargetCard({
             <p className="text-sm text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
               Venta del período
             </p>
-            <p className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate, serif' }}>
+            <p className="text-2xl font-bold" style={{ fontFamily: 'Sailec, sans-serif' }}>
               S/ {totalSales.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
@@ -65,7 +65,7 @@ export function StoreTargetCard({
               Meta del período
             </p>
             {hasTarget ? (
-              <p className="text-lg font-semibold" style={{ fontFamily: 'Italian Plate, serif' }}>
+              <p className="text-lg font-semibold" style={{ fontFamily: 'Sailec, sans-serif' }}>
                 S/ {proratedTarget.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             ) : (
@@ -84,7 +84,7 @@ export function StoreTargetCard({
               <p
                 className="text-xl font-bold"
                 style={{
-                  fontFamily: 'Italian Plate, serif',
+                  fontFamily: 'Sailec, sans-serif',
                   color: completionPercentage >= 100 ? '#008064' : '#BC2C46',
                 }}
               >

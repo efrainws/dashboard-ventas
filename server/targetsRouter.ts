@@ -35,13 +35,14 @@ export const targetsRouter = router({
         SELECT
           sh.branch_id AS store_id,
           INITCAP(LOWER(COALESCE(b.name, ''))) AS store_name,
+          COALESCE(b.sap_id, '') AS store_sap_id,
           SUM(sd.total) AS total_sales
         FROM sales_header sh
         JOIN sales_detail sd ON sd.header_id = sh.id
         LEFT JOIN branches b ON b.id = sh.branch_id
         WHERE sh.doc_date >= $1 AND sh.doc_date < $2
           ${storeFilter}
-        GROUP BY sh.branch_id, b.name
+        GROUP BY sh.branch_id, b.name, b.sap_id
         ORDER BY store_name;
       `;
 
@@ -93,6 +94,7 @@ export const targetsRouter = router({
           return {
             store_id: storeId,
             store_name: row.store_name,
+            store_sap_id: row.store_sap_id || '',
             total_sales: totalSales,
             prorated_target: proratedTarget,
             completion_percentage: completionPercentage,

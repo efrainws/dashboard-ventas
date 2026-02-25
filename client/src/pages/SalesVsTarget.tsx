@@ -95,7 +95,7 @@ export default function SalesVsTarget() {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Italian Plate, serif' }}>
+            <h1 className="text-3xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
               Ventas vs Meta
             </h1>
             <p className="text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
@@ -246,8 +246,7 @@ export default function SalesVsTarget() {
       <TargetEditModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
-        storeId={editingStore?.id}
-        storeName={editingStore?.name}
+        initialStoreId={editingStore?.id}
         onSuccess={handleModalSuccess}
       />
     </div>

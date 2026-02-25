@@ -1082,3 +1082,15 @@ Fecha: 1 de febrero de 2026
 - [x] Filtros se muestran correctamente
 - [x] Botón "Editar Metas" visible para admin
 - [x] Estado de carga funciona correctamente
+
+
+## Correcciones - Página Ventas vs Meta (25/02/2026)
+- [x] Cambiar tipografía del título "VENTAS VS META" a Italian Plate No 1
+- [x] Usar tipografía Sailec para los números en los paneles (ventas y metas)
+- [x] Agregar código SAP de tienda en el selector del modal de edición
+- [x] Rediseñar modal de edición: reemplazar formulario por tabla editable
+- [x] Agregar filtros por tienda y período en la tabla del modal
+- [x] Permitir edición rápida de múltiples metas en la tabla
+- [x] Agregar store_sap_id al endpoint getSalesVsTarget
+- [x] Verificar correcciones en el navegador - Todas las correcciones funcionan correctamente
+- [x] Guardar checkpoint con las correcciones
