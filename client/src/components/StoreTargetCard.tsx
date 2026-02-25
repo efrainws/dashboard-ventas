@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProgressRing } from "./ProgressRing";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface StoreTargetCardProps {
   storeName: string;
@@ -42,10 +42,29 @@ export function StoreTargetCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Progress Ring - Solo mostrar si hay meta configurada */}
+        {/* Barra de Progreso - Solo mostrar si hay meta configurada */}
         {hasTarget && (
-          <div className="flex justify-center">
-            <ProgressRing percentage={completionPercentage} />
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm" style={{ fontFamily: 'Sailec, sans-serif' }}>
+              <span className="text-muted-foreground">Cumplimiento</span>
+              <span
+                className="font-semibold"
+                style={{
+                  color: completionPercentage >= 100 ? '#008064' : completionPercentage >= 70 ? '#000' : '#BC2C46',
+                }}
+              >
+                {completionPercentage.toFixed(1)}%
+              </span>
+            </div>
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full transition-all"
+                style={{
+                  width: `${Math.min(completionPercentage, 100)}%`,
+                  backgroundColor: completionPercentage >= 100 ? '#008064' : completionPercentage >= 70 ? 'hsl(var(--primary))' : '#BC2C46',
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -77,23 +96,7 @@ export function StoreTargetCard({
             )}
           </div>
 
-          {/* Cumplimiento */}
-          {hasTarget && (
-            <div className="pt-2 border-t">
-              <p className="text-sm text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
-                Cumplimiento
-              </p>
-              <p
-                className="text-xl font-bold"
-                style={{
-                  fontFamily: 'Sailec, sans-serif',
-                  color: completionPercentage >= 100 ? '#008064' : '#BC2C46',
-                }}
-              >
-                {completionPercentage.toFixed(1)}%
-              </p>
-            </div>
-          )}
+
         </div>
       </CardContent>
     </Card>

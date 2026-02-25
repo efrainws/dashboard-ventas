@@ -260,7 +260,7 @@ export function TargetEditModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: 'Sailec, sans-serif' }}>
             Gestión de Metas Mensuales

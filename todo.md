@@ -1120,3 +1120,12 @@ Fecha: 1 de febrero de 2026
 - [x] Arreglar componente gráfico de progress ring - Solo mostrar cuando hay meta configurada
 - [x] Verificar todas las correcciones en el navegador - Todas funcionan correctamente
 - [x] Guardar checkpoint con las correcciones
+
+
+## Correcciones Adicionales - Modal y Progress Bar (25/02/2026)
+- [x] Ampliar modal de max-w-7xl a max-w-[90vw] para usar 90% del ancho de pantalla
+- [x] Reemplazar ProgressRing circular por barra de progreso horizontal
+- [x] Actualizar StoreTargetCard para usar barra de progreso horizontal personalizada
+- [x] Eliminar sección duplicada de Cumplimiento (ahora está en la barra)
+- [x] Verificar cambios en el navegador - Modal ampliado y barra de progreso funcionan correctamente
+- [x] Guardar checkpoint con las correcciones
