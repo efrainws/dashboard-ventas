@@ -208,7 +208,29 @@ export function CategoryPieChart({ data, comparisonData, title, description }: C
                         </div>
                       </td>
                       <td className="text-right p-2 font-medium">
-                        {formatPercentage(item.value)}
+                        <div className="flex items-center justify-end gap-1">
+                          {formatPercentage(item.value)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.category_name === item.name);
+                            if (comparison && comparison.previous.total_sales > 0 && comparison.current.total_sales > 0) {
+                              // Calcular porcentaje del período actual y anterior
+                              const totalCurrent = comparisonData.reduce((sum, c) => sum + c.current.total_sales, 0);
+                              const totalPrevious = comparisonData.reduce((sum, c) => sum + c.previous.total_sales, 0);
+                              const currentPercent = (comparison.current.total_sales / totalCurrent) * 100;
+                              const previousPercent = (comparison.previous.total_sales / totalPrevious) * 100;
+                              const change = currentPercent - previousPercent;
+                              
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </td>
                     </tr>
                   ))}

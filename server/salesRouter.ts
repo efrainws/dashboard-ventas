@@ -483,7 +483,8 @@ export const salesRouter = router({
           branch_name,
           branch_sap_id,
           SUM(line_total) AS total_sales,
-          COUNT(DISTINCT sale_id) AS total_tickets
+          COUNT(DISTINCT sale_id) AS total_tickets,
+          COUNT(DISTINCT DATE(doc_date)) AS total_days
         FROM base
         WHERE period IS NOT NULL
         GROUP BY period, branch_id, branch_name, branch_sap_id
@@ -503,21 +504,31 @@ export const salesRouter = router({
               branch_id: branchId,
               branch_name: row.branch_name,
               branch_sap_id: row.branch_sap_id,
-              current: { total_sales: 0, total_tickets: 0 },
-              previous: { total_sales: 0, total_tickets: 0 },
+              current: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
+              previous: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
             });
           }
           
           const branch = branchMap.get(branchId);
+          const totalSales = parseFloat(row.total_sales || 0);
+          const totalTickets = parseInt(row.total_tickets || 0, 10);
+          const totalDays = parseInt(row.total_days || 1, 10);
+          const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
+          const avgSalesPerDay = totalDays > 0 ? totalSales / totalDays : 0;
+          
           if (row.period === 'current') {
             branch.current = {
-              total_sales: parseFloat(row.total_sales || 0),
-              total_tickets: parseInt(row.total_tickets || 0, 10),
+              total_sales: totalSales,
+              total_tickets: totalTickets,
+              avg_ticket: avgTicket,
+              avg_sales_per_day: avgSalesPerDay,
             };
           } else if (row.period === 'previous') {
             branch.previous = {
-              total_sales: parseFloat(row.total_sales || 0),
-              total_tickets: parseInt(row.total_tickets || 0, 10),
+              total_sales: totalSales,
+              total_tickets: totalTickets,
+              avg_ticket: avgTicket,
+              avg_sales_per_day: avgSalesPerDay,
             };
           }
         });

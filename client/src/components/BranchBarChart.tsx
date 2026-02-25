@@ -27,8 +27,8 @@ interface BranchComparison {
   branch_id: string;
   branch_name: string;
   branch_sap_id: string;
-  current: { total_sales: number; total_tickets: number };
-  previous: { total_sales: number; total_tickets: number };
+  current: { total_sales: number; total_tickets: number; avg_ticket: number; avg_sales_per_day: number };
+  previous: { total_sales: number; total_tickets: number; avg_ticket: number; avg_sales_per_day: number };
 }
 
 interface BranchBarChartProps {
@@ -264,9 +264,63 @@ export function BranchBarChart({ data, comparisonData, title, description }: Bra
                           })()}
                         </div>
                       </td>
-                      <td className="text-right p-2">{formatNumber(item.tickets)}</td>
-                      <td className="text-right p-2">{formatCurrency(item.avgTicket)}</td>
-                      <td className="text-right p-2">{formatCurrency(item.avgSalesPerDay)}</td>
+                      <td className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {formatNumber(item.tickets)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                            if (comparison && comparison.previous.total_tickets > 0) {
+                              const change = ((comparison.current.total_tickets - comparison.previous.total_tickets) / comparison.previous.total_tickets) * 100;
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {formatCurrency(item.avgTicket)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                            if (comparison && comparison.previous.avg_ticket > 0) {
+                              const change = ((comparison.current.avg_ticket - comparison.previous.avg_ticket) / comparison.previous.avg_ticket) * 100;
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {formatCurrency(item.avgSalesPerDay)}
+                          {comparisonData && (() => {
+                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                            if (comparison && comparison.previous.avg_sales_per_day > 0) {
+                              const change = ((comparison.current.avg_sales_per_day - comparison.previous.avg_sales_per_day) / comparison.previous.avg_sales_per_day) * 100;
+                              if (Math.abs(change) >= 0.1) {
+                                return change > 0 ? (
+                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

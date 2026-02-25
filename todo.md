@@ -1008,3 +1008,11 @@ Fecha: 1 de febrero de 2026
 - [x] Usar Math.floor en lugar de Math.ceil y normalizar fechas a medianoche
 - [x] Verificado en navegador - KPI muestra S/ 25,884 correctamente para 1 día
 - [x] Guardar checkpoint con la corrección
+
+
+## Nueva Tarea - Iconos de Tendencias en Todas las Columnas (24/02/2026)
+- [x] Actualizar BranchBarChart para mostrar iconos en columnas: Transacciones, Ticket Promedio, Venta Prom. Diaria
+- [x] Actualizar endpoint getBranchComparison para incluir avg_ticket y avg_sales_per_day
+- [x] Actualizar CategoryPieChart para mostrar iconos en columna de Porcentaje (%)
+- [x] Verificar que los iconos se muestren correctamente con los colores personalizados
+- [x] Guardar checkpoint con los cambios
