@@ -346,11 +346,10 @@ export const salesRouter = router({
         paramIndex++;
       }
 
-      if (sales_channel && sales_channel !== 'all') {
-        additionalFilters.push(`AND sales_channel = $${paramIndex}`);
-        queryParams.push(sales_channel);
-        paramIndex++;
-      }
+      // Construir filtro de sales_channel para aplicar después del CTE
+      const channelFilter = (sales_channel && sales_channel !== 'all') 
+        ? `AND sales_channel = '${sales_channel}'` 
+        : '';
 
       const query = `
         WITH base AS (
@@ -391,6 +390,7 @@ export const salesRouter = router({
           COUNT(DISTINCT sale_id) AS total_tickets
         FROM base
         WHERE period IS NOT NULL
+          ${channelFilter}
         GROUP BY period;
       `;
 

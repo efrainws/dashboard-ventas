@@ -1026,3 +1026,10 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar lógica de filtrado para incluir canal Rappi
 - [x] Verificar que el filtro funcione correctamente en el navegador - Confirmado que muestra 4 opciones
 - [x] Guardar checkpoint con los cambios
+
+
+## Corrección - Error en getHourlyComparison (25/02/2026)
+- [x] Revisar logs del servidor para identificar el error SQL específico - Error: column "sales_channel" does not exist
+- [x] Corregir la consulta SQL en getHourlyComparison - Movido filtro de sales_channel al WHERE final
+- [x] Probar la consulta en el navegador para verificar que funcione - KPIs se muestran correctamente
+- [x] Guardar checkpoint con la corrección
