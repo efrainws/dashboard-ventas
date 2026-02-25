@@ -1101,3 +1101,12 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar TargetEditModal para usar getAllStores en lugar de getSalesVsTarget
 - [x] Verificar que el botón "Agregar Meta" funcione correctamente - Todas las tiendas se cargan desde branches
 - [x] Guardar checkpoint con la corrección
+
+
+## Corrección - Error al Eliminar Metas (25/02/2026)
+- [x] Revisar la lógica de eliminación en TargetEditModal.tsx
+- [x] Agregar campo id a la interfaz EditableTarget
+- [x] Actualizar mapeo de targetsData para incluir el id
+- [x] Corregir handleDeleteTarget para usar el id en lugar de month/store_id
+- [x] Verificar que la eliminación funcione correctamente - Eliminación exitosa sin errores
+- [x] Guardar checkpoint con la corrección

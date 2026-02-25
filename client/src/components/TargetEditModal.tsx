@@ -30,6 +30,7 @@ interface TargetEditModalProps {
 }
 
 interface EditableTarget {
+  id?: number; // ID de la base de datos (undefined para nuevas metas)
   month: string;
   store_id: string;
   store_name: string;
@@ -93,6 +94,7 @@ export function TargetEditModal({
       const targets: EditableTarget[] = targetsData.targets.map((t: any) => {
         const store = storesData.stores.find((s: any) => s.store_id === t.store_id);
         return {
+          id: t.id, // ID de la base de datos
           month: t.month,
           store_id: t.store_id,
           store_name: store?.store_name || "Desconocida",
@@ -204,8 +206,12 @@ export function TargetEditModal({
       return;
     }
 
-    // Si existe en BD, eliminarla
-    await deleteMutation.mutateAsync({ month, store_id: storeId } as any);
+    // Si existe en BD, eliminarla usando el id
+    if (target?.id) {
+      await deleteMutation.mutateAsync({ id: target.id });
+    } else {
+      toast.error('No se puede eliminar: meta sin ID');
+    }
   };
 
   // Guardar todas las metas modificadas
