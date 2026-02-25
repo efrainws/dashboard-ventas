@@ -56,12 +56,9 @@ export function TargetEditModal({
     { enabled: open }
   );
 
-  // Obtener lista de tiendas desde getSalesVsTarget
-  const { data: salesData } = trpc.targets.getSalesVsTarget.useQuery(
-    {
-      fecha_min: new Date(new Date().getFullYear(), 0, 1).toISOString(),
-      fecha_max: new Date().toISOString(),
-    },
+  // Obtener lista de tiendas desde getAllStores
+  const { data: storesData } = trpc.targets.getAllStores.useQuery(
+    undefined,
     { enabled: open }
   );
 
@@ -92,9 +89,9 @@ export function TargetEditModal({
 
   // Inicializar metas editables cuando se cargan los datos
   useEffect(() => {
-    if (targetsData && salesData) {
+    if (targetsData && storesData) {
       const targets: EditableTarget[] = targetsData.targets.map((t: any) => {
-        const store = salesData.stores.find(s => s.store_id === t.store_id);
+        const store = storesData.stores.find((s: any) => s.store_id === t.store_id);
         return {
           month: t.month,
           store_id: t.store_id,
@@ -107,17 +104,17 @@ export function TargetEditModal({
       });
       setEditableTargets(targets);
     }
-  }, [targetsData, salesData]);
+  }, [targetsData, storesData]);
 
   // Obtener lista única de tiendas para filtro
   const availableStores = useMemo(() => {
-    if (!salesData?.stores) return [];
-    return salesData.stores.map(s => ({
+    if (!storesData?.stores) return [];
+    return storesData.stores.map((s: any) => ({
       id: s.store_id,
       name: s.store_name,
       sapId: s.store_sap_id,
     }));
-  }, [salesData]);
+  }, [storesData]);
 
   // Obtener períodos únicos
   const availablePeriods = useMemo(() => {
@@ -386,7 +383,7 @@ export function TargetEditModal({
                             <Select
                               value={target.store_id}
                               onValueChange={(value) => {
-                                const store = availableStores.find(s => s.id === value);
+                                const store = availableStores.find((s: any) => s.id === value);
                                 if (store) {
                                   setEditableTargets(prev =>
                                     prev.map((t, i) =>
@@ -408,7 +405,7 @@ export function TargetEditModal({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {availableStores.map(store => (
+                                {availableStores.map((store: any) => (
                                   <SelectItem key={store.id} value={store.id}>
                                     {store.name} ({store.sapId})
                                   </SelectItem>

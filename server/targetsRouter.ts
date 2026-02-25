@@ -298,6 +298,41 @@ export const targetsRouter = router({
         });
       }
     }),
+
+  /**
+   * Obtiene todas las tiendas desde la tabla branches de PostgreSQL
+   * Para uso en el modal de edición de metas
+   */
+  getAllStores: publicProcedure
+    .query(async () => {
+      try {
+        const query = `
+          SELECT
+            id AS store_id,
+            INITCAP(LOWER(COALESCE(name, ''))) AS store_name,
+            COALESCE(sap_id, '') AS store_sap_id
+          FROM branches
+          ORDER BY name;
+        `;
+
+        const result = await pool.query(query);
+
+        return {
+          success: true,
+          stores: result.rows.map((row: any) => ({
+            store_id: row.store_id,
+            store_name: row.store_name,
+            store_sap_id: row.store_sap_id,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error fetching all stores:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al obtener lista de tiendas',
+        });
+      }
+    }),
 });
 
 /**

@@ -1094,3 +1094,10 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar store_sap_id al endpoint getSalesVsTarget
 - [x] Verificar correcciones en el navegador - Todas las correcciones funcionan correctamente
 - [x] Guardar checkpoint con las correcciones
+
+
+## Corrección - Modal de Metas: Lista de Tiendas (25/02/2026)
+- [x] Crear endpoint getAllStores que consulte la tabla branches de PostgreSQL
+- [x] Actualizar TargetEditModal para usar getAllStores en lugar de getSalesVsTarget
+- [x] Verificar que el botón "Agregar Meta" funcione correctamente - Todas las tiendas se cargan desde branches
+- [x] Guardar checkpoint con la corrección
