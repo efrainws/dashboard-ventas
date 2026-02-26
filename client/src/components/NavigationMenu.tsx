@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,15 +17,21 @@ import { getLoginUrl } from "@/const";
 export function NavigationMenu() {
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
+  const { effectiveTheme } = useTheme();
+  
+  // Logo según tema
+  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
 
   if (!isAuthenticated) {
     return (
       <nav className="border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-            FLORA & FAUNA
-          </span>
+          <img 
+            src={logoSrc}
+            alt="Flora & Fauna" 
+            className="h-6 w-auto" 
+          />
         </Link>
           <Button asChild>
             <a href={getLoginUrl()}>Iniciar Sesión</a>
@@ -41,9 +48,11 @@ export function NavigationMenu() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-            FLORA & FAUNA
-          </span>
+          <img 
+            src={logoSrc}
+            alt="Flora & Fauna" 
+            className="h-6 w-auto" 
+          />
         </Link>
 
         {/* Navigation Links */}

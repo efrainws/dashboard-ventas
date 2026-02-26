@@ -78,23 +78,23 @@ export default function Home() {
       <NavigationMenu />
       
       <div className="container py-12 space-y-12">
-        {/* Logo */}
-        <div className="flex justify-start">
-          <img 
-            src={logoSrc}
-            alt="Flora & Fauna" 
-            className="h-6 w-auto" 
-          />
-        </div>
-
-        {/* Hero Section */}
-        <div className="space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-            Bienvenido, {user?.name}
-          </h1>
+        {/* Logo y Hero Section */}
+        <div className="space-y-8">
+          <div className="flex justify-start">
+            <img 
+              src={logoSrc}
+              alt="Flora & Fauna" 
+              className="h-12 w-auto" 
+            />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+              Bienvenido, {user?.name}
+            </h1>
           <p className="text-lg text-muted-foreground max-w-2xl">
             Accede a los diferentes módulos de análisis para obtener insights sobre el desempeño de ventas de Flora & Fauna.
           </p>
+          </div>
         </div>
 
         {/* Sales Modules Section */}

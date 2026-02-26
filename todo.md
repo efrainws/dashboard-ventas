@@ -1195,4 +1195,14 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar logo de Flora & Fauna en esquina superior izquierda
 - [x] Verificar que el logo se adapte al tema (claro/oscuro)
 - [x] Verificar colores e iconos en el navegador
-- [ ] Guardar checkpoint con personalización
+- [x] Guardar checkpoint con personalización (version efb50f07)
+
+
+## Nueva Tarea - Sustituir Títulos de Texto por Logos (26/02/2026)
+- [x] Revisar cambios del editor visual en Home.tsx (línea 83)
+- [x] Revisar cambios del editor visual en NavigationMenu.tsx (línea 44)
+- [x] Aplicar cambios para reemplazar títulos de texto con logos
+- [x] Aumentar tamaño del logo en Home.tsx a h-12 para mejor visibilidad
+- [x] Verificar que los logos se vean correctamente en ambos lugares (NavigationMenu y Home)
+- [x] Confirmar adaptación automática al tema claro/oscuro
+- [ ] Guardar checkpoint con logos implementados
