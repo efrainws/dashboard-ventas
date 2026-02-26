@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import { NavigationMenu } from "@/components/NavigationMenu";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -185,53 +186,19 @@ export default function HourlyAnalysis() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NavigationMenu />
       <div className="container py-8 space-y-8">
         {/* Header */}
-        <div className="flex flex-col space-y-4">
-          {/* Logo, Usuario y Logout */}
-          <div className="flex justify-between items-center">
-            <img src={logoSrc} alt="Flora & Fauna" className="h-4 w-auto" />
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
-                <span className="font-medium">{user?.username}</span>
-                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </div>
-          
-          {/* Título y Botones de Navegación/Tema */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR HORAS</h1>
-              <p className="text-muted-foreground">
-                Ventas y transacciones agregadas por hora del día
-              </p>
-              {metadata && (
-                <p className="text-xs text-muted-foreground">
-                  Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | Total registros: {formatNumber(metadata.total_rows)}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <Button variant="default" size="sm" onClick={() => setLocation('/')}>
-                Ver Análisis por Categorías
-              </Button>
-              {user?.role === 'admin' && (
-                <Button variant="outline" size="sm" onClick={() => setLocation('/admin/users')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Administrar Usuarios
-                </Button>
-              )}
-              <Button variant="outline" size="icon" onClick={toggleTheme}>
-                {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>ANÁLISIS POR HORAS</h1>
+          <p className="text-muted-foreground">
+            Ventas y transacciones agregadas por hora del día
+          </p>
+          {metadata && (
+            <p className="text-xs text-muted-foreground">
+              Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | Total registros: {formatNumber(metadata.total_rows)}
+            </p>
+          )}
         </div>
 
         {/* Filtros */}

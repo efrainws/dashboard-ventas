@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { NavigationMenu } from "@/components/NavigationMenu";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -91,6 +92,7 @@ export default function SalesVsTarget() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NavigationMenu />
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">

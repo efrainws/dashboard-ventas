@@ -1,389 +1,139 @@
+import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
-import { getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users, ShoppingCart, Calendar } from "lucide-react";
-import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
-import { DashboardFilters } from "@/components/DashboardFilters";
-import { SalesLineChart } from "@/components/SalesLineChart";
-import { CategoryPieChart } from "@/components/CategoryPieChart";
-import { BranchBarChart } from "@/components/BranchBarChart";
-import { KPICard } from "@/components/KPICard";
-import { useState, useMemo, useEffect } from "react";
-import type { DateRange } from "react-day-picker";
-import { useFilters } from "@/contexts/FiltersContext";
+import { NavigationMenu } from "@/components/NavigationMenu";
+import { BarChart3, Clock, Target, TrendingUp, Loader2 } from "lucide-react";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
-  const { effectiveTheme, toggleTheme } = useTheme();
-  const [, setLocation] = useLocation();
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      setLocation('/login');
-    },
-  });
+  const { user, loading, isAuthenticated } = useAuth();
 
-  // Usar filtros del contexto global
-  const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
-  
-  // Estado local para filtros - Por defecto: día de ayer
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    
-    return { from: yesterday, to: yesterdayEnd };
-  });
-  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-
-  // Sincronizar con contexto global
-  useEffect(() => {
-    setGlobalDateRange(dateRange);
-  }, [dateRange, setGlobalDateRange]);
-
-  useEffect(() => {
-    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
-  }, [selectedBranch, setGlobalBranchId]);
-
-  // Construir filtros para la consulta
-  const filters = useMemo<AggregatedSalesFilters | undefined>(() => {
-    const hasFilters = dateRange || selectedBranch !== "all" || selectedCategory !== "all";
-    
-    if (!hasFilters) {
-      return undefined; // Usar valores por defecto del hook
-    }
-
-    // Construir objeto de filtros solo con valores definidos
-    const result: AggregatedSalesFilters = {};
-    
-    if (dateRange?.from) {
-      const fromDate = new Date(dateRange.from);
-      fromDate.setHours(0, 0, 0, 0);
-      result.fecha_min = fromDate.toISOString();
-    }
-    
-    if (dateRange?.to) {
-      const toDate = new Date(dateRange.to);
-      toDate.setHours(23, 59, 59, 999);
-      result.fecha_max = toDate.toISOString();
-    }
-    
-    if (selectedBranch !== "all") {
-      result.branch_id = selectedBranch;
-    }
-    
-    if (selectedCategory !== "all") {
-      result.category_id = selectedCategory;
-    }
-
-    return result;
-  }, [dateRange, selectedBranch, selectedCategory]);
-
-  // Obtener datos agregados con filtros
-  const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
-
-  // Obtener comparación con período anterior
-  const comparisonQuery = trpc.sales.getAggregatedComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          branch_id: filters.branch_id,
-          category_id: filters.category_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
-
-  // Calcular número de días en el rango
-  const numberOfDays = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return 1;
-    
-    // Normalizar fechas a medianoche para comparación correcta
-    const fromDate = new Date(dateRange.from);
-    fromDate.setHours(0, 0, 0, 0);
-    const toDate = new Date(dateRange.to);
-    toDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir el día inicial
-    return diffDays;
-  }, [dateRange]);
-
-  // Obtener comparación por sucursal
-  const branchComparisonQuery = trpc.sales.getBranchComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          category_id: filters.category_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
-
-  // Obtener comparación por categoría
-  const categoryComparisonQuery = trpc.sales.getCategoryComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          branch_id: filters.branch_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
-
-  const handleLogout = async () => {
-    await logoutMutation.mutateAsync();
-  };
-
-  const handleClearFilters = () => {
-    setDateRange(undefined);
-    setSelectedBranch("all");
-    setSelectedCategory("all");
-  };
-
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2 text-lg font-medium">Cargando...</span>
       </div>
     );
   }
 
-  // Formatear moneda
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <NavigationMenu />
+        <div className="container py-16">
+          <div className="max-w-3xl mx-auto text-center space-y-8">
+            <h1 className="text-5xl font-bold tracking-tight" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+              Dashboard de Ventas
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Sistema de análisis y visualización de datos de ventas para Flora & Fauna
+            </p>
+            <Button size="lg" asChild>
+              <a href={getLoginUrl()}>Iniciar Sesión para Acceder</a>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Formatear número
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-PE').format(num);
-  };
-
-  // Determinar el texto del rango de fechas
-  const dateRangeText = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${dateRange.from.toLocaleDateString('es-PE')} - ${dateRange.to.toLocaleDateString('es-PE')}`;
-    } else if (dateRange?.from) {
-      return `Desde ${dateRange.from.toLocaleDateString('es-PE')}`;
-    } else if (dateRange?.to) {
-      return `Hasta ${dateRange.to.toLocaleDateString('es-PE')}`;
-    }
-    return "Enero 2026 (por defecto)";
-  }, [dateRange]);
-
-  // Logo según tema
-  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
+  const salesModules = [
+    {
+      title: "Análisis por Categorías",
+      description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
+      icon: BarChart3,
+      href: "/sales",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+    {
+      title: "Análisis por Horas",
+      description: "Explora patrones de ventas por hora del día y optimiza la operación",
+      icon: Clock,
+      href: "/hourly",
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+    },
+    {
+      title: "Ventas vs Meta",
+      description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores visuales",
+      icon: Target,
+      href: "/sales-vs-target",
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col space-y-4">
-          {/* Logo, Usuario y Logout */}
-          <div className="flex justify-between items-center">
-            <img 
-              src={logoSrc}
-              alt="Flora & Fauna" 
-              className="h-4 w-auto" 
-            />
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
-                <span className="font-medium">{user?.username}</span>
-                <span className="text-xs opacity-70 capitalize">({user?.role})</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
-              </Button>
-            </div>
+      <NavigationMenu />
+      
+      <div className="container py-12 space-y-12">
+        {/* Hero Section */}
+        <div className="space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+            Bienvenido, {user?.name}
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl">
+            Accede a los diferentes módulos de análisis para obtener insights sobre el desempeño de ventas de Flora & Fauna.
+          </p>
+        </div>
+
+        {/* Sales Modules Section */}
+        <div className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-semibold tracking-tight">Módulos de Ventas</h2>
           </div>
-          
-          {/* Título y Botones de Navegación/Tema */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">ANÁLISIS POR CATEGORÍAS</h1>
-              <p className="text-muted-foreground">
-                Ventas agregadas por fecha, tienda y departamento
-              </p>
-              {metadata && (
-                <p className="text-xs text-muted-foreground">
-                  Actualizado: {new Date(metadata.generated_at).toLocaleString('es-PE')} | 
-                  Total registros: {formatNumber(metadata.total_rows)}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <Button variant="default" size="sm" onClick={() => setLocation('/hourly-analysis')}>
-                Ver Análisis por Horas
-              </Button>
-              <Button variant="default" size="sm" onClick={() => setLocation('/sales-vs-target')}>
-                Ventas vs Meta
-              </Button>
-              {user?.role === 'admin' && (
-                <Button variant="outline" size="sm" onClick={() => setLocation('/admin/users')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Administrar Usuarios
-                </Button>
-              )}
-              <Button variant="outline" size="icon" onClick={toggleTheme}>
-                {effectiveTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {salesModules.map((module) => {
+              const Icon = module.icon;
+              return (
+                <Link key={module.href} href={module.href}>
+                  <a className="block h-full">
+                    <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
+                      <CardHeader>
+                        <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
+                          <Icon className={`h-6 w-6 ${module.color}`} />
+                        </div>
+                        <CardTitle className="text-xl">{module.title}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {module.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Button variant="outline" className="w-full">
+                          Acceder al Módulo
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </a>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
-        {/* Filtros */}
-        <DashboardFilters
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
-          branches={metrics.branches}
-          onBranchChange={setSelectedBranch}
-          selectedCategory={selectedCategory}
-          categories={metrics.categories}
-          onCategoryChange={setSelectedCategory}
-          onClearFilters={handleClearFilters}
-        />
-
-        {/* Estado de carga */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+        {/* Quick Stats or Additional Info */}
+        <div className="bg-muted/50 rounded-lg p-8 space-y-4">
+          <h3 className="text-lg font-semibold">Información del Sistema</h3>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Usuario</p>
+              <p className="font-medium">{user?.name}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Rol</p>
+              <p className="font-medium capitalize">{user?.role}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Módulos Disponibles</p>
+              <p className="font-medium">{salesModules.length} módulos activos</p>
+            </div>
           </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="text-destructive">Error al cargar datos</CardTitle>
-              <CardDescription>{error.message}</CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        {/* KPIs principales */}
-        {!isLoading && !error && (
-          <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <KPICard
-                title="Ventas Totales"
-                value={metrics.totalSales}
-                previousValue={comparisonQuery.data?.previous.total_sales}
-                format="currency"
-                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-                showComparison={!!comparisonQuery.data}
-              />
-
-              <KPICard
-                title="Total Transacciones"
-                value={metrics.totalTickets || 0}
-                previousValue={comparisonQuery.data?.previous.total_tickets}
-                format="number"
-                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
-                showComparison={!!comparisonQuery.data}
-              />
-
-              <KPICard
-                title="Ticket Promedio"
-                value={(metrics.totalTickets || 0) > 0 ? metrics.totalSales / (metrics.totalTickets || 1) : 0}
-                previousValue={
-                  comparisonQuery.data && comparisonQuery.data.previous.total_tickets > 0
-                    ? comparisonQuery.data.previous.total_sales / comparisonQuery.data.previous.total_tickets
-                    : undefined
-                }
-                format="currency"
-                icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-                showComparison={!!comparisonQuery.data}
-              />
-
-              <KPICard
-                title="Promedio por Día"
-                value={numberOfDays > 0 ? metrics.totalSales / numberOfDays : 0}
-                previousValue={
-                  comparisonQuery.data && numberOfDays > 0
-                    ? comparisonQuery.data.previous.total_sales / numberOfDays
-                    : undefined
-                }
-                format="currency"
-                icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
-                showComparison={!!comparisonQuery.data}
-              />
-            </div>
-
-            {/* Gráficos de visualización */}
-            <div className="space-y-6">
-              {/* Gráfico de línea: Progresión de ventas */}
-              <SalesLineChart data={data} />
-
-              {/* Gráfico de barras: Comparación por sucursal (ancho completo) */}
-              <BranchBarChart 
-                data={data} 
-                comparisonData={branchComparisonQuery.data?.data}
-              />
-
-              {/* Gráfico de tarta: Distribución por categoría */}
-              <CategoryPieChart 
-                data={data}
-                comparisonData={categoryComparisonQuery.data?.data}
-              />
-            </div>
-
-            {/* Información de datos */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Información de Datos</CardTitle>
-                <CardDescription>Detalles de la consulta agregada</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Total de registros agregados:</span> {formatNumber(data.length)}</p>
-                  <p><span className="font-medium">Rango de fechas:</span> {dateRangeText}</p>
-                  <p><span className="font-medium">Sucursal:</span> {
-                    selectedBranch === "all" 
-                      ? "Todas las sucursales" 
-                      : metrics.branches.find(b => b.id === selectedBranch)?.name || "Desconocida"
-                  }</p>
-                  <p><span className="font-medium">Categoría:</span> {
-                    selectedCategory === "all" 
-                      ? "Todas las categorías" 
-                      : metrics.categories.find(c => c.id === selectedCategory)?.name || "Desconocida"
-                  }</p>
-                  <p><span className="font-medium">Agrupación:</span> Por hora, sucursal y departamento</p>
-                  <p className="text-xs text-muted-foreground mt-4">
-                    Los datos se agregan desde la base de datos PostgreSQL usando una consulta optimizada
-                    que agrupa ventas por hora, fecha, tienda y departamento. No se muestran detalles
-                    de transacciones individuales ni información de formas de pago.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+        </div>
       </div>
     </div>
   );

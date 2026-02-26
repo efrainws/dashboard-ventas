@@ -1167,4 +1167,17 @@ Fecha: 1 de febrero de 2026
 - [x] Implementar corrección (cambiar < por <= en consultas SQL de targetsRouter.ts y salesRouter.ts)
 - [x] Verificar que funcione con fecha única (24 feb 2026 - datos mostrados correctamente)
 - [x] Verificar que no afecte rangos de fechas normales (rango 01-25 feb funciona correctamente)
-- [ ] Guardar checkpoint con la corrección
+- [x] Guardar checkpoint con la corrección (version d36b0917)
+
+
+## Nueva Tarea - Página Principal y Menú de Navegación (25/02/2026)
+- [x] Diseñar estructura de navegación con grupo "Ventas"
+- [x] Crear componente NavigationMenu desplegable
+- [x] Crear página principal (Home) con tarjetas de acceso a secciones
+- [x] Agrupar páginas existentes bajo "Ventas": Análisis por Categorías, Análisis por Horas, Ventas vs Meta
+- [x] Respaldar contenido anterior de Home.tsx a SalesByCategory.tsx
+- [x] Actualizar App.tsx con nuevas rutas (/sales, /hourly, /sales-vs-target)
+- [x] Aplicar NavigationMenu a SalesByCategory, HourlyAnalysis y SalesVsTarget
+- [x] Simplificar headers eliminando navegación duplicada
+- [x] Verificar navegación entre páginas (Home → Menú Ventas → Análisis por Categorías)
+- [ ] Guardar checkpoint con navegación completa

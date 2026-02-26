@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { FiltersProvider } from "./contexts/FiltersContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import Home from "./pages/Home";
+import SalesByCategory from "./pages/SalesByCategory";
 import HourlyAnalysis from "./pages/HourlyAnalysis";
 import UserManagement from "./pages/UserManagement";
 import Login from "./pages/Login";
@@ -39,8 +40,11 @@ function Router() {
       <Route path="/">
         {() => <ProtectedRoute component={Home} path="/" />}
       </Route>
-      <Route path="/hourly-analysis">
-        {() => <ProtectedRoute component={HourlyAnalysis} path="/hourly-analysis" />}
+      <Route path="/sales">
+        {() => <ProtectedRoute component={SalesByCategory} path="/sales" />}
+      </Route>
+      <Route path="/hourly">
+        {() => <ProtectedRoute component={HourlyAnalysis} path="/hourly" />}
       </Route>
       <Route path="/sales-vs-target">
         {() => <ProtectedRoute component={SalesVsTarget} path="/sales-vs-target" />}
