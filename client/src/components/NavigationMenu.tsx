@@ -21,13 +21,11 @@ export function NavigationMenu() {
     return (
       <nav className="border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
-          <Link href="/">
-            <a className="flex items-center space-x-2">
-              <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-                FLORA & FAUNA
-              </span>
-            </a>
-          </Link>
+        <Link href="/" className="flex items-center space-x-2">
+          <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+            FLORA & FAUNA
+          </span>
+        </Link>
           <Button asChild>
             <a href={getLoginUrl()}>Iniciar Sesión</a>
           </Button>
@@ -42,25 +40,22 @@ export function NavigationMenu() {
     <nav className="border-b bg-background sticky top-0 z-50">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/">
-          <a className="flex items-center space-x-2">
-            <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-              FLORA & FAUNA
-            </span>
-          </a>
+        <Link href="/" className="flex items-center space-x-2">
+          <span className="text-2xl font-bold" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+            FLORA & FAUNA
+          </span>
         </Link>
 
         {/* Navigation Links */}
         <div className="flex items-center space-x-6">
-          <Link href="/">
-            <a
-              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span>Inicio</span>
-            </a>
+          <Link
+            href="/"
+            className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+              isActive("/") ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <Home className="h-4 w-4" />
+            <span>Inicio</span>
           </Link>
 
           {/* Dropdown Menu for Ventas */}
@@ -84,27 +79,21 @@ export function NavigationMenu() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales">
-                    <a className="flex items-center w-full cursor-pointer">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      <span>Análisis por Categorías</span>
-                    </a>
+                  <Link href="/sales" className="flex items-center w-full cursor-pointer">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    <span>Análisis por Categorías</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/hourly">
-                    <a className="flex items-center w-full cursor-pointer">
-                      <Clock className="mr-2 h-4 w-4" />
-                      <span>Análisis por Horas</span>
-                    </a>
+                  <Link href="/hourly" className="flex items-center w-full cursor-pointer">
+                    <Clock className="mr-2 h-4 w-4" />
+                    <span>Análisis por Horas</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales-vs-target">
-                    <a className="flex items-center w-full cursor-pointer">
-                      <Target className="mr-2 h-4 w-4" />
-                      <span>Ventas vs Meta</span>
-                    </a>
+                  <Link href="/sales-vs-target" className="flex items-center w-full cursor-pointer">
+                    <Target className="mr-2 h-4 w-4" />
+                    <span>Ventas vs Meta</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>

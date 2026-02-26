@@ -92,7 +92,7 @@ export default function Home() {
               const Icon = module.icon;
               return (
                 <Link key={module.href} href={module.href}>
-                  <a className="block h-full">
+                  <div className="block h-full">
                     <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
                       <CardHeader>
                         <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
@@ -109,7 +109,7 @@ export default function Home() {
                         </Button>
                       </CardContent>
                     </Card>
-                  </a>
+                  </div>
                 </Link>
               );
             })}

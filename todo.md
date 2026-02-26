@@ -1180,4 +1180,11 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar NavigationMenu a SalesByCategory, HourlyAnalysis y SalesVsTarget
 - [x] Simplificar headers eliminando navegación duplicada
 - [x] Verificar navegación entre páginas (Home → Menú Ventas → Análisis por Categorías)
-- [ ] Guardar checkpoint con navegación completa
+- [x] Guardar checkpoint con navegación completa (version 8b0b7b28)
+
+
+## Error Reportado - Anidación de Etiquetas <a> en Home (26/02/2026)
+- [x] Identificar componentes Link con etiquetas <a> anidadas en Home.tsx (líneas 94-113)
+- [x] Corregir estructura cambiando <a> por <div>
+- [x] Verificar que no haya errores en consola (sin errores de anidación)
+- [ ] Guardar checkpoint con corrección
