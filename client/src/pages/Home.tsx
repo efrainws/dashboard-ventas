@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
@@ -38,38 +40,53 @@ export default function Home() {
     );
   }
 
+  const { effectiveTheme } = useTheme();
+
+  // Colores de la paleta Flora & Fauna
   const salesModules = [
     {
       title: "Análisis por Categorías",
       description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
       icon: BarChart3,
       href: "/sales",
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-[#1A6894]", // Cobalto
+      bgColor: "bg-[#1A6894]/10",
     },
     {
       title: "Análisis por Horas",
       description: "Explora patrones de ventas por hora del día y optimiza la operación",
       icon: Clock,
       href: "/hourly",
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "text-[#C49705]", // Mostaza
+      bgColor: "bg-[#C49705]/10",
     },
     {
       title: "Ventas vs Meta",
       description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores visuales",
       icon: Target,
       href: "/sales-vs-target",
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-[#008064]", // Esmeralda
+      bgColor: "bg-[#008064]/10",
     },
   ];
+
+  // Logo según tema
+  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
 
   return (
     <div className="min-h-screen bg-background">
       <NavigationMenu />
       
       <div className="container py-12 space-y-12">
+        {/* Logo */}
+        <div className="flex justify-start">
+          <img 
+            src={logoSrc}
+            alt="Flora & Fauna" 
+            className="h-6 w-auto" 
+          />
+        </div>
+
         {/* Hero Section */}
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>

@@ -1187,4 +1187,12 @@ Fecha: 1 de febrero de 2026
 - [x] Identificar componentes Link con etiquetas <a> anidadas en Home.tsx (líneas 94-113)
 - [x] Corregir estructura cambiando <a> por <div>
 - [x] Verificar que no haya errores en consola (sin errores de anidación)
-- [ ] Guardar checkpoint con corrección
+- [x] Guardar checkpoint con corrección (version d6d36e0f)
+
+
+## Nueva Tarea - Personalizar Home con Paleta Flora & Fauna (26/02/2026)
+- [x] Actualizar colores de iconos de módulos usando paleta Flora & Fauna (Cobalto, Mostaza, Esmeralda)
+- [x] Agregar logo de Flora & Fauna en esquina superior izquierda
+- [x] Verificar que el logo se adapte al tema (claro/oscuro)
+- [x] Verificar colores e iconos en el navegador
+- [ ] Guardar checkpoint con personalización
