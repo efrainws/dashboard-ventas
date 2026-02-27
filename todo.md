@@ -1305,3 +1305,8 @@ Fecha: 1 de febrero de 2026
 
 - [x] Agregar enlace a /users en NavigationMenu.tsx visible solo para admins
 - [x] Guardar checkpoint
+
+## Corrección ruta Usuarios en menú
+
+- [x] Cambiar href de /users a /admin/users en NavigationMenu.tsx
+- [x] Guardar checkpoint

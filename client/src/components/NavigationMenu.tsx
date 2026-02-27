@@ -133,9 +133,9 @@ export function NavigationMenu() {
           {/* Users link — admin only */}
           {user?.role === "admin" && (
             <Link
-              href="/users"
+              href="/admin/users"
               className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/users") ? "text-primary" : "text-muted-foreground"
+                isActive("/admin/users") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <Users className="h-4 w-4" />
