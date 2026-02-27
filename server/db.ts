@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { DiscrepancyTicket, discrepancyTickets, InsertDiscrepancyTicket, InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -123,4 +123,91 @@ export async function updateUserLastSignIn(userId: number) {
   await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, userId));
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Discrepancy Tickets ────────────────────────────────────────────────────
+
+export async function createDiscrepancyTicket(
+  data: InsertDiscrepancyTicket
+): Promise<{ id: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(discrepancyTickets).values(data);
+  return { id: (result[0] as any).insertId };
+}
+
+export async function getDiscrepancyTickets(filters?: {
+  status?: DiscrepancyTicket["status"];
+  module?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DiscrepancyTicket[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [];
+  if (filters?.status) conditions.push(eq(discrepancyTickets.status, filters.status));
+  if (filters?.module) conditions.push(eq(discrepancyTickets.module, filters.module));
+
+  const query = db
+    .select()
+    .from(discrepancyTickets)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(discrepancyTickets.createdAt))
+    .limit(filters?.limit ?? 100)
+    .offset(filters?.offset ?? 0);
+
+  return query;
+}
+
+export async function getDiscrepancyTicketById(
+  id: number
+): Promise<DiscrepancyTicket | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(discrepancyTickets)
+    .where(eq(discrepancyTickets.id, id))
+    .limit(1);
+
+  return result[0];
+}
+
+export async function updateDiscrepancyTicketStatus(
+  id: number,
+  status: DiscrepancyTicket["status"],
+  resolvedById?: number,
+  resolvedByName?: string,
+  resolutionNotes?: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const updateData: Partial<DiscrepancyTicket> = { status };
+  if (resolvedById) updateData.resolvedById = resolvedById;
+  if (resolvedByName) updateData.resolvedByName = resolvedByName;
+  if (resolutionNotes) updateData.resolutionNotes = resolutionNotes;
+
+  await db
+    .update(discrepancyTickets)
+    .set(updateData)
+    .where(eq(discrepancyTickets.id, id));
+}
+
+export async function countDiscrepancyTickets(filters?: {
+  status?: DiscrepancyTicket["status"];
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const conditions = [];
+  if (filters?.status) conditions.push(eq(discrepancyTickets.status, filters.status));
+
+  const result = await db
+    .select({ count: discrepancyTickets.id })
+    .from(discrepancyTickets)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+  return result.length;
+}

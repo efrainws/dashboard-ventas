@@ -11,13 +11,18 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, ChevronDown, Home, BarChart3, Clock, Target } from "lucide-react";
+import { LogOut, User, ChevronDown, Home, BarChart3, Clock, Target, Ticket } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 
 export function NavigationMenu() {
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const { effectiveTheme } = useTheme();
+  const { data: openTicketCount } = trpc.tickets.countOpen.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+    refetchInterval: 60_000, // refresh every minute
+  });
   
   // Logo según tema
   const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
@@ -108,6 +113,22 @@ export function NavigationMenu() {
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Tickets link */}
+          <Link
+            href="/tickets"
+            className={`relative flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+              isActive("/tickets") ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <Ticket className="h-4 w-4" />
+            <span>Tickets</span>
+            {openTicketCount !== undefined && openTicketCount > 0 && (
+              <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {openTicketCount > 99 ? "99+" : openTicketCount}
+              </span>
+            )}
+          </Link>
 
           {/* User Menu */}
           <DropdownMenu>

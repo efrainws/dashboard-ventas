@@ -16,6 +16,7 @@ import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
+import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 
 export default function SalesByCategory() {
   const { user, loading: authLoading } = useAuth();
@@ -351,6 +352,21 @@ export default function SalesByCategory() {
           </>
         )}
       </div>
+
+      {/* Floating button to report discrepancies */}
+      <ReportDiscrepancyButton
+        variant="fab"
+        context={{
+          module: "sales-by-category",
+          dateFrom: filters?.fecha_min,
+          dateTo: filters?.fecha_max,
+          storeId: selectedBranch !== "all" ? selectedBranch : undefined,
+          storeName:
+            selectedBranch !== "all"
+              ? metrics.branches.find((b) => b.id === selectedBranch)?.name
+              : undefined,
+        }}
+      />
     </div>
   );
 }

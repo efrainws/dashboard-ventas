@@ -12,6 +12,7 @@ import { HourlyLineChart } from "@/components/HourlyLineChart";
 import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import { useFilters } from "@/contexts/FiltersContext";
+import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import {
   Select,
   SelectContent,
@@ -364,6 +365,21 @@ export default function HourlyAnalysis() {
           </div>
         )}
       </div>
+
+      {/* Floating button to report discrepancies */}
+      <ReportDiscrepancyButton
+        variant="fab"
+        context={{
+          module: "hourly-analysis",
+          dateFrom: filters.fecha_min,
+          dateTo: filters.fecha_max,
+          storeId: selectedBranch !== "all" ? selectedBranch : undefined,
+          storeName:
+            selectedBranch !== "all"
+              ? metrics.branches?.find((b: any) => b.id === selectedBranch)?.name
+              : undefined,
+        }}
+      />
     </div>
   );
 }

@@ -1,0 +1,23 @@
+CREATE TABLE `discrepancy_tickets` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`module` varchar(64) NOT NULL,
+	`date_from` varchar(10) NOT NULL,
+	`date_to` varchar(10) NOT NULL,
+	`store_id` varchar(64) NOT NULL DEFAULT 'all',
+	`store_name` varchar(128) NOT NULL DEFAULT 'Todas las tiendas',
+	`dashboard_amount` int,
+	`analyst_amount` int,
+	`difference` int,
+	`description` text NOT NULL,
+	`data_source` varchar(128),
+	`priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
+	`status` enum('open','in_review','resolved','closed') NOT NULL DEFAULT 'open',
+	`resolution_notes` text,
+	`reported_by_id` int NOT NULL,
+	`reported_by_name` varchar(128) NOT NULL,
+	`resolved_by_id` int,
+	`resolved_by_name` varchar(128),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `discrepancy_tickets_id` PRIMARY KEY(`id`)
+);

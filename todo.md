@@ -1249,4 +1249,21 @@ Fecha: 1 de febrero de 2026
 - [x] Revisar targetsRouter.ts: schema Zod usaba z.string().datetime() que rechazaba YYYY-MM-DD
 - [x] Corregir targetsRouter.ts: cambiar a z.string() y parsear fechas con split('-') para evitar UTC
 - [x] Verificar que Ventas vs Meta muestra datos correctamente (01 feb - 27 feb: 12 tiendas) ✓
-- [ ] Guardar checkpoint con corrección
+- [x] Guardar checkpoint con corrección (version c3e03f15)
+
+
+## Nueva Funcionalidad - Sistema de Tickets de Discrepancias (27/02/2026)
+- [x] Diseñar esquema de BD: tabla discrepancy_tickets con campos fecha, tienda, monto_dashboard, monto_analista, diferencia, descripcion, estado, prioridad, fuente, modulo, reportado_por
+- [x] Crear tabla en drizzle/schema.ts y ejecutar pnpm db:push
+- [x] Crear helpers de consulta en server/db.ts
+- [x] Crear ticketsRouter.ts con procedimientos: createTicket, getTickets, updateTicketStatus, getTicketById
+- [x] Crear componente ReportDiscrepancyButton.tsx (botón flotante en dashboards)
+- [x] Crear componente ReportDiscrepancyModal.tsx (formulario de reporte)
+- [x] Crear página DiscrepancyTickets.tsx para administradores
+- [x] Agregar ruta /tickets en App.tsx y en el menú de navegación
+- [x] Integrar botón de reporte en SalesByCategory.tsx
+- [x] Integrar botón de reporte en HourlyAnalysis.tsx
+- [x] Integrar botón de reporte en SalesVsTarget.tsx
+- [x] Implementar notificaciones al administrador cuando se crea un ticket (notifyOwner ya integrado en ticketsRouter.ts + badge en nav)
+- [x] Verificar flujo completo: crear ticket → notificación → gestión admin (5/5 tests pasados)
+- [x] Guardar checkpoint con sistema de tickets

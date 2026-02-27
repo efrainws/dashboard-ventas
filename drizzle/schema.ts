@@ -47,3 +47,50 @@ export const storeMonthlyTargets = mysqlTable("store_monthly_targets", {
 
 export type StoreMonthlyTarget = typeof storeMonthlyTargets.$inferSelect;
 export type InsertStoreMonthlyTarget = typeof storeMonthlyTargets.$inferInsert;
+
+/**
+ * Discrepancy tickets: analysts report when dashboard numbers don't match their sources.
+ * Used to notify the technical team and track resolution.
+ */
+export const discrepancyTickets = mysqlTable("discrepancy_tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Dashboard module where the discrepancy was found */
+  module: varchar("module", { length: 64 }).notNull(),
+  /** Date range start (YYYY-MM-DD) */
+  dateFrom: varchar("date_from", { length: 10 }).notNull(),
+  /** Date range end (YYYY-MM-DD) */
+  dateTo: varchar("date_to", { length: 10 }).notNull(),
+  /** Store ID or 'all' for all stores */
+  storeId: varchar("store_id", { length: 64 }).notNull().default("all"),
+  /** Store name for display */
+  storeName: varchar("store_name", { length: 128 }).notNull().default("Todas las tiendas"),
+  /** Amount shown in the dashboard */
+  dashboardAmount: int("dashboard_amount"),
+  /** Amount the analyst has in their source */
+  analystAmount: int("analyst_amount"),
+  /** Difference (analyst - dashboard) */
+  difference: int("difference"),
+  /** Description of the discrepancy */
+  description: text("description").notNull(),
+  /** Data source the analyst is comparing against */
+  dataSource: varchar("data_source", { length: 128 }),
+  /** Priority: low, medium, high */
+  priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium").notNull(),
+  /** Status: open, in_review, resolved, closed */
+  status: mysqlEnum("status", ["open", "in_review", "resolved", "closed"]).default("open").notNull(),
+  /** Resolution notes from the technical team */
+  resolutionNotes: text("resolution_notes"),
+  /** User ID who reported the ticket */
+  reportedById: int("reported_by_id").notNull(),
+  /** User name who reported the ticket (denormalized for display) */
+  reportedByName: varchar("reported_by_name", { length: 128 }).notNull(),
+  /** User ID who resolved the ticket */
+  resolvedById: int("resolved_by_id"),
+  /** User name who resolved the ticket */
+  resolvedByName: varchar("resolved_by_name", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DiscrepancyTicket = typeof discrepancyTickets.$inferSelect;
+export type InsertDiscrepancyTicket = typeof discrepancyTickets.$inferInsert;

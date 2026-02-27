@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 
 export default function SalesVsTarget() {
   const { user, loading: authLoading } = useAuth();
@@ -258,6 +259,21 @@ export default function SalesVsTarget() {
         onOpenChange={setEditModalOpen}
         initialStoreId={editingStore?.id}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Floating button to report discrepancies */}
+      <ReportDiscrepancyButton
+        variant="fab"
+        context={{
+          module: "sales-vs-target",
+          dateFrom: dateRange?.from ? toLocalDateStr(dateRange.from) : undefined,
+          dateTo: dateRange?.to ? toLocalDateStr(dateRange.to) : undefined,
+          storeId: selectedStores.length === 1 ? selectedStores[0] : undefined,
+          storeName:
+            selectedStores.length === 1
+              ? availableStores.find((s) => s.id === selectedStores[0])?.name
+              : undefined,
+        }}
       />
     </div>
   );
