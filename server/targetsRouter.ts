@@ -13,8 +13,8 @@ export const targetsRouter = router({
   getSalesVsTarget: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(),
-        fecha_max: z.string().datetime(),
+        fecha_min: z.string(), // Formato YYYY-MM-DD en hora local de Lima
+        fecha_max: z.string(), // Formato YYYY-MM-DD en hora local de Lima
         store_ids: z.array(z.string()).optional(), // Filtro multi-select de tiendas
       })
     )
@@ -50,8 +50,11 @@ export const targetsRouter = router({
         const salesResult = await pool.query(salesQuery, queryParams);
 
         // Calcular metas prorrateadas para cada tienda
-        const startDate = new Date(fecha_min);
-        const endDate = new Date(fecha_max);
+        // Parsear YYYY-MM-DD como fecha local (no UTC) para evitar desfase de zona horaria
+        const [startYear, startMonth, startDay] = fecha_min.split('-').map(Number);
+        const [endYear, endMonth, endDay] = fecha_max.split('-').map(Number);
+        const startDate = new Date(startYear, startMonth - 1, startDay);
+        const endDate = new Date(endYear, endMonth - 1, endDay);
         
         // Obtener todos los meses que abarca el rango
         const monthsInRange = getMonthsInRange(startDate, endDate);

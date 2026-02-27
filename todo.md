@@ -1241,4 +1241,12 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir SalesVsTarget.tsx: mismo fix
 - [x] Corregir getHourlyComparison: usar doc_date::date con comparación de fechas puras
 - [x] Verificar en navegador: 18 feb único = 1 solo punto en gráfico ✓
-- [ ] Guardar checkpoint con corrección definitiva
+- [x] Guardar checkpoint con corrección definitiva (version 3ece1b1e)
+
+
+## Bug Regresión - Ventas vs Meta Sin Datos (27/02/2026)
+- [x] Revisar SalesVsTarget.tsx: ya envía YYYY-MM-DD correctamente con toLocalDateStr()
+- [x] Revisar targetsRouter.ts: schema Zod usaba z.string().datetime() que rechazaba YYYY-MM-DD
+- [x] Corregir targetsRouter.ts: cambiar a z.string() y parsear fechas con split('-') para evitar UTC
+- [x] Verificar que Ventas vs Meta muestra datos correctamente (01 feb - 27 feb: 12 tiendas) ✓
+- [ ] Guardar checkpoint con corrección
