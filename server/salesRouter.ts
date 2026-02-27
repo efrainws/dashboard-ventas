@@ -234,12 +234,19 @@ export const salesRouter = router({
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
 
-      // Calcular duración del período actual y período anterior usando solo fechas
-      const currentStart = new Date(fechaMinDate + 'T00:00:00');
-      const currentEnd = new Date(fechaMaxDate + 'T23:59:59');
-      const durationMs = currentEnd.getTime() - currentStart.getTime() + 1;
-      const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = new Date(currentStart.getTime() - 1);
+      // Calcular duración del período actual en días
+      const currentStartDate = new Date(fechaMinDate + 'T12:00:00'); // Mediodía para evitar DST
+      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
+      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      // Calcular período anterior (misma duración, inmediatamente antes)
+      const prevEndDate = new Date(currentStartDate);
+      prevEndDate.setDate(prevEndDate.getDate() - 1);
+      const prevStartDate = new Date(prevEndDate);
+      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
+
+      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
+      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -269,9 +276,9 @@ export const salesRouter = router({
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
             CASE
-              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
                 THEN 'current'
-              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -284,8 +291,8 @@ export const salesRouter = router({
           LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
-              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
+              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -315,8 +322,8 @@ export const salesRouter = router({
             total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
           },
           metadata: {
-            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
-            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+            current_period: { start: fechaMinDate, end: fechaMaxDate },
+            previous_period: { start: prevStartStr, end: prevEndStr },
           },
         };
       } catch (error) {
@@ -344,12 +351,16 @@ export const salesRouter = router({
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
 
-      // Calcular duración del período actual y período anterior usando solo fechas
-      const currentStart = new Date(fechaMinDate + 'T00:00:00');
-      const currentEnd = new Date(fechaMaxDate + 'T23:59:59');
-      const durationMs = currentEnd.getTime() - currentStart.getTime() + 1;
-      const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = new Date(currentStart.getTime() - 1);
+      // Calcular período anterior en días
+      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
+      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
+      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const prevEndDate = new Date(currentStartDate);
+      prevEndDate.setDate(prevEndDate.getDate() - 1);
+      const prevStartDate = new Date(prevEndDate);
+      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
+      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
+      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -385,9 +396,9 @@ export const salesRouter = router({
               ELSE 'Presencial'
             END AS sales_channel,
             CASE
-              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
                 THEN 'current'
-              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -395,8 +406,8 @@ export const salesRouter = router({
           JOIN sales_detail sd ON sd.header_id = sh.id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
-              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
+              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -427,8 +438,8 @@ export const salesRouter = router({
             total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
           },
           metadata: {
-            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
-            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+            current_period: { start: fechaMinDate, end: fechaMaxDate },
+            previous_period: { start: prevStartStr, end: prevEndStr },
           },
         };
       } catch (error) {
@@ -443,20 +454,28 @@ export const salesRouter = router({
   getBranchComparison: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(),
-        fecha_max: z.string().datetime(),
+        fecha_min: z.string(),
+        fecha_max: z.string(),
         category_id: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, category_id } = input;
 
-      // Calcular período anterior
-      const currentStart = new Date(fecha_min);
-      const currentEnd = new Date(fecha_max);
-      const durationMs = currentEnd.getTime() - currentStart.getTime();
-      const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = currentStart;
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Calcular período anterior en días
+      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
+      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
+      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const prevEndDate = new Date(currentStartDate);
+      prevEndDate.setDate(prevEndDate.getDate() - 1);
+      const prevStartDate = new Date(prevEndDate);
+      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
+      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
+      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -482,9 +501,9 @@ export const salesRouter = router({
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
             CASE
-              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
                 THEN 'current'
-              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -498,8 +517,8 @@ export const salesRouter = router({
           LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
-              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
+              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -563,8 +582,8 @@ export const salesRouter = router({
           success: true,
           data: Array.from(branchMap.values()),
           metadata: {
-            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
-            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+            current_period: { start: fechaMinDate, end: fechaMaxDate },
+            previous_period: { start: prevStartStr, end: prevEndStr },
           },
         };
       } catch (error) {
@@ -579,20 +598,28 @@ export const salesRouter = router({
   getCategoryComparison: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(),
-        fecha_max: z.string().datetime(),
+        fecha_min: z.string(),
+        fecha_max: z.string(),
         branch_id: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id } = input;
 
-      // Calcular período anterior
-      const currentStart = new Date(fecha_min);
-      const currentEnd = new Date(fecha_max);
-      const durationMs = currentEnd.getTime() - currentStart.getTime();
-      const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = currentStart;
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Calcular período anterior en días
+      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
+      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
+      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const prevEndDate = new Date(currentStartDate);
+      prevEndDate.setDate(prevEndDate.getDate() - 1);
+      const prevStartDate = new Date(prevEndDate);
+      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
+      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
+      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -619,9 +646,9 @@ export const salesRouter = router({
             g.id AS grandparent_category_id,
             g.name AS grandparent_category_name,
             CASE
-              WHEN sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
                 THEN 'current'
-              WHEN sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}'
+              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -635,8 +662,8 @@ export const salesRouter = router({
           LEFT JOIN categories g ON g.id = p.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date >= '${currentStart.toISOString()}' AND sh.doc_date < '${currentEnd.toISOString()}')
-              OR (sh.doc_date >= '${previousStart.toISOString()}' AND sh.doc_date < '${previousEnd.toISOString()}')
+              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
+              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -689,8 +716,8 @@ export const salesRouter = router({
           success: true,
           data: Array.from(categoryMap.values()),
           metadata: {
-            current_period: { start: currentStart.toISOString(), end: currentEnd.toISOString() },
-            previous_period: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
+            current_period: { start: fechaMinDate, end: fechaMaxDate },
+            previous_period: { start: prevStartStr, end: prevEndStr },
           },
         };
       } catch (error) {

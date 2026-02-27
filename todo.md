@@ -1229,4 +1229,16 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir getHourlyComparison: mismo fix
 - [x] Verificar corrección en Análisis por Categorías (23 feb: solo 1 punto en gráfico) ✓
 - [x] Verificar corrección en Análisis por Horas (23 feb: gráfico muestra solo datos del 23 feb) ✓
-- [ ] Guardar checkpoint con corrección
+- [x] Guardar checkpoint con corrección (version e02097b5)
+
+
+## Bug Persistente - Fecha Única Muestra Dos Días (27/02/2026 - segunda iteración)
+- [x] Diagnosticar zona horaria del servidor PostgreSQL (UTC)
+- [x] Verificar formato de doc_date (timestamp without time zone, almacena hora Lima sin TZ)
+- [x] Causa raíz definitiva: frontend usa setHours(23,59,59,999) + toISOString() → 2026-02-19T04:59:59Z, substring(0,10) = '2026-02-19'
+- [x] Corregir SalesByCategory.tsx: usar toLocaleDateString('sv') para obtener YYYY-MM-DD local
+- [x] Corregir HourlyAnalysis.tsx: mismo fix
+- [x] Corregir SalesVsTarget.tsx: mismo fix
+- [x] Corregir getHourlyComparison: usar doc_date::date con comparación de fechas puras
+- [x] Verificar en navegador: 18 feb único = 1 solo punto en gráfico ✓
+- [ ] Guardar checkpoint con corrección definitiva

@@ -1,0 +1,9 @@
+{
+  "query": "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'sales_header' AND column_name = 'doc_date'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'sales_header' AND column_name = 'doc_date'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 61
+}

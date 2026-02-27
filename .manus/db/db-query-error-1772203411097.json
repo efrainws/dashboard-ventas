@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT current_setting('TIMEZONE') as server_tz, now() as now_utc, now() AT TIME ZONE 'America/Lima' as now_lima;\n\nSELECT column_name, data_type, udt_name \nFROM information_schema.columns \nWHERE table_name = 'sales_header' AND column_name = 'doc_date';\n\nSELECT \n  doc_date, \n  doc_date::date as date_cast_default,\n  (doc_date AT TIME ZONE 'America/Lima')::date as date_lima\nFROM sales_header \nWHERE doc_date IS NOT NULL \nORDER BY doc_date DESC\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute \nSELECT current_setting('TIMEZONE') as server_tz, now() as now_utc, now() AT TIME ZONE 'America/Lima' as now_lima;\n\nSELECT column_name, data_type, udt_name \nFROM information_schema.columns \nWHERE table_name = 'sales_header' AND column_name = 'doc_date';\n\nSELECT \n  doc_date, \n  doc_date::date as date_cast_default,\n  (doc_date AT TIME ZONE 'America/Lima')::date as date_lima\nFROM sales_header \nWHERE doc_date IS NOT NULL \nORDER BY doc_date DESC\nLIMIT 5;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 80 near \"TIME ZONE 'America/Lima' as now_lima\""
+  ]
+}

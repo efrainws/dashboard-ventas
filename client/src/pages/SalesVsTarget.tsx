@@ -46,10 +46,18 @@ export default function SalesVsTarget() {
   const [editingStore, setEditingStore] = useState<{ id: string; name: string } | null>(null);
 
   // Consultar ventas vs meta
+  // Convertir fechas a formato YYYY-MM-DD local para evitar desfase UTC/Lima
+  const toLocalDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const { data, isLoading, refetch } = trpc.targets.getSalesVsTarget.useQuery(
     {
-      fecha_min: dateRange?.from?.toISOString() || new Date().toISOString(),
-      fecha_max: dateRange?.to?.toISOString() || new Date().toISOString(),
+      fecha_min: dateRange?.from ? toLocalDateStr(dateRange.from) : toLocalDateStr(new Date()),
+      fecha_max: dateRange?.to ? toLocalDateStr(dateRange.to) : toLocalDateStr(new Date()),
       store_ids: selectedStores.length > 0 ? selectedStores : undefined,
     },
     {

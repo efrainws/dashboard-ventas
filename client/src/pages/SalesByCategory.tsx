@@ -66,15 +66,21 @@ export default function SalesByCategory() {
     const result: AggregatedSalesFilters = {};
     
     if (dateRange?.from) {
-      const fromDate = new Date(dateRange.from);
-      fromDate.setHours(0, 0, 0, 0);
-      result.fecha_min = fromDate.toISOString();
+      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
+      const d = dateRange.from;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      result.fecha_min = `${y}-${m}-${day}`;
     }
     
     if (dateRange?.to) {
-      const toDate = new Date(dateRange.to);
-      toDate.setHours(23, 59, 59, 999);
-      result.fecha_max = toDate.toISOString();
+      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
+      const d = dateRange.to;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      result.fecha_max = `${y}-${m}-${day}`;
     }
     
     if (selectedBranch !== "all") {
