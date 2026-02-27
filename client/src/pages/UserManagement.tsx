@@ -72,6 +72,7 @@ export default function UserManagement() {
     email: '',
     role: 'user' as 'user' | 'admin',
     sendWelcomeEmail: true,
+    notifyUser: true,
   });
 
   // Queries
@@ -108,8 +109,15 @@ export default function UserManagement() {
   });
 
   const updatePasswordMutation = trpc.users.updatePassword.useMutation({
-    onSuccess: () => {
-      showToast.success('Contraseña actualizada exitosamente');
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        showToast.success('Contraseña actualizada y notificación enviada', {
+          description: 'El usuario recibió sus nuevas credenciales por email.',
+          icon: '✉️',
+        });
+      } else {
+        showToast.success('Contraseña actualizada exitosamente');
+      }
       closeDialog();
     },
     onError: (error) => {
@@ -150,6 +158,7 @@ export default function UserManagement() {
       email: '',
       role: 'user',
       sendWelcomeEmail: true,
+      notifyUser: true,
     });
     setDialogMode('create');
   };
@@ -163,6 +172,7 @@ export default function UserManagement() {
       email: user.email || '',
       role: user.role,
       sendWelcomeEmail: false,
+      notifyUser: false,
     });
     setDialogMode('edit');
   };
@@ -172,6 +182,7 @@ export default function UserManagement() {
     setFormData({
       ...formData,
       password: '',
+      notifyUser: !!user.email, // auto-enable if user has email
     });
     setDialogMode('password');
   };
@@ -186,6 +197,7 @@ export default function UserManagement() {
       email: '',
       role: 'user',
       sendWelcomeEmail: true,
+      notifyUser: true,
     });
   };
 
@@ -213,6 +225,7 @@ export default function UserManagement() {
       updatePasswordMutation.mutate({
         id: selectedUser.id,
         newPassword: formData.password,
+        notifyUser: formData.notifyUser,
       });
     }
   };
@@ -454,7 +467,7 @@ export default function UserManagement() {
                 Ingresa la nueva contraseña para {selectedUser?.name}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+              <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="newPassword">Nueva Contraseña</Label>
                 <Input
@@ -465,6 +478,32 @@ export default function UserManagement() {
                   required
                   minLength={6}
                 />
+              </div>
+              {/* Notify user option */}
+              <div className="flex items-start gap-3 rounded-lg border border-[#232523]/10 bg-[#F5F4F1] p-3">
+                <Checkbox
+                  id="notifyUser"
+                  checked={formData.notifyUser}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, notifyUser: !!checked })
+                  }
+                  disabled={!selectedUser?.email}
+                  className="mt-0.5"
+                />
+                <div className="grid gap-0.5">
+                  <label
+                    htmlFor="notifyUser"
+                    className="flex items-center gap-1.5 text-sm font-medium text-[#232523] cursor-pointer"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Notificar al usuario por email
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedUser?.email
+                      ? `Se enviará la nueva contraseña a ${selectedUser.email}`
+                      : 'El usuario no tiene email registrado.'}
+                  </p>
+                </div>
               </div>
             </div>
             <DialogFooter>

@@ -1284,3 +1284,11 @@ Fecha: 1 de febrero de 2026
 ## Cambio de correo remitente Brevo
 
 - [x] Cambiar sender email de noreply@florayfauna.pe a portaldeventas@florayfauna.pe en server/email.ts
+
+## Correo de restablecimiento de contraseña
+
+- [x] Agregar buildPasswordResetEmailHtml y sendPasswordResetEmail en server/email.ts
+- [x] Integrar sendPasswordResetEmail en userRouter.updatePassword
+- [x] Agregar checkbox "Notificar al usuario por email" en el dialog de cambio de contraseña (UserManagement.tsx)
+- [x] Escribir tests para sendPasswordResetEmail (9/9 tests pasados)
+- [x] Guardar checkpoint

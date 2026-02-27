@@ -5,7 +5,7 @@ import { getDb } from './db';
 import { users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { sendWelcomeEmail } from './email';
+import { sendWelcomeEmail, sendPasswordResetEmail } from './email';
 
 /**
  * Admin-only procedure
@@ -236,9 +236,10 @@ export const userRouter = router({
       z.object({
         id: z.number(),
         newPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+        notifyUser: z.boolean().default(true),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -271,9 +272,28 @@ export const userRouter = router({
           .set({ password: hashedPassword })
           .where(eq(users.id, input.id));
 
+        // Enviar correo de notificación si se solicita y el usuario tiene email
+        let emailSent = false;
+        if (input.notifyUser && existingUser[0].email) {
+          const req = (ctx as any).req;
+          const protocol = req?.protocol ?? 'https';
+          const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
+          const appUrl = `${protocol}://${host}`;
+
+          emailSent = await sendPasswordResetEmail({
+            name: existingUser[0].name ?? existingUser[0].username ?? 'Usuario',
+            email: existingUser[0].email,
+            username: existingUser[0].username ?? '',
+            newPassword: input.newPassword,
+            appUrl,
+            changedByAdmin: true,
+          });
+        }
+
         return {
           success: true,
           message: 'Contraseña actualizada exitosamente',
+          emailSent,
         };
       } catch (error) {
         if (error instanceof TRPCError) {

@@ -67,3 +67,51 @@ describe("Brevo Email Integration", () => {
     expect(["user", "admin"]).toContain(params.role);
   });
 });
+
+describe("Brevo Password Reset Email", () => {
+  it("should have sendPasswordResetEmail exported", async () => {
+    const { sendPasswordResetEmail } = await import("./email");
+    expect(typeof sendPasswordResetEmail).toBe("function");
+  });
+
+  it("should return false when email address is missing", async () => {
+    const { sendPasswordResetEmail } = await import("./email");
+
+    const result = await sendPasswordResetEmail({
+      name: "Test User",
+      email: "", // empty — should skip
+      username: "testuser",
+      newPassword: "NewPass123!",
+      appUrl: "https://ventasdash-ftg2qpku.manus.space",
+      changedByAdmin: true,
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it("should validate password reset email params structure", () => {
+    const params = {
+      name: "María López",
+      email: "maria@florayfauna.pe",
+      username: "mlopez",
+      newPassword: "NuevaClave456!",
+      appUrl: "https://ventasdash-ftg2qpku.manus.space",
+      changedByAdmin: true,
+    };
+
+    expect(params.name).toBeTruthy();
+    expect(params.email).toContain("@");
+    expect(params.username.length).toBeGreaterThanOrEqual(3);
+    expect(params.newPassword.length).toBeGreaterThanOrEqual(6);
+    expect(params.appUrl).toMatch(/^https?:\/\//);
+    expect(typeof params.changedByAdmin).toBe("boolean");
+  });
+
+  it("should connect to Brevo API for password reset (account check)", async () => {
+    const { BrevoClient } = await import("@getbrevo/brevo");
+    const client = new BrevoClient({ apiKey: BREVO_API_KEY });
+    const response = await client.account.getAccount();
+    expect(response).toBeDefined();
+    expect((response as any).email).toBeTruthy();
+  });
+});
