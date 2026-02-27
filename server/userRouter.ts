@@ -5,6 +5,7 @@ import { getDb } from './db';
 import { users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { sendWelcomeEmail } from './email';
 
 /**
  * Admin-only procedure
@@ -72,9 +73,10 @@ export const userRouter = router({
         name: z.string().min(1, 'El nombre es requerido'),
         email: z.string().email('Email inválido').optional(),
         role: z.enum(['user', 'admin']).default('user'),
+        sendWelcomeEmail: z.boolean().default(true),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -111,10 +113,32 @@ export const userRouter = router({
           loginMethod: 'local',
         });
 
+        const userId = (newUser as any).insertId as number;
+
+        // Send welcome email if requested and email is provided
+        let emailSent = false;
+        if (input.sendWelcomeEmail && input.email) {
+          // Determine app URL from the request context
+          const req = (ctx as any).req;
+          const protocol = req?.protocol ?? 'https';
+          const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
+          const appUrl = `${protocol}://${host}`;
+
+          emailSent = await sendWelcomeEmail({
+            name: input.name,
+            email: input.email,
+            username: input.username,
+            password: input.password, // plain-text before hashing
+            appUrl,
+            role: input.role,
+          });
+        }
+
         return {
           success: true,
           message: 'Usuario creado exitosamente',
-          userId: newUser.insertId,
+          userId,
+          emailSent,
         };
       } catch (error) {
         if (error instanceof TRPCError) {

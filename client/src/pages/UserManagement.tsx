@@ -38,7 +38,8 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation } from 'wouter';
-import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon } from 'lucide-react';
+import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon, Mail } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
 
 type User = {
@@ -70,6 +71,7 @@ export default function UserManagement() {
     name: '',
     email: '',
     role: 'user' as 'user' | 'admin',
+    sendWelcomeEmail: true,
   });
 
   // Queries
@@ -77,8 +79,15 @@ export default function UserManagement() {
 
   // Mutations
   const createMutation = trpc.users.createUser.useMutation({
-    onSuccess: () => {
-      showToast.success('Usuario creado exitosamente');
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        showToast.success('Usuario creado y correo de bienvenida enviado', {
+          description: 'El usuario recibirá sus credenciales por email.',
+          icon: '✉️',
+        });
+      } else {
+        showToast.success('Usuario creado exitosamente');
+      }
       utils.users.listUsers.invalidate();
       closeDialog();
     },
@@ -140,6 +149,7 @@ export default function UserManagement() {
       name: '',
       email: '',
       role: 'user',
+      sendWelcomeEmail: true,
     });
     setDialogMode('create');
   };
@@ -152,6 +162,7 @@ export default function UserManagement() {
       name: user.name || '',
       email: user.email || '',
       role: user.role,
+      sendWelcomeEmail: false,
     });
     setDialogMode('edit');
   };
@@ -174,6 +185,7 @@ export default function UserManagement() {
       name: '',
       email: '',
       role: 'user',
+      sendWelcomeEmail: true,
     });
   };
 
@@ -187,6 +199,7 @@ export default function UserManagement() {
         name: formData.name,
         email: formData.email || undefined,
         role: formData.role,
+        sendWelcomeEmail: formData.sendWelcomeEmail,
       });
     } else if (dialogMode === 'edit' && selectedUser) {
       updateMutation.mutate({
@@ -381,6 +394,34 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Welcome email option — only shown when creating and email is provided */}
+              {dialogMode === 'create' && (
+                <div className="flex items-start gap-3 rounded-lg border border-[#232523]/10 bg-[#F5F4F1] p-3">
+                  <Checkbox
+                    id="sendWelcomeEmail"
+                    checked={formData.sendWelcomeEmail}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, sendWelcomeEmail: !!checked })
+                    }
+                    disabled={!formData.email}
+                    className="mt-0.5"
+                  />
+                  <div className="grid gap-0.5">
+                    <label
+                      htmlFor="sendWelcomeEmail"
+                      className="flex items-center gap-1.5 text-sm font-medium text-[#232523] cursor-pointer"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Enviar correo de bienvenida
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {formData.email
+                        ? 'Se enviará la URL, usuario y contraseña al email indicado.'
+                        : 'Ingresa un email para habilitar esta opción.'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>

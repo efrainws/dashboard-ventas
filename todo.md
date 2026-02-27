@@ -1267,3 +1267,16 @@ Fecha: 1 de febrero de 2026
 - [x] Implementar notificaciones al administrador cuando se crea un ticket (notifyOwner ya integrado en ticketsRouter.ts + badge en nav)
 - [x] Verificar flujo completo: crear ticket → notificación → gestión admin (5/5 tests pasados)
 - [x] Guardar checkpoint con sistema de tickets
+
+## Nueva Tarea - Integración Brevo para correos de bienvenida
+
+- [x] Configurar BREVO_API_KEY como secreto en el proyecto
+- [x] Agregar BREVO_API_KEY a server/_core/env.ts
+- [x] Instalar @getbrevo/brevo SDK
+- [x] Crear server/email.ts con helper sendWelcomeEmail usando Brevo API
+- [x] Diseñar plantilla HTML del correo con estilo Flora & Fauna (logo, colores, tipografía)
+- [x] Integrar sendWelcomeEmail en userRouter.createUser
+- [x] Agregar campo sendWelcomeEmail (boolean) al input de createUser para controlar el envío
+- [x] Actualizar UI de gestión de usuarios para mostrar opción de enviar correo
+- [x] Escribir tests del helper de email (5/5 pasados, API key válida)
+- [x] Guardar checkpoint con integración Brevo completa
