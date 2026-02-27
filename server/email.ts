@@ -218,7 +218,7 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<bool
       }),
       sender: {
         name: "Flora & Fauna · Dashboard",
-        email: "noreply@florayfauna.pe",
+        email: "portaldeventas@florayfauna.pe",
       },
       to: [
         {

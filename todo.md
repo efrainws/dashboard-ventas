@@ -1280,3 +1280,7 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar UI de gestión de usuarios para mostrar opción de enviar correo
 - [x] Escribir tests del helper de email (5/5 pasados, API key válida)
 - [x] Guardar checkpoint con integración Brevo completa
+
+## Cambio de correo remitente Brevo
+
+- [x] Cambiar sender email de noreply@florayfauna.pe a portaldeventas@florayfauna.pe en server/email.ts
