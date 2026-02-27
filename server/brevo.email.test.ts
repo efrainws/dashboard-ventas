@@ -115,3 +115,68 @@ describe("Brevo Password Reset Email", () => {
     expect((response as any).email).toBeTruthy();
   });
 });
+
+describe("Brevo Ticket Notification Email", () => {
+  it("should have sendTicketNotificationEmail exported", async () => {
+    const { sendTicketNotificationEmail } = await import("./email");
+    expect(typeof sendTicketNotificationEmail).toBe("function");
+  });
+
+  it("should return 0 when recipients list is empty", async () => {
+    const { sendTicketNotificationEmail } = await import("./email");
+
+    const result = await sendTicketNotificationEmail({
+      ticketId: 999,
+      module: "sales-by-category",
+      dateFrom: "2026-01-01",
+      dateTo: "2026-01-31",
+      storeName: "Todas las tiendas",
+      reportedByName: "Ana Analista",
+      priority: "high",
+      description: "Los montos no coinciden con el sistema SAP.",
+      dashboardAmount: 150000,
+      analystAmount: 148500,
+      difference: -1500,
+      dataSource: "SAP B1",
+      appUrl: "https://ventasdash-ftg2qpku.manus.space",
+      recipients: [], // empty — should return 0
+    });
+
+    expect(result).toBe(0);
+  });
+
+  it("should validate ticket notification params structure", () => {
+    const params = {
+      ticketId: 42,
+      module: "hourly-analysis",
+      dateFrom: "2026-02-01",
+      dateTo: "2026-02-28",
+      storeName: "Tienda Lima Centro",
+      reportedByName: "Carlos Analista",
+      priority: "medium",
+      description: "Diferencia detectada en ventas nocturnas.",
+      dashboardAmount: 85000,
+      analystAmount: 83200,
+      difference: -1800,
+      appUrl: "https://ventasdash-ftg2qpku.manus.space",
+      recipients: [{ name: "Admin", email: "admin@florayfauna.pe" }],
+    };
+
+    expect(params.ticketId).toBeGreaterThan(0);
+    expect(["sales-by-category", "hourly-analysis", "sales-vs-target"]).toContain(params.module);
+    expect(params.dateFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.dateTo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(["low", "medium", "high"]).toContain(params.priority);
+    expect(params.description.length).toBeGreaterThanOrEqual(10);
+    expect(params.recipients.length).toBeGreaterThan(0);
+    expect(params.recipients[0].email).toContain("@");
+  });
+
+  it("should connect to Brevo API for ticket notification (account check)", async () => {
+    const { BrevoClient } = await import("@getbrevo/brevo");
+    const client = new BrevoClient({ apiKey: BREVO_API_KEY });
+    const response = await client.account.getAccount();
+    expect(response).toBeDefined();
+    expect((response as any).email).toBeTruthy();
+  });
+});

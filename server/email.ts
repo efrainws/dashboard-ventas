@@ -463,3 +463,292 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Discrepancy Ticket Notification Email (sent to admins)
+// ---------------------------------------------------------------------------
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
+  low:    { label: "Baja",  color: "#6B7280", emoji: "🟢" },
+  medium: { label: "Media", color: "#D97706", emoji: "🟡" },
+  high:   { label: "Alta",  color: "#DC2626", emoji: "🔴" },
+};
+
+const MODULE_LABELS: Record<string, string> = {
+  "sales-by-category": "Análisis por Categorías",
+  "hourly-analysis":   "Análisis por Horas",
+  "sales-vs-target":   "Ventas vs Meta",
+};
+
+function formatAmount(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Generates the ticket notification email HTML with Flora & Fauna branding.
+ */
+function buildTicketNotificationEmailHtml(params: {
+  ticketId: number;
+  module: string;
+  dateFrom: string;
+  dateTo: string;
+  storeName: string;
+  reportedByName: string;
+  priority: string;
+  description: string;
+  dashboardAmount?: number | null;
+  analystAmount?: number | null;
+  difference?: number | null;
+  dataSource?: string | null;
+  appUrl: string;
+}): string {
+  const {
+    ticketId, module, dateFrom, dateTo, storeName,
+    reportedByName, priority, description,
+    dashboardAmount, analystAmount, difference,
+    dataSource, appUrl,
+  } = params;
+
+  const year = new Date().getFullYear();
+  const moduleLabel = MODULE_LABELS[module] ?? module;
+  const prio = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.medium;
+  const ticketUrl = `${appUrl}/tickets`;
+
+  const hasDifference =
+    dashboardAmount != null && analystAmount != null;
+
+  const differenceColor =
+    (difference ?? 0) < 0 ? "#DC2626" : (difference ?? 0) > 0 ? "#D97706" : COLORS.textBody;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket #${ticketId} – Discrepancia Reportada</title>
+</head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <!-- Email card -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0"
+          style="max-width:600px;width:100%;background-color:${COLORS.card};border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(37,35,37,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:${COLORS.primary};padding:32px 40px;text-align:center;">
+              <img
+                src="${LOGO_DARK_URL}"
+                alt="Flora &amp; Fauna"
+                width="181" height="19"
+                style="display:block;margin:0 auto;filter:invert(1) brightness(2);"
+              />
+              <p style="margin:16px 0 0;color:#C8C4BE;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;">
+                Dashboard de Ventas · Sistema de Tickets
+              </p>
+            </td>
+          </tr>
+
+          <!-- Accent stripe — red for discrepancy alert -->
+          <tr>
+            <td style="height:4px;background:linear-gradient(90deg,#991B1B 0%,#DC2626 50%,#991B1B 100%);"></td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px 28px;">
+
+              <!-- Icon + title -->
+              <div style="text-align:center;margin-bottom:20px;">
+                <div style="display:inline-block;background-color:#FEF2F2;border:1px solid #FECACA;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:26px;">
+                  🚨
+                </div>
+              </div>
+
+              <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:${COLORS.primary};letter-spacing:-0.02em;text-align:center;">
+                Nueva Discrepancia Reportada
+              </h1>
+              <p style="margin:0 0 24px;font-size:14px;color:${COLORS.textMuted};text-align:center;">
+                Ticket <strong style="color:${COLORS.primary};">#${ticketId}</strong> · Reportado por <strong style="color:${COLORS.textBody};">${reportedByName}</strong>
+              </p>
+
+              <!-- Ticket metadata card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color:${COLORS.bg};border:1px solid ${COLORS.border};border-radius:10px;margin-bottom:24px;overflow:hidden;">
+
+                <tr>
+                  <td width="50%" style="padding:14px 20px;border-bottom:1px solid ${COLORS.border};border-right:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Módulo</p>
+                    <p style="margin:0;font-size:14px;font-weight:600;color:${COLORS.primary};">${moduleLabel}</p>
+                  </td>
+                  <td width="50%" style="padding:14px 20px;border-bottom:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Prioridad</p>
+                    <p style="margin:0;font-size:14px;font-weight:700;color:${prio.color};">${prio.emoji} ${prio.label}</p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td width="50%" style="padding:14px 20px;border-bottom:1px solid ${COLORS.border};border-right:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Período</p>
+                    <p style="margin:0;font-size:13px;font-weight:500;color:${COLORS.textBody};">${dateFrom} → ${dateTo}</p>
+                  </td>
+                  <td width="50%" style="padding:14px 20px;border-bottom:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Tienda</p>
+                    <p style="margin:0;font-size:13px;font-weight:500;color:${COLORS.textBody};">${storeName}</p>
+                  </td>
+                </tr>
+
+                ${hasDifference ? `
+                <tr>
+                  <td width="50%" style="padding:14px 20px;border-right:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Monto Dashboard</p>
+                    <p style="margin:0;font-size:15px;font-weight:700;color:${COLORS.primary};font-family:'Courier New',Courier,monospace;">${formatAmount(dashboardAmount)}</p>
+                  </td>
+                  <td width="50%" style="padding:14px 20px;">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Monto Analista</p>
+                    <p style="margin:0;font-size:15px;font-weight:700;color:${COLORS.primary};font-family:'Courier New',Courier,monospace;">${formatAmount(analystAmount)}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding:14px 20px;background-color:#FEF2F2;border-top:1px solid ${COLORS.border};">
+                    <p style="margin:0 0 3px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Diferencia Calculada</p>
+                    <p style="margin:0;font-size:18px;font-weight:800;color:${differenceColor};font-family:'Courier New',Courier,monospace;">${formatAmount(difference)}</p>
+                  </td>
+                </tr>
+                ` : ""}
+
+              </table>
+
+              <!-- Description -->
+              <div style="background-color:${COLORS.bg};border:1px solid ${COLORS.border};border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+                <p style="margin:0 0 6px;font-size:10px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Descripción del Analista</p>
+                <p style="margin:0;font-size:14px;color:${COLORS.textBody};line-height:1.6;">${description}</p>
+                ${dataSource ? `
+                <p style="margin:10px 0 0;font-size:12px;color:${COLORS.textMuted};">
+                  <strong>Fuente:</strong> ${dataSource}
+                </p>` : ""}
+              </div>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <a
+                      href="${ticketUrl}"
+                      style="display:inline-block;background-color:${COLORS.primary};color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 36px;border-radius:8px;"
+                    >
+                      Ver Ticket en el Dashboard →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid ${COLORS.border};margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;color:${COLORS.textMuted};line-height:1.6;">
+                Este correo fue generado automáticamente por el sistema de tickets de discrepancias.<br/>
+                Para gestionar este ticket, ingresa al dashboard con tu cuenta de administrador.
+              </p>
+              <p style="margin:0;font-size:11px;color:#A8A4A0;">
+                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+export interface TicketNotificationEmailParams {
+  ticketId: number;
+  module: string;
+  dateFrom: string;
+  dateTo: string;
+  storeName: string;
+  reportedByName: string;
+  priority: string;
+  description: string;
+  dashboardAmount?: number | null;
+  analystAmount?: number | null;
+  difference?: number | null;
+  dataSource?: string | null;
+  appUrl: string;
+  /** List of admin recipients */
+  recipients: Array<{ name: string | null; email: string }>;
+}
+
+/**
+ * Sends a discrepancy ticket notification email to all admin recipients via Brevo.
+ * Returns the number of emails successfully sent.
+ */
+export async function sendTicketNotificationEmail(
+  params: TicketNotificationEmailParams
+): Promise<number> {
+  const apiKey = ENV.brevoApiKey;
+
+  if (!apiKey) {
+    console.warn("[Email] BREVO_API_KEY not set — skipping ticket notification email");
+    return 0;
+  }
+
+  if (!params.recipients.length) {
+    console.warn("[Email] No admin recipients with email — skipping ticket notification");
+    return 0;
+  }
+
+  const html = buildTicketNotificationEmailHtml(params);
+  const client = new BrevoClient({ apiKey });
+  let sent = 0;
+
+  for (const recipient of params.recipients) {
+    try {
+      await client.transactionalEmails.sendTransacEmail({
+        subject: `🚨 Ticket #${params.ticketId} – Discrepancia en ${MODULE_LABELS[params.module] ?? params.module} [${PRIORITY_CONFIG[params.priority]?.label ?? params.priority}]`,
+        htmlContent: html,
+        sender: {
+          name: "Flora & Fauna · Dashboard",
+          email: "portaldeventas@florayfauna.pe",
+        },
+        to: [
+          {
+            email: recipient.email,
+            name: recipient.name ?? "Administrador",
+          },
+        ],
+        replyTo: {
+          email: "soporte@florayfauna.pe",
+          name: "Soporte Flora & Fauna",
+        },
+      });
+      sent++;
+      console.log(`[Email] Ticket #${params.ticketId} notification sent to ${recipient.email}`);
+    } catch (error: any) {
+      console.error(
+        `[Email] Failed to send ticket notification to ${recipient.email}:`,
+        error?.message ?? error
+      );
+    }
+  }
+
+  return sent;
+}

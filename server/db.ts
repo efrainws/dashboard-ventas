@@ -211,3 +211,19 @@ export async function countDiscrepancyTickets(filters?: {
 
   return result.length;
 }
+
+/**
+ * Returns the list of admin users that have an email address configured.
+ * Used to send ticket notification emails to all admins.
+ */
+export async function getAdminEmails(): Promise<Array<{ name: string | null; email: string }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const admins = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.role, "admin"));
+
+  return admins.filter((a): a is { name: string | null; email: string } => !!a.email);
+}

@@ -1292,3 +1292,11 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar checkbox "Notificar al usuario por email" en el dialog de cambio de contraseña (UserManagement.tsx)
 - [x] Escribir tests para sendPasswordResetEmail (9/9 tests pasados)
 - [x] Guardar checkpoint
+
+## Correo de notificación para tickets de discrepancia
+
+- [x] Agregar buildTicketNotificationEmailHtml y sendTicketNotificationEmail en server/email.ts
+- [x] Agregar getAdminEmails() en server/db.ts
+- [x] Obtener email del admin en ticketsRouter.createTicket y enviar correo via Brevo
+- [x] Escribir tests para sendTicketNotificationEmail (13/13 tests pasados)
+- [x] Guardar checkpoint

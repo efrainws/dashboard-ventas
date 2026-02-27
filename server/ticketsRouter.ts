@@ -8,7 +8,9 @@ import {
   getDiscrepancyTicketById,
   updateDiscrepancyTicketStatus,
   countDiscrepancyTickets,
+  getAdminEmails,
 } from "./db";
+import { sendTicketNotificationEmail } from "./email";
 
 export const ticketsRouter = router({
   /**
@@ -75,6 +77,38 @@ export const ticketsRouter = router({
         title: `🚨 Nueva discrepancia reportada en ${moduleLabel}`,
         content: `**Ticket #${ticket.id}** reportado por **${ctx.user.name ?? ctx.user.username}**\n\n**Módulo:** ${moduleLabel}\n**Período:** ${input.dateFrom} → ${input.dateTo}\n**Tienda:** ${input.storeName}\n**Prioridad:** ${priorityLabels[input.priority]}${amountInfo}\n\n**Descripción:**\n${input.description}${input.dataSource ? `\n\n**Fuente del analista:** ${input.dataSource}` : ""}`,
       });
+
+      // Send Brevo email notification to all admin users with email
+      try {
+        const req = (ctx as any).req;
+        const protocol = req?.protocol ?? "https";
+        const host = req?.get?.("host") ?? req?.headers?.host ?? "ventasdash-ftg2qpku.manus.space";
+        const appUrl = `${protocol}://${host}`;
+
+        const adminRecipients = await getAdminEmails();
+
+        if (adminRecipients.length > 0) {
+          await sendTicketNotificationEmail({
+            ticketId: ticket.id,
+            module: input.module,
+            dateFrom: input.dateFrom,
+            dateTo: input.dateTo,
+            storeName: input.storeName,
+            reportedByName: ctx.user.name ?? ctx.user.username ?? "Usuario",
+            priority: input.priority,
+            description: input.description,
+            dashboardAmount: input.dashboardAmount ?? null,
+            analystAmount: input.analystAmount ?? null,
+            difference: difference ?? null,
+            dataSource: input.dataSource ?? null,
+            appUrl,
+            recipients: adminRecipients,
+          });
+        }
+      } catch (emailError) {
+        // Email failure must not block ticket creation
+        console.error("[Tickets] Failed to send email notification:", emailError);
+      }
 
       return { success: true, ticketId: ticket.id };
     }),
