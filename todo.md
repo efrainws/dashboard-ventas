@@ -1300,3 +1300,8 @@ Fecha: 1 de febrero de 2026
 - [x] Obtener email del admin en ticketsRouter.createTicket y enviar correo via Brevo
 - [x] Escribir tests para sendTicketNotificationEmail (13/13 tests pasados)
 - [x] Guardar checkpoint
+
+## Enlace a Usuarios en el menú
+
+- [x] Agregar enlace a /users en NavigationMenu.tsx visible solo para admins
+- [x] Guardar checkpoint

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, ChevronDown, Home, BarChart3, Clock, Target, Ticket } from "lucide-react";
+import { LogOut, User, ChevronDown, Home, BarChart3, Clock, Target, Ticket, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 
@@ -129,6 +129,19 @@ export function NavigationMenu() {
               </span>
             )}
           </Link>
+
+          {/* Users link — admin only */}
+          {user?.role === "admin" && (
+            <Link
+              href="/users"
+              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+                isActive("/users") ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              <span>Usuarios</span>
+            </Link>
+          )}
 
           {/* User Menu */}
           <DropdownMenu>
