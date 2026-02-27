@@ -11,8 +11,8 @@ export const salesRouter = router({
   getAggregatedSales: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(), // ISO 8601 format: "2024-01-01T00:00:00Z"
-        fecha_max: z.string().datetime(), // ISO 8601 format: "2024-01-31T23:59:59Z"
+        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(), // Filtro opcional de sucursal
         category_id: z.string().optional(), // Filtro opcional de departamento
       })
@@ -20,10 +20,14 @@ export const salesRouter = router({
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, category_id } = input;
 
-      // Construir filtros adicionales dinámicamente
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Construir filtros adicionales dinámicamente (sin fechas - ya están en el SQL)
       const additionalFilters: string[] = [];
-      const queryParams: any[] = [fecha_min, fecha_max];
-      let paramIndex = 3;
+      const queryParams: any[] = [];
+      let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
         additionalFilters.push(`AND branch_id = $${paramIndex}`);
@@ -83,8 +87,8 @@ export const salesRouter = router({
           -- Incluir array de sale_ids únicos para conteo correcto en frontend
           array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
-        WHERE doc_date::date >= $1::date
-          AND doc_date::date <= $2::date
+        WHERE doc_date::date >= '${fechaMinDate}'::date
+          AND doc_date::date <= '${fechaMaxDate}'::date
           ${additionalFilters.join('\n          ')}
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
@@ -122,18 +126,22 @@ export const salesRouter = router({
   getHourlySales: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(), // ISO 8601 format: "2024-01-01T00:00:00Z"
-        fecha_max: z.string().datetime(), // ISO 8601 format: "2024-01-31T23:59:59Z"
+        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(), // Filtro opcional de sucursal
       })
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id } = input;
 
-      // Construir filtros adicionales dinámicamente
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Construir filtros adicionales dinámicamente (sin fechas - ya están en el SQL)
       const additionalFilters: string[] = [];
-      const queryParams: any[] = [fecha_min, fecha_max];
-      let paramIndex = 3;
+      const queryParams: any[] = [];
+      let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
         additionalFilters.push(`AND branch_id = $${paramIndex}`);
@@ -176,8 +184,8 @@ export const salesRouter = router({
           SUM(line_total) AS sales_amount,
           COUNT(DISTINCT sale_id) AS tickets_count
         FROM base
-        WHERE doc_date::date >= $1::date
-          AND doc_date::date <= $2::date
+        WHERE doc_date::date >= '${fechaMinDate}'::date
+          AND doc_date::date <= '${fechaMaxDate}'::date
           ${additionalFilters.join('\n          ')}
         GROUP BY
           hour_ts, branch_id, branch_sap_id,
@@ -213,8 +221,8 @@ export const salesRouter = router({
   getAggregatedComparison: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(),
-        fecha_max: z.string().datetime(),
+        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
       })
@@ -222,12 +230,16 @@ export const salesRouter = router({
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, category_id } = input;
 
-      // Calcular duración del período actual y período anterior
-      const currentStart = new Date(fecha_min);
-      const currentEnd = new Date(fecha_max);
-      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Calcular duración del período actual y período anterior usando solo fechas
+      const currentStart = new Date(fechaMinDate + 'T00:00:00');
+      const currentEnd = new Date(fechaMaxDate + 'T23:59:59');
+      const durationMs = currentEnd.getTime() - currentStart.getTime() + 1;
       const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = currentStart;
+      const previousEnd = new Date(currentStart.getTime() - 1);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -319,8 +331,8 @@ export const salesRouter = router({
   getHourlyComparison: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string().datetime(),
-        fecha_max: z.string().datetime(),
+        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(),
         sales_channel: z.string().optional(),
       })
@@ -328,12 +340,16 @@ export const salesRouter = router({
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, sales_channel } = input;
 
-      // Calcular duración del período actual y período anterior
-      const currentStart = new Date(fecha_min);
-      const currentEnd = new Date(fecha_max);
-      const durationMs = currentEnd.getTime() - currentStart.getTime();
+      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Calcular duración del período actual y período anterior usando solo fechas
+      const currentStart = new Date(fechaMinDate + 'T00:00:00');
+      const currentEnd = new Date(fechaMaxDate + 'T23:59:59');
+      const durationMs = currentEnd.getTime() - currentStart.getTime() + 1;
       const previousStart = new Date(currentStart.getTime() - durationMs);
-      const previousEnd = currentStart;
+      const previousEnd = new Date(currentStart.getTime() - 1);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];

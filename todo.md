@@ -1205,4 +1205,28 @@ Fecha: 1 de febrero de 2026
 - [x] Aumentar tamaño del logo en Home.tsx a h-12 para mejor visibilidad
 - [x] Verificar que los logos se vean correctamente en ambos lugares (NavigationMenu y Home)
 - [x] Confirmar adaptación automática al tema claro/oscuro
-- [ ] Guardar checkpoint con logos implementados
+- [x] Guardar checkpoint con logos implementados (version 0bb1d300)
+
+
+## Problema Reportado - Fecha Única Trae Dos Fechas en Análisis (26/02/2026)
+- [x] Reproducir problema en Análisis por Categorías con fecha única (23 feb) - NO SE REPRODUCE
+- [x] Reproducir problema en Análisis por Horas con fecha única (23 feb) - NO SE REPRODUCE
+- [x] Revisar consultas SQL en salesRouter.ts (getAggregatedSales y getHourlySales)
+- [x] Verificar que targetsRouter.ts ya tiene la corrección aplicada (confirmado)
+- [x] Confirmar que salesRouter.ts YA usa operador <= (líneas 87 y 180)
+- [x] Probar fecha única en ambos dashboards (23 feb funciona correctamente)
+- [x] Verificar que Ventas vs Meta sigue funcionando correctamente
+- [x] Problema NO existe - consultas ya corregidas previamente
+
+
+## Bug Confirmado - Gráfico Muestra Dos Fechas con Fecha Única (27/02/2026)
+- [x] Revisar consulta SQL de getAggregatedSales para identificar por qué devuelve día extra
+- [x] Revisar consulta SQL de getHourlySales para el mismo problema
+- [x] Identificar causa raíz: desfase UTC vs hora Lima (23:59:59 Lima = 04:59:59 UTC del día siguiente)
+- [x] Corregir getAggregatedSales: extraer YYYY-MM-DD del ISO string antes de pasar al SQL
+- [x] Corregir getHourlySales: mismo fix de extracción de fecha
+- [x] Corregir getAggregatedComparison: mismo fix
+- [x] Corregir getHourlyComparison: mismo fix
+- [x] Verificar corrección en Análisis por Categorías (23 feb: solo 1 punto en gráfico) ✓
+- [x] Verificar corrección en Análisis por Horas (23 feb: gráfico muestra solo datos del 23 feb) ✓
+- [ ] Guardar checkpoint con corrección
