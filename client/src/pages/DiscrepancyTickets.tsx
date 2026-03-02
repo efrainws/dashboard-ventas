@@ -51,30 +51,37 @@ const STATUS_CONFIG: Record<
 > = {
   open: {
     label: "Abierto",
-    color: "bg-red-100 text-red-700 border-red-200",
+    // Granate F&F — urgente / alerta
+    color: "bg-[#BC2C46]/15 text-[#BC2C46] border-[#BC2C46]/30",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
   in_review: {
     label: "En Revisión",
-    color: "bg-amber-100 text-amber-700 border-amber-200",
+    // Mostaza F&F — advertencia / pendiente
+    color: "bg-[#C49705]/15 text-[#C49705] border-[#C49705]/30",
     icon: <Clock className="h-3 w-3" />,
   },
   resolved: {
     label: "Resuelto",
-    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    // Esmeralda F&F — éxito / positivo
+    color: "bg-[#008064]/15 text-[#008064] border-[#008064]/30",
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
   closed: {
     label: "Cerrado",
-    color: "bg-gray-100 text-gray-600 border-gray-200",
+    // Humo F&F — neutro / inactivo
+    color: "bg-[#919291]/15 text-[#919291] border-[#919291]/30",
     icon: <XCircle className="h-3 w-3" />,
   },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  low: { label: "Baja", color: "bg-green-100 text-green-700 border-green-200" },
-  medium: { label: "Media", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  high: { label: "Alta", color: "bg-red-100 text-red-700 border-red-200" },
+  // Celeste F&F — positivo suave
+  low: { label: "Baja", color: "bg-[#5BB6B7]/15 text-[#5BB6B7] border-[#5BB6B7]/30" },
+  // Mostaza F&F — advertencia
+  medium: { label: "Media", color: "bg-[#C49705]/15 text-[#C49705] border-[#C49705]/30" },
+  // Granate F&F — urgente
+  high: { label: "Alta", color: "bg-[#BC2C46]/15 text-[#BC2C46] border-[#BC2C46]/30" },
 };
 
 function formatDate(d: string) {
@@ -141,12 +148,12 @@ export default function DiscrepancyTickets() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Abiertos", value: openTickets, color: "text-red-600" },
-            { label: "En Revisión", value: inReviewTickets, color: "text-amber-600" },
+            { label: "Abiertos", value: openTickets, color: "text-[#BC2C46]" },
+            { label: "En Revisión", value: inReviewTickets, color: "text-[#C49705]" },
             {
               label: "Resueltos",
               value: tickets?.filter((t) => t.status === "resolved").length ?? 0,
-              color: "text-emerald-600",
+              color: "text-[#008064]",
             },
             { label: "Total", value: tickets?.length ?? 0, color: "text-foreground" },
           ].map((item) => (
@@ -264,7 +271,7 @@ export default function DiscrepancyTickets() {
                             <span
                               className={
                                 Math.abs(ticket.difference) > 0
-                                  ? "text-amber-600 font-medium"
+                                  ? "text-[#C49705] font-medium"
                                   : ""
                               }
                             >
@@ -354,8 +361,8 @@ export default function DiscrepancyTickets() {
                       <span
                         className={
                           selectedTicketData.difference !== 0
-                            ? "text-amber-600"
-                            : "text-emerald-600"
+                            ? "text-[#C49705]"
+                            : "text-[#008064]"
                         }
                       >
                         {formatAmount(selectedTicketData.difference)}

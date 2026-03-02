@@ -1321,3 +1321,9 @@ Fecha: 1 de febrero de 2026
 
 - [x] Agregar NavigationMenu a UserManagement.tsx igual que en el resto de páginas
 - [x] Guardar checkpoint
+
+## Colores panel de Tickets — paleta F&F gráficos
+
+- [x] Mapear colores actuales de tickets a colores de la paleta F&F de gráficos
+- [x] Reemplazar colores hardcodeados en DiscrepancyTickets.tsx (5 bloques actualizados)
+- [x] Guardar checkpoint
