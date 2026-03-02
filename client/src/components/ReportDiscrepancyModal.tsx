@@ -125,7 +125,7 @@ export function ReportDiscrepancyModal({
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <AlertTriangle className="h-5 w-5 text-[#BC2C46]" />
                 <DialogTitle>Reportar Discrepancia</DialogTitle>
               </div>
               <DialogDescription>
@@ -181,7 +181,7 @@ export function ReportDiscrepancyModal({
                 {difference !== null && (
                   <p
                     className={`text-xs font-medium ${
-                      difference > 0 ? "text-amber-600" : "text-red-600"
+                      difference > 0 ? "text-[#C49705]" : "text-[#BC2C46]"
                     }`}
                   >
                     Diferencia: {difference > 0 ? "+" : ""}

@@ -1327,3 +1327,9 @@ Fecha: 1 de febrero de 2026
 - [x] Mapear colores actuales de tickets a colores de la paleta F&F de gráficos
 - [x] Reemplazar colores hardcodeados en DiscrepancyTickets.tsx (5 bloques actualizados)
 - [x] Guardar checkpoint
+
+## Color botón "Reportar Discrepancia"
+
+- [x] Cambiar color del botón flotante en ReportDiscrepancyButton.tsx a Granate F&F #BC2C46
+- [x] Actualizar colores amber en ReportDiscrepancyModal.tsx a paleta F&F
+- [x] Guardar checkpoint
