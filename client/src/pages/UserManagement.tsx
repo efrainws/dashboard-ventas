@@ -243,12 +243,12 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F4F1]">
+    <div className="min-h-screen bg-background">
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-[#232523]" style={{ fontFamily: 'ItalianPlateNo1, serif' }}>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Administración de Usuarios
             </h1>
             <p className="text-muted-foreground">
@@ -257,7 +257,7 @@ export default function UserManagement() {
           </div>
           <Button
             onClick={openCreateDialog}
-            className="bg-[#232523] hover:bg-[#232523]/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Nuevo Usuario
@@ -265,34 +265,34 @@ export default function UserManagement() {
         </div>
 
         {/* Tabla de Usuarios */}
-        <div className="bg-white rounded-lg shadow-sm border border-[#232523]/10">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           {usersLoading ? (
             <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#232523]" />
+              <Loader2 className="h-8 w-8 animate-spin text-foreground" />
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#232523]/10">
-                  <TableHead className="text-[#232523] font-semibold">Usuario</TableHead>
-                  <TableHead className="text-[#232523] font-semibold">Nombre</TableHead>
-                  <TableHead className="text-[#232523] font-semibold">Email</TableHead>
-                  <TableHead className="text-[#232523] font-semibold">Rol</TableHead>
-                  <TableHead className="text-[#232523] font-semibold">Método</TableHead>
-                  <TableHead className="text-[#232523] font-semibold">Último Acceso</TableHead>
-                  <TableHead className="text-[#232523] font-semibold text-right">Acciones</TableHead>
+                <TableRow className="border-b border-border">
+                  <TableHead className="text-foreground font-semibold">Usuario</TableHead>
+                  <TableHead className="text-foreground font-semibold">Nombre</TableHead>
+                  <TableHead className="text-foreground font-semibold">Email</TableHead>
+                  <TableHead className="text-foreground font-semibold">Rol</TableHead>
+                  <TableHead className="text-foreground font-semibold">Método</TableHead>
+                  <TableHead className="text-foreground font-semibold">Último Acceso</TableHead>
+                  <TableHead className="text-foreground font-semibold text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {usersData?.users.map((user) => (
-                  <TableRow key={user.id} className="border-b border-[#232523]/5 hover:bg-[#F5F4F1]/50">
+                  <TableRow key={user.id} className="border-b border-border hover:bg-muted/40 transition-colors">
                     <TableCell className="font-medium">{user.username}</TableCell>
                     <TableCell>{user.name}</TableCell>
                     <TableCell>{user.email || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {user.role === 'admin' ? (
-                          <Shield className="h-4 w-4 text-[#232523]" />
+                          <Shield className="h-4 w-4 text-foreground" />
                         ) : (
                           <UserIcon className="h-4 w-4 text-muted-foreground" />
                         )}
@@ -307,26 +307,26 @@ export default function UserManagement() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(user)}
-                          className="hover:bg-[#232523]/10"
+                          className="hover:bg-muted"
                         >
-                          <Pencil className="h-4 w-4 text-[#232523]" />
+                          <Pencil className="h-4 w-4 text-foreground" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => openPasswordDialog(user)}
-                          className="hover:bg-[#232523]/10"
+                          className="hover:bg-muted"
                         >
-                          <Key className="h-4 w-4 text-[#232523]" />
+                          <Key className="h-4 w-4 text-foreground" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteUserId(user.id)}
                           disabled={user.id === currentUser.id}
-                          className="hover:bg-[#8B1538]/10"
+                          className="hover:bg-destructive/10"
                         >
-                          <Trash2 className="h-4 w-4 text-[#8B1538]" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -343,7 +343,7 @@ export default function UserManagement() {
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle className="text-[#232523]" style={{ fontFamily: 'ItalianPlateNo1, serif' }}>
+              <DialogTitle className="text-foreground">
                 {dialogMode === 'create' ? 'Crear Nuevo Usuario' : 'Editar Usuario'}
               </DialogTitle>
               <DialogDescription>
@@ -409,7 +409,7 @@ export default function UserManagement() {
               </div>
               {/* Welcome email option — only shown when creating and email is provided */}
               {dialogMode === 'create' && (
-                <div className="flex items-start gap-3 rounded-lg border border-[#232523]/10 bg-[#F5F4F1] p-3">
+                <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
                   <Checkbox
                     id="sendWelcomeEmail"
                     checked={formData.sendWelcomeEmail}
@@ -422,7 +422,7 @@ export default function UserManagement() {
                   <div className="grid gap-0.5">
                     <label
                       htmlFor="sendWelcomeEmail"
-                      className="flex items-center gap-1.5 text-sm font-medium text-[#232523] cursor-pointer"
+                      className="flex items-center gap-1.5 text-sm font-medium text-foreground cursor-pointer"
                     >
                       <Mail className="h-3.5 w-3.5" />
                       Enviar correo de bienvenida
@@ -442,7 +442,7 @@ export default function UserManagement() {
               </Button>
               <Button
                 type="submit"
-                className="bg-[#232523] hover:bg-[#232523]/90"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
                 {(createMutation.isPending || updateMutation.isPending) && (
@@ -460,7 +460,7 @@ export default function UserManagement() {
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle className="text-[#232523]" style={{ fontFamily: 'ItalianPlateNo1, serif' }}>
+              <DialogTitle className="text-foreground">
                 Cambiar Contraseña
               </DialogTitle>
               <DialogDescription>
@@ -480,7 +480,7 @@ export default function UserManagement() {
                 />
               </div>
               {/* Notify user option */}
-              <div className="flex items-start gap-3 rounded-lg border border-[#232523]/10 bg-[#F5F4F1] p-3">
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
                 <Checkbox
                   id="notifyUser"
                   checked={formData.notifyUser}
@@ -493,8 +493,8 @@ export default function UserManagement() {
                 <div className="grid gap-0.5">
                   <label
                     htmlFor="notifyUser"
-                    className="flex items-center gap-1.5 text-sm font-medium text-[#232523] cursor-pointer"
-                  >
+                    className="flex items-center gap-1.5 text-sm font-medium text-foreground cursor-pointer"
+                    >
                     <Mail className="h-3.5 w-3.5" />
                     Notificar al usuario por email
                   </label>
@@ -512,7 +512,7 @@ export default function UserManagement() {
               </Button>
               <Button
                 type="submit"
-                className="bg-[#232523] hover:bg-[#232523]/90"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={updatePasswordMutation.isPending}
               >
                 {updatePasswordMutation.isPending && (
@@ -529,7 +529,7 @@ export default function UserManagement() {
       <AlertDialog open={deleteUserId !== null} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[#232523]">¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. El usuario será eliminado permanentemente del sistema.
             </AlertDialogDescription>
@@ -538,7 +538,7 @@ export default function UserManagement() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteUserId && handleDelete(deleteUserId)}
-              className="bg-[#8B1538] hover:bg-[#8B1538]/90"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -1310,3 +1310,9 @@ Fecha: 1 de febrero de 2026
 
 - [x] Cambiar href de /users a /admin/users en NavigationMenu.tsx
 - [x] Guardar checkpoint
+
+## Corrección colores modo oscuro - Panel de Usuarios
+
+- [x] Revisar paleta CSS modo oscuro en index.css
+- [x] Corregir colores hardcodeados en UserManagement.tsx para usar tokens semánticos (21 reemplazos)
+- [x] Guardar checkpoint
