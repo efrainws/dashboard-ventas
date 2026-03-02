@@ -41,6 +41,7 @@ import { useLocation } from 'wouter';
 import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon, Mail } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
+import { NavigationMenu } from '@/components/NavigationMenu';
 
 type User = {
   id: number;
@@ -244,6 +245,7 @@ export default function UserManagement() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NavigationMenu />
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">

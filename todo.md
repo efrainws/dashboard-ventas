@@ -1316,3 +1316,8 @@ Fecha: 1 de febrero de 2026
 - [x] Revisar paleta CSS modo oscuro en index.css
 - [x] Corregir colores hardcodeados en UserManagement.tsx para usar tokens semánticos (21 reemplazos)
 - [x] Guardar checkpoint
+
+## Navbar en página de Usuarios
+
+- [x] Agregar NavigationMenu a UserManagement.tsx igual que en el resto de páginas
+- [x] Guardar checkpoint
