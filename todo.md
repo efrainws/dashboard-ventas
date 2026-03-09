@@ -1333,3 +1333,8 @@ Fecha: 1 de febrero de 2026
 - [x] Cambiar color del botón flotante en ReportDiscrepancyButton.tsx a Granate F&F #BC2C46
 - [x] Actualizar colores amber en ReportDiscrepancyModal.tsx a paleta F&F
 - [x] Guardar checkpoint
+
+## Ancho modal de metas en SalesVsTarget
+
+- [x] Aumentar ancho del DialogContent del modal de metas en desktop (lg:1200px, xl:1400px)
+- [x] Guardar checkpoint
