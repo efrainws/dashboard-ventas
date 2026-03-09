@@ -367,7 +367,7 @@ export function TargetEditModal({
                     filteredTargets.map((target, index) => (
                       <TableRow
                         key={`${target.month}-${target.store_id}-${index}`}
-                        className={target.isModified ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}
+                        className={target.isModified ? "bg-[#C49705]/10 dark:bg-[#C49705]/15" : ""}
                       >
                         <TableCell style={{ fontFamily: 'Sailec, sans-serif' }}>
                           {target.isNew ? (
