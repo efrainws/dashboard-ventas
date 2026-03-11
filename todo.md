@@ -1343,3 +1343,9 @@ Fecha: 1 de febrero de 2026
 
 - [x] Reemplazar bg-yellow-50 (equivalente a #FEFCEA) por Mostaza F&F #C49705/10 en TargetEditModal.tsx
 - [x] Guardar checkpoint
+
+## Menú hamburguesa para móvil
+
+- [x] Reescribir NavigationMenu.tsx con menú hamburguesa desplegable en columna para móvil
+- [x] Mantener menú horizontal en desktop sin cambios
+- [x] Guardar checkpoint

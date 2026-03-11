@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -11,7 +12,19 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, ChevronDown, Home, BarChart3, Clock, Target, Ticket, Users } from "lucide-react";
+import {
+  LogOut,
+  User,
+  ChevronDown,
+  Home,
+  BarChart3,
+  Clock,
+  Target,
+  Ticket,
+  Users,
+  Menu,
+  X,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 
@@ -19,25 +32,35 @@ export function NavigationMenu() {
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const { effectiveTheme } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [salesExpanded, setSalesExpanded] = useState(false);
+
   const { data: openTicketCount } = trpc.tickets.countOpen.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
-    refetchInterval: 60_000, // refresh every minute
+    refetchInterval: 60_000,
   });
-  
+
   // Logo según tema
   const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
+
+  const isActive = (path: string) => location === path;
+  const isSalesActive =
+    location.startsWith("/sales") ||
+    location.startsWith("/hourly") ||
+    location.startsWith("/sales-vs-target");
+
+  const closeMobile = () => {
+    setMobileOpen(false);
+    setSalesExpanded(false);
+  };
 
   if (!isAuthenticated) {
     return (
       <nav className="border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <img 
-            src={logoSrc}
-            alt="Flora & Fauna" 
-            className="h-6 w-auto" 
-          />
-        </Link>
+          <Link href="/" className="flex items-center space-x-2">
+            <img src={logoSrc} alt="Flora & Fauna" className="h-6 w-auto" />
+          </Link>
           <Button asChild>
             <a href={getLoginUrl()}>Iniciar Sesión</a>
           </Button>
@@ -46,22 +69,16 @@ export function NavigationMenu() {
     );
   }
 
-  const isActive = (path: string) => location === path;
-
   return (
     <nav className="border-b bg-background sticky top-0 z-50">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <img 
-            src={logoSrc}
-            alt="Flora & Fauna" 
-            className="h-6 w-auto" 
-          />
+        <Link href="/" className="flex items-center space-x-2" onClick={closeMobile}>
+          <img src={logoSrc} alt="Flora & Fauna" className="h-6 w-auto" />
         </Link>
 
-        {/* Navigation Links */}
-        <div className="flex items-center space-x-6">
+        {/* ── DESKTOP NAV (md+) ── */}
+        <div className="hidden md:flex items-center space-x-6">
           <Link
             href="/"
             className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
@@ -72,15 +89,13 @@ export function NavigationMenu() {
             <span>Inicio</span>
           </Link>
 
-          {/* Dropdown Menu for Ventas */}
+          {/* Dropdown Ventas */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 className={`flex items-center space-x-1 text-sm font-medium ${
-                  location.startsWith("/sales") || location.startsWith("/hourly") || location.startsWith("/sales-vs-target")
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                  isSalesActive ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 <BarChart3 className="h-4 w-4" />
@@ -114,7 +129,7 @@ export function NavigationMenu() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Tickets link */}
+          {/* Tickets */}
           <Link
             href="/tickets"
             className={`relative flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
@@ -130,7 +145,7 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Users link — admin only */}
+          {/* Usuarios — solo admin */}
           {user?.role === "admin" && (
             <Link
               href="/admin/users"
@@ -167,7 +182,159 @@ export function NavigationMenu() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* ── MOBILE: hamburger button ── */}
+        <button
+          className="md:hidden flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      {/* ── MOBILE DROPDOWN PANEL ── */}
+      {mobileOpen && (
+        <div className="md:hidden border-t bg-background">
+          <div className="container py-3 flex flex-col space-y-1">
+
+            {/* Inicio */}
+            <Link
+              href="/"
+              onClick={closeMobile}
+              className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                isActive("/")
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <Home className="h-4 w-4 shrink-0" />
+              <span>Inicio</span>
+            </Link>
+
+            {/* Ventas — sección expandible */}
+            <div>
+              <button
+                onClick={() => setSalesExpanded((prev) => !prev)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isSalesActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <span className="flex items-center space-x-3">
+                  <BarChart3 className="h-4 w-4 shrink-0" />
+                  <span>Ventas</span>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    salesExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {salesExpanded && (
+                <div className="mt-1 ml-4 pl-3 border-l border-border flex flex-col space-y-1">
+                  <Link
+                    href="/sales"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/sales")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <BarChart3 className="h-4 w-4 shrink-0" />
+                    <span>Análisis por Categorías</span>
+                  </Link>
+                  <Link
+                    href="/hourly"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/hourly")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Clock className="h-4 w-4 shrink-0" />
+                    <span>Análisis por Horas</span>
+                  </Link>
+                  <Link
+                    href="/sales-vs-target"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/sales-vs-target")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Target className="h-4 w-4 shrink-0" />
+                    <span>Ventas vs Meta</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Tickets */}
+            <Link
+              href="/tickets"
+              onClick={closeMobile}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                isActive("/tickets")
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <span className="flex items-center space-x-3">
+                <Ticket className="h-4 w-4 shrink-0" />
+                <span>Tickets</span>
+              </span>
+              {openTicketCount !== undefined && openTicketCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                  {openTicketCount > 99 ? "99+" : openTicketCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Usuarios — solo admin */}
+            {user?.role === "admin" && (
+              <Link
+                href="/admin/users"
+                onClick={closeMobile}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/admin/users")
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                <span>Usuarios</span>
+              </Link>
+            )}
+
+            {/* Separador */}
+            <div className="border-t border-border pt-2 mt-1">
+              {/* Info usuario */}
+              <div className="flex items-center space-x-3 px-3 py-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">{user?.name}</span>
+                  <span className="text-xs capitalize">{user?.role}</span>
+                </div>
+              </div>
+
+              {/* Cerrar Sesión */}
+              <button
+                onClick={() => { closeMobile(); logout(); }}
+                className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Cerrar Sesión</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
