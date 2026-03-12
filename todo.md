@@ -1360,3 +1360,8 @@ Fecha: 1 de febrero de 2026
 - [x] Integrar ReportDiscrepancyButton en la nueva página
 - [x] Escribir tests del procedimiento tRPC (12/12 pasados)
 - [x] Guardar checkpoint
+
+## Tarjeta Transacciones Identificadas en Home
+
+- [x] Agregar tarjeta de acceso rápido a /identified-transactions en Home.tsx
+- [x] Guardar checkpoint

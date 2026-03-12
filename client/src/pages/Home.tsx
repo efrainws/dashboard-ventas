@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2 } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -67,6 +67,14 @@ export default function Home() {
       href: "/sales-vs-target",
       color: "text-[#008064]", // Esmeralda
       bgColor: "bg-[#008064]/10",
+    },
+    {
+      title: "Transacciones Identificadas",
+      description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
+      icon: UserCheck,
+      href: "/identified-transactions",
+      color: "text-[#BC2C46]", // Granate
+      bgColor: "bg-[#BC2C46]/10",
     },
   ];
 
