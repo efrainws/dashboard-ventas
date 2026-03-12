@@ -13,6 +13,7 @@ import UserManagement from "./pages/UserManagement";
 import Login from "./pages/Login";
 import SalesVsTarget from "./pages/SalesVsTarget";
 import DiscrepancyTickets from "./pages/DiscrepancyTickets";
+import IdentifiedTransactions from "./pages/IdentifiedTransactions";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType; path: string }) {
@@ -55,6 +56,9 @@ function Router() {
       </Route>
       <Route path="/tickets">
         {() => <ProtectedRoute component={DiscrepancyTickets} path="/tickets" />}
+      </Route>
+      <Route path="/identified-transactions">
+        {() => <ProtectedRoute component={IdentifiedTransactions} path="/identified-transactions" />}
       </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

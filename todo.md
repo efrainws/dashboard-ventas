@@ -1349,3 +1349,14 @@ Fecha: 1 de febrero de 2026
 - [x] Reescribir NavigationMenu.tsx con menú hamburguesa desplegable en columna para móvil
 - [x] Mantener menú horizontal en desktop sin cambios
 - [x] Guardar checkpoint
+
+## Página Transacciones Identificadas
+
+- [x] Revisar conexión PostgreSQL, filtros y componentes existentes
+- [x] Crear procedimiento tRPC sales.getIdentifiedTransactions con el query PostgreSQL
+- [x] Crear IdentifiedTransactions.tsx con filtros, resumen consolidado y tarjetas por tienda
+- [x] Registrar ruta /identified-transactions en App.tsx
+- [x] Agregar enlace en NavigationMenu.tsx bajo el dropdown de Ventas
+- [x] Integrar ReportDiscrepancyButton en la nueva página
+- [x] Escribir tests del procedimiento tRPC (12/12 pasados)
+- [x] Guardar checkpoint

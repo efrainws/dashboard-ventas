@@ -725,4 +725,99 @@ export const salesRouter = router({
         throw new Error('Error al consultar comparación por categoría');
       }
     }),
+
+  /**
+   * Obtiene transacciones identificadas por tienda y día
+   * Calcula total de transacciones, identificadas y porcentaje de identificación
+   * Soporta filtros de fecha y sucursal
+   */
+  getIdentifiedTransactions: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD
+        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD
+        branch_sap_id: z.string().optional(), // Filtro opcional de tienda por sap_id
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_sap_id } = input;
+
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_sap_id && branch_sap_id !== 'all') {
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
+        queryParams.push(branch_sap_id);
+        paramIndex++;
+      }
+
+      const query = `
+        SELECT
+          DATE(sh.doc_date) AS sale_day,
+          b.name            AS nombre,
+          b.sap_id          AS codigo_tienda,
+          COUNT(*)          AS total_transactions,
+          COUNT(*) FILTER (
+            WHERE sh.customer_id IS NOT NULL
+              AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'
+          )                 AS identified_transactions,
+          ROUND(
+            100.0 * COUNT(*) FILTER (
+              WHERE sh.customer_id IS NOT NULL
+                AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'
+            ) / NULLIF(COUNT(*), 0),
+            2
+          )                 AS identified_percentage
+        FROM public.sales_header sh
+        LEFT JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.doc_date IS NOT NULL
+          AND DATE(sh.doc_date) >= '${fechaMinDate}'::date
+          AND DATE(sh.doc_date) <= '${fechaMaxDate}'::date
+          ${additionalFilters.join('\n          ')}
+        GROUP BY
+          DATE(sh.doc_date),
+          b.name,
+          b.sap_id
+        ORDER BY
+          sale_day,
+          CAST(SUBSTRING(b.sap_id FROM '[0-9]+') AS INTEGER) NULLS LAST;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+
+        // Convertir bigint a number para serialización JSON
+        const rows = result.rows.map((row: any) => ({
+          sale_day: row.sale_day instanceof Date
+            ? row.sale_day.toISOString().substring(0, 10)
+            : String(row.sale_day),
+          nombre: row.nombre ?? 'Sin nombre',
+          codigo_tienda: row.codigo_tienda ?? '',
+          total_transactions: Number(row.total_transactions),
+          identified_transactions: Number(row.identified_transactions),
+          identified_percentage: row.identified_percentage !== null
+            ? Number(row.identified_percentage)
+            : 0,
+        }));
+
+        return {
+          success: true,
+          data: rows,
+          metadata: {
+            total_rows: rows.length,
+            fecha_min: fechaMinDate,
+            fecha_max: fechaMaxDate,
+            branch_sap_id: branch_sap_id || 'all',
+            generated_at: new Date().toISOString(),
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing identified transactions query:', error);
+        throw new Error('Error al consultar transacciones identificadas');
+      }
+    }),
 });

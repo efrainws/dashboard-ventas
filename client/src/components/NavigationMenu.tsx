@@ -22,6 +22,7 @@ import {
   Target,
   Ticket,
   Users,
+  UserCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -47,7 +48,8 @@ export function NavigationMenu() {
   const isSalesActive =
     location.startsWith("/sales") ||
     location.startsWith("/hourly") ||
-    location.startsWith("/sales-vs-target");
+    location.startsWith("/sales-vs-target") ||
+    location.startsWith("/identified-transactions");
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -123,6 +125,12 @@ export function NavigationMenu() {
                   <Link href="/sales-vs-target" className="flex items-center w-full cursor-pointer">
                     <Target className="mr-2 h-4 w-4" />
                     <span>Ventas vs Meta</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/identified-transactions" className="flex items-center w-full cursor-pointer">
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    <span>Transacciones Identificadas</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -270,6 +278,18 @@ export function NavigationMenu() {
                   >
                     <Target className="h-4 w-4 shrink-0" />
                     <span>Ventas vs Meta</span>
+                  </Link>
+                  <Link
+                    href="/identified-transactions"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/identified-transactions")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <UserCheck className="h-4 w-4 shrink-0" />
+                    <span>Transacciones Identificadas</span>
                   </Link>
                 </div>
               )}
