@@ -240,7 +240,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                     <th className="text-right p-2 font-medium">Transacciones</th>
                     <th className="text-right p-2 font-medium">Ticket Promedio</th>
                     <th className="text-right p-2 font-medium">Venta Prom. Diaria</th>
-                    <th className="text-right p-2 font-medium" style={{ color: 'var(--ff-cobalto)' }}>Proyección Mensual</th>
+                    <th className="text-right p-2 font-medium">Proyección Mensual</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -330,7 +330,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                         </div>
                       </td>
                       {/* Proyección mensual = promedio diario × días del mes */}
-                      <td className="text-right p-2 font-semibold" style={{ color: 'var(--ff-cobalto)' }}>
+                      <td className="text-right p-2" style={{ color: '#232523' }}>
                         {formatCurrency(item.avgSalesPerDay * resolvedDaysInMonth)}
                       </td>
                     </tr>
@@ -380,7 +380,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                       )}
                     </td>
                     {/* Total proyección mensual */}
-                    <td className="text-right p-2" style={{ color: 'var(--ff-cobalto)' }}>
+                    <td className="text-right p-2" style={{ color: '#232523' }}>
                       {formatCurrency(
                         branchData.length > 0
                           ? (branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount) * resolvedDaysInMonth

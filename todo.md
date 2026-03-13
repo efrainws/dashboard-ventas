@@ -1391,3 +1391,9 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar columna Proyección Mensual (avgSalesPerDay × daysInMonth) con color Cobalto F&F
 - [x] Pasar daysInMonth calculado desde SalesByCategory.tsx a BranchBarChart
 - [x] Verificar sin errores TypeScript (0 errores) y guardar checkpoint
+
+## Ajustes tabla Comparación por Sucursal
+
+- [x] Cambiar color texto Proyección Mensual de Cobalto a #232523
+- [x] Quitar font-semibold/negrita de los valores de la tabla
+- [x] Guardar checkpoint
