@@ -127,7 +127,7 @@ export function StoreTargetCard({
           {/* Venta del período */}
           <div>
             <p
-              className="text-xs text-muted-foreground uppercase tracking-wide"
+              className="text-xs text-muted-foreground tracking-wide"
               style={{ fontFamily: "Sailec, sans-serif" }}
             >
               Venta del período
@@ -143,7 +143,7 @@ export function StoreTargetCard({
           {/* Meta del período */}
           <div>
             <p
-              className="text-xs text-muted-foreground uppercase tracking-wide"
+              className="text-xs text-muted-foreground tracking-wide"
               style={{ fontFamily: "Sailec, sans-serif" }}
             >
               Meta del período
@@ -169,9 +169,9 @@ export function StoreTargetCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p
-                className="text-xs text-muted-foreground uppercase tracking-wide"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
+              className="text-xs text-muted-foreground tracking-wide"
+              style={{ fontFamily: "Sailec, sans-serif" }}
+            >
                 Prom. diario
               </p>
               <p
@@ -189,7 +189,7 @@ export function StoreTargetCard({
             <div>
               <div className="flex items-center gap-1">
                 <p
-                  className="text-xs text-muted-foreground uppercase tracking-wide"
+                  className="text-xs text-muted-foreground tracking-wide"
                   style={{ fontFamily: "Sailec, sans-serif" }}
                 >
                   Proyección
