@@ -1384,3 +1384,10 @@ Fecha: 1 de febrero de 2026
 - [x] Mostrar ambas métricas en las tarjetas de cada tienda con colores F&F
 - [x] Verificar sin errores TypeScript (0 errores)
 - [x] Guardar checkpoint
+
+## Proyección en tabla Comparación por Sucursal
+
+- [x] Revisar tabla Comparación por Sucursal en SalesByCategory.tsx (BranchBarChart.tsx)
+- [x] Agregar columna Proyección Mensual (avgSalesPerDay × daysInMonth) con color Cobalto F&F
+- [x] Pasar daysInMonth calculado desde SalesByCategory.tsx a BranchBarChart
+- [x] Verificar sin errores TypeScript (0 errores) y guardar checkpoint

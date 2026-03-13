@@ -46,6 +46,12 @@ export default function SalesByCategory() {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
+  // Calcular días del mes para la proyección mensual
+  const daysInMonth = useMemo(() => {
+    const refDate = dateRange?.to ?? dateRange?.from ?? new Date();
+    return new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).getDate();
+  }, [dateRange]);
+
   // Sincronizar con contexto global
   useEffect(() => {
     setGlobalDateRange(dateRange);
@@ -311,6 +317,7 @@ export default function SalesByCategory() {
               <BranchBarChart 
                 data={data} 
                 comparisonData={branchComparisonQuery.data?.data}
+                daysInMonth={daysInMonth}
               />
 
               {/* Gráfico de tarta: Distribución por categoría */}
