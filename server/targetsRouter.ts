@@ -303,6 +303,112 @@ export const targetsRouter = router({
     }),
 
   /**
+   * Carga masiva de metas desde CSV
+   * Acepta un array de filas ya parseadas en el cliente
+   * Solo accesible para admin
+   */
+  bulkUpsertFromCSV: protectedProcedure
+    .input(
+      z.object({
+        rows: z.array(
+          z.object({
+            month: z.string().regex(/^\d{4}-\d{2}$/, 'Formato de mes inválido (YYYY-MM)'),
+            store_sap_id: z.string().min(1, 'Código SAP requerido'),
+            monthly_target_amount: z.number().positive('La meta debe ser mayor a 0'),
+          })
+        ).min(1, 'El CSV debe tener al menos una fila de datos'),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Solo admin puede cargar metas masivamente
+      if (ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'No tienes permisos para cargar metas',
+        });
+      }
+
+      const { rows } = input;
+
+      try {
+        // Obtener el mapeo de sap_id → store_id desde PostgreSQL
+        const storesResult = await pool.query(
+          `SELECT id AS store_id, sap_id AS store_sap_id FROM branches WHERE sap_id IS NOT NULL`
+        );
+        const storeMap = new Map<string, string>(
+          storesResult.rows.map((r: any) => [r.store_sap_id.trim().toUpperCase(), r.store_id])
+        );
+
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Base de datos no disponible',
+          });
+        }
+
+        let inserted = 0;
+        let updated = 0;
+        const errors: { row: number; message: string }[] = [];
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const sapKey = row.store_sap_id.trim().toUpperCase();
+          const storeId = storeMap.get(sapKey);
+
+          if (!storeId) {
+            errors.push({ row: i + 2, message: `Código SAP '${row.store_sap_id}' no encontrado` });
+            continue;
+          }
+
+          try {
+            const existing = await db.select().from(storeMonthlyTargets)
+              .where(
+                and(
+                  eq(storeMonthlyTargets.month, row.month),
+                  eq(storeMonthlyTargets.storeId, storeId)
+                )
+              )
+              .limit(1);
+
+            if (existing.length > 0) {
+              await db.update(storeMonthlyTargets)
+                .set({
+                  monthlyTargetAmount: row.monthly_target_amount,
+                  updatedAt: new Date(),
+                })
+                .where(eq(storeMonthlyTargets.id, existing[0].id));
+              updated++;
+            } else {
+              await db.insert(storeMonthlyTargets).values({
+                month: row.month,
+                storeId,
+                monthlyTargetAmount: row.monthly_target_amount,
+              });
+              inserted++;
+            }
+          } catch (rowError) {
+            errors.push({ row: i + 2, message: `Error al procesar fila: ${rowError}` });
+          }
+        }
+
+        return {
+          success: true,
+          inserted,
+          updated,
+          errors,
+          total: rows.length,
+        };
+      } catch (error) {
+        console.error('[DB] Error in bulkUpsertFromCSV:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al procesar la carga masiva',
+        });
+      }
+    }),
+
+  /**
    * Obtiene todas las tiendas desde la tabla branches de PostgreSQL
    * Para uso en el modal de edición de metas
    */

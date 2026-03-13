@@ -1365,3 +1365,13 @@ Fecha: 1 de febrero de 2026
 
 - [x] Agregar tarjeta de acceso rápido a /identified-transactions en Home.tsx
 - [x] Guardar checkpoint
+
+## Carga masiva de metas via CSV
+
+- [x] Revisar TargetEditModal.tsx y el router de metas en el servidor
+- [x] Crear procedimiento tRPC targets.bulkUpsertFromCSV en el servidor
+- [x] Agregar botón de descarga de plantilla CSV modelo en el modal
+- [x] Agregar zona de carga de archivo CSV con preview de filas y errores
+- [x] Confirmar e importar las metas del CSV a la base de datos
+- [x] Escribir 17 tests del procedimiento de carga masiva (17/17 pasados)
+- [x] Guardar checkpoint
