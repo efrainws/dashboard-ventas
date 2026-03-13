@@ -1375,3 +1375,12 @@ Fecha: 1 de febrero de 2026
 - [x] Confirmar e importar las metas del CSV a la base de datos
 - [x] Escribir 17 tests del procedimiento de carga masiva (17/17 pasados)
 - [x] Guardar checkpoint
+
+## Venta promedio diaria y proyección en tarjetas de Ventas vs Meta
+
+- [x] Revisar estructura de SalesVsTarget.tsx y datos disponibles por tienda
+- [x] Calcular venta promedio diaria (venta_acumulada / días_transcurridos) por tienda
+- [x] Calcular proyección mensual (promedio_diario × días_del_mes) por tienda
+- [x] Mostrar ambas métricas en las tarjetas de cada tienda con colores F&F
+- [x] Verificar sin errores TypeScript (0 errores)
+- [x] Guardar checkpoint

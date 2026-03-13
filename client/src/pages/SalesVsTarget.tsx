@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { NavigationMenu } from "@/components/NavigationMenu";
@@ -74,6 +74,23 @@ export default function SalesVsTarget() {
 
   // Verificar si el usuario puede editar metas
   const canEdit = user?.role === 'admin';
+
+  // Calcular días transcurridos en el período y días totales del mes
+  const { daysElapsed, daysInMonth } = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return { daysElapsed: 1, daysInMonth: 30 };
+    }
+    const from = dateRange.from;
+    const to = dateRange.to;
+    // Días transcurridos (inclusive ambos extremos)
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const elapsed = Math.max(1, Math.round((to.getTime() - from.getTime()) / msPerDay) + 1);
+    // Días totales del mes del extremo final del rango
+    const year = to.getFullYear();
+    const month = to.getMonth();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    return { daysElapsed: elapsed, daysInMonth: totalDays };
+  }, [dateRange]);
 
   const handleEditStore = (storeId: string, storeName: string) => {
     setEditingStore({ id: storeId, name: storeName });
@@ -241,6 +258,9 @@ export default function SalesVsTarget() {
                 hasTarget={store.has_target}
                 canEdit={canEdit}
                 onEditClick={() => handleEditStore(store.store_id, store.store_name)}
+                daysElapsed={daysElapsed}
+                daysInMonth={daysInMonth}
+                monthlyTarget={store.has_target ? store.prorated_target * (daysInMonth / Math.max(daysElapsed, 1)) : undefined}
               />
             ))}
           </div>
