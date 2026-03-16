@@ -32,9 +32,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Filter,
   Loader2,
   RefreshCw,
+  X,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -166,9 +166,30 @@ export default function DiscrepancyTickets() {
           ))}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+        {/* Filtros */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="font-heading uppercase text-base tracking-wide">
+                  Filtros
+                </CardTitle>
+                <CardDescription>
+                  Filtra los tickets por estado y módulo
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setStatusFilter("all"); setModuleFilter("all"); }}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Limpiar Filtros
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Estado" />
@@ -193,7 +214,9 @@ export default function DiscrepancyTickets() {
               <SelectItem value="sales-vs-target">Ventas vs Meta</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Ticket list */}
         {isLoading ? (

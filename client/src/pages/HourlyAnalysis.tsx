@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun, Users, Lock } from "lucide-react";
+import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Calendar, Moon, Sun, Users, Lock, X } from "lucide-react";
 import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales";
 import { HourlyLineChart } from "@/components/HourlyLineChart";
 import { KPICard } from "@/components/KPICard";
@@ -226,16 +226,23 @@ export default function HourlyAnalysis() {
         {!isLoading && !error && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filtros
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Selecciona rango de fechas y sucursal para explorar los datos
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="font-heading uppercase text-base tracking-wide">
+                    Filtros
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selecciona rango de fechas y sucursal para explorar los datos
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                  <X className="mr-2 h-4 w-4" />
+                  Limpiar Filtros
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 {/* DateRangePicker unificado */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Rango de Fechas</label>
@@ -304,16 +311,7 @@ export default function HourlyAnalysis() {
                   </Select>
                 </div>
 
-                {/* Botón Limpiar Filtros */}
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    onClick={handleClearFilters}
-                    className="w-full"
-                  >
-                    Limpiar Filtros
-                  </Button>
-                </div>
+
               </div>
             </CardContent>
           </Card>

@@ -243,17 +243,17 @@ export default function IdentifiedTransactions() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Filtros</CardTitle>
+                <CardTitle className="font-heading uppercase text-base tracking-wide">
+                  Filtros
+                </CardTitle>
                 <CardDescription>
                   Selecciona un rango de fechas y/o tienda para explorar los datos
                 </CardDescription>
               </div>
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                  <X className="mr-2 h-4 w-4" />
-                  Limpiar Filtros
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                <X className="mr-2 h-4 w-4" />
+                Limpiar Filtros
+              </Button>
             </div>
           </CardHeader>
           <CardContent>

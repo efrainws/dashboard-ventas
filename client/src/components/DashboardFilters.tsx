@@ -60,23 +60,17 @@ export function DashboardFilters({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Filtros</CardTitle>
+            <CardTitle className="font-heading uppercase text-base tracking-wide">
+              Filtros
+            </CardTitle>
             <CardDescription>
               Selecciona rangos de fechas, sucursales y departamentos para explorar los datos
             </CardDescription>
           </div>
-          {hasActiveFilters && !branchLocked && (
-            <Button variant="outline" size="sm" onClick={onClearFilters}>
-              <X className="mr-2 h-4 w-4" />
-              Limpiar Filtros
-            </Button>
-          )}
-          {hasActiveFilters && branchLocked && (
-            <Button variant="outline" size="sm" onClick={onClearFilters}>
-              <X className="mr-2 h-4 w-4" />
-              Limpiar Filtros
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={onClearFilters}>
+            <X className="mr-2 h-4 w-4" />
+            Limpiar Filtros
+          </Button>
         </div>
       </CardHeader>
       <CardContent>

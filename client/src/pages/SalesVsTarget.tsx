@@ -3,13 +3,14 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Plus, Lock } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Lock, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -162,16 +163,24 @@ export default function SalesVsTarget() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-card rounded-lg border p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold" style={{ fontFamily: 'Sailec, sans-serif' }}>
-              Filtros
-            </h2>
-            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-              Limpiar Filtros
-            </Button>
-          </div>
-
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="font-heading uppercase text-base tracking-wide">
+                  Filtros
+                </CardTitle>
+                <CardDescription>
+                  Selecciona un rango de fechas y/o tienda para explorar los datos
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                <X className="mr-2 h-4 w-4" />
+                Limpiar Filtros
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Rango de Fechas */}
             <div className="space-y-2">
@@ -273,7 +282,8 @@ export default function SalesVsTarget() {
               )}
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Grid de Tarjetas */}
         {isLoading ? (
