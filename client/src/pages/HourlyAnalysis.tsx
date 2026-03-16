@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun, Users } from "lucide-react";
+import { Loader2, LogOut, DollarSign, ShoppingCart, TrendingUp, Filter, Calendar, Moon, Sun, Users, Lock } from "lucide-react";
 import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales";
 import { HourlyLineChart } from "@/components/HourlyLineChart";
 import { KPICard } from "@/components/KPICard";
@@ -48,7 +48,21 @@ export default function HourlyAnalysis() {
     
     return { from: yesterday, to: yesterdayEnd };
   });
-  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
+  const userRole = user?.role as string | undefined;
+  const isStoreUser = userRole === 'store_user';
+  const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
+
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    if (globalBranchId) return globalBranchId;
+    return "all";
+  });
+
+  // Inicializar filtro de tienda para store_user
+  useEffect(() => {
+    if (isStoreUser && assignedStoreCode) {
+      setSelectedBranch(assignedStoreCode);
+    }
+  }, [isStoreUser, assignedStoreCode]);
   const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce", "Rappi"]);
 
   // Sincronizar con contexto global
@@ -231,29 +245,38 @@ export default function HourlyAnalysis() {
                   />
                 </div>
 
-                {/* Selector de Sucursal */}
+                {/* Selector de Sucursal — bloqueado para store_user */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Sucursal</label>
-                  <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas las sucursales" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las sucursales</SelectItem>
-                      {metrics.branches
-                        .sort((a, b) => {
-                          // Ordenar por branch_sap_id numéricamente
-                          const sapIdA = parseInt(a.sap_id.replace(/\D/g, ''), 10) || 0;
-                          const sapIdB = parseInt(b.sap_id.replace(/\D/g, ''), 10) || 0;
-                          return sapIdA - sapIdB;
-                        })
-                        .map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id}>
-                            {branch.name} ({branch.sap_id})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">
+                    Sucursal
+                    {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
+                  </label>
+                  {isStoreUser ? (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                      <Lock className="h-3.5 w-3.5 shrink-0" />
+                      <span>{metrics.branches.find(b => b.sap_id === assignedStoreCode)?.name ?? assignedStoreCode ?? 'Tu tienda'}</span>
+                    </div>
+                  ) : (
+                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas las sucursales" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las sucursales</SelectItem>
+                        {metrics.branches
+                          .sort((a, b) => {
+                            const sapIdA = parseInt(a.sap_id.replace(/\D/g, ''), 10) || 0;
+                            const sapIdB = parseInt(b.sap_id.replace(/\D/g, ''), 10) || 0;
+                            return sapIdA - sapIdB;
+                          })
+                          .map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id}>
+                              {branch.name} ({branch.sap_id})
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 {/* Selector de Canal de Ventas */}

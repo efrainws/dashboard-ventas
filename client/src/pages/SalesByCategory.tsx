@@ -43,7 +43,18 @@ export default function SalesByCategory() {
     
     return { from: yesterday, to: yesterdayEnd };
   });
+  const userRole = user?.role as string | undefined;
+  const isStoreUser = userRole === 'store_user';
+  const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
+
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
+
+  // Inicializar filtro de tienda para store_user
+  useEffect(() => {
+    if (isStoreUser && assignedStoreCode) {
+      setSelectedBranch(assignedStoreCode);
+    }
+  }, [isStoreUser, assignedStoreCode]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Calcular días del mes para la proyección mensual
@@ -234,7 +245,8 @@ export default function SalesByCategory() {
           onDateRangeChange={setDateRange}
           selectedBranch={selectedBranch}
           branches={metrics.branches}
-          onBranchChange={setSelectedBranch}
+          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          branchLocked={isStoreUser}
           selectedCategory={selectedCategory}
           categories={metrics.categories}
           onCategoryChange={setSelectedCategory}

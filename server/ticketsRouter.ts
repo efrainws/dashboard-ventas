@@ -133,9 +133,9 @@ export const ticketsRouter = router({
         offset: input.offset,
       });
 
-      // Regular users only see their own tickets
+      // system_specialist ve todos los tickets; cst_user y store_user solo los suyos
       const filtered =
-        ctx.user.role === "admin"
+        ctx.user.role === "system_specialist"
           ? tickets
           : tickets.filter((t) => t.reportedById === ctx.user.id);
 
@@ -151,8 +151,8 @@ export const ticketsRouter = router({
       const ticket = await getDiscrepancyTicketById(input.id);
       if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Non-admins can only view their own tickets
-      if (ctx.user.role !== "admin" && ticket.reportedById !== ctx.user.id) {
+      // Solo system_specialist puede ver tickets de otros usuarios
+      if (ctx.user.role !== "system_specialist" && ticket.reportedById !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -171,8 +171,8 @@ export const ticketsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los administradores pueden actualizar el estado de los tickets" });
+      if (ctx.user.role !== "system_specialist") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Solo el Especialista de Sistemas puede actualizar el estado de los tickets" });
       }
 
       const ticket = await getDiscrepancyTicketById(input.id);
@@ -193,7 +193,7 @@ export const ticketsRouter = router({
    * Count open tickets (for badge in navigation).
    */
   countOpen: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") return 0;
+    if (ctx.user.role !== "system_specialist") return 0;
     return countDiscrepancyTickets({ status: "open" });
   }),
 });

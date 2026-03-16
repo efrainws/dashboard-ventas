@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { NavigationMenu } from "@/components/NavigationMenu";
@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Plus } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -26,27 +26,36 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 
+type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+
 export default function SalesVsTarget() {
   const { user, loading: authLoading } = useAuth();
 
+  const userRole = user?.role as UserRole | undefined;
+  const isStoreUser = userRole === 'store_user';
+  const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
+
   // Filtros
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    // Por defecto: mes actual a la fecha
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return {
-      from: firstDayOfMonth,
-      to: now,
-    };
+    return { from: firstDayOfMonth, to: now };
   });
 
+  // Para store_user: el filtro de tiendas queda fijo en su tienda asignada
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
+
+  // Inicializar filtro de tienda para store_user
+  useEffect(() => {
+    if (isStoreUser && assignedStoreCode) {
+      setSelectedStores([assignedStoreCode]);
+    }
+  }, [isStoreUser, assignedStoreCode]);
 
   // Modal de edición
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<{ id: string; name: string } | null>(null);
 
-  // Consultar ventas vs meta
   // Convertir fechas a formato YYYY-MM-DD local para evitar desfase UTC/Lima
   const toLocalDateStr = (d: Date) => {
     const y = d.getFullYear();
@@ -55,11 +64,19 @@ export default function SalesVsTarget() {
     return `${y}-${m}-${day}`;
   };
 
+  // Para store_user: siempre filtrar por su tienda asignada
+  const effectiveStoreFilter = useMemo(() => {
+    if (isStoreUser && assignedStoreCode) {
+      return [assignedStoreCode];
+    }
+    return selectedStores;
+  }, [isStoreUser, assignedStoreCode, selectedStores]);
+
   const { data, isLoading, refetch } = trpc.targets.getSalesVsTarget.useQuery(
     {
       fecha_min: dateRange?.from ? toLocalDateStr(dateRange.from) : toLocalDateStr(new Date()),
       fecha_max: dateRange?.to ? toLocalDateStr(dateRange.to) : toLocalDateStr(new Date()),
-      store_ids: selectedStores.length > 0 ? selectedStores : undefined,
+      store_ids: effectiveStoreFilter.length > 0 ? effectiveStoreFilter : undefined,
     },
     {
       enabled: !!dateRange?.from && !!dateRange?.to,
@@ -72,8 +89,8 @@ export default function SalesVsTarget() {
     return data.stores.map(s => ({ id: s.store_id, name: s.store_name }));
   }, [data]);
 
-  // Verificar si el usuario puede editar metas
-  const canEdit = user?.role === 'admin';
+  // Solo system_specialist puede editar metas
+  const canEdit = userRole === 'system_specialist';
 
   // Calcular días transcurridos en el período y días totales del mes
   const { daysElapsed, daysInMonth } = useMemo(() => {
@@ -82,10 +99,8 @@ export default function SalesVsTarget() {
     }
     const from = dateRange.from;
     const to = dateRange.to;
-    // Días transcurridos (inclusive ambos extremos)
     const msPerDay = 1000 * 60 * 60 * 24;
     const elapsed = Math.max(1, Math.round((to.getTime() - from.getTime()) / msPerDay) + 1);
-    // Días totales del mes del extremo final del rango
     const year = to.getFullYear();
     const month = to.getMonth();
     const totalDays = new Date(year, month + 1, 0).getDate();
@@ -105,7 +120,9 @@ export default function SalesVsTarget() {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     setDateRange({ from: firstDayOfMonth, to: now });
-    setSelectedStores([]);
+    if (!isStoreUser) {
+      setSelectedStores([]);
+    }
   };
 
   if (authLoading) {
@@ -128,6 +145,12 @@ export default function SalesVsTarget() {
             </h1>
             <p className="text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
               Cumplimiento de metas por tienda
+              {isStoreUser && assignedStoreCode && (
+                <span className="ml-2 inline-flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded-full">
+                  <Lock className="h-3 w-3" />
+                  Vista restringida a tu tienda
+                </span>
+              )}
             </p>
           </div>
           {canEdit && (
@@ -188,54 +211,66 @@ export default function SalesVsTarget() {
               </Popover>
             </div>
 
-            {/* Filtro de Tiendas (multi-select) */}
+            {/* Filtro de Tiendas — bloqueado para store_user */}
             <div className="space-y-2">
-              <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Tiendas</Label>
-              <Select
-                value={selectedStores.length === 0 ? "all" : "custom"}
-                onValueChange={(value) => {
-                  if (value === "all") {
-                    setSelectedStores([]);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue>
-                    {selectedStores.length === 0
-                      ? "Todas las tiendas"
-                      : `${selectedStores.length} tienda(s) seleccionada(s)`}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las tiendas</SelectItem>
-                  {availableStores.map((store) => (
-                    <div
-                      key={store.id}
-                      className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setSelectedStores((prev) =>
-                          prev.includes(store.id)
-                            ? prev.filter((id) => id !== store.id)
-                            : [...prev, store.id]
-                        );
-                      }}
-                    >
-                      <Checkbox
-                        checked={selectedStores.includes(store.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedStores((prev) => [...prev, store.id]);
-                          } else {
-                            setSelectedStores((prev) => prev.filter((id) => id !== store.id));
-                          }
+              <Label style={{ fontFamily: 'Sailec, sans-serif' }}>
+                Tiendas
+                {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
+              </Label>
+              {isStoreUser ? (
+                /* store_user: solo ve su tienda, no puede cambiarla */
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                  <Lock className="h-3.5 w-3.5 shrink-0" />
+                  <span>{availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}</span>
+                </div>
+              ) : (
+                /* system_specialist y cst_user: selector completo */
+                <Select
+                  value={selectedStores.length === 0 ? "all" : "custom"}
+                  onValueChange={(value) => {
+                    if (value === "all") {
+                      setSelectedStores([]);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {selectedStores.length === 0
+                        ? "Todas las tiendas"
+                        : `${selectedStores.length} tienda(s) seleccionada(s)`}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    {availableStores.map((store) => (
+                      <div
+                        key={store.id}
+                        className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedStores((prev) =>
+                            prev.includes(store.id)
+                              ? prev.filter((id) => id !== store.id)
+                              : [...prev, store.id]
+                          );
                         }}
-                      />
-                      <Label className="cursor-pointer">{store.name}</Label>
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
+                      >
+                        <Checkbox
+                          checked={selectedStores.includes(store.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedStores((prev) => [...prev, store.id]);
+                            } else {
+                              setSelectedStores((prev) => prev.filter((id) => id !== store.id));
+                            }
+                          }}
+                        />
+                        <Label className="cursor-pointer">{store.name}</Label>
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </div>
@@ -288,10 +323,10 @@ export default function SalesVsTarget() {
           module: "sales-vs-target",
           dateFrom: dateRange?.from ? toLocalDateStr(dateRange.from) : undefined,
           dateTo: dateRange?.to ? toLocalDateStr(dateRange.to) : undefined,
-          storeId: selectedStores.length === 1 ? selectedStores[0] : undefined,
+          storeId: effectiveStoreFilter.length === 1 ? effectiveStoreFilter[0] : undefined,
           storeName:
-            selectedStores.length === 1
-              ? availableStores.find((s) => s.id === selectedStores[0])?.name
+            effectiveStoreFilter.length === 1
+              ? availableStores.find((s) => s.id === effectiveStoreFilter[0])?.name
               : undefined,
         }}
       />

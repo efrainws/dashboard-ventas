@@ -27,6 +27,7 @@ import {
   TrendingUp,
   X,
   Store,
+  Lock,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
@@ -67,7 +68,9 @@ interface StoreRow {
 // ─── componente ─────────────────────────────────────────────────────────────
 
 export default function IdentifiedTransactions() {
-  const { loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const isStoreUser = user?.role === 'store_user';
+  const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const { effectiveTheme } = useTheme();
 
   // Filtros globales compartidos entre páginas
@@ -91,6 +94,13 @@ export default function IdentifiedTransactions() {
 
   // El filtro de tienda en esta página usa sap_id (no UUID) porque el query agrupa por sap_id
   const [selectedSapId, setSelectedSapId] = useState<string>("all");
+
+  // Inicializar filtro de tienda para store_user
+  useEffect(() => {
+    if (isStoreUser && assignedStoreCode) {
+      setSelectedSapId(assignedStoreCode);
+    }
+  }, [isStoreUser, assignedStoreCode]);
 
   // Sincronizar con contexto global
   useEffect(() => {
@@ -254,22 +264,32 @@ export default function IdentifiedTransactions() {
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
               </div>
 
-              {/* Tienda */}
+              {/* Tienda — bloqueado para store_user */}
               <div className="space-y-2">
-                <Label htmlFor="store">Tienda</Label>
-                <Select value={selectedSapId} onValueChange={setSelectedSapId}>
-                  <SelectTrigger id="store">
-                    <SelectValue placeholder="Todas las tiendas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las tiendas</SelectItem>
-                    {availableStores.map((s) => (
-                      <SelectItem key={s.sap_id} value={s.sap_id}>
-                        {s.nombre} ({s.sap_id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="store">
+                  Tienda
+                  {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
+                </Label>
+                {isStoreUser ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    <span>{availableStores.find(s => s.sap_id === assignedStoreCode)?.nombre ?? assignedStoreCode ?? 'Tu tienda'}</span>
+                  </div>
+                ) : (
+                  <Select value={selectedSapId} onValueChange={setSelectedSapId}>
+                    <SelectTrigger id="store">
+                      <SelectValue placeholder="Todas las tiendas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las tiendas</SelectItem>
+                      {availableStores.map((s) => (
+                        <SelectItem key={s.sap_id} value={s.sap_id}>
+                          {s.nombre} ({s.sap_id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </CardContent>

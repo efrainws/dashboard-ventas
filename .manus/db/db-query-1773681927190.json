@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Paso 1: Cambiar el enum para incluir todos los valores (viejos + nuevos)\nALTER TABLE `users` MODIFY COLUMN `role` enum('user','admin','system_specialist','cst_user','store_user') NOT NULL DEFAULT 'cst_user';\n\n-- Paso 2: Migrar datos existentes\nUPDATE `users` SET `role` = 'system_specialist' WHERE `role` = 'admin';\nUPDATE `users` SET `role` = 'cst_user' WHERE `role` = 'user';\n\n-- Paso 3: Agregar columna assigned_store_code si no existe\nALTER TABLE `users` ADD COLUMN IF NOT EXISTS `assigned_store_code` varchar(32) NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute \n-- Paso 1: Cambiar el enum para incluir todos los valores (viejos + nuevos)\nALTER TABLE `users` MODIFY COLUMN `role` enum('user','admin','system_specialist','cst_user','store_user') NOT NULL DEFAULT 'cst_user';\n\n-- Paso 2: Migrar datos existentes\nUPDATE `users` SET `role` = 'system_specialist' WHERE `role` = 'admin';\nUPDATE `users` SET `role` = 'cst_user' WHERE `role` = 'user';\n\n-- Paso 3: Agregar columna assigned_store_code si no existe\nALTER TABLE `users` ADD COLUMN IF NOT EXISTS `assigned_store_code` varchar(32) NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 912
+}

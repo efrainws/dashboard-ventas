@@ -1,0 +1,30 @@
+{
+  "query": "SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1144772",
+      "hash": "aa108c31b4e6aa6f1a1734a2034eb894268d7005dc56aee8dc10c7a95258b6f4",
+      "created_at": "1772217589790"
+    },
+    {
+      "id": "1114772",
+      "hash": "293c32eafbe17489c614c18371d83e02910d03985adde49734bbb7576081b7ac",
+      "created_at": "1772050223205"
+    },
+    {
+      "id": "2",
+      "hash": "c1b13cf1e7eadc4dddef2dd898cf88b6b9148ff79e6ae1ef4556b7f5b3c58447",
+      "created_at": "1769504747834"
+    },
+    {
+      "id": "1",
+      "hash": "814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b",
+      "created_at": "1769504662054"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\thash\tcreated_at\n1144772\taa108c31b4e6aa6f1a1734a2034eb894268d7005dc56aee8dc10c7a95258b6f4\t1772217589790\n1114772\t293c32eafbe17489c614c18371d83e02910d03985adde49734bbb7576081b7ac\t1772050223205\n2\tc1b13cf1e7eadc4dddef2dd898cf88b6b9148ff79e6ae1ef4556b7f5b3c58447\t1769504747834\n1\t814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b\t1769504662054\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}

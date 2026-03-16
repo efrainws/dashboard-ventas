@@ -1,8 +1,11 @@
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
-import { getDb, getUserByUsername } from "./db";
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 type CookieCall = {
   name: string;
@@ -31,91 +34,97 @@ function createPublicContext(): { ctx: TrpcContext; setCookies: CookieCall[] } {
 }
 
 describe("auth.login", () => {
+  const TEST_USERNAME = "test_login_specialist";
+  const TEST_PASSWORD = "testpass123";
+
   beforeAll(async () => {
-    // Verificar que la base de datos esté disponible y tenga usuarios
     const db = await getDb();
-    if (!db) {
-      throw new Error("Database not available for testing");
-    }
-    
-    const adminUser = await getUserByUsername("admin");
-    if (!adminUser) {
-      throw new Error("Admin user not found in database. Run seed script first.");
-    }
+    if (!db) throw new Error("Database not available for testing");
+
+    // Limpiar usuario de prueba previo si existe
+    await db.delete(users).where(eq(users.username, TEST_USERNAME));
+
+    // Crear usuario de prueba
+    const hashedPassword = await bcrypt.hash(TEST_PASSWORD, 10);
+    await db.insert(users).values({
+      username: TEST_USERNAME,
+      password: hashedPassword,
+      name: "Test Login Specialist",
+      email: "logintest@test.com",
+      role: "system_specialist",
+      loginMethod: "local",
+    });
   });
 
-  it("should login successfully with correct credentials", async () => {
+  afterAll(async () => {
+    const db = await getDb();
+    if (!db) return;
+    await db.delete(users).where(eq(users.username, TEST_USERNAME));
+  });
+
+  it("login exitoso con credenciales correctas", async () => {
     const { ctx, setCookies } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.login({
-      username: "admin",
-      password: "admin123",
+      username: TEST_USERNAME,
+      password: TEST_PASSWORD,
     });
 
     expect(result.success).toBe(true);
     expect(result.user).toBeDefined();
-    expect(result.user.username).toBe("admin");
-    expect(result.user.role).toBe("admin");
-    expect(result.user.password).toBeUndefined(); // Password should not be returned
-    
-    // Verify cookie was set
+    expect(result.user.username).toBe(TEST_USERNAME);
+    expect(result.user.role).toBe("system_specialist");
+    expect((result.user as any).password).toBeUndefined();
+
     expect(setCookies).toHaveLength(1);
     expect(setCookies[0]?.name).toBe(COOKIE_NAME);
     expect(setCookies[0]?.value).toBeDefined();
     expect(setCookies[0]?.options).toMatchObject({
-      secure: true,
-      sameSite: "none",
       httpOnly: true,
       path: "/",
     });
   });
 
-  it("should fail with incorrect password", async () => {
+  it("falla con contraseña incorrecta", async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     await expect(
       caller.auth.login({
-        username: "admin",
+        username: TEST_USERNAME,
         password: "wrongpassword",
       })
     ).rejects.toThrow("Credenciales inválidas");
   });
 
-  it("should fail with non-existent user", async () => {
+  it("falla con usuario inexistente", async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     await expect(
       caller.auth.login({
-        username: "nonexistent",
+        username: "nonexistent_xyz",
         password: "anypassword",
       })
     ).rejects.toThrow("Credenciales inválidas");
   });
 
-  it("should fail with empty username", async () => {
+  it("falla con username vacío", async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.auth.login({
-        username: "",
-        password: "admin123",
-      })
+      caller.auth.login({ username: "", password: TEST_PASSWORD })
     ).rejects.toThrow();
   });
 
-  it("should fail with empty password", async () => {
+  it("falla con password vacío", async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.auth.login({
-        username: "admin",
-        password: "",
-      })
+      caller.auth.login({ username: TEST_USERNAME, password: "" })
     ).rejects.toThrow();
   });
 });

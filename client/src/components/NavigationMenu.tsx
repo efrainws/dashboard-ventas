@@ -37,7 +37,7 @@ export function NavigationMenu() {
   const [salesExpanded, setSalesExpanded] = useState(false);
 
   const { data: openTicketCount } = trpc.tickets.countOpen.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && user?.role === "system_specialist",
     refetchInterval: 60_000,
   });
 
@@ -153,8 +153,8 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Usuarios — solo admin */}
-          {user?.role === "admin" && (
+          {/* Usuarios — solo system_specialist y cst_user */}
+          {(user?.role === "system_specialist" || user?.role === "cst_user") && (
             <Link
               href="/admin/users"
               className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
@@ -316,8 +316,8 @@ export function NavigationMenu() {
               )}
             </Link>
 
-            {/* Usuarios — solo admin */}
-            {user?.role === "admin" && (
+            {/* Usuarios — solo system_specialist y cst_user */}
+            {(user?.role === "system_specialist" || user?.role === "cst_user") && (
               <Link
                 href="/admin/users"
                 onClick={closeMobile}

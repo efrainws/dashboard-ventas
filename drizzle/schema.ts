@@ -1,9 +1,10 @@
 import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
+ * Roles de usuario:
+ * - system_specialist: Especialista de Sistemas (antes "admin"). Sin restricciones. Puede crear cualquier tipo de usuario.
+ * - cst_user: Usuario CST (antes "user"). Sin restricciones de datos. Solo puede crear usuarios tipo store_user.
+ * - store_user: Usuario Tienda. Solo ve datos de su tienda asignada (assigned_store_code). No puede crear usuarios.
  */
 export const users = mysqlTable("users", {
   /**
@@ -20,7 +21,13 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["system_specialist", "cst_user", "store_user"]).default("cst_user").notNull(),
+  /**
+   * SAP ID de la tienda asignada al usuario.
+   * Obligatorio para store_user. Vacío para system_specialist y cst_user.
+   * Se usa para aplicar RLS: solo puede ver datos de esta tienda.
+   */
+  assignedStoreCode: varchar("assigned_store_code", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

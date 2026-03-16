@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
-import { X } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
 export interface DashboardFiltersProps {
@@ -29,6 +29,9 @@ export interface DashboardFiltersProps {
 
   // Limpiar filtros
   onClearFilters: () => void;
+
+  // RLS: bloquear selector de sucursal para store_user
+  branchLocked?: boolean;
 }
 
 export function DashboardFilters({
@@ -41,11 +44,16 @@ export function DashboardFilters({
   categories,
   onCategoryChange,
   onClearFilters,
+  branchLocked = false,
 }: DashboardFiltersProps) {
   const hasActiveFilters =
     dateRange !== undefined ||
     selectedBranch !== "all" ||
     selectedCategory !== "all";
+
+  const lockedBranchName = branchLocked
+    ? branches.find(b => b.id === selectedBranch)?.name ?? selectedBranch
+    : null;
 
   return (
     <Card>
@@ -57,7 +65,13 @@ export function DashboardFilters({
               Selecciona rangos de fechas, sucursales y departamentos para explorar los datos
             </CardDescription>
           </div>
-          {hasActiveFilters && (
+          {hasActiveFilters && !branchLocked && (
+            <Button variant="outline" size="sm" onClick={onClearFilters}>
+              <X className="mr-2 h-4 w-4" />
+              Limpiar Filtros
+            </Button>
+          )}
+          {hasActiveFilters && branchLocked && (
             <Button variant="outline" size="sm" onClick={onClearFilters}>
               <X className="mr-2 h-4 w-4" />
               Limpiar Filtros
@@ -78,20 +92,30 @@ export function DashboardFilters({
 
           {/* Sucursal */}
           <div className="space-y-2">
-            <Label htmlFor="branch">Sucursal</Label>
-            <Select value={selectedBranch} onValueChange={onBranchChange}>
-              <SelectTrigger id="branch">
-                <SelectValue placeholder="Todas las sucursales" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las sucursales</SelectItem>
-                {branches.map((branch, index) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name} ({branch.sap_id})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="branch">
+              Sucursal
+              {branchLocked && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
+            </Label>
+            {branchLocked ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                <Lock className="h-3.5 w-3.5 shrink-0" />
+                <span>{lockedBranchName ?? 'Tu tienda asignada'}</span>
+              </div>
+            ) : (
+              <Select value={selectedBranch} onValueChange={onBranchChange}>
+                <SelectTrigger id="branch">
+                  <SelectValue placeholder="Todas las sucursales" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las sucursales</SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name} ({branch.sap_id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Departamento */}

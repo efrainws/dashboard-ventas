@@ -1,0 +1,2 @@
+ALTER TABLE `users` MODIFY COLUMN `role` enum('system_specialist','cst_user','store_user') NOT NULL DEFAULT 'cst_user';--> statement-breakpoint
+ALTER TABLE `users` ADD `assigned_store_code` varchar(32);

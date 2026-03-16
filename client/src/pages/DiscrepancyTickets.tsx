@@ -393,8 +393,8 @@ export default function DiscrepancyTickets() {
                   </div>
                 )}
 
-                {/* Admin update controls */}
-                {user?.role === "admin" && (
+                {/* system_specialist update controls */}
+                {user?.role === "system_specialist" && (
                   <>
                     <div className="space-y-1.5">
                       <Label>Cambiar estado</Label>
@@ -427,7 +427,7 @@ export default function DiscrepancyTickets() {
                 <Button variant="outline" onClick={() => setSelectedTicket(null)}>
                   Cerrar
                 </Button>
-                {user?.role === "admin" && (
+                {user?.role === "system_specialist" && (
                   <Button
                     onClick={() =>
                       updateStatus.mutate({

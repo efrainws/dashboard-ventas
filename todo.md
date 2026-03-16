@@ -1405,3 +1405,22 @@ Fecha: 1 de febrero de 2026
 - [x] Mostrar porcentaje de cumplimiento junto a cada valor de venta
 - [x] Calcular y mostrar meta diaria promedio (meta mensual / días del mes)
 - [x] Guardar checkpoint
+
+## Sistema RLS por Roles de Usuario
+
+- [x] Migrar enum role en schema.ts: admin→system_specialist, user→cst_user, agregar store_user
+- [x] Agregar campo assigned_store_code en tabla users
+- [ ] Ejecutar pnpm db:push para migrar BD
+- [ ] Agregar endpoint getBranches en salesRouter para obtener tiendas desde PostgreSQL
+- [x] Actualizar userRouter: nueva lógica de permisos por rol, campo assignedStoreCode en create/update
+- [x] Aplicar RLS en todas las queries del salesRouter (branch_sap_id filter)
+- [x] Aplicar RLS en targetsRouter (store_ids filter)
+- [x] Actualizar auth.me para incluir assignedStoreCode en la respuesta
+- [x] Actualizar JWT para incluir assignedStoreCode en el token
+- [x] Actualizar UserManagement.tsx: nuevos roles, selector de tienda para store_user
+- [ ] Actualizar NavigationMenu.tsx: visibilidad del enlace Usuarios según rol
+- [x] Actualizar SalesByCategory.tsx: bloquear filtro de tienda para store_user
+- [x] Actualizar HourlyAnalysis.tsx: bloquear filtro de tienda para store_user
+- [x] Actualizar SalesVsTarget.tsx: bloquear filtro de tienda para store_user
+- [x] Actualizar IdentifiedTransactions.tsx: bloquear filtro de tienda para store_user
+- [ ] Guardar checkpoint

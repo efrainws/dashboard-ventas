@@ -38,17 +38,27 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation } from 'wouter';
-import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon, Mail } from 'lucide-react';
+import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon, Mail, Store } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
 import { NavigationMenu } from '@/components/NavigationMenu';
+
+// ─── Tipos de rol ─────────────────────────────────────────────────────────────
+type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  system_specialist: 'Especialista de Sistemas',
+  cst_user: 'Usuario CST',
+  store_user: 'Usuario Tienda',
+};
 
 type User = {
   id: number;
   username: string | null;
   name: string | null;
   email: string | null;
-  role: 'user' | 'admin';
+  role: UserRole;
+  assignedStoreCode: string | null;
   loginMethod: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -66,18 +76,22 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
 
+  const currentRole = currentUser?.role as UserRole | undefined;
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     name: '',
     email: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'store_user' as UserRole,
+    assignedStoreCode: '',
     sendWelcomeEmail: true,
     notifyUser: true,
   });
 
   // Queries
   const { data: usersData, isLoading: usersLoading } = trpc.users.listUsers.useQuery();
+  const { data: branchesData } = trpc.users.getBranches.useQuery();
 
   // Mutations
   const createMutation = trpc.users.createUser.useMutation({
@@ -137,7 +151,7 @@ export default function UserManagement() {
     },
   });
 
-  // Verificar permisos
+  // Verificar permisos — solo system_specialist y cst_user pueden acceder
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F4F1]">
@@ -146,18 +160,25 @@ export default function UserManagement() {
     );
   }
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || currentRole === 'store_user') {
     setLocation('/');
     return null;
   }
 
+  // Roles disponibles según el tipo de usuario actual
+  const availableRoles: UserRole[] = currentRole === 'system_specialist'
+    ? ['system_specialist', 'cst_user', 'store_user']
+    : ['store_user']; // cst_user solo puede crear store_user
+
   const openCreateDialog = () => {
+    const defaultRole: UserRole = currentRole === 'cst_user' ? 'store_user' : 'store_user';
     setFormData({
       username: '',
       password: '',
       name: '',
       email: '',
-      role: 'user',
+      role: defaultRole,
+      assignedStoreCode: '',
       sendWelcomeEmail: true,
       notifyUser: true,
     });
@@ -172,6 +193,7 @@ export default function UserManagement() {
       name: user.name || '',
       email: user.email || '',
       role: user.role,
+      assignedStoreCode: user.assignedStoreCode || '',
       sendWelcomeEmail: false,
       notifyUser: false,
     });
@@ -183,7 +205,7 @@ export default function UserManagement() {
     setFormData({
       ...formData,
       password: '',
-      notifyUser: !!user.email, // auto-enable if user has email
+      notifyUser: !!user.email,
     });
     setDialogMode('password');
   };
@@ -196,7 +218,8 @@ export default function UserManagement() {
       password: '',
       name: '',
       email: '',
-      role: 'user',
+      role: 'store_user',
+      assignedStoreCode: '',
       sendWelcomeEmail: true,
       notifyUser: true,
     });
@@ -212,6 +235,7 @@ export default function UserManagement() {
         name: formData.name,
         email: formData.email || undefined,
         role: formData.role,
+        assignedStoreCode: formData.role === 'store_user' ? formData.assignedStoreCode : undefined,
         sendWelcomeEmail: formData.sendWelcomeEmail,
       });
     } else if (dialogMode === 'edit' && selectedUser) {
@@ -221,6 +245,9 @@ export default function UserManagement() {
         name: formData.name || undefined,
         email: formData.email || undefined,
         role: formData.role,
+        assignedStoreCode: formData.role === 'store_user'
+          ? (formData.assignedStoreCode || null)
+          : null,
       });
     } else if (dialogMode === 'password' && selectedUser) {
       updatePasswordMutation.mutate({
@@ -243,6 +270,20 @@ export default function UserManagement() {
     });
   };
 
+  // Obtener nombre de tienda por sap_id
+  const getStoreName = (sapId: string | null) => {
+    if (!sapId) return '-';
+    const branch = branchesData?.branches.find(b => b.sap_id === sapId);
+    return branch ? `${branch.name} (${sapId})` : sapId;
+  };
+
+  // Icono por rol
+  const getRoleIcon = (role: UserRole) => {
+    if (role === 'system_specialist') return <Shield className="h-4 w-4 text-foreground" />;
+    if (role === 'cst_user') return <UserIcon className="h-4 w-4 text-muted-foreground" />;
+    return <Store className="h-4 w-4 text-muted-foreground" />;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <NavigationMenu />
@@ -255,6 +296,11 @@ export default function UserManagement() {
             </h1>
             <p className="text-muted-foreground">
               Gestiona los usuarios del sistema y sus permisos
+              {currentRole === 'cst_user' && (
+                <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
+                  Solo puedes gestionar Usuarios Tienda
+                </span>
+              )}
             </p>
           </div>
           <Button
@@ -280,7 +326,7 @@ export default function UserManagement() {
                   <TableHead className="text-foreground font-semibold">Nombre</TableHead>
                   <TableHead className="text-foreground font-semibold">Email</TableHead>
                   <TableHead className="text-foreground font-semibold">Rol</TableHead>
-                  <TableHead className="text-foreground font-semibold">Método</TableHead>
+                  <TableHead className="text-foreground font-semibold">Tienda Asignada</TableHead>
                   <TableHead className="text-foreground font-semibold">Último Acceso</TableHead>
                   <TableHead className="text-foreground font-semibold text-right">Acciones</TableHead>
                 </TableRow>
@@ -293,22 +339,20 @@ export default function UserManagement() {
                     <TableCell>{user.email || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {user.role === 'admin' ? (
-                          <Shield className="h-4 w-4 text-foreground" />
-                        ) : (
-                          <UserIcon className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="capitalize">{user.role}</span>
+                        {getRoleIcon(user.role as UserRole)}
+                        <span>{ROLE_LABELS[user.role as UserRole] ?? user.role}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="capitalize">{user.loginMethod || '-'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {user.role === 'store_user' ? getStoreName(user.assignedStoreCode) : '-'}
+                    </TableCell>
                     <TableCell>{formatDate(user.lastSignedIn)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEditDialog(user)}
+                          onClick={() => openEditDialog(user as User)}
                           className="hover:bg-muted"
                         >
                           <Pencil className="h-4 w-4 text-foreground" />
@@ -316,7 +360,7 @@ export default function UserManagement() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openPasswordDialog(user)}
+                          onClick={() => openPasswordDialog(user as User)}
                           className="hover:bg-muted"
                         >
                           <Key className="h-4 w-4 text-foreground" />
@@ -328,7 +372,7 @@ export default function UserManagement() {
                           disabled={user.id === currentUser.id}
                           className="hover:bg-destructive/10"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4 text-[#BC2C46]" />
                         </Button>
                       </div>
                     </TableCell>
@@ -342,7 +386,7 @@ export default function UserManagement() {
 
       {/* Dialog para Crear/Editar Usuario */}
       <Dialog open={dialogMode === 'create' || dialogMode === 'edit'} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px]">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle className="text-foreground">
@@ -394,21 +438,63 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
+
+              {/* Selector de Rol */}
               <div className="grid gap-2">
-                <Label htmlFor="role">Rol</Label>
+                <Label htmlFor="role">Tipo de Usuario</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value: 'user' | 'admin') => setFormData({ ...formData, role: value })}
+                  onValueChange={(value: UserRole) => {
+                    setFormData({
+                      ...formData,
+                      role: value,
+                      // Limpiar tienda si no es store_user
+                      assignedStoreCode: value !== 'store_user' ? '' : formData.assignedStoreCode,
+                    });
+                  }}
+                  disabled={currentRole === 'cst_user'} // cst_user no puede cambiar el tipo
                 >
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">Usuario</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
+                    {availableRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Selector de Tienda — solo visible para store_user */}
+              {formData.role === 'store_user' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="assignedStore">
+                    Tienda Asignada <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.assignedStoreCode}
+                    onValueChange={(value) => setFormData({ ...formData, assignedStoreCode: value })}
+                    required
+                  >
+                    <SelectTrigger id="assignedStore">
+                      <SelectValue placeholder="Seleccionar tienda..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchesData?.branches.map((branch) => (
+                        <SelectItem key={branch.sap_id} value={branch.sap_id}>
+                          {branch.name} — {branch.sap_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    El usuario solo podrá ver información de esta tienda.
+                  </p>
+                </div>
+              )}
+
               {/* Welcome email option — only shown when creating and email is provided */}
               {dialogMode === 'create' && (
                 <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
@@ -445,7 +531,11 @@ export default function UserManagement() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={
+                  createMutation.isPending ||
+                  updateMutation.isPending ||
+                  (formData.role === 'store_user' && !formData.assignedStoreCode)
+                }
               >
                 {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

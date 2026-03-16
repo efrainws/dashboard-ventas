@@ -56,8 +56,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      // El owner siempre es Especialista de Sistemas
+      values.role = 'system_specialist';
+      updateSet.role = 'system_specialist';
     }
 
     if (!values.lastSignedIn) {
@@ -213,8 +214,8 @@ export async function countDiscrepancyTickets(filters?: {
 }
 
 /**
- * Returns the list of admin users that have an email address configured.
- * Used to send ticket notification emails to all admins.
+ * Returns the list of system_specialist users that have an email address configured.
+ * Used to send ticket notification emails.
  */
 export async function getAdminEmails(): Promise<Array<{ name: string | null; email: string }>> {
   const db = await getDb();
@@ -223,7 +224,7 @@ export async function getAdminEmails(): Promise<Array<{ name: string | null; ema
   const admins = await db
     .select({ name: users.name, email: users.email })
     .from(users)
-    .where(eq(users.role, "admin"));
+    .where(eq(users.role, "system_specialist"));
 
   return admins.filter((a): a is { name: string | null; email: string } => !!a.email);
 }

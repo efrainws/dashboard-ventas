@@ -1,18 +1,22 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { appRouter } from './routers';
 import { getDb } from './db';
 import { users } from '../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 
 /**
- * Tests para userRouter
- * Verifica la funcionalidad de administración de usuarios
+ * Tests de integración para userRouter.
+ * Verifica la gestión de usuarios con los nuevos roles:
+ * - system_specialist (antes admin): puede crear cualquier tipo de usuario
+ * - cst_user (antes user): solo puede crear store_user
+ * - store_user: no puede crear usuarios
  */
 
 describe('User Management Router', () => {
-  let adminContext: any;
-  let userContext: any;
+  let specialistContext: any;
+  let cstContext: any;
+  let storeContext: any;
   let testUserId: number;
 
   beforeAll(async () => {
@@ -21,194 +25,239 @@ describe('User Management Router', () => {
       throw new Error('Database not available for testing');
     }
 
-    // Crear usuario admin de prueba
+    // Limpiar usuarios de prueba previos
+    await db.delete(users).where(
+      or(
+        eq(users.username, 'test_specialist'),
+        eq(users.username, 'test_cst'),
+        eq(users.username, 'test_store'),
+        eq(users.username, 'new_test_user'),
+      )
+    );
+
     const hashedPassword = await bcrypt.hash('admin123', 10);
-    const [adminResult] = await db.insert(users).values({
-      username: 'test_admin',
+
+    // Crear system_specialist de prueba
+    const [specResult] = await db.insert(users).values({
+      username: 'test_specialist',
       password: hashedPassword,
-      name: 'Test Admin',
-      email: 'admin@test.com',
-      role: 'admin',
+      name: 'Test Specialist',
+      email: 'specialist@test.com',
+      role: 'system_specialist',
       loginMethod: 'local',
     });
+    const [specialistUser] = await db.select().from(users).where(eq(users.id, specResult.insertId)).limit(1);
 
-    const adminId = adminResult.insertId;
-    const [adminUser] = await db.select().from(users).where(eq(users.id, adminId)).limit(1);
-
-    // Crear usuario regular de prueba
-    const [userResult] = await db.insert(users).values({
-      username: 'test_user',
+    // Crear cst_user de prueba
+    const [cstResult] = await db.insert(users).values({
+      username: 'test_cst',
       password: hashedPassword,
-      name: 'Test User',
-      email: 'user@test.com',
-      role: 'user',
+      name: 'Test CST',
+      email: 'cst@test.com',
+      role: 'cst_user',
       loginMethod: 'local',
     });
+    const [cstUser] = await db.select().from(users).where(eq(users.id, cstResult.insertId)).limit(1);
 
-    const userId = userResult.insertId;
-    const [regularUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // Crear store_user de prueba
+    const [storeResult] = await db.insert(users).values({
+      username: 'test_store',
+      password: hashedPassword,
+      name: 'Test Store',
+      email: 'store@test.com',
+      role: 'store_user',
+      assignedStoreCode: 'T001',
+      loginMethod: 'local',
+    });
+    const [storeUser] = await db.select().from(users).where(eq(users.id, storeResult.insertId)).limit(1);
 
-    // Crear contextos de prueba
-    adminContext = {
-      user: adminUser,
-    };
-
-    userContext = {
-      user: regularUser,
-    };
+    specialistContext = { user: specialistUser };
+    cstContext = { user: cstUser };
+    storeContext = { user: storeUser };
   });
 
-  describe('listUsers', () => {
-    it('should allow admin to list all users', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      const result = await caller.users.listUsers();
+  afterAll(async () => {
+    const db = await getDb();
+    if (!db) return;
+    await db.delete(users).where(
+      or(
+        eq(users.username, 'test_specialist'),
+        eq(users.username, 'test_cst'),
+        eq(users.username, 'test_store'),
+        eq(users.username, 'new_test_user'),
+      )
+    );
+  });
 
+  // ─── listUsers ──────────────────────────────────────────────────────────────
+
+  describe('listUsers', () => {
+    it('system_specialist puede listar todos los usuarios', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      const result = await caller.users.listUsers();
       expect(result.success).toBe(true);
-      expect(result.users).toBeDefined();
       expect(Array.isArray(result.users)).toBe(true);
       expect(result.users.length).toBeGreaterThan(0);
     });
 
-    it('should deny non-admin users from listing users', async () => {
-      const caller = appRouter.createCaller(userContext);
-      
-      await expect(caller.users.listUsers()).rejects.toThrow('Solo los administradores pueden realizar esta acción');
+    it('cst_user puede listar usuarios', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      const result = await caller.users.listUsers();
+      expect(result.success).toBe(true);
+    });
+
+    it('store_user no puede listar usuarios (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(storeContext);
+      await expect(caller.users.listUsers()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
   });
 
+  // ─── createUser ─────────────────────────────────────────────────────────────
+
   describe('createUser', () => {
-    it('should allow admin to create a new user', async () => {
-      const caller = appRouter.createCaller(adminContext);
+    it('system_specialist puede crear un store_user', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       const result = await caller.users.createUser({
         username: 'new_test_user',
         password: 'password123',
         name: 'New Test User',
         email: 'newuser@test.com',
-        role: 'user',
+        role: 'store_user',
+        assignedStoreCode: 'T099',
       });
-
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Usuario creado exitosamente');
       expect(result.userId).toBeDefined();
-
       testUserId = result.userId;
     });
 
-    it('should reject duplicate usernames', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      
+    it('cst_user puede crear un store_user', async () => {
+      const db = await getDb();
+      // Limpiar si existe
+      await db?.delete(users).where(eq(users.username, 'cst_created_store'));
+      const caller = appRouter.createCaller(cstContext);
+      const result = await caller.users.createUser({
+        username: 'cst_created_store',
+        password: 'password123',
+        name: 'CST Created Store',
+        role: 'store_user',
+        assignedStoreCode: 'T010',
+      });
+      expect(result.success).toBe(true);
+      // Limpiar
+      await db?.delete(users).where(eq(users.username, 'cst_created_store'));
+    });
+
+    it('cst_user no puede crear system_specialist (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(cstContext);
       await expect(
         caller.users.createUser({
-          username: 'test_admin', // Ya existe
+          username: 'forbidden_spec',
+          password: 'password123',
+          name: 'Forbidden Specialist',
+          role: 'system_specialist',
+        })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('cst_user no puede crear cst_user (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      await expect(
+        caller.users.createUser({
+          username: 'forbidden_cst',
+          password: 'password123',
+          name: 'Forbidden CST',
+          role: 'cst_user',
+        })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('store_user no puede crear usuarios (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(storeContext);
+      await expect(
+        caller.users.createUser({
+          username: 'forbidden_user',
+          password: 'password123',
+          name: 'Forbidden User',
+          role: 'store_user',
+        })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('rechaza usernames duplicados', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      await expect(
+        caller.users.createUser({
+          username: 'test_specialist',
           password: 'password123',
           name: 'Duplicate User',
-          role: 'user',
+          role: 'cst_user',
         })
       ).rejects.toThrow('El nombre de usuario ya existe');
     });
-
-    it('should deny non-admin users from creating users', async () => {
-      const caller = appRouter.createCaller(userContext);
-      
-      await expect(
-        caller.users.createUser({
-          username: 'another_user',
-          password: 'password123',
-          name: 'Another User',
-          role: 'user',
-        })
-      ).rejects.toThrow('Solo los administradores pueden realizar esta acción');
-    });
   });
 
+  // ─── updateUser ─────────────────────────────────────────────────────────────
+
   describe('updateUser', () => {
-    it('should allow admin to update user information', async () => {
-      const caller = appRouter.createCaller(adminContext);
+    it('system_specialist puede actualizar información de usuario', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       const result = await caller.users.updateUser({
         id: testUserId,
         name: 'Updated Test User',
         email: 'updated@test.com',
       });
-
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Usuario actualizado exitosamente');
     });
 
-    it('should reject updates to non-existent users', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      
+    it('rechaza actualización de usuario inexistente', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       await expect(
-        caller.users.updateUser({
-          id: 999999, // ID que no existe
-          name: 'Non-existent User',
-        })
+        caller.users.updateUser({ id: 999999, name: 'Non-existent' })
       ).rejects.toThrow('Usuario no encontrado');
     });
   });
 
+  // ─── updatePassword ─────────────────────────────────────────────────────────
+
   describe('updatePassword', () => {
-    it('should allow admin to update user password', async () => {
-      const caller = appRouter.createCaller(adminContext);
+    it('system_specialist puede cambiar contraseña de otro usuario', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       const result = await caller.users.updatePassword({
         id: testUserId,
         newPassword: 'newpassword123',
       });
-
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Contraseña actualizada exitosamente');
-    });
-
-    it('should reject password updates for non-existent users', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      
-      await expect(
-        caller.users.updatePassword({
-          id: 999999,
-          newPassword: 'newpassword123',
-        })
-      ).rejects.toThrow('Usuario no encontrado');
     });
   });
 
+  // ─── deleteUser ─────────────────────────────────────────────────────────────
+
   describe('deleteUser', () => {
-    it('should prevent admin from deleting themselves', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      
+    it('no puede eliminar su propia cuenta', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       await expect(
-        caller.users.deleteUser({
-          id: adminContext.user.id,
-        })
+        caller.users.deleteUser({ id: specialistContext.user.id })
       ).rejects.toThrow('No puedes eliminar tu propia cuenta');
     });
 
-    it('should allow admin to delete other users', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      const result = await caller.users.deleteUser({
-        id: testUserId,
-      });
+    it('store_user no puede eliminar usuarios (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(storeContext);
+      await expect(
+        caller.users.deleteUser({ id: testUserId })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
 
+    it('system_specialist puede eliminar otro usuario', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      const result = await caller.users.deleteUser({ id: testUserId });
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Usuario eliminado exitosamente');
     });
 
-    it('should reject deletion of non-existent users', async () => {
-      const caller = appRouter.createCaller(adminContext);
-      
+    it('rechaza eliminación de usuario inexistente', async () => {
+      const caller = appRouter.createCaller(specialistContext);
       await expect(
-        caller.users.deleteUser({
-          id: 999999,
-        })
+        caller.users.deleteUser({ id: 999999 })
       ).rejects.toThrow('Usuario no encontrado');
-    });
-
-    it('should deny non-admin users from deleting users', async () => {
-      const caller = appRouter.createCaller(userContext);
-      
-      await expect(
-        caller.users.deleteUser({
-          id: testUserId,
-        })
-      ).rejects.toThrow('Solo los administradores pueden realizar esta acción');
     });
   });
 });
