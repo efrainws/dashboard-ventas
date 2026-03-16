@@ -645,7 +645,7 @@ Fecha: 1 de febrero de 2026
 - [x] Modificar Home.tsx para redirigir a /login después de logout
 - [x] Modificar HourlyAnalysis.tsx para redirigir a /login después de logout
 - [x] Verificar que la redirección funcione correctamente
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Implementar Argon2id para Almacenamiento Seguro de Contraseñas (2026-02-03)
 
@@ -674,7 +674,7 @@ Fecha: 1 de febrero de 2026
 - [x] Test: pepper es requerido y usado correctamente
 - [x] Test: hashes tienen formato Argon2id correcto
 - [x] Ejecutar todos los tests y verificar que pasen (22/22 tests pasados)
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Cambiar Fecha por Defecto a Ayer (2026-02-04)
 
@@ -698,7 +698,7 @@ Fecha: 1 de febrero de 2026
 - [x] Cambiar color de línea de ventas a #008064 (verde) en ambos gráficos
 - [x] Cambiar color de línea de transacciones a #BC2C46 (granate) en HourlyLineChart
 - [x] Verificar que los colores se apliquen correctamente en el navegador (verde para ventas, granate para transacciones)
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Agregar Dimensión Canal de Ventas (sales_channel) (2026-02-11)
 
@@ -718,7 +718,7 @@ Fecha: 1 de febrero de 2026
 - [x] Escribir tests para verificar lógica de sales_channel
 - [x] Probar filtro en navegador con diferentes combinaciones
 - [x] Verificar que datos se filtren correctamente
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 
 ## Optimización con Python para Grandes Volúmenes de Datos (2026-02-11)
@@ -762,7 +762,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Configurar job nocturno de actualización
 - [ ] Implementar caché Redis para consultas frecuentes
 - [ ] Monitorear rendimiento post-optimización
-- [ ] Guardar checkpoint con scripts de optimización
+- [x] Guardar checkpoint con scripts de optimización
 
 
 ## Nuevo KPI: Promedio de Ventas por Día (2026-02-11)
@@ -801,7 +801,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Modificar BranchBarChart para calcular días únicos globalmente
 - [ ] Actualizar fila de totales con cálculo correcto
 - [ ] Probar con diferentes rangos de fechas
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 
 ## Corrección de Venta Promedio Diaria en Análisis por Categorías (2026-02-20)
@@ -903,7 +903,7 @@ Fecha: 1 de febrero de 2026
   * Ventas totales coinciden: S/ 3,527.17
 - [x] Verificar ordenamiento de sucursales en dropdown de análisis por horas ✓
   * Ordenamiento correcto por SAP ID: FF01, FF02, FF03, ..., FF12
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 
 ## Comparación con Período Anterior en KPIs (2026-02-24)
@@ -926,7 +926,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Probar comparación con diferentes rangos de fechas
 - [ ] Verificar que cálculos de variación sean correctos
 - [ ] Probar con filtros de sucursal y canal
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 
 ## Nueva Tarea - Optimización para Grandes Volúmenes de Datos con Python (24/02/2026)
@@ -1074,7 +1074,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Verificar filtros multi-select de tiendas
 
 ### Checkpoint
-- [ ] Guardar checkpoint con el feature completo
+- [x] Guardar checkpoint con el feature completo
 
 
 ### Verificación Inicial (25/02/2026)
@@ -1396,4 +1396,12 @@ Fecha: 1 de febrero de 2026
 
 - [x] Cambiar color texto Proyección Mensual de Cobalto a #232523
 - [x] Quitar font-semibold/negrita de los valores de la tabla
+- [x] Guardar checkpoint
+
+## Rediseño tarjetas Ventas vs Meta
+
+- [x] Reorganizar StoreTargetCard en 5 líneas: nombre, barra, venta/meta período, proyección/meta mensual, diario/meta diaria
+- [x] Aplicar colores de cumplimiento a venta realizada, proyección y promedio diario
+- [x] Mostrar porcentaje de cumplimiento junto a cada valor de venta
+- [x] Calcular y mostrar meta diaria promedio (meta mensual / días del mes)
 - [x] Guardar checkpoint

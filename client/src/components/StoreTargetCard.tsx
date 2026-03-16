@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pencil, TrendingUp } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StoreTargetCardProps {
@@ -18,6 +18,15 @@ interface StoreTargetCardProps {
   monthlyTarget?: number;
 }
 
+/** Devuelve el color de cumplimiento según el porcentaje */
+function getComplianceColor(pct: number | null): string {
+  if (pct === null) return "#919291"; // Humo – sin meta
+  if (pct >= 100) return "#008064";  // Esmeralda
+  if (pct >= 90)  return "#1A6894";  // Cobalto
+  if (pct >= 75)  return "#C49705";  // Mostaza
+  return "#BC2C46";                   // Granate
+}
+
 export function StoreTargetCard({
   storeName,
   totalSales,
@@ -30,195 +39,229 @@ export function StoreTargetCard({
   daysInMonth,
   monthlyTarget,
 }: StoreTargetCardProps) {
-  // Venta promedio diaria
+  // ── Cálculos derivados ───────────────────────────────────────────────────
   const dailyAverage = daysElapsed > 0 ? totalSales / daysElapsed : 0;
+  const projection   = dailyAverage * daysInMonth;
 
-  // Proyección al cierre del mes
-  const projection = dailyAverage * daysInMonth;
+  // Meta diaria promedio = meta mensual / días del mes
+  const dailyTarget =
+    monthlyTarget && monthlyTarget > 0 ? monthlyTarget / daysInMonth : null;
 
-  // Porcentaje de proyección vs meta mensual completa
+  // % proyección vs meta mensual
   const projectionVsTarget =
     monthlyTarget && monthlyTarget > 0
       ? (projection / monthlyTarget) * 100
       : null;
 
+  // % promedio diario vs meta diaria
+  const dailyVsTarget =
+    dailyTarget && dailyTarget > 0
+      ? (dailyAverage / dailyTarget) * 100
+      : null;
+
+  // ── Colores ──────────────────────────────────────────────────────────────
+  const periodColor     = getComplianceColor(hasTarget ? completionPercentage : null);
+  const projectionColor = getComplianceColor(projectionVsTarget);
+  const dailyColor      = getComplianceColor(dailyVsTarget);
+
+  // ── Formateo ─────────────────────────────────────────────────────────────
   const fmt = (n: number) =>
-    n.toLocaleString("es-PE", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+    n.toLocaleString("es-PE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const fmtShort = (n: number) => {
     if (n >= 1_000_000) return `S/ ${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `S/ ${(n / 1_000).toFixed(0)}K`;
+    if (n >= 1_000)     return `S/ ${(n / 1_000).toFixed(0)}K`;
     return `S/ ${fmt(n)}`;
   };
 
-  const completionColor =
-    completionPercentage >= 100
-      ? "#008064"
-      : completionPercentage >= 90
-      ? "#1A6894"
-      : completionPercentage >= 75
-      ? "#C49705"
-      : "#BC2C46";
-
-  const projectionColor =
-    projectionVsTarget === null
-      ? "#919291"
-      : projectionVsTarget >= 100
-      ? "#008064"
-      : projectionVsTarget >= 90
-      ? "#1A6894"
-      : projectionVsTarget >= 75
-      ? "#C49705"
-      : "#BC2C46";
+  const pctStr = (p: number | null) =>
+    p !== null ? `${p.toFixed(1)}%` : "—";
 
   return (
-    <Card className="relative hover:shadow-lg transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <CardTitle
-            className="text-base font-semibold leading-tight"
-            style={{ fontFamily: "Sailec, sans-serif" }}
-          >
-            {storeName}
-          </CardTitle>
-          {canEdit && onEditClick && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={onEditClick}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
+    <Card className="relative hover:shadow-lg transition-shadow overflow-hidden">
+      {/* Botón de edición – posición absoluta para no ocupar espacio */}
+      {canEdit && onEditClick && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-3 right-3 h-7 w-7 z-10 opacity-60 hover:opacity-100"
+          onClick={onEditClick}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
 
-      <CardContent className="space-y-4">
-        {/* Barra de Progreso */}
-        {hasTarget && (
-          <div className="space-y-1.5">
-            <div
-              className="flex justify-between text-sm"
-              style={{ fontFamily: "Sailec, sans-serif" }}
-            >
-              <span className="text-muted-foreground">Cumplimiento</span>
-              <span className="font-semibold" style={{ color: completionColor }}>
+      <CardContent className="pt-5 pb-5 px-5 space-y-3.5">
+
+        {/* ── Línea 1: Nombre de tienda ────────────────────────────────── */}
+        <p
+          className="text-sm font-bold uppercase leading-tight tracking-wide pr-8"
+          style={{ fontFamily: "Italian Plate No 1, serif", color: "#232523" }}
+        >
+          {storeName}
+        </p>
+
+        {/* ── Línea 2: Barra de cumplimiento ───────────────────────────── */}
+        {hasTarget ? (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span
+                className="text-xs text-muted-foreground"
+                style={{ fontFamily: "Sailec, sans-serif" }}
+              >
+                Cumplimiento del período
+              </span>
+              <span
+                className="text-sm font-semibold tabular-nums"
+                style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
+              >
                 {completionPercentage.toFixed(1)}%
               </span>
             </div>
-            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full transition-all"
+                className="h-full transition-all duration-500"
                 style={{
                   width: `${Math.min(completionPercentage, 100)}%`,
-                  backgroundColor: completionColor,
+                  backgroundColor: periodColor,
                 }}
               />
             </div>
           </div>
+        ) : (
+          <p
+            className="text-xs text-muted-foreground italic"
+            style={{ fontFamily: "Sailec, sans-serif" }}
+          >
+            Meta no configurada
+          </p>
         )}
 
-        {/* Métricas principales */}
-        <div className="space-y-3">
-          {/* Venta del período */}
-          <div>
-            <p
-              className="text-xs text-muted-foreground tracking-wide"
-              style={{ fontFamily: "Sailec, sans-serif" }}
-            >
-              Venta del período
-            </p>
-            <p
-              className="text-2xl font-bold"
-              style={{ fontFamily: "Sailec, sans-serif" }}
-            >
-              S/ {fmt(totalSales)}
-            </p>
-          </div>
+        {/* Divisor */}
+        <div className="border-t border-border/40" />
 
-          {/* Meta del período */}
-          <div>
-            <p
-              className="text-xs text-muted-foreground tracking-wide"
-              style={{ fontFamily: "Sailec, sans-serif" }}
-            >
-              Meta del período
-            </p>
-            {hasTarget ? (
-              <p
-                className="text-base font-semibold"
+        {/* ── Línea 3: Venta del período vs Meta del período ────────────── */}
+        <div className="space-y-0.5">
+          <p
+            className="text-[10px] uppercase tracking-wider text-muted-foreground"
+            style={{ fontFamily: "Sailec, sans-serif" }}
+          >
+            Período
+          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span
+                className="text-lg font-semibold tabular-nums leading-none"
+                style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
+              >
+                {fmtShort(totalSales)}
+              </span>
+              {hasTarget && (
+                <span
+                  className="text-xs font-medium tabular-nums"
+                  style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
+                >
+                  ({pctStr(completionPercentage)})
+                </span>
+              )}
+            </div>
+            {hasTarget && (
+              <span
+                className="text-xs text-muted-foreground tabular-nums shrink-0"
                 style={{ fontFamily: "Sailec, sans-serif" }}
               >
-                S/ {fmt(proratedTarget)}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                Meta no configurada
-              </p>
+                {fmtShort(proratedTarget)}
+              </span>
             )}
           </div>
+        </div>
 
-          {/* Separador */}
-          <div className="border-t border-border/50" />
-
-          {/* Venta Promedio Diaria */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p
-              className="text-xs text-muted-foreground tracking-wide"
-              style={{ fontFamily: "Sailec, sans-serif" }}
-            >
-                Prom. diario
-              </p>
-              <p
-                className="text-sm font-semibold"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
-                {fmtShort(dailyAverage)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {daysElapsed} día{daysElapsed !== 1 ? "s" : ""}
-              </p>
-            </div>
-
-            {/* Proyección al cierre del mes */}
-            <div>
-              <div className="flex items-center gap-1">
-                <p
-                  className="text-xs text-muted-foreground tracking-wide"
-                  style={{ fontFamily: "Sailec, sans-serif" }}
-                >
-                  Proyección
-                </p>
-                <TrendingUp className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <p
-                className="text-sm font-semibold"
-                style={{
-                  fontFamily: "Sailec, sans-serif",
-                  color: projectionColor,
-                }}
+        {/* ── Línea 4: Proyección mensual vs Meta mensual ───────────────── */}
+        <div className="space-y-0.5">
+          <p
+            className="text-[10px] uppercase tracking-wider text-muted-foreground"
+            style={{ fontFamily: "Sailec, sans-serif" }}
+          >
+            Proyección mensual
+          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span
+                className="text-base font-semibold tabular-nums leading-none"
+                style={{ fontFamily: "Sailec, sans-serif", color: projectionColor }}
               >
                 {fmtShort(projection)}
-              </p>
+              </span>
               {projectionVsTarget !== null && (
-                <p
-                  className="text-xs font-medium"
-                  style={{ color: projectionColor }}
+                <span
+                  className="text-xs font-medium tabular-nums"
+                  style={{ fontFamily: "Sailec, sans-serif", color: projectionColor }}
                 >
-                  {projectionVsTarget.toFixed(0)}% de meta
-                </p>
-              )}
-              {projectionVsTarget === null && (
-                <p className="text-xs text-muted-foreground">sin meta</p>
+                  ({pctStr(projectionVsTarget)})
+                </span>
               )}
             </div>
+            {monthlyTarget && monthlyTarget > 0 ? (
+              <span
+                className="text-xs text-muted-foreground tabular-nums shrink-0"
+                style={{ fontFamily: "Sailec, sans-serif" }}
+              >
+                {fmtShort(monthlyTarget)}
+              </span>
+            ) : (
+              <span
+                className="text-xs text-muted-foreground italic shrink-0"
+                style={{ fontFamily: "Sailec, sans-serif" }}
+              >
+                sin meta
+              </span>
+            )}
           </div>
         </div>
+
+        {/* ── Línea 5: Promedio diario vs Meta diaria ───────────────────── */}
+        <div className="space-y-0.5">
+          <p
+            className="text-[10px] uppercase tracking-wider text-muted-foreground"
+            style={{ fontFamily: "Sailec, sans-serif" }}
+          >
+            Promedio diario
+          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span
+                className="text-base font-semibold tabular-nums leading-none"
+                style={{ fontFamily: "Sailec, sans-serif", color: dailyColor }}
+              >
+                {fmtShort(dailyAverage)}
+              </span>
+              {dailyVsTarget !== null && (
+                <span
+                  className="text-xs font-medium tabular-nums"
+                  style={{ fontFamily: "Sailec, sans-serif", color: dailyColor }}
+                >
+                  ({pctStr(dailyVsTarget)})
+                </span>
+              )}
+            </div>
+            {dailyTarget !== null ? (
+              <span
+                className="text-xs text-muted-foreground tabular-nums shrink-0"
+                style={{ fontFamily: "Sailec, sans-serif" }}
+              >
+                {fmtShort(dailyTarget)}
+              </span>
+            ) : (
+              <span
+                className="text-xs text-muted-foreground italic shrink-0"
+                style={{ fontFamily: "Sailec, sans-serif" }}
+              >
+                sin meta
+              </span>
+            )}
+          </div>
+        </div>
+
       </CardContent>
     </Card>
   );
