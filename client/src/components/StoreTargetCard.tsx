@@ -95,8 +95,8 @@ export function StoreTargetCard({
 
         {/* ── Línea 1: Nombre de tienda ────────────────────────────────── */}
         <p
-          className="text-sm font-bold uppercase leading-tight tracking-wide pr-8"
-          style={{ fontFamily: "Italian Plate No 1, serif", color: "#232523" }}
+          className="text-sm font-bold uppercase leading-tight tracking-wide pr-8 font-heading"
+          style={{ color: "#232523" }}
         >
           {storeName}
         </p>

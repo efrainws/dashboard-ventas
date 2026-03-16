@@ -7,7 +7,7 @@
    F&F — Fuentes Corporativas
    ========================= */
 @font-face {
-  font-family: 'ItalianPlateNo1';
+  font-family: 'Italian Plate No 1';
   src: url('/fonts/ItalianPlateNo1-Bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
@@ -15,7 +15,7 @@
 }
 
 @font-face {
-  font-family: 'ItalianPlateNo1';
+  font-family: 'Italian Plate No 1';
   src: url('/fonts/ItalianPlateNo1-Extrabold.otf') format('opentype');
   font-weight: 800;
   font-style: normal;
@@ -136,7 +136,7 @@
   --ff-granate-dark: #842032;     /* Mezclado con Carbon */
 
   /* Fuentes */
-  --font-heading: 'ItalianPlateNo1', sans-serif;
+  --font-heading: 'Italian Plate No 1', sans-serif;
   --font-sans: 'Sailec', system-ui, -apple-system, sans-serif;
 }
 
@@ -302,6 +302,11 @@
   .flex {
     min-height: 0;
     min-width: 0;
+  }
+
+  /* Clase utilitaria para aplicar la tipografía corporativa de títulos */
+  .font-heading {
+    font-family: var(--font-heading);
   }
 
   @media (min-width: 640px) {
