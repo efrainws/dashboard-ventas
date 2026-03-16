@@ -5,8 +5,8 @@ const { Pool } = pkg;
 const pool = new Pool({
   host: 'database-flora-y-fauna.clei6ceoew9j.us-east-2.rds.amazonaws.com',
   port: 5432,
-  user: 'postgres',
-  password: '1tU1TTGYUmkTe5DGZXjg',
+  user: 'user01',
+  password: 'ogkDsfN7dwQI4yYb3zzR',
   database: 'production-middleware-florayfauna',
   // Configuración SSL requerida por RDS
   ssl: {
