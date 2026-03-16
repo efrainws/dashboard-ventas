@@ -1,13 +1,13 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Configuración de conexión a PostgreSQL
+// Configuración de conexión a PostgreSQL — credenciales leídas desde variables de entorno
 const pool = new Pool({
-  host: 'database-flora-y-fauna.clei6ceoew9j.us-east-2.rds.amazonaws.com',
-  port: 5432,
-  user: 'user01',
-  password: 'ogkDsfN7dwQI4yYb3zzR',
-  database: 'production-middleware-florayfauna',
+  host: process.env.PG_HOST,
+  port: Number(process.env.PG_PORT ?? 5432),
+  user: process.env.PG_USER,
+  password: process.env.PG_PASSWORD,
+  database: process.env.PG_DATABASE,
   // Configuración SSL requerida por RDS
   ssl: {
     rejectUnauthorized: false, // Necesario para RDS sin certificado personalizado
