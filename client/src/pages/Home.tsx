@@ -88,13 +88,6 @@ export default function Home() {
       <div className="container py-12 space-y-12">
         {/* Logo y Hero Section */}
         <div className="space-y-8">
-          <div className="flex justify-start">
-            <img 
-              src={logoSrc}
-              alt="Flora & Fauna" 
-              className="h-12 w-auto" 
-            />
-          </div>
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
               Bienvenido, {user?.name}
