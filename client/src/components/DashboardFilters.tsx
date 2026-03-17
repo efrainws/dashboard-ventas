@@ -52,7 +52,7 @@ export function DashboardFilters({
     selectedCategory !== "all";
 
   const lockedBranchName = branchLocked
-    ? branches.find(b => b.id === selectedBranch)?.name ?? selectedBranch
+    ? branches.find(b => b.sap_id === selectedBranch)?.name ?? selectedBranch
     : null;
 
   return (
@@ -103,7 +103,7 @@ export function DashboardFilters({
                 <SelectContent>
                   <SelectItem value="all">Todas las sucursales</SelectItem>
                   {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
+                    <SelectItem key={branch.id} value={branch.sap_id}>
                       {branch.name} ({branch.sap_id})
                     </SelectItem>
                   ))}

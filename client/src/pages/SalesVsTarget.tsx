@@ -87,7 +87,7 @@ export default function SalesVsTarget() {
   // Obtener lista única de tiendas para el filtro
   const availableStores = useMemo(() => {
     if (!data?.stores) return [];
-    return data.stores.map(s => ({ id: s.store_id, name: s.store_name }));
+    return data.stores.map(s => ({ id: s.store_sap_id || s.store_id, name: s.store_name }));
   }, [data]);
 
   // Solo system_specialist puede editar metas

@@ -30,7 +30,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        additionalFilters.push(`AND branch_sap_id = $${paramIndex}`);
         queryParams.push(branch_id);
         paramIndex++;
       }
@@ -144,7 +144,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        additionalFilters.push(`AND branch_sap_id = $${paramIndex}`);
         queryParams.push(branch_id);
         paramIndex++;
       }
@@ -254,7 +254,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
         queryParams.push(branch_id);
         paramIndex++;
       }
@@ -284,6 +284,7 @@ export const salesRouter = router({
             END AS period
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
           LEFT JOIN categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
@@ -368,7 +369,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
         queryParams.push(branch_id);
         paramIndex++;
       }
@@ -404,6 +405,7 @@ export const salesRouter = router({
             END AS period
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
             AND (
               (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
@@ -627,7 +629,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_id = $${paramIndex}`);
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
         queryParams.push(branch_id);
         paramIndex++;
       }
@@ -654,6 +656,7 @@ export const salesRouter = router({
             END AS period
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
           LEFT JOIN categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'

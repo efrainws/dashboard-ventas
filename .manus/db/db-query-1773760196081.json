@@ -1,0 +1,64 @@
+{
+  "query": "SELECT id, username, role, assigned_store_code FROM users WHERE username IS NOT NULL ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute SELECT id, username, role, assigned_store_code FROM users WHERE username IS NOT NULL ORDER BY id;",
+  "rows": [
+    {
+      "id": "3",
+      "username": "efrainw",
+      "role": "system_specialist",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "1200026",
+      "username": "test_admin",
+      "role": "system_specialist",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "1200051",
+      "username": "erasmow",
+      "role": "cst_user",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "1650027",
+      "username": "luisg",
+      "role": "cst_user",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "1800004",
+      "username": "jeanpaulb",
+      "role": "cst_user",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "2820111",
+      "username": "miguelc",
+      "role": "system_specialist",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "3150043",
+      "username": "joses",
+      "role": "cst_user",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "3390009",
+      "username": "jesuss",
+      "role": "cst_user",
+      "assigned_store_code": "NULL"
+    },
+    {
+      "id": "3690001",
+      "username": "SanBorja",
+      "role": "store_user",
+      "assigned_store_code": "FF02"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\trole\tassigned_store_code\n3\tefrainw\tsystem_specialist\tNULL\n1200026\ttest_admin\tsystem_specialist\tNULL\n1200051\terasmow\tcst_user\tNULL\n1650027\tluisg\tcst_user\tNULL\n1800004\tjeanpaulb\tcst_user\tNULL\n2820111\tmiguelc\tsystem_specialist\tNULL\n3150043\tjoses\tcst_user\tNULL\n3390009\tjesuss\tcst_user\tNULL\n3690001\tSanBorja\tstore_user\tFF02\n",
+  "stderr": "",
+  "execution_time_ms": 518
+}

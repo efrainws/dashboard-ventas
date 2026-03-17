@@ -21,9 +21,9 @@ export const targetsRouter = router({
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, store_ids } = input;
 
-      // Construir filtro de tiendas
+      // Construir filtro de tiendas (store_ids contiene sap_id values, no UUIDs)
       const storeFilter = store_ids && store_ids.length > 0
-        ? `AND sh.branch_id = ANY($3::uuid[])`
+        ? `AND b.sap_id = ANY($3::text[])`
         : '';
       const queryParams: any[] = [fecha_min, fecha_max];
       if (store_ids && store_ids.length > 0) {

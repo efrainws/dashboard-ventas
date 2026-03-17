@@ -1424,3 +1424,8 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar SalesVsTarget.tsx: bloquear filtro de tienda para store_user
 - [x] Actualizar IdentifiedTransactions.tsx: bloquear filtro de tienda para store_user
 - [ ] Guardar checkpoint
+
+## Bug: Filtro de tienda para store_user falla con sap_id
+- [ ] Corregir 5 endpoints del salesRouter para filtrar por b.sap_id en lugar de UUID
+- [ ] Corregir DashboardFilters para usar sap_id como valor del selector de tienda
+- [ ] Verificar que todos los dashboards funcionan correctamente para store_user

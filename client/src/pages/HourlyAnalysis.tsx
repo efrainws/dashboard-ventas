@@ -277,7 +277,7 @@ export default function HourlyAnalysis() {
                             return sapIdA - sapIdB;
                           })
                           .map((branch) => (
-                            <SelectItem key={branch.id} value={branch.id}>
+                            <SelectItem key={branch.id} value={branch.sap_id}>
                               {branch.name} ({branch.sap_id})
                             </SelectItem>
                           ))}
@@ -397,7 +397,7 @@ export default function HourlyAnalysis() {
           storeId: selectedBranch !== "all" ? selectedBranch : undefined,
           storeName:
             selectedBranch !== "all"
-              ? metrics.branches?.find((b: any) => b.id === selectedBranch)?.name
+              ? metrics.branches?.find((b: any) => b.sap_id === selectedBranch)?.name
               : undefined,
         }}
       />
