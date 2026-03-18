@@ -5,8 +5,9 @@ import { getDb } from './db';
 import { users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { sendWelcomeEmail, sendPasswordResetEmail } from './email';
+import { sendPasswordResetEmail, sendActivationEmail } from './email';
 import { pool } from './postgres';
+import { createActivationToken } from './activationRouter';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
 export type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
@@ -199,7 +200,7 @@ export const userRouter = router({
 
         const userId = (newUser as any).insertId as number;
 
-        // Send welcome email if requested and email is provided
+        // Send activation email if requested and email is provided
         let emailSent = false;
         if (input.sendWelcomeEmail && input.email) {
           const req = (ctx as any).req;
@@ -207,12 +208,15 @@ export const userRouter = router({
           const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
           const appUrl = `${protocol}://${host}`;
 
-          emailSent = await sendWelcomeEmail({
+          // Generate activation token
+          const activationToken = await createActivationToken(userId, input.username);
+          const activationUrl = `${appUrl}/activate/${activationToken}`;
+
+          emailSent = await sendActivationEmail({
             name: input.name,
             email: input.email,
             username: input.username,
-            password: input.password,
-            appUrl,
+            activationUrl,
             role: input.role,
           });
         }

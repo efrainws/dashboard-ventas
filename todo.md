@@ -1430,3 +1430,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Corregir DashboardFilters para usar sap_id como valor del selector de tienda
 - [ ] Verificar que todos los dashboards funcionan correctamente para store_user
 - [x] Permitir que cst_user edite metas: actualizar permisos en backend (upsertStoreTarget, deleteStoreTarget, bulkUpsertFromCSV) y frontend (canEdit, botón Editar Metas, StoreTargetCard)
+- [x] Flujo de activación de cuenta: tabla activation_tokens en DB con token único, expiración y estado
+- [x] Flujo de activación de cuenta: endpoints backend (generateToken, validateToken, activateAccount)
+- [x] Flujo de activación de cuenta: página /activate/:token con estética Flora & Fauna
+- [x] Flujo de activación de cuenta: email de bienvenida con link de activación en lugar de credenciales

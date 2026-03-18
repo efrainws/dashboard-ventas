@@ -101,3 +101,27 @@ export const discrepancyTickets = mysqlTable("discrepancy_tickets", {
 
 export type DiscrepancyTicket = typeof discrepancyTickets.$inferSelect;
 export type InsertDiscrepancyTicket = typeof discrepancyTickets.$inferInsert;
+
+/**
+ * Account activation tokens for new users.
+ * When a user is created, a token is generated and sent via email.
+ * The user must visit /activate/:token, verify their temporary credentials,
+ * and set a new password before they can log in.
+ */
+export const activationTokens = mysqlTable("activation_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unique token (UUID v4 or random hex) sent in the activation link */
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  /** The user this token belongs to */
+  userId: int("user_id").notNull(),
+  /** Username for verification on the activation page */
+  username: varchar("username", { length: 64 }).notNull(),
+  /** Token expiration timestamp (48 hours from creation) */
+  expiresAt: timestamp("expires_at").notNull(),
+  /** Whether the token has been used */
+  used: int("used").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivationToken = typeof activationTokens.$inferSelect;
+export type InsertActivationToken = typeof activationTokens.$inferInsert;

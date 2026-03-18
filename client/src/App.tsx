@@ -11,6 +11,7 @@ import SalesByCategory from "./pages/SalesByCategory";
 import HourlyAnalysis from "./pages/HourlyAnalysis";
 import UserManagement from "./pages/UserManagement";
 import Login from "./pages/Login";
+import ActivateAccount from "./pages/ActivateAccount";
 import SalesVsTarget from "./pages/SalesVsTarget";
 import DiscrepancyTickets from "./pages/DiscrepancyTickets";
 import IdentifiedTransactions from "./pages/IdentifiedTransactions";
@@ -39,6 +40,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/activate/:token" component={ActivateAccount} />
       <Route path="/">
         {() => <ProtectedRoute component={Home} path="/" />}
       </Route>

@@ -752,3 +752,253 @@ export async function sendTicketNotificationEmail(
 
   return sent;
 }
+
+// ---------------------------------------------------------------------------
+// Account Activation Email
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates the account activation email HTML with Flora & Fauna branding.
+ * Replaces the old welcome email that included credentials in plain text.
+ * Instead, it sends a secure one-time link to the activation page.
+ */
+function buildActivationEmailHtml(params: {
+  name: string;
+  username: string;
+  activationUrl: string;
+  role: string;
+}): string {
+  const { name, username, activationUrl, role } = params;
+  const roleLabels: Record<string, string> = {
+    system_specialist: "Especialista de Sistemas",
+    cst_user: "Usuario CST",
+    store_user: "Usuario Tienda",
+  };
+  const roleLabel = roleLabels[role] ?? role;
+  const year = new Date().getFullYear();
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activa tu cuenta – Flora &amp; Fauna Dashboard</title>
+</head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <!-- Email card -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:${COLORS.card};border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(37,35,37,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:${COLORS.primary};padding:32px 40px;text-align:center;">
+              <img
+                src="${LOGO_DARK_URL}"
+                alt="Flora &amp; Fauna"
+                width="181"
+                height="19"
+                style="display:block;margin:0 auto;filter:invert(1) brightness(2);"
+              />
+              <p style="margin:16px 0 0;color:#C8C4BE;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;">
+                Dashboard de Ventas
+              </p>
+            </td>
+          </tr>
+
+          <!-- Decorative stripe -->
+          <tr>
+            <td style="height:4px;background:linear-gradient(90deg,${COLORS.accent} 0%,#8FA45A 50%,${COLORS.accent} 100%);"></td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+
+              <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:${COLORS.primary};letter-spacing:-0.02em;">
+                ¡Bienvenido, ${name}!
+              </h1>
+              <p style="margin:0 0 28px;font-size:15px;color:${COLORS.textMuted};line-height:1.6;">
+                Tu cuenta ha sido creada en el <strong style="color:${COLORS.textBody};">Dashboard de Ventas Flora &amp; Fauna</strong>.
+                Para activarla y establecer tu contraseña definitiva, haz clic en el botón a continuación.
+              </p>
+
+              <!-- Role badge -->
+              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #C8D4A8;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
+                <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.06em;text-transform:uppercase;">
+                  ${roleLabel}
+                </span>
+              </div>
+
+              <!-- Username info card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};border:1px solid ${COLORS.border};border-radius:10px;margin-bottom:28px;overflow:hidden;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Tu nombre de usuario</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;color:${COLORS.primary};font-family:'Courier New',Courier,monospace;letter-spacing:0.04em;">${username}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Steps -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="padding:0 0 12px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:${COLORS.primary};text-transform:uppercase;letter-spacing:0.06em;">Pasos para activar tu cuenta:</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding:6px 0;">
+                          <span style="display:inline-block;width:22px;height:22px;background-color:${COLORS.accent};border-radius:50%;text-align:center;line-height:22px;font-size:12px;font-weight:700;color:#fff;margin-right:10px;vertical-align:middle;">1</span>
+                          <span style="font-size:14px;color:${COLORS.textBody};vertical-align:middle;">Haz clic en el botón de activación</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;">
+                          <span style="display:inline-block;width:22px;height:22px;background-color:${COLORS.accent};border-radius:50%;text-align:center;line-height:22px;font-size:12px;font-weight:700;color:#fff;margin-right:10px;vertical-align:middle;">2</span>
+                          <span style="font-size:14px;color:${COLORS.textBody};vertical-align:middle;">Ingresa tu nombre de usuario y la contraseña temporal que te proporcionaron</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;">
+                          <span style="display:inline-block;width:22px;height:22px;background-color:${COLORS.accent};border-radius:50%;text-align:center;line-height:22px;font-size:12px;font-weight:700;color:#fff;margin-right:10px;vertical-align:middle;">3</span>
+                          <span style="font-size:14px;color:${COLORS.textBody};vertical-align:middle;">Crea tu nueva contraseña segura</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a
+                      href="${activationUrl}"
+                      style="display:inline-block;background-color:${COLORS.primary};color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:16px 40px;border-radius:8px;"
+                    >
+                      Activar mi cuenta →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Expiry notice -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+                <tr>
+                  <td style="background-color:#FFF8EC;border:1px solid #F0D99A;border-radius:8px;padding:14px 18px;">
+                    <p style="margin:0;font-size:13px;color:#7A5C00;line-height:1.5;">
+                      <strong>⏱ Este enlace expira en 48 horas.</strong> Si no activas tu cuenta en ese tiempo,
+                      contacta al administrador para obtener un nuevo enlace.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback URL -->
+              <p style="margin:0;font-size:12px;color:${COLORS.textMuted};line-height:1.6;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+                <a href="${activationUrl}" style="color:${COLORS.accent};word-break:break-all;">${activationUrl}</a>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid ${COLORS.border};margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;color:${COLORS.textMuted};line-height:1.6;">
+                Este correo fue generado automáticamente por el sistema de gestión de usuarios.<br/>
+                Si no solicitaste esta cuenta, por favor ignora este mensaje o contacta al administrador.
+              </p>
+              <p style="margin:0;font-size:11px;color:#A8A4A0;">
+                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+export interface ActivationEmailParams {
+  /** Recipient full name */
+  name: string;
+  /** Recipient email address */
+  email: string;
+  /** Username for login */
+  username: string;
+  /** Full activation URL with token */
+  activationUrl: string;
+  /** User role */
+  role: string;
+}
+
+/**
+ * Sends an account activation email with a one-time link.
+ * Replaces the old welcome email that exposed credentials in plain text.
+ * Returns true on success, false if the API key is missing or the call fails.
+ */
+export async function sendActivationEmail(params: ActivationEmailParams): Promise<boolean> {
+  const apiKey = ENV.brevoApiKey;
+
+  if (!apiKey) {
+    console.warn("[Email] BREVO_API_KEY not set — skipping activation email");
+    return false;
+  }
+
+  if (!params.email) {
+    console.warn("[Email] No email address provided — skipping activation email for user:", params.username);
+    return false;
+  }
+
+  try {
+    const client = new BrevoClient({ apiKey });
+
+    await client.transactionalEmails.sendTransacEmail({
+      subject: "Activa tu cuenta – Dashboard de Ventas Flora & Fauna",
+      htmlContent: buildActivationEmailHtml({
+        name: params.name,
+        username: params.username,
+        activationUrl: params.activationUrl,
+        role: params.role,
+      }),
+      sender: {
+        name: "Flora & Fauna · Dashboard",
+        email: "portaldeventas@florayfauna.pe",
+      },
+      to: [
+        {
+          email: params.email,
+          name: params.name,
+        },
+      ],
+      replyTo: {
+        email: "soporte@florayfauna.pe",
+        name: "Soporte Flora & Fauna",
+      },
+    });
+
+    console.log(`[Email] Activation email sent to ${params.email} (user: ${params.username})`);
+    return true;
+  } catch (error: any) {
+    console.error("[Email] Failed to send activation email:", error?.message ?? error);
+    return false;
+  }
+}
