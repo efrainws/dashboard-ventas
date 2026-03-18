@@ -167,9 +167,10 @@ export function StoreTargetCard({
             </div>
             {hasTarget && (
               <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0"
+                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
                 style={{ fontFamily: "Sailec, sans-serif" }}
               >
+                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
                 {fmtShort(proratedTarget)}
               </span>
             )}
@@ -203,9 +204,10 @@ export function StoreTargetCard({
             </div>
             {monthlyTarget && monthlyTarget > 0 ? (
               <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0"
+                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
                 style={{ fontFamily: "Sailec, sans-serif" }}
               >
+                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
                 {fmtShort(monthlyTarget)}
               </span>
             ) : (
@@ -246,9 +248,10 @@ export function StoreTargetCard({
             </div>
             {dailyTarget !== null ? (
               <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0"
+                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
                 style={{ fontFamily: "Sailec, sans-serif" }}
               >
+                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
                 {fmtShort(dailyTarget)}
               </span>
             ) : (
