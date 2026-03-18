@@ -90,8 +90,8 @@ export default function SalesVsTarget() {
     return data.stores.map(s => ({ id: s.store_sap_id || s.store_id, name: s.store_name }));
   }, [data]);
 
-  // Solo system_specialist puede editar metas
-  const canEdit = userRole === 'system_specialist';
+  // system_specialist y cst_user pueden editar metas
+  const canEdit = userRole === 'system_specialist' || userRole === 'cst_user';
 
   // Calcular días transcurridos en el período y días totales del mes
   const { daysElapsed, daysInMonth } = useMemo(() => {

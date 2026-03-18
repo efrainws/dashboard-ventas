@@ -192,8 +192,8 @@ export const targetsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { month, store_id, monthly_target_amount } = input;
 
-      // Verificar permisos (solo system_specialist puede editar metas)
-      if (ctx.user.role !== 'system_specialist') {
+      // Verificar permisos (system_specialist y cst_user pueden editar metas)
+      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'No tienes permisos para editar metas',
@@ -269,8 +269,8 @@ export const targetsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { id } = input;
 
-      // Verificar permisos
-      if (ctx.user.role !== 'system_specialist') {
+      // Verificar permisos (system_specialist y cst_user pueden eliminar metas)
+      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'No tienes permisos para eliminar metas',
@@ -319,8 +319,8 @@ export const targetsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // Solo system_specialist puede cargar metas masivamente
-      if (ctx.user.role !== 'system_specialist') {
+      // system_specialist y cst_user pueden cargar metas masivamente
+      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'No tienes permisos para cargar metas',

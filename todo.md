@@ -1429,3 +1429,4 @@ Fecha: 1 de febrero de 2026
 - [ ] Corregir 5 endpoints del salesRouter para filtrar por b.sap_id en lugar de UUID
 - [ ] Corregir DashboardFilters para usar sap_id como valor del selector de tienda
 - [ ] Verificar que todos los dashboards funcionan correctamente para store_user
+- [x] Permitir que cst_user edite metas: actualizar permisos en backend (upsertStoreTarget, deleteStoreTarget, bulkUpsertFromCSV) y frontend (canEdit, botón Editar Metas, StoreTargetCard)

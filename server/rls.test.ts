@@ -131,6 +131,83 @@ describe("RLS — getBranches requiere autenticación", () => {
   });
 });
 
+describe("RLS — Permisos de edición de metas", () => {
+  it("store_user no puede editar metas (FORBIDDEN)", async () => {
+    const storeUser = makeUser({ id: 30, role: "store_user", assignedStoreCode: "FF01" });
+    const caller = appRouter.createCaller(makeCtx(storeUser));
+    await expect(
+      caller.targets.upsertStoreTarget({
+        month: "2026-01",
+        store_id: "some-uuid",
+        monthly_target_amount: 100000,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cst_user puede editar metas (permitido)", async () => {
+    const cstUser = makeUser({ id: 31, role: "cst_user" });
+    const caller = appRouter.createCaller(makeCtx(cstUser));
+    // Verificamos que la operación no es rechazada por FORBIDDEN
+    // (puede tener éxito o fallar por otro motivo, pero no por permisos)
+    const result = caller.targets.upsertStoreTarget({
+      month: "2026-01",
+      store_id: "some-uuid",
+      monthly_target_amount: 100000,
+    });
+    await expect(result).resolves.not.toMatchObject({ code: "FORBIDDEN" }).catch(() => {
+      // Si falla por otro motivo (ej. DB), verificamos que no sea FORBIDDEN
+    });
+    // Verificación alternativa: no lanza FORBIDDEN
+    try {
+      await result;
+    } catch (err: any) {
+      expect(err.code).not.toBe("FORBIDDEN");
+    }
+  });
+
+  it("store_user no puede eliminar metas (FORBIDDEN)", async () => {
+    const storeUser = makeUser({ id: 32, role: "store_user", assignedStoreCode: "FF01" });
+    const caller = appRouter.createCaller(makeCtx(storeUser));
+    await expect(
+      caller.targets.deleteStoreTarget({ id: 999 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cst_user puede eliminar metas (permitido)", async () => {
+    const cstUser = makeUser({ id: 33, role: "cst_user" });
+    const caller = appRouter.createCaller(makeCtx(cstUser));
+    // Verificamos que no lanza FORBIDDEN
+    try {
+      await caller.targets.deleteStoreTarget({ id: 999 });
+    } catch (err: any) {
+      expect(err.code).not.toBe("FORBIDDEN");
+    }
+  });
+
+  it("store_user no puede hacer carga masiva de metas (FORBIDDEN)", async () => {
+    const storeUser = makeUser({ id: 34, role: "store_user", assignedStoreCode: "FF01" });
+    const caller = appRouter.createCaller(makeCtx(storeUser));
+    await expect(
+      caller.targets.bulkUpsertFromCSV({
+        rows: [{ month: "2026-01", store_sap_id: "FF01", monthly_target_amount: 100000 }],
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cst_user puede hacer carga masiva de metas (permitido)", async () => {
+    const cstUser = makeUser({ id: 35, role: "cst_user" });
+    const caller = appRouter.createCaller(makeCtx(cstUser));
+    // Verificamos que no lanza FORBIDDEN
+    try {
+      await caller.targets.bulkUpsertFromCSV({
+        rows: [{ month: "2026-01", store_sap_id: "FF01", monthly_target_amount: 100000 }],
+      });
+    } catch (err: any) {
+      expect(err.code).not.toBe("FORBIDDEN");
+    }
+  });
+});
+
 describe("RLS — auth.me devuelve assignedStoreCode", () => {
   it("devuelve null cuando el usuario no tiene tienda asignada", async () => {
     const user = makeUser({ role: "cst_user", assignedStoreCode: null });
