@@ -410,7 +410,7 @@ export default function UserManagement() {
               </div>
               {dialogMode === 'create' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="password">Contraseña</Label>
+                  <Label htmlFor="password">Contraseña temporal</Label>
                   <Input
                     id="password"
                     type="password"
@@ -418,6 +418,12 @@ export default function UserManagement() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                      <strong>Esta contraseña no se enviará por correo.</strong>{' '}Debes compartirla con el nuevo usuario por otro medio (mensaje directo, llamada, etc.). El usuario deberá cambiarla al activar su cuenta.
+                    </p>
+                  </div>
                 </div>
               )}
               <div className="grid gap-2">
