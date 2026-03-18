@@ -20,6 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown } from "lucide-react";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import type { DateRange } from "react-day-picker";
 
@@ -286,29 +290,74 @@ export default function HourlyAnalysis() {
                   )}
                 </div>
 
-                {/* Selector de Canal de Ventas */}
+                {/* Selector de Canal de Ventas — multi-selección */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Canal de Ventas</label>
-                  <Select 
-                    value={selectedChannels.length === 3 ? "all" : selectedChannels[0] || "all"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
-                      } else {
-                        setSelectedChannels([value]);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos los canales" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los canales</SelectItem>
-                      <SelectItem value="Presencial">Presencial</SelectItem>
-                      <SelectItem value="eCommerce">eCommerce</SelectItem>
-                      <SelectItem value="Rappi">Rappi</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between font-normal h-9 px-3"
+                      >
+                        <span className="truncate text-sm">
+                          {selectedChannels.length === 0
+                            ? "Sin canales"
+                            : selectedChannels.length === 3
+                            ? "Todos los canales"
+                            : selectedChannels.join(", ")}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {selectedChannels.length > 0 && selectedChannels.length < 3 && (
+                            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                              {selectedChannels.length}
+                            </Badge>
+                          )}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </div>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-52 p-2" align="start">
+                      <div className="space-y-1">
+                        {/* Opción: Todos */}
+                        <div
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                          onClick={() => setSelectedChannels(["Presencial", "eCommerce", "Rappi"])}
+                        >
+                          <Checkbox
+                            checked={selectedChannels.length === 3}
+                            onCheckedChange={() => setSelectedChannels(["Presencial", "eCommerce", "Rappi"])}
+                          />
+                          <span className="text-sm">Todos los canales</span>
+                        </div>
+                        <div className="border-t my-1" />
+                        {(["Presencial", "eCommerce", "Rappi"] as const).map((channel) => (
+                          <div
+                            key={channel}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                            onClick={() => {
+                              setSelectedChannels(prev =>
+                                prev.includes(channel)
+                                  ? prev.filter(c => c !== channel)
+                                  : [...prev, channel]
+                              );
+                            }}
+                          >
+                            <Checkbox
+                              checked={selectedChannels.includes(channel)}
+                              onCheckedChange={() => {
+                                setSelectedChannels(prev =>
+                                  prev.includes(channel)
+                                    ? prev.filter(c => c !== channel)
+                                    : [...prev, channel]
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{channel}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
 
