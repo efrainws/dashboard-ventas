@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,18 +38,47 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation } from 'wouter';
-import { Loader2, UserPlus, Pencil, Trash2, Key, Shield, User as UserIcon, Mail, Store } from 'lucide-react';
+import {
+  Loader2,
+  UserPlus,
+  Pencil,
+  Trash2,
+  Key,
+  Shield,
+  User as UserIcon,
+  Mail,
+  Store,
+  Briefcase,
+  Package,
+  Search,
+} from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
 import { NavigationMenu } from '@/components/NavigationMenu';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
-type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+type UserRole = 'system_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
   cst_user: 'Usuario CST',
+  commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
+  supplier_user: 'Usuario Proveedor',
+};
+
+/**
+ * Roles que cada tipo de usuario puede crear:
+ * - system_specialist → todos
+ * - cst_user → solo store_user
+ * - commercial_specialist → solo supplier_user
+ */
+const CREATABLE_ROLES: Record<UserRole, UserRole[]> = {
+  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user'],
+  cst_user: ['store_user'],
+  commercial_specialist: ['supplier_user'],
+  store_user: [],
+  supplier_user: [],
 };
 
 type User = {
@@ -59,6 +88,7 @@ type User = {
   email: string | null;
   role: UserRole;
   assignedStoreCode: string | null;
+  assignedSupplierId: string | null;
   loginMethod: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -75,6 +105,8 @@ export default function UserManagement() {
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [supplierSearchInput, setSupplierSearchInput] = useState('');
 
   const currentRole = currentUser?.role as UserRole | undefined;
 
@@ -85,6 +117,7 @@ export default function UserManagement() {
     email: '',
     role: 'store_user' as UserRole,
     assignedStoreCode: '',
+    assignedSupplierId: '',
     sendWelcomeEmail: true,
     notifyUser: true,
   });
@@ -92,13 +125,25 @@ export default function UserManagement() {
   // Queries
   const { data: usersData, isLoading: usersLoading } = trpc.users.listUsers.useQuery();
   const { data: branchesData } = trpc.users.getBranches.useQuery();
+  const { data: suppliersData, isLoading: suppliersLoading } = trpc.users.getSuppliers.useQuery(
+    { search: supplierSearch },
+    { enabled: formData.role === 'supplier_user' }
+  );
+
+  // Debounce supplier search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSupplierSearch(supplierSearchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [supplierSearchInput]);
 
   // Mutations
   const createMutation = trpc.users.createUser.useMutation({
     onSuccess: (data) => {
       if (data.emailSent) {
-        showToast.success('Usuario creado y correo de bienvenida enviado', {
-          description: 'El usuario recibirá sus credenciales por email.',
+        showToast.success('Usuario creado y correo de activación enviado', {
+          description: 'El usuario recibirá el enlace de activación por email.',
           icon: '✉️',
         });
       } else {
@@ -151,27 +196,30 @@ export default function UserManagement() {
     },
   });
 
-  // Verificar permisos — solo system_specialist y cst_user pueden acceder
+  // Verificar permisos — solo gestores pueden acceder
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F4F1]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#232523]" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
       </div>
     );
   }
 
-  if (!currentUser || currentRole === 'store_user') {
+  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user') {
     setLocation('/');
     return null;
   }
 
-  // Roles disponibles según el tipo de usuario actual
-  const availableRoles: UserRole[] = currentRole === 'system_specialist'
-    ? ['system_specialist', 'cst_user', 'store_user']
-    : ['store_user']; // cst_user solo puede crear store_user
+  const availableRoles: UserRole[] = CREATABLE_ROLES[currentRole ?? 'store_user'];
+
+  const getDefaultRole = (): UserRole => {
+    if (currentRole === 'cst_user') return 'store_user';
+    if (currentRole === 'commercial_specialist') return 'supplier_user';
+    return 'store_user';
+  };
 
   const openCreateDialog = () => {
-    const defaultRole: UserRole = currentRole === 'cst_user' ? 'store_user' : 'store_user';
+    const defaultRole = getDefaultRole();
     setFormData({
       username: '',
       password: '',
@@ -179,9 +227,12 @@ export default function UserManagement() {
       email: '',
       role: defaultRole,
       assignedStoreCode: '',
+      assignedSupplierId: '',
       sendWelcomeEmail: true,
       notifyUser: true,
     });
+    setSupplierSearchInput('');
+    setSupplierSearch('');
     setDialogMode('create');
   };
 
@@ -194,9 +245,12 @@ export default function UserManagement() {
       email: user.email || '',
       role: user.role,
       assignedStoreCode: user.assignedStoreCode || '',
+      assignedSupplierId: user.assignedSupplierId || '',
       sendWelcomeEmail: false,
       notifyUser: false,
     });
+    setSupplierSearchInput('');
+    setSupplierSearch('');
     setDialogMode('edit');
   };
 
@@ -213,13 +267,16 @@ export default function UserManagement() {
   const closeDialog = () => {
     setDialogMode(null);
     setSelectedUser(null);
+    setSupplierSearchInput('');
+    setSupplierSearch('');
     setFormData({
       username: '',
       password: '',
       name: '',
       email: '',
-      role: 'store_user',
+      role: getDefaultRole(),
       assignedStoreCode: '',
+      assignedSupplierId: '',
       sendWelcomeEmail: true,
       notifyUser: true,
     });
@@ -227,6 +284,12 @@ export default function UserManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validación frontend: proveedor obligatorio para supplier_user
+    if (formData.role === 'supplier_user' && !formData.assignedSupplierId) {
+      showToast.error('Debes seleccionar un proveedor para este tipo de usuario');
+      return;
+    }
 
     if (dialogMode === 'create') {
       createMutation.mutate({
@@ -236,6 +299,7 @@ export default function UserManagement() {
         email: formData.email || undefined,
         role: formData.role,
         assignedStoreCode: formData.role === 'store_user' ? formData.assignedStoreCode : undefined,
+        assignedSupplierId: formData.role === 'supplier_user' ? formData.assignedSupplierId : undefined,
         sendWelcomeEmail: formData.sendWelcomeEmail,
       });
     } else if (dialogMode === 'edit' && selectedUser) {
@@ -245,9 +309,8 @@ export default function UserManagement() {
         name: formData.name || undefined,
         email: formData.email || undefined,
         role: formData.role,
-        assignedStoreCode: formData.role === 'store_user'
-          ? (formData.assignedStoreCode || null)
-          : null,
+        assignedStoreCode: formData.role === 'store_user' ? (formData.assignedStoreCode || null) : null,
+        assignedSupplierId: formData.role === 'supplier_user' ? (formData.assignedSupplierId || null) : null,
       });
     } else if (dialogMode === 'password' && selectedUser) {
       updatePasswordMutation.mutate({
@@ -270,19 +333,39 @@ export default function UserManagement() {
     });
   };
 
-  // Obtener nombre de tienda por sap_id
   const getStoreName = (sapId: string | null) => {
     if (!sapId) return '-';
     const branch = branchesData?.branches.find(b => b.sap_id === sapId);
     return branch ? `${branch.name} (${sapId})` : sapId;
   };
 
-  // Icono por rol
+  const getSupplierName = (supplierId: string | null) => {
+    if (!supplierId) return '-';
+    const supplier = suppliersData?.suppliers.find(s => s.id === supplierId);
+    return supplier ? `${supplier.ruc} — ${supplier.name}` : supplierId;
+  };
+
   const getRoleIcon = (role: UserRole) => {
     if (role === 'system_specialist') return <Shield className="h-4 w-4 text-foreground" />;
     if (role === 'cst_user') return <UserIcon className="h-4 w-4 text-muted-foreground" />;
+    if (role === 'commercial_specialist') return <Briefcase className="h-4 w-4 text-muted-foreground" />;
+    if (role === 'supplier_user') return <Package className="h-4 w-4 text-muted-foreground" />;
     return <Store className="h-4 w-4 text-muted-foreground" />;
   };
+
+  const isSubmitDisabled =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    (formData.role === 'store_user' && !formData.assignedStoreCode) ||
+    (formData.role === 'supplier_user' && !formData.assignedSupplierId);
+
+  // Etiqueta de restricción según rol
+  const managerHint =
+    currentRole === 'cst_user'
+      ? 'Solo puedes gestionar Usuarios Tienda'
+      : currentRole === 'commercial_specialist'
+      ? 'Solo puedes gestionar Usuarios Proveedor'
+      : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -296,10 +379,8 @@ export default function UserManagement() {
             </h1>
             <p className="text-muted-foreground">
               Gestiona los usuarios del sistema y sus permisos
-              {currentRole === 'cst_user' && (
-                <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">
-                  Solo puedes gestionar Usuarios Tienda
-                </span>
+              {managerHint && (
+                <span className="ml-2 text-xs bg-muted px-2 py-1 rounded-full">{managerHint}</span>
               )}
             </p>
           </div>
@@ -326,7 +407,7 @@ export default function UserManagement() {
                   <TableHead className="text-foreground font-semibold">Nombre</TableHead>
                   <TableHead className="text-foreground font-semibold">Email</TableHead>
                   <TableHead className="text-foreground font-semibold">Rol</TableHead>
-                  <TableHead className="text-foreground font-semibold">Tienda Asignada</TableHead>
+                  <TableHead className="text-foreground font-semibold">Asignación</TableHead>
                   <TableHead className="text-foreground font-semibold">Último Acceso</TableHead>
                   <TableHead className="text-foreground font-semibold text-right">Acciones</TableHead>
                 </TableRow>
@@ -344,7 +425,11 @@ export default function UserManagement() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {user.role === 'store_user' ? getStoreName(user.assignedStoreCode) : '-'}
+                      {user.role === 'store_user'
+                        ? getStoreName(user.assignedStoreCode)
+                        : user.role === 'supplier_user'
+                        ? getSupplierName((user as any).assignedSupplierId)
+                        : '-'}
                     </TableCell>
                     <TableCell>{formatDate(user.lastSignedIn)}</TableCell>
                     <TableCell className="text-right">
@@ -408,6 +493,7 @@ export default function UserManagement() {
                   required
                 />
               </div>
+
               {dialogMode === 'create' && (
                 <div className="grid gap-2">
                   <Label htmlFor="password">Contraseña temporal</Label>
@@ -426,6 +512,7 @@ export default function UserManagement() {
                   </div>
                 </div>
               )}
+
               <div className="grid gap-2">
                 <Label htmlFor="name">Nombre Completo</Label>
                 <Input
@@ -435,6 +522,7 @@ export default function UserManagement() {
                   required
                 />
               </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -454,11 +542,13 @@ export default function UserManagement() {
                     setFormData({
                       ...formData,
                       role: value,
-                      // Limpiar tienda si no es store_user
                       assignedStoreCode: value !== 'store_user' ? '' : formData.assignedStoreCode,
+                      assignedSupplierId: value !== 'supplier_user' ? '' : formData.assignedSupplierId,
                     });
+                    setSupplierSearchInput('');
+                    setSupplierSearch('');
                   }}
-                  disabled={currentRole === 'cst_user'} // cst_user no puede cambiar el tipo
+                  disabled={currentRole === 'cst_user' || currentRole === 'commercial_specialist'}
                 >
                   <SelectTrigger id="role">
                     <SelectValue />
@@ -473,7 +563,7 @@ export default function UserManagement() {
                 </Select>
               </div>
 
-              {/* Selector de Tienda — solo visible para store_user */}
+              {/* Selector de Tienda — solo para store_user */}
               {formData.role === 'store_user' && (
                 <div className="grid gap-2">
                   <Label htmlFor="assignedStore">
@@ -501,7 +591,56 @@ export default function UserManagement() {
                 </div>
               )}
 
-              {/* Welcome email option — only shown when creating and email is provided */}
+              {/* Selector de Proveedor — solo para supplier_user */}
+              {formData.role === 'supplier_user' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="supplierSearch">
+                    Proveedor Asignado <span className="text-destructive">*</span>
+                  </Label>
+                  {/* Búsqueda por RUC */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="supplierSearch"
+                      placeholder="Buscar por RUC..."
+                      value={supplierSearchInput}
+                      onChange={(e) => setSupplierSearchInput(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {/* Lista de resultados */}
+                  <Select
+                    value={formData.assignedSupplierId}
+                    onValueChange={(value) => setFormData({ ...formData, assignedSupplierId: value })}
+                  >
+                    <SelectTrigger id="assignedSupplier">
+                      <SelectValue placeholder={suppliersLoading ? 'Cargando...' : 'Seleccionar proveedor...'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliersLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : suppliersData?.suppliers.length === 0 ? (
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          No se encontraron proveedores
+                        </div>
+                      ) : (
+                        suppliersData?.suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.ruc} — {supplier.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    El usuario solo tendrá acceso al portal de proveedores con este proveedor asignado.
+                  </p>
+                </div>
+              )}
+
+              {/* Opción de enviar email de activación */}
               {dialogMode === 'create' && (
                 <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
                   <Checkbox
@@ -519,17 +658,18 @@ export default function UserManagement() {
                       className="flex items-center gap-1.5 text-sm font-medium text-foreground cursor-pointer"
                     >
                       <Mail className="h-3.5 w-3.5" />
-                      Enviar correo de bienvenida
+                      Enviar correo de activación
                     </label>
                     <p className="text-xs text-muted-foreground">
                       {formData.email
-                        ? 'Se enviará la URL, usuario y contraseña al email indicado.'
+                        ? 'Se enviará el enlace de activación al email indicado.'
                         : 'Ingresa un email para habilitar esta opción.'}
                     </p>
                   </div>
                 </div>
               )}
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>
                 Cancelar
@@ -537,11 +677,7 @@ export default function UserManagement() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={
-                  createMutation.isPending ||
-                  updateMutation.isPending ||
-                  (formData.role === 'store_user' && !formData.assignedStoreCode)
-                }
+                disabled={isSubmitDisabled}
               >
                 {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -558,14 +694,12 @@ export default function UserManagement() {
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle className="text-foreground">
-                Cambiar Contraseña
-              </DialogTitle>
+              <DialogTitle className="text-foreground">Cambiar Contraseña</DialogTitle>
               <DialogDescription>
                 Ingresa la nueva contraseña para {selectedUser?.name}
               </DialogDescription>
             </DialogHeader>
-              <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="newPassword">Nueva Contraseña</Label>
                 <Input
@@ -577,7 +711,6 @@ export default function UserManagement() {
                   minLength={6}
                 />
               </div>
-              {/* Notify user option */}
               <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
                 <Checkbox
                   id="notifyUser"
@@ -592,7 +725,7 @@ export default function UserManagement() {
                   <label
                     htmlFor="notifyUser"
                     className="flex items-center gap-1.5 text-sm font-medium text-foreground cursor-pointer"
-                    >
+                  >
                     <Mail className="h-3.5 w-3.5" />
                     Notificar al usuario por email
                   </label>

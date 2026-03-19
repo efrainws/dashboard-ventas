@@ -1436,3 +1436,21 @@ Fecha: 1 de febrero de 2026
 - [x] Flujo de activación de cuenta: email de bienvenida con link de activación en lugar de credenciales
 - [x] Agregar aviso en diálogo de creación de usuario: contraseña temporal no se envía por correo
 - [x] Cambiar fecha de fin por defecto en Ventas vs Metas: de hoy a ayer (inicio del mes → ayer)
+- [ ] Agregar roles commercial_specialist y supplier_user al schema DB + campo assigned_supplier_id
+- [ ] Backend: tipos, permisos de creación por rol, endpoint getSuppliers, validaciones
+- [ ] Crear página exclusiva para proveedores (SupplierHome) con redirección automática
+- [ ] Guards de acceso en todas las páginas para bloquear supplier_user
+- [ ] UserManagement: nuevos roles, selector de proveedor con búsqueda por RUC
+- [ ] Actualizar NavigationMenu para nuevos roles
+- [ ] Tests de permisos para commercial_specialist y supplier_user
+- [x] Crear rol commercial_specialist en schema y DB
+- [x] Crear rol supplier_user con campo assigned_supplier_id en schema y DB
+- [x] Actualizar backend: permisos de creación por rol (commercial_specialist → supplier_user; cst_user → store_user)
+- [x] Agregar endpoint getSuppliers con búsqueda por RUC desde tabla public.suppliers
+- [x] Validar que supplier_user requiere assigned_supplier_id (BAD_REQUEST si falta)
+- [x] Crear página SupplierHome exclusiva para proveedores
+- [x] Redirección automática de supplier_user a /supplier al iniciar sesión
+- [x] Guards de acceso en App.tsx para bloquear supplier_user en páginas generales
+- [x] Actualizar UserManagement con selector de proveedor y reglas de creación por rol
+- [x] Actualizar NavigationMenu con etiquetas de rol correctas y acceso a Usuarios para commercial_specialist
+- [x] Agregar tests para nuevos roles (112 tests pasan)

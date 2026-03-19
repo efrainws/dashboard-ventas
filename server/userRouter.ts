@@ -10,7 +10,12 @@ import { pool } from './postgres';
 import { createActivationToken } from './activationRouter';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
-export type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+export type UserRole =
+  | 'system_specialist'
+  | 'cst_user'
+  | 'commercial_specialist'
+  | 'store_user'
+  | 'supplier_user';
 
 /**
  * Etiquetas legibles para los roles
@@ -18,21 +23,28 @@ export type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
 export const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
   cst_user: 'Usuario CST',
+  commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
+  supplier_user: 'Usuario Proveedor',
 };
+
+/**
+ * Roles que pueden gestionar usuarios (acceder a /admin/users)
+ */
+const MANAGER_ROLES: UserRole[] = ['system_specialist', 'cst_user', 'commercial_specialist'];
 
 // ─── Procedimientos con restricción de rol ────────────────────────────────────
 
 /**
- * Solo Especialista de Sistemas o Usuario CST pueden acceder.
- * (Excluye a Usuario Tienda que no puede gestionar usuarios)
+ * Solo roles con capacidad de gestionar usuarios pueden acceder.
+ * Excluye store_user y supplier_user.
  */
 const canManageUsersProcedure = protectedProcedure.use(({ ctx, next }) => {
   const role = ctx.user.role as UserRole;
-  if (role === 'store_user') {
+  if (!MANAGER_ROLES.includes(role)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'Los usuarios de tienda no pueden gestionar usuarios',
+      message: 'No tienes permisos para gestionar usuarios',
     });
   }
   return next({ ctx });
@@ -53,17 +65,16 @@ const systemSpecialistProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 export const userRouter = router({
   /**
-   * Listar todos los usuarios
-   * Accesible para system_specialist y cst_user
+   * Listar usuarios según el rol del solicitante:
+   * - system_specialist: ve todos
+   * - cst_user: solo ve store_user
+   * - commercial_specialist: solo ve supplier_user
    */
   listUsers: canManageUsersProcedure.query(async ({ ctx }) => {
     try {
       const db = await getDb();
       if (!db) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Base de datos no disponible',
-        });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
       }
 
       const allUsers = await db.select({
@@ -73,28 +84,25 @@ export const userRouter = router({
         email: users.email,
         role: users.role,
         assignedStoreCode: users.assignedStoreCode,
+        assignedSupplierId: users.assignedSupplierId,
         loginMethod: users.loginMethod,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         lastSignedIn: users.lastSignedIn,
       }).from(users);
 
-      // cst_user solo ve usuarios de tipo store_user
       const currentRole = ctx.user.role as UserRole;
-      const filteredUsers = currentRole === 'cst_user'
-        ? allUsers.filter(u => u.role === 'store_user')
-        : allUsers;
+      let filteredUsers = allUsers;
+      if (currentRole === 'cst_user') {
+        filteredUsers = allUsers.filter(u => u.role === 'store_user');
+      } else if (currentRole === 'commercial_specialist') {
+        filteredUsers = allUsers.filter(u => u.role === 'supplier_user');
+      }
 
-      return {
-        success: true,
-        users: filteredUsers,
-      };
+      return { success: true, users: filteredUsers };
     } catch (error) {
       console.error('[User Management] Error listing users:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Error al listar usuarios',
-      });
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al listar usuarios' });
     }
   }),
 
@@ -118,17 +126,63 @@ export const userRouter = router({
       };
     } catch (error) {
       console.error('[User Management] Error fetching branches:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Error al obtener tiendas',
-      });
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al obtener tiendas' });
     }
   }),
 
   /**
-   * Crear nuevo usuario
-   * - system_specialist puede crear cualquier tipo
-   * - cst_user solo puede crear store_user
+   * Obtener la lista de proveedores desde PostgreSQL para el selector de proveedor.
+   * Busca por RUC, muestra RUC + nombre, guarda el id.
+   */
+  getSuppliers: canManageUsersProcedure
+    .input(z.object({ search: z.string().optional() }))
+    .query(async ({ input }) => {
+      try {
+        const search = input.search?.trim() ?? '';
+        let query: string;
+        let params: any[];
+
+        if (search) {
+          query = `
+            SELECT id, ruc, name
+            FROM public.suppliers
+            WHERE ruc ILIKE $1
+            ORDER BY ruc ASC
+            LIMIT 50
+          `;
+          params = [`%${search}%`];
+        } else {
+          query = `
+            SELECT id, ruc, name
+            FROM public.suppliers
+            ORDER BY ruc ASC
+            LIMIT 100
+          `;
+          params = [];
+        }
+
+        const result = await pool.query(query, params);
+        return {
+          success: true,
+          suppliers: result.rows.map((r: any) => ({
+            id: String(r.id),
+            ruc: r.ruc as string,
+            name: r.name as string,
+          })),
+        };
+      } catch (error) {
+        console.error('[User Management] Error fetching suppliers:', error);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al obtener proveedores' });
+      }
+    }),
+
+  /**
+   * Crear nuevo usuario.
+   * Reglas:
+   * - system_specialist: puede crear cualquier tipo
+   * - cst_user: solo puede crear store_user
+   * - commercial_specialist: solo puede crear supplier_user
+   * - store_user / supplier_user: no pueden crear usuarios
    */
   createUser: canManageUsersProcedure
     .input(
@@ -137,8 +191,9 @@ export const userRouter = router({
         password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
         name: z.string().min(1, 'El nombre es requerido'),
         email: z.string().email('Email inválido').optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'store_user']).default('cst_user'),
+        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user']).default('store_user'),
         assignedStoreCode: z.string().optional(),
+        assignedSupplierId: z.string().optional(),
         sendWelcomeEmail: z.boolean().default(true),
       })
     )
@@ -146,28 +201,37 @@ export const userRouter = router({
       try {
         const currentRole = ctx.user.role as UserRole;
 
-        // cst_user solo puede crear store_user
+        // Validar permisos de creación por rol
         if (currentRole === 'cst_user' && input.role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes crear usuarios de tipo Usuario Tienda',
           });
         }
+        if (currentRole === 'commercial_specialist' && input.role !== 'supplier_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes crear usuarios de tipo Usuario Proveedor',
+          });
+        }
 
-        // store_user requiere tienda asignada
+        // Validaciones de campos obligatorios según rol
         if (input.role === 'store_user' && !input.assignedStoreCode) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'El Usuario Tienda requiere una tienda asignada',
           });
         }
+        if (input.role === 'supplier_user' && !input.assignedSupplierId) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'El Usuario Proveedor requiere un proveedor asignado',
+          });
+        }
 
         const db = await getDb();
         if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
-          });
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
         }
 
         // Verificar si el usuario ya existe
@@ -178,10 +242,7 @@ export const userRouter = router({
           .limit(1);
 
         if (existingUser.length > 0) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: 'El nombre de usuario ya existe',
-          });
+          throw new TRPCError({ code: 'CONFLICT', message: 'El nombre de usuario ya existe' });
         }
 
         // Hash de la contraseña
@@ -195,23 +256,21 @@ export const userRouter = router({
           email: input.email || null,
           role: input.role,
           assignedStoreCode: input.role === 'store_user' ? (input.assignedStoreCode || null) : null,
+          assignedSupplierId: input.role === 'supplier_user' ? (input.assignedSupplierId || null) : null,
           loginMethod: 'local',
         });
 
         const userId = (newUser as any).insertId as number;
 
-        // Send activation email if requested and email is provided
+        // Enviar email de activación si se solicita y hay email
         let emailSent = false;
         if (input.sendWelcomeEmail && input.email) {
           const req = (ctx as any).req;
           const protocol = req?.protocol ?? 'https';
           const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
           const appUrl = `${protocol}://${host}`;
-
-          // Generate activation token
           const activationToken = await createActivationToken(userId, input.username);
           const activationUrl = `${appUrl}/activate/${activationToken}`;
-
           emailSent = await sendActivationEmail({
             name: input.name,
             email: input.email,
@@ -221,28 +280,19 @@ export const userRouter = router({
           });
         }
 
-        return {
-          success: true,
-          message: 'Usuario creado exitosamente',
-          userId,
-          emailSent,
-        };
+        return { success: true, message: 'Usuario creado exitosamente', userId, emailSent };
       } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
+        if (error instanceof TRPCError) throw error;
         console.error('[User Management] Error creating user:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al crear usuario',
-        });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al crear usuario' });
       }
     }),
 
   /**
-   * Actualizar información de usuario
+   * Actualizar información de usuario.
    * - system_specialist puede actualizar cualquier usuario
    * - cst_user solo puede actualizar store_user
+   * - commercial_specialist solo puede actualizar supplier_user
    */
   updateUser: canManageUsersProcedure
     .input(
@@ -251,8 +301,9 @@ export const userRouter = router({
         username: z.string().min(3).optional(),
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'store_user']).optional(),
+        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user']).optional(),
         assignedStoreCode: z.string().nullable().optional(),
+        assignedSupplierId: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -260,81 +311,65 @@ export const userRouter = router({
         const currentRole = ctx.user.role as UserRole;
         const db = await getDb();
         if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
-          });
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
         }
 
         const { id, ...updateData } = input;
 
-        // Verificar que el usuario existe
-        const existingUser = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, id))
-          .limit(1);
-
+        const existingUser = await db.select().from(users).where(eq(users.id, id)).limit(1);
         if (existingUser.length === 0) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Usuario no encontrado',
-          });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
         }
 
-        // cst_user solo puede editar store_user
+        // Validar permisos de edición por rol
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes editar usuarios de tipo Usuario Tienda',
           });
         }
+        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes editar usuarios de tipo Usuario Proveedor',
+          });
+        }
 
-        // Si se está actualizando el username, verificar que no exista
+        // Verificar duplicado de username
         if (updateData.username) {
           const duplicateUser = await db
             .select()
             .from(users)
             .where(eq(users.username, updateData.username))
             .limit(1);
-
           if (duplicateUser.length > 0 && duplicateUser[0].id !== id) {
-            throw new TRPCError({
-              code: 'CONFLICT',
-              message: 'El nombre de usuario ya existe',
-            });
+            throw new TRPCError({ code: 'CONFLICT', message: 'El nombre de usuario ya existe' });
           }
         }
 
-        // Validar que store_user tenga tienda asignada
+        // Validar campos obligatorios según nuevo rol
         const newRole = updateData.role ?? existingUser[0].role;
         const newStoreCode = updateData.assignedStoreCode !== undefined
           ? updateData.assignedStoreCode
           : existingUser[0].assignedStoreCode;
+        const newSupplierId = updateData.assignedSupplierId !== undefined
+          ? updateData.assignedSupplierId
+          : existingUser[0].assignedSupplierId;
 
         if (newRole === 'store_user' && !newStoreCode) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'El Usuario Tienda requiere una tienda asignada',
-          });
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'El Usuario Tienda requiere una tienda asignada' });
+        }
+        if (newRole === 'supplier_user' && !newSupplierId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'El Usuario Proveedor requiere un proveedor asignado' });
         }
 
-        // Actualizar usuario
         await db.update(users).set(updateData).where(eq(users.id, id));
 
-        return {
-          success: true,
-          message: 'Usuario actualizado exitosamente',
-        };
+        return { success: true, message: 'Usuario actualizado exitosamente' };
       } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
+        if (error instanceof TRPCError) throw error;
         console.error('[User Management] Error updating user:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al actualizar usuario',
-        });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al actualizar usuario' });
       }
     }),
 
@@ -354,51 +389,37 @@ export const userRouter = router({
         const currentRole = ctx.user.role as UserRole;
         const db = await getDb();
         if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
-          });
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
         }
 
-        // Verificar que el usuario existe
-        const existingUser = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, input.id))
-          .limit(1);
-
+        const existingUser = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
         if (existingUser.length === 0) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Usuario no encontrado',
-          });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
         }
 
-        // cst_user solo puede cambiar contraseña de store_user
+        // Validar permisos por rol
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes cambiar la contraseña de usuarios de tipo Usuario Tienda',
           });
         }
+        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes cambiar la contraseña de usuarios de tipo Usuario Proveedor',
+          });
+        }
 
-        // Hash de la nueva contraseña
         const hashedPassword = await bcrypt.hash(input.newPassword, 10);
+        await db.update(users).set({ password: hashedPassword }).where(eq(users.id, input.id));
 
-        // Actualizar contraseña
-        await db
-          .update(users)
-          .set({ password: hashedPassword })
-          .where(eq(users.id, input.id));
-
-        // Enviar correo de notificación si se solicita y el usuario tiene email
         let emailSent = false;
         if (input.notifyUser && existingUser[0].email) {
           const req = (ctx as any).req;
           const protocol = req?.protocol ?? 'https';
           const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
           const appUrl = `${protocol}://${host}`;
-
           emailSent = await sendPasswordResetEmail({
             name: existingUser[0].name ?? existingUser[0].username ?? 'Usuario',
             email: existingUser[0].email,
@@ -409,91 +430,59 @@ export const userRouter = router({
           });
         }
 
-        return {
-          success: true,
-          message: 'Contraseña actualizada exitosamente',
-          emailSent,
-        };
+        return { success: true, message: 'Contraseña actualizada exitosamente', emailSent };
       } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
+        if (error instanceof TRPCError) throw error;
         console.error('[User Management] Error updating password:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al actualizar contraseña',
-        });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al actualizar contraseña' });
       }
     }),
 
   /**
-   * Eliminar usuario
+   * Eliminar usuario.
    * - system_specialist puede eliminar cualquier usuario
    * - cst_user solo puede eliminar store_user
+   * - commercial_specialist solo puede eliminar supplier_user
    */
   deleteUser: canManageUsersProcedure
-    .input(
-      z.object({
-        id: z.number(),
-      })
-    )
+    .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       try {
         const currentRole = ctx.user.role as UserRole;
         const db = await getDb();
         if (!db) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
-          });
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
         }
 
-        // Verificar que el usuario existe
-        const existingUser = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, input.id))
-          .limit(1);
-
+        const existingUser = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
         if (existingUser.length === 0) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Usuario no encontrado',
-          });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
         }
 
-        // cst_user solo puede eliminar store_user
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes eliminar usuarios de tipo Usuario Tienda',
           });
         }
-
-        // Prevenir que un usuario se elimine a sí mismo
-        if (existingUser[0].id === ctx.user.id) {
+        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
           throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'No puedes eliminar tu propia cuenta',
+            code: 'FORBIDDEN',
+            message: 'Solo puedes eliminar usuarios de tipo Usuario Proveedor',
           });
         }
 
-        // Eliminar usuario
+        if (existingUser[0].id === ctx.user.id) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'No puedes eliminar tu propia cuenta' });
+        }
+
         await db.delete(users).where(eq(users.id, input.id));
 
-        return {
-          success: true,
-          message: 'Usuario eliminado exitosamente',
-        };
+        return { success: true, message: 'Usuario eliminado exitosamente' };
       } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
+        if (error instanceof TRPCError) throw error;
         console.error('[User Management] Error deleting user:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al eliminar usuario',
-        });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al eliminar usuario' });
       }
     }),
 });

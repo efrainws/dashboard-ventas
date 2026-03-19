@@ -2,9 +2,11 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-or
 
 /**
  * Roles de usuario:
- * - system_specialist: Especialista de Sistemas (antes "admin"). Sin restricciones. Puede crear cualquier tipo de usuario.
- * - cst_user: Usuario CST (antes "user"). Sin restricciones de datos. Solo puede crear usuarios tipo store_user.
+ * - system_specialist: Especialista de Sistemas. Sin restricciones. Puede crear cualquier tipo de usuario.
+ * - cst_user: Usuario CST. Sin restricciones de datos. Solo puede crear usuarios tipo store_user.
+ * - commercial_specialist: Especialista Comercial. Igual que cst_user pero solo puede crear supplier_user.
  * - store_user: Usuario Tienda. Solo ve datos de su tienda asignada (assigned_store_code). No puede crear usuarios.
+ * - supplier_user: Usuario Proveedor. Solo accede al módulo de proveedores. Requiere assigned_supplier_id.
  */
 export const users = mysqlTable("users", {
   /**
@@ -21,13 +23,17 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["system_specialist", "cst_user", "store_user"]).default("cst_user").notNull(),
+  role: mysqlEnum("role", ["system_specialist", "cst_user", "commercial_specialist", "store_user", "supplier_user"]).default("cst_user").notNull(),
   /**
    * SAP ID de la tienda asignada al usuario.
-   * Obligatorio para store_user. Vacío para system_specialist y cst_user.
-   * Se usa para aplicar RLS: solo puede ver datos de esta tienda.
+   * Obligatorio para store_user. Vacío para los demás roles.
    */
   assignedStoreCode: varchar("assigned_store_code", { length: 32 }),
+  /**
+   * ID del proveedor asignado (de la tabla public.suppliers en PostgreSQL).
+   * Obligatorio para supplier_user. Vacío para los demás roles.
+   */
+  assignedSupplierId: varchar("assigned_supplier_id", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

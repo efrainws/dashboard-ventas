@@ -153,8 +153,8 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Usuarios — solo system_specialist y cst_user */}
-          {(user?.role === "system_specialist" || user?.role === "cst_user") && (
+          {/* Usuarios — gestores: system_specialist, cst_user, commercial_specialist */}
+          {(user?.role === "system_specialist" || user?.role === "cst_user" || user?.role === "commercial_specialist") && (
             <Link
               href="/admin/users"
               className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
@@ -179,7 +179,14 @@ export function NavigationMenu() {
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.role === 'system_specialist' ? 'Especialista de Sistemas'
+                      : user?.role === 'cst_user' ? 'Usuario CST'
+                      : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
+                      : user?.role === 'store_user' ? 'Usuario Tienda'
+                      : user?.role === 'supplier_user' ? 'Usuario Proveedor'
+                      : user?.role}
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -316,8 +323,8 @@ export function NavigationMenu() {
               )}
             </Link>
 
-            {/* Usuarios — solo system_specialist y cst_user */}
-            {(user?.role === "system_specialist" || user?.role === "cst_user") && (
+            {/* Usuarios — gestores: system_specialist, cst_user, commercial_specialist */}
+            {(user?.role === "system_specialist" || user?.role === "cst_user" || user?.role === "commercial_specialist") && (
               <Link
                 href="/admin/users"
                 onClick={closeMobile}
@@ -339,7 +346,14 @@ export function NavigationMenu() {
                 <User className="h-4 w-4 shrink-0" />
                 <div className="flex flex-col">
                   <span className="font-medium text-foreground">{user?.name}</span>
-                  <span className="text-xs capitalize">{user?.role}</span>
+                  <span className="text-xs">
+                    {user?.role === 'system_specialist' ? 'Especialista de Sistemas'
+                      : user?.role === 'cst_user' ? 'Usuario CST'
+                      : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
+                      : user?.role === 'store_user' ? 'Usuario Tienda'
+                      : user?.role === 'supplier_user' ? 'Usuario Proveedor'
+                      : user?.role}
+                  </span>
                 </div>
               </div>
 

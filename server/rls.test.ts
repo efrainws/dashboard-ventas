@@ -2,12 +2,13 @@
  * Tests para el sistema RLS (Row Level Security) y gestión de usuarios con roles.
  *
  * Verifica:
- * 1. Que los roles nuevos (system_specialist, cst_user, store_user) son válidos.
- * 2. Que el procedimiento listUsers requiere autenticación.
- * 3. Que store_user no puede crear usuarios (FORBIDDEN).
- * 4. Que cst_user no puede crear usuarios de tipo system_specialist (FORBIDDEN).
- * 5. Que system_specialist puede crear cualquier tipo de usuario.
- * 6. Que getBranches está disponible para usuarios autenticados.
+ * 1. Que todos los roles son válidos en el schema.
+ * 2. Que listUsers requiere autenticación.
+ * 3. Restricciones de creación de usuarios por rol.
+ * 4. Que commercial_specialist solo puede crear supplier_user.
+ * 5. Que supplier_user no puede crear usuarios.
+ * 6. Permisos de edición de metas.
+ * 7. auth.me devuelve los campos correctos.
  */
 
 import { describe, expect, it } from "vitest";
@@ -28,6 +29,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     loginMethod: "local",
     role: "cst_user",
     assignedStoreCode: null,
+    assignedSupplierId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -62,10 +64,21 @@ describe("RLS — Roles de usuario", () => {
     expect(user.role).toBe("cst_user");
   });
 
+  it("commercial_specialist es un rol válido en el schema", () => {
+    const user = makeUser({ role: "commercial_specialist" });
+    expect(user.role).toBe("commercial_specialist");
+  });
+
   it("store_user es un rol válido en el schema", () => {
     const user = makeUser({ role: "store_user", assignedStoreCode: "T001" });
     expect(user.role).toBe("store_user");
     expect(user.assignedStoreCode).toBe("T001");
+  });
+
+  it("supplier_user es un rol válido en el schema", () => {
+    const user = makeUser({ role: "supplier_user", assignedSupplierId: "SUP-001" });
+    expect(user.role).toBe("supplier_user");
+    expect(user.assignedSupplierId).toBe("SUP-001");
   });
 });
 
@@ -77,14 +90,10 @@ describe("RLS — listUsers requiere autenticación", () => {
 });
 
 describe("RLS — Restricciones de creación de usuarios", () => {
+  // store_user: no puede crear
   it("store_user no puede crear usuarios (FORBIDDEN)", async () => {
-    const storeUser = makeUser({
-      id: 10,
-      role: "store_user",
-      assignedStoreCode: "T001",
-    });
+    const storeUser = makeUser({ id: 10, role: "store_user", assignedStoreCode: "T001" });
     const caller = appRouter.createCaller(makeCtx(storeUser));
-
     await expect(
       caller.users.createUser({
         username: "nuevo",
@@ -95,10 +104,24 @@ describe("RLS — Restricciones de creación de usuarios", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  // supplier_user: no puede crear
+  it("supplier_user no puede crear usuarios (FORBIDDEN)", async () => {
+    const supplierUser = makeUser({ id: 11, role: "supplier_user", assignedSupplierId: "SUP-001" });
+    const caller = appRouter.createCaller(makeCtx(supplierUser));
+    await expect(
+      caller.users.createUser({
+        username: "nuevo",
+        password: "pass123",
+        name: "Nuevo Usuario",
+        role: "store_user",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // cst_user: solo puede crear store_user
   it("cst_user no puede crear usuarios de tipo system_specialist (FORBIDDEN)", async () => {
     const cstUser = makeUser({ id: 20, role: "cst_user" });
     const caller = appRouter.createCaller(makeCtx(cstUser));
-
     await expect(
       caller.users.createUser({
         username: "nuevo_admin",
@@ -109,10 +132,51 @@ describe("RLS — Restricciones de creación de usuarios", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("cst_user no puede crear usuarios de tipo cst_user (FORBIDDEN)", async () => {
+  it("cst_user no puede crear usuarios de tipo commercial_specialist (FORBIDDEN)", async () => {
     const cstUser = makeUser({ id: 21, role: "cst_user" });
     const caller = appRouter.createCaller(makeCtx(cstUser));
+    await expect(
+      caller.users.createUser({
+        username: "nuevo_commercial",
+        password: "pass123",
+        name: "Nuevo Comercial",
+        role: "commercial_specialist",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 
+  it("cst_user no puede crear usuarios de tipo supplier_user (FORBIDDEN)", async () => {
+    const cstUser = makeUser({ id: 22, role: "cst_user" });
+    const caller = appRouter.createCaller(makeCtx(cstUser));
+    await expect(
+      caller.users.createUser({
+        username: "nuevo_supplier",
+        password: "pass123",
+        name: "Nuevo Proveedor",
+        role: "supplier_user",
+        assignedSupplierId: "SUP-001",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // commercial_specialist: solo puede crear supplier_user
+  it("commercial_specialist no puede crear usuarios de tipo store_user (FORBIDDEN)", async () => {
+    const commercialUser = makeUser({ id: 30, role: "commercial_specialist" });
+    const caller = appRouter.createCaller(makeCtx(commercialUser));
+    await expect(
+      caller.users.createUser({
+        username: "nueva_tienda",
+        password: "pass123",
+        name: "Nueva Tienda",
+        role: "store_user",
+        assignedStoreCode: "T001",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("commercial_specialist no puede crear usuarios de tipo cst_user (FORBIDDEN)", async () => {
+    const commercialUser = makeUser({ id: 31, role: "commercial_specialist" });
+    const caller = appRouter.createCaller(makeCtx(commercialUser));
     await expect(
       caller.users.createUser({
         username: "nuevo_cst",
@@ -121,6 +185,34 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         role: "cst_user",
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("commercial_specialist no puede crear usuarios de tipo system_specialist (FORBIDDEN)", async () => {
+    const commercialUser = makeUser({ id: 32, role: "commercial_specialist" });
+    const caller = appRouter.createCaller(makeCtx(commercialUser));
+    await expect(
+      caller.users.createUser({
+        username: "nuevo_sys",
+        password: "pass123",
+        name: "Nuevo Sys",
+        role: "system_specialist",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // Validación: supplier_user requiere assigned_supplier_id
+  it("crear supplier_user sin proveedor asignado lanza BAD_REQUEST", async () => {
+    const sysUser = makeUser({ id: 40, role: "system_specialist" });
+    const caller = appRouter.createCaller(makeCtx(sysUser));
+    await expect(
+      caller.users.createUser({
+        username: "proveedor_sin_id",
+        password: "pass123",
+        name: "Proveedor Sin ID",
+        role: "supplier_user",
+        // sin assignedSupplierId
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
 
@@ -133,7 +225,7 @@ describe("RLS — getBranches requiere autenticación", () => {
 
 describe("RLS — Permisos de edición de metas", () => {
   it("store_user no puede editar metas (FORBIDDEN)", async () => {
-    const storeUser = makeUser({ id: 30, role: "store_user", assignedStoreCode: "FF01" });
+    const storeUser = makeUser({ id: 50, role: "store_user", assignedStoreCode: "FF01" });
     const caller = appRouter.createCaller(makeCtx(storeUser));
     await expect(
       caller.targets.upsertStoreTarget({
@@ -144,39 +236,43 @@ describe("RLS — Permisos de edición de metas", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("cst_user puede editar metas (permitido)", async () => {
-    const cstUser = makeUser({ id: 31, role: "cst_user" });
+  it("supplier_user no puede editar metas (FORBIDDEN)", async () => {
+    const supplierUser = makeUser({ id: 51, role: "supplier_user", assignedSupplierId: "SUP-001" });
+    const caller = appRouter.createCaller(makeCtx(supplierUser));
+    await expect(
+      caller.targets.upsertStoreTarget({
+        month: "2026-01",
+        store_id: "some-uuid",
+        monthly_target_amount: 100000,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cst_user puede editar metas (no FORBIDDEN)", async () => {
+    const cstUser = makeUser({ id: 52, role: "cst_user" });
     const caller = appRouter.createCaller(makeCtx(cstUser));
-    // Verificamos que la operación no es rechazada por FORBIDDEN
-    // (puede tener éxito o fallar por otro motivo, pero no por permisos)
-    const result = caller.targets.upsertStoreTarget({
-      month: "2026-01",
-      store_id: "some-uuid",
-      monthly_target_amount: 100000,
-    });
-    await expect(result).resolves.not.toMatchObject({ code: "FORBIDDEN" }).catch(() => {
-      // Si falla por otro motivo (ej. DB), verificamos que no sea FORBIDDEN
-    });
-    // Verificación alternativa: no lanza FORBIDDEN
     try {
-      await result;
+      await caller.targets.upsertStoreTarget({
+        month: "2026-01",
+        store_id: "some-uuid",
+        monthly_target_amount: 100000,
+      });
     } catch (err: any) {
       expect(err.code).not.toBe("FORBIDDEN");
     }
   });
 
   it("store_user no puede eliminar metas (FORBIDDEN)", async () => {
-    const storeUser = makeUser({ id: 32, role: "store_user", assignedStoreCode: "FF01" });
+    const storeUser = makeUser({ id: 53, role: "store_user", assignedStoreCode: "FF01" });
     const caller = appRouter.createCaller(makeCtx(storeUser));
     await expect(
       caller.targets.deleteStoreTarget({ id: 999 })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("cst_user puede eliminar metas (permitido)", async () => {
-    const cstUser = makeUser({ id: 33, role: "cst_user" });
+  it("cst_user puede eliminar metas (no FORBIDDEN)", async () => {
+    const cstUser = makeUser({ id: 54, role: "cst_user" });
     const caller = appRouter.createCaller(makeCtx(cstUser));
-    // Verificamos que no lanza FORBIDDEN
     try {
       await caller.targets.deleteStoreTarget({ id: 999 });
     } catch (err: any) {
@@ -185,7 +281,7 @@ describe("RLS — Permisos de edición de metas", () => {
   });
 
   it("store_user no puede hacer carga masiva de metas (FORBIDDEN)", async () => {
-    const storeUser = makeUser({ id: 34, role: "store_user", assignedStoreCode: "FF01" });
+    const storeUser = makeUser({ id: 55, role: "store_user", assignedStoreCode: "FF01" });
     const caller = appRouter.createCaller(makeCtx(storeUser));
     await expect(
       caller.targets.bulkUpsertFromCSV({
@@ -194,10 +290,9 @@ describe("RLS — Permisos de edición de metas", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("cst_user puede hacer carga masiva de metas (permitido)", async () => {
-    const cstUser = makeUser({ id: 35, role: "cst_user" });
+  it("cst_user puede hacer carga masiva de metas (no FORBIDDEN)", async () => {
+    const cstUser = makeUser({ id: 56, role: "cst_user" });
     const caller = appRouter.createCaller(makeCtx(cstUser));
-    // Verificamos que no lanza FORBIDDEN
     try {
       await caller.targets.bulkUpsertFromCSV({
         rows: [{ month: "2026-01", store_sap_id: "FF01", monthly_target_amount: 100000 }],
@@ -208,8 +303,8 @@ describe("RLS — Permisos de edición de metas", () => {
   });
 });
 
-describe("RLS — auth.me devuelve assignedStoreCode", () => {
-  it("devuelve null cuando el usuario no tiene tienda asignada", async () => {
+describe("RLS — auth.me devuelve los campos correctos", () => {
+  it("devuelve null assignedStoreCode cuando el usuario no tiene tienda asignada", async () => {
     const user = makeUser({ role: "cst_user", assignedStoreCode: null });
     const caller = appRouter.createCaller(makeCtx(user));
     const result = await caller.auth.me();
@@ -218,13 +313,18 @@ describe("RLS — auth.me devuelve assignedStoreCode", () => {
   });
 
   it("devuelve el sap_id cuando el usuario tiene tienda asignada", async () => {
-    const user = makeUser({
-      role: "store_user",
-      assignedStoreCode: "T042",
-    });
+    const user = makeUser({ role: "store_user", assignedStoreCode: "T042" });
     const caller = appRouter.createCaller(makeCtx(user));
     const result = await caller.auth.me();
     expect(result).not.toBeNull();
     expect((result as any).assignedStoreCode).toBe("T042");
+  });
+
+  it("devuelve assignedSupplierId para supplier_user", async () => {
+    const user = makeUser({ role: "supplier_user", assignedSupplierId: "SUP-999" });
+    const caller = appRouter.createCaller(makeCtx(user));
+    const result = await caller.auth.me();
+    expect(result).not.toBeNull();
+    expect((result as any).role).toBe("supplier_user");
   });
 });
