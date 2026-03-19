@@ -94,9 +94,10 @@ export function StoreTargetCard({
       <CardContent className="pt-5 pb-5 px-5 space-y-3.5">
 
         {/* ── Línea 1: Nombre de tienda ────────────────────────────────── */}
+        {/* #232523 en light mode, #EAE8E2 en dark mode */}
         <p
-          className="font-bold uppercase leading-tight tracking-wide pr-8 font-heading"
-          style={{ fontSize: "20px", color: "#232523" }}
+          className="font-bold uppercase leading-tight tracking-wide pr-8 font-heading text-[#232523] dark:text-[#EAE8E2]"
+          style={{ fontSize: "20px" }}
         >
           {storeName}
         </p>
