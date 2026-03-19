@@ -227,13 +227,13 @@ export default function SupplierPortal() {
           <div className="flex items-center gap-3">
             {/* Logo modo claro */}
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/Logonegro_2fc9cc1a.svg"
+              src="/Logonegro.svg"
               alt="Flora & Fauna"
               className="h-6 block dark:hidden"
             />
             {/* Logo modo oscuro */}
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/Logoclarochico_eea437f3.svg"
+              src="/Logoclarochico.svg"
               alt="Flora & Fauna"
               className="h-6 hidden dark:block"
             />
