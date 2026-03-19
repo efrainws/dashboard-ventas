@@ -16,6 +16,7 @@ import SalesVsTarget from "./pages/SalesVsTarget";
 import DiscrepancyTickets from "./pages/DiscrepancyTickets";
 import IdentifiedTransactions from "./pages/IdentifiedTransactions";
 import SupplierHome from "./pages/SupplierHome";
+import SupplierPortal from "./pages/SupplierPortal";
 import { AccessDenied } from "./components/AccessDenied";
 import { Loader2 } from "lucide-react";
 
@@ -82,7 +83,7 @@ function Router() {
 
       {/* Portal exclusivo para proveedores */}
       <Route path="/supplier">
-        {() => <ProtectedRoute component={SupplierHome} path="/supplier" />}
+        {() => <ProtectedRoute component={SupplierPortal} path="/supplier" />}
       </Route>
 
       {/* Páginas generales — bloqueadas para supplier_user */}

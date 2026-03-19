@@ -1,0 +1,409 @@
+/**
+ * supplierPortalRouter.ts
+ * Endpoints para el portal exclusivo de proveedores (supplier_user).
+ * Todas las queries son READ-ONLY sobre PostgreSQL.
+ */
+
+import { z } from "zod";
+import { protectedProcedure, router } from "./_core/trpc";
+import { pool } from "./postgres";
+import { TRPCError } from "@trpc/server";
+
+// Helper: obtener supplier_id del usuario autenticado
+function getSupplierIdFromCtx(ctx: { user: { assignedSupplierId?: string | null; role: string } }) {
+  if (ctx.user.role !== "supplier_user" && ctx.user.role !== "system_specialist") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Acceso solo para proveedores." });
+  }
+  if (!ctx.user.assignedSupplierId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "No tienes un proveedor asignado." });
+  }
+  return ctx.user.assignedSupplierId;
+}
+
+const dateRangeSchema = z.object({
+  from: z.string().optional(), // ISO date string YYYY-MM-DD
+  to: z.string().optional(),
+});
+
+export const supplierPortalRouter = router({
+  /**
+   * Información básica del proveedor asignado al usuario
+   */
+  getMySupplier: protectedProcedure.query(async ({ ctx }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any);
+    const res = await pool.query(
+      `SELECT id, ruc, name, description, sap_id, status
+       FROM public.suppliers
+       WHERE id = $1`,
+      [supplierId]
+    );
+    if (!res.rows[0]) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Proveedor no encontrado." });
+    }
+    return res.rows[0] as {
+      id: string;
+      ruc: string;
+      name: string;
+      description: string | null;
+      sap_id: string;
+      status: boolean | null;
+    };
+  }),
+
+  /**
+   * KPIs de ventas del proveedor en el rango de fechas
+   */
+  getSalesSummary: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const res = await pool.query(
+        `SELECT
+           COUNT(DISTINCT sh.id)::int                    AS total_tickets,
+           COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
+           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,
+           COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         WHERE p.supplier_id = $1
+           AND sh.doc_date::date BETWEEN $2 AND $3`,
+        [supplierId, from, to]
+      );
+      return res.rows[0] as {
+        total_tickets: number;
+        productos_vendidos: number;
+        total_ventas: string;
+        total_unidades: string;
+        tiendas_activas: number;
+      };
+    }),
+
+  /**
+   * Ventas diarias del proveedor (para gráfico de tendencia)
+   */
+  getDailySales: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const res = await pool.query(
+        `SELECT
+           sh.doc_date::date                             AS fecha,
+           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           COUNT(DISTINCT sh.id)::int                    AS tickets,
+           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         WHERE p.supplier_id = $1
+           AND sh.doc_date::date BETWEEN $2 AND $3
+         GROUP BY sh.doc_date::date
+         ORDER BY fecha ASC`,
+        [supplierId, from, to]
+      );
+      return res.rows as Array<{
+        fecha: string;
+        total_ventas: string;
+        tickets: number;
+        unidades: string;
+      }>;
+    }),
+
+  /**
+   * Top productos más vendidos del proveedor
+   */
+  getTopProducts: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        limit: z.number().min(1).max(50).default(10),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const res = await pool.query(
+        `SELECT
+           p.name                                        AS producto,
+           p.sku,
+           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
+           COUNT(DISTINCT sh.id)::int                    AS tickets
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         WHERE p.supplier_id = $1
+           AND sh.doc_date::date BETWEEN $2 AND $3
+         GROUP BY p.id, p.name, p.sku
+         ORDER BY total_ventas DESC
+         LIMIT $4`,
+        [supplierId, from, to, input.limit]
+      );
+      return res.rows as Array<{
+        producto: string;
+        sku: string;
+        total_ventas: string;
+        unidades_vendidas: string;
+        tickets: number;
+      }>;
+    }),
+
+  /**
+   * Ventas por tienda del proveedor
+   */
+  getSalesByBranch: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const res = await pool.query(
+        `SELECT
+           b.name                                        AS tienda,
+           b.sap_id,
+           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,
+           COUNT(DISTINCT sh.id)::int                    AS tickets
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.supplier_id = $1
+           AND sh.doc_date::date BETWEEN $2 AND $3
+         GROUP BY b.id, b.name, b.sap_id
+         ORDER BY total_ventas DESC`,
+        [supplierId, from, to]
+      );
+      return res.rows as Array<{
+        tienda: string;
+        sap_id: string;
+        total_ventas: string;
+        unidades: string;
+        tickets: number;
+      }>;
+    }),
+
+  /**
+   * Stock actual de los productos del proveedor por tienda
+   */
+  getStockByProduct: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const searchClause = input.search
+        ? `AND (p.name ILIKE $4 OR p.sku ILIKE $4)`
+        : "";
+      const params: (string | number)[] = [supplierId, input.limit, input.offset];
+      if (input.search) params.push(`%${input.search}%`);
+
+      const res = await pool.query(
+        `SELECT
+           p.name                                        AS producto,
+           p.sku,
+           b.name                                        AS tienda,
+           b.sap_id,
+           st.stock                                      AS stock_actual,
+           st.min_stock
+         FROM public.stocks st
+         JOIN public.products p ON p.id = st.product_id
+         JOIN public.branches b ON b.id = st.branch_id
+         WHERE p.supplier_id = $1
+           AND st.stock > 0
+           ${searchClause}
+         ORDER BY p.name ASC, b.name ASC
+         LIMIT $2 OFFSET $3`,
+        params
+      );
+
+      // Total para paginación
+      const countParams: (string | number)[] = [supplierId];
+      if (input.search) countParams.push(`%${input.search}%`);
+      const countRes = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM public.stocks st
+         JOIN public.products p ON p.id = st.product_id
+         WHERE p.supplier_id = $1
+           AND st.stock > 0
+           ${input.search ? "AND (p.name ILIKE $2 OR p.sku ILIKE $2)" : ""}`,
+        countParams
+      );
+
+      return {
+        rows: res.rows as Array<{
+          producto: string;
+          sku: string;
+          tienda: string;
+          sap_id: string;
+          stock_actual: number;
+          min_stock: number | null;
+        }>,
+        total: countRes.rows[0].total as number,
+      };
+    }),
+
+  /**
+   * Recepciones (órdenes de compra) del proveedor
+   */
+  getReceptions: protectedProcedure
+    .input(
+      z.object({
+        from: z.string().optional(),
+        to: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const from = input.from ?? new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
+      const to = input.to ?? new Date().toISOString().split("T")[0];
+
+      const res = await pool.query(
+        `SELECT
+           r.oc,
+           r.date::date                                  AS fecha,
+           b.name                                        AS tienda,
+           b.sap_id,
+           p.name                                        AS producto,
+           p.sku,
+           r.ordered_quantity,
+           r.received_quantity,
+           r.status
+         FROM public.receptions r
+         JOIN public.products p ON p.id = r.product_id
+         JOIN public.branches b ON b.id = r.branch_id
+         WHERE p.supplier_id = $1
+           AND r.date::date BETWEEN $2 AND $3
+         ORDER BY r.date DESC
+         LIMIT $4 OFFSET $5`,
+        [supplierId, from, to, input.limit, input.offset]
+      );
+
+      const countRes = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM public.receptions r
+         JOIN public.products p ON p.id = r.product_id
+         WHERE p.supplier_id = $1
+           AND r.date::date BETWEEN $2 AND $3`,
+        [supplierId, from, to]
+      );
+
+      return {
+        rows: res.rows as Array<{
+          oc: string;
+          fecha: string;
+          tienda: string;
+          sap_id: string;
+          producto: string;
+          sku: string;
+          ordered_quantity: number;
+          received_quantity: number | null;
+          status: string | null;
+        }>,
+        total: countRes.rows[0].total as number,
+      };
+    }),
+
+  /**
+   * Ventas por mes (últimos 6 meses) para gráfico de barras
+   */
+  getMonthlySales: protectedProcedure.query(async ({ ctx }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any);
+    const res = await pool.query(
+      `SELECT
+         TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
+         ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
+         COUNT(DISTINCT sh.id)::int                     AS tickets,
+         ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades
+       FROM public.sales_detail sd
+       JOIN public.products p ON p.id = sd.product_id
+       JOIN public.sales_header sh ON sh.id = sd.header_id
+       WHERE p.supplier_id = $1
+         AND sh.doc_date >= NOW() - INTERVAL '6 months'
+       GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
+       ORDER BY mes ASC`,
+      [supplierId]
+    );
+    return res.rows as Array<{
+      mes: string;
+      total_ventas: string;
+      tickets: number;
+      unidades: string;
+    }>;
+  }),
+
+  /**
+   * Catálogo de productos del proveedor con stock total
+   */
+  getProductCatalog: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const searchClause = input.search
+        ? `AND (p.name ILIKE $4 OR p.sku ILIKE $4)`
+        : "";
+      const params: (string | number)[] = [supplierId, input.limit, input.offset];
+      if (input.search) params.push(`%${input.search}%`);
+
+      const res = await pool.query(
+        `SELECT
+           p.id,
+           p.name,
+           p.sku,
+           p.description,
+           COALESCE(SUM(st.stock), 0)::int              AS stock_total,
+           COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock
+         FROM public.products p
+         LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0
+         WHERE p.supplier_id = $1
+           ${searchClause}
+         GROUP BY p.id, p.name, p.sku, p.description
+         ORDER BY p.name ASC
+         LIMIT $2 OFFSET $3`,
+        params
+      );
+
+      const countParams: (string | number)[] = [supplierId];
+      if (input.search) countParams.push(`%${input.search}%`);
+      const countRes = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM public.products p
+         WHERE p.supplier_id = $1
+           ${input.search ? "AND (p.name ILIKE $2 OR p.sku ILIKE $2)" : ""}`,
+        countParams
+      );
+
+      return {
+        rows: res.rows as Array<{
+          id: string;
+          name: string;
+          sku: string;
+          description: string | null;
+          stock_total: number;
+          tiendas_con_stock: number;
+        }>,
+        total: countRes.rows[0].total as number,
+      };
+    }),
+});

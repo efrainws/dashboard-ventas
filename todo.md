@@ -1454,3 +1454,6 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar UserManagement con selector de proveedor y reglas de creación por rol
 - [x] Actualizar NavigationMenu con etiquetas de rol correctas y acceso a Usuarios para commercial_specialist
 - [x] Agregar tests para nuevos roles (112 tests pasan)
+- [x] Construir portal de proveedores: backend supplierPortalRouter con 7 endpoints (getMySupplier, getSalesSummary, getDailySales, getTopProducts, getSalesByBranch, getStockByProduct, getReceptions, getMonthlySales, getProductCatalog)
+- [x] Construir portal de proveedores: frontend SupplierPortal.tsx con 4 tabs (Dashboard, Catálogo, Stock, Recepciones)
+- [x] Tests del portal de proveedores: 14 tests de acceso, roles y paginación
