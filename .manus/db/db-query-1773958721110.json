@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, username, name, role, assigned_supplier_id FROM users LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute SELECT id, username, name, role, assigned_supplier_id FROM users LIMIT 10;",
+  "rows": [
+    {
+      "id": "3",
+      "username": "efrainw",
+      "name": "Efraín Wong Seoane",
+      "role": "system_specialist",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "1200026",
+      "username": "test_admin",
+      "name": "Test Admin",
+      "role": "system_specialist",
+      "assigned_supplier_id": "2493325c-9092-4a55-9435-3377b9e920d8"
+    },
+    {
+      "id": "1200051",
+      "username": "erasmow",
+      "name": "Erasmo Wong Seoane",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "1590001",
+      "username": "NULL",
+      "name": "manus.ti",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "1650027",
+      "username": "luisg",
+      "name": "Luis García",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "1800004",
+      "username": "jeanpaulb",
+      "name": "Jean Paul Benavides",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "2820111",
+      "username": "miguelc",
+      "name": "Miguel Chunga Guzman",
+      "role": "system_specialist",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "3150043",
+      "username": "joses",
+      "name": "Jose Sakamoto Heredia",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "3390009",
+      "username": "jesuss",
+      "name": "Jesus Salazar",
+      "role": "cst_user",
+      "assigned_supplier_id": "NULL"
+    },
+    {
+      "id": "3690001",
+      "username": "SanBorja",
+      "name": "Edualdo Davila",
+      "role": "store_user",
+      "assigned_supplier_id": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\tname\trole\tassigned_supplier_id\n3\tefrainw\tEfraín Wong Seoane\tsystem_specialist\tNULL\n1200026\ttest_admin\tTest Admin\tsystem_specialist\t2493325c-9092-4a55-9435-3377b9e920d8\n1200051\terasmow\tErasmo Wong Seoane\tcst_user\tNULL\n1590001\tNULL\tmanus.ti\tcst_user\tNULL\n1650027\tluisg\tLuis García\tcst_user\tNULL\n1800004\tjeanpaulb\tJean Paul Benavides\tcst_user\tNULL\n2820111\tmiguelc\tMiguel Chunga Guzman\tsystem_specialist\tNULL\n3150043\tjoses\tJose Sakamoto Heredia\tcst_user\tNULL\n3390009\tjesuss\tJesus Salazar\tcst_user\tNULL\n3690001\tSanBorja\tEdualdo Davila\tstore_user\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

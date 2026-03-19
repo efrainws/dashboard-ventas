@@ -140,7 +140,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SupplierPortal() {
-  const { logout, user } = useAuth();
+  const { logout, user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
@@ -153,26 +153,29 @@ export default function SupplierPortal() {
   const PAGE_SIZE = 20;
 
   // Queries
-  const { data: supplier, isLoading: supplierLoading } =
-    trpc.supplierPortal.getMySupplier.useQuery();
+  // Solo ejecutar queries si el usuario es supplier_user
+  const isSupplierUser = user?.role === 'supplier_user';
+
+  const { data: supplier, isLoading: supplierLoading, error: supplierError } =
+    trpc.supplierPortal.getMySupplier.useQuery(undefined, { enabled: isSupplierUser });
 
   const { data: summary, isLoading: summaryLoading } =
-    trpc.supplierPortal.getSalesSummary.useQuery({ from, to });
+    trpc.supplierPortal.getSalesSummary.useQuery({ from, to }, { enabled: isSupplierUser });
 
   const { data: dailySales, isLoading: dailyLoading } =
-    trpc.supplierPortal.getDailySales.useQuery({ from, to });
+    trpc.supplierPortal.getDailySales.useQuery({ from, to }, { enabled: isSupplierUser });
 
   const { data: topProducts, isLoading: topLoading } =
-    trpc.supplierPortal.getTopProducts.useQuery({ from, to, limit: 10 });
+    trpc.supplierPortal.getTopProducts.useQuery({ from, to, limit: 10 }, { enabled: isSupplierUser });
 
   const { data: salesByBranch, isLoading: branchLoading } =
-    trpc.supplierPortal.getSalesByBranch.useQuery({ from, to });
+    trpc.supplierPortal.getSalesByBranch.useQuery({ from, to }, { enabled: isSupplierUser });
 
   const { data: monthlySales, isLoading: monthlyLoading } =
-    trpc.supplierPortal.getMonthlySales.useQuery();
+    trpc.supplierPortal.getMonthlySales.useQuery(undefined, { enabled: isSupplierUser });
 
   const { data: branchesForStock } =
-    trpc.supplierPortal.getBranchesForStock.useQuery();
+    trpc.supplierPortal.getBranchesForStock.useQuery(undefined, { enabled: isSupplierUser });
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
@@ -180,20 +183,20 @@ export default function SupplierPortal() {
       branchId: stockBranchId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
-    });
+    }, { enabled: isSupplierUser });
 
   const { data: catalogData, isLoading: catalogLoading } =
     trpc.supplierPortal.getProductCatalog.useQuery({
       search: catalogSearch || undefined,
       limit: PAGE_SIZE,
       offset: catalogPage * PAGE_SIZE,
-    });
+    }, { enabled: isSupplierUser });
 
   const { data: receptionsData, isLoading: recLoading } =
     trpc.supplierPortal.getReceptions.useQuery({
       limit: PAGE_SIZE,
       offset: recPage * PAGE_SIZE,
-    });
+    }, { enabled: isSupplierUser });
 
   // Colores para gráficos
   const CHART_COLORS = [
@@ -218,6 +221,27 @@ export default function SupplierPortal() {
       tickets: r.tickets,
     }));
   }, [dailySales]);
+
+  // Guard: si el usuario no es supplier_user, mostrar mensaje de acceso denegado
+  if (!loading && user && !isSupplierUser) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-8">
+        <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-8 block dark:hidden" />
+        <img src="/Logoclarochico.svg" alt="Flora & Fauna" className="h-8 hidden dark:block" />
+        <div className="text-center space-y-2 max-w-md">
+          <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Italian Plate No 1', serif" }}>
+            ACCESO RESTRINGIDO
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Esta página es exclusiva para usuarios proveedor. Tu perfil ({user.role}) no tiene acceso a este portal.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => window.location.href = '/'}>
+          Volver al inicio
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

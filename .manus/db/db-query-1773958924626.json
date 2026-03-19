@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO users (username, name, password, role, loginMethod, assigned_supplier_id)\nVALUES (\n  'test_supplier',\n  'Test Proveedor',\n  '$2b$10$ozPb5iMx0DmclqJpP28chO/ZTssWK35phEl1wTLJ8xpXLW2c4M7GG',\n  'supplier_user',\n  'password',\n  '2493325c-9092-4a55-9435-3377b9e920d8'\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute INSERT INTO users (username, name, password, role, loginMethod, assigned_supplier_id)\nVALUES (\n  'test_supplier',\n  'Test Proveedor',\n  '$2b$10$ozPb5iMx0DmclqJpP28chO/ZTssWK35phEl1wTLJ8xpXLW2c4M7GG',\n  'supplier_user',\n  'password',\n  '2493325c-9092-4a55-9435-3377b9e920d8'\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 360
+}
