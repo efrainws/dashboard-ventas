@@ -1435,3 +1435,4 @@ Fecha: 1 de febrero de 2026
 - [x] Flujo de activación de cuenta: página /activate/:token con estética Flora & Fauna
 - [x] Flujo de activación de cuenta: email de bienvenida con link de activación en lugar de credenciales
 - [x] Agregar aviso en diálogo de creación de usuario: contraseña temporal no se envía por correo
+- [x] Cambiar fecha de fin por defecto en Ventas vs Metas: de hoy a ayer (inicio del mes → ayer)

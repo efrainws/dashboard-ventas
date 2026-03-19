@@ -40,7 +40,8 @@ export default function SalesVsTarget() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: firstDayOfMonth, to: now };
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    return { from: firstDayOfMonth, to: yesterday };
   });
 
   // Para store_user: el filtro de tiendas queda fijo en su tienda asignada
@@ -120,7 +121,8 @@ export default function SalesVsTarget() {
   const handleClearFilters = () => {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    setDateRange({ from: firstDayOfMonth, to: now });
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    setDateRange({ from: firstDayOfMonth, to: yesterday });
     if (!isStoreUser) {
       setSelectedStores([]);
     }
