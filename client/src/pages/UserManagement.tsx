@@ -89,6 +89,7 @@ type User = {
   role: UserRole;
   assignedStoreCode: string | null;
   assignedSupplierId: string | null;
+  supplierName: string | null;
   loginMethod: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -339,10 +340,15 @@ export default function UserManagement() {
     return branch ? `${branch.name} (${sapId})` : sapId;
   };
 
-  const getSupplierName = (supplierId: string | null) => {
-    if (!supplierId) return '-';
-    const supplier = suppliersData?.suppliers.find(s => s.id === supplierId);
-    return supplier ? `${supplier.ruc} — ${supplier.name}` : supplierId;
+  /**
+   * Devuelve el nombre del proveedor enriquecido desde el backend (supplierName).
+   * Si no está disponible, cae al buscador local como fallback.
+   */
+  const getSupplierName = (user: User) => {
+    if (user.supplierName) return user.supplierName;
+    if (!user.assignedSupplierId) return '-';
+    const supplier = suppliersData?.suppliers.find(s => s.id === user.assignedSupplierId);
+    return supplier ? `${supplier.ruc} — ${supplier.name}` : user.assignedSupplierId;
   };
 
   const getRoleIcon = (role: UserRole) => {
@@ -428,7 +434,7 @@ export default function UserManagement() {
                       {user.role === 'store_user'
                         ? getStoreName(user.assignedStoreCode)
                         : user.role === 'supplier_user'
-                        ? getSupplierName((user as any).assignedSupplierId)
+                        ? getSupplierName(user)
                         : '-'}
                     </TableCell>
                     <TableCell>{formatDate(user.lastSignedIn)}</TableCell>

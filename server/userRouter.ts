@@ -99,7 +99,42 @@ export const userRouter = router({
         filteredUsers = allUsers.filter(u => u.role === 'supplier_user');
       }
 
-      return { success: true, users: filteredUsers };
+      // Enriquecer con nombre de proveedor para supplier_user.
+      // Recopilamos los IDs únicos de proveedores asignados y hacemos una sola
+      // consulta a PostgreSQL para evitar N+1 queries.
+      const supplierIds = Array.from(
+        new Set(
+          filteredUsers
+            .filter(u => u.role === 'supplier_user' && u.assignedSupplierId)
+            .map(u => u.assignedSupplierId as string)
+        )
+      );
+
+      let supplierMap: Record<string, { ruc: string; name: string }> = {};
+      if (supplierIds.length > 0) {
+        try {
+          const placeholders = supplierIds.map((_, i) => `$${i + 1}`).join(', ');
+          const result = await pool.query(
+            `SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})`,
+            supplierIds
+          );
+          for (const row of result.rows) {
+            supplierMap[String(row.id)] = { ruc: row.ruc, name: row.name };
+          }
+        } catch (pgErr) {
+          // No bloquear el listado si falla el enriquecimiento
+          console.warn('[User Management] Could not enrich supplier names:', pgErr);
+        }
+      }
+
+      const enrichedUsers = filteredUsers.map(u => ({
+        ...u,
+        supplierName: u.assignedSupplierId && supplierMap[u.assignedSupplierId]
+          ? `${supplierMap[u.assignedSupplierId].ruc} — ${supplierMap[u.assignedSupplierId].name}`
+          : null,
+      }));
+
+      return { success: true, users: enrichedUsers };
     } catch (error) {
       console.error('[User Management] Error listing users:', error);
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al listar usuarios' });
