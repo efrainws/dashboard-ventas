@@ -212,28 +212,59 @@ export const supplierPortalRouter = router({
     }),
 
   /**
-   * Stock actual de los productos del proveedor por tienda
+   * Tiendas que tienen stock de productos del proveedor (para el selector de filtro)
+   */
+  getBranchesForStock: protectedProcedure.query(async ({ ctx }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any);
+    const res = await pool.query(
+      `SELECT DISTINCT b.id, b.name, b.sap_id
+       FROM public.stocks st
+       JOIN public.products p ON p.id = st.product_id
+       JOIN public.branches b ON b.id = st.branch_id
+       WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+         AND st.stock > 0
+       ORDER BY b.name ASC`,
+      [supplierId]
+    );
+    return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+  }),
+
+  /**
+   * Stock actual de los productos del proveedor por tienda.
+   * Acepta filtros opcionales por tienda (branch_id) y por producto (search en nombre o int_sku).
    */
   getStockByProduct: protectedProcedure
     .input(
       z.object({
-        search: z.string().optional(),
-        limit: z.number().min(1).max(100).default(20),
+        search: z.string().optional(),       // filtra por nombre o int_sku del producto
+        branchId: z.string().optional(),     // filtra por tienda específica
+        limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any);
-      const searchClause = input.search
-        ? `AND (p.name ILIKE $4 OR p.int_sku ILIKE $4)`
-        : "";
+
+      // Construir cláusulas dinámicas y lista de parámetros
+      const extraClauses: string[] = [];
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
-      if (input.search) params.push(`%${input.search}%`);
+
+      if (input.search) {
+        params.push(`%${input.search}%`);
+        extraClauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku ILIKE $${params.length})`);
+      }
+      if (input.branchId) {
+        params.push(input.branchId);
+        extraClauses.push(`AND b.id = $${params.length}`);
+      }
+
+      const whereExtra = extraClauses.join(" ");
 
       const res = await pool.query(
         `SELECT
            p.name                                        AS producto,
            p.int_sku,
+           b.id                                          AS branch_id,
            b.name                                        AS tienda,
            b.sap_id,
            st.stock                                      AS stock_actual,
@@ -243,22 +274,32 @@ export const supplierPortalRouter = router({
          JOIN public.branches b ON b.id = st.branch_id
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND st.stock > 0
-           ${searchClause}
+           ${whereExtra}
          ORDER BY p.name ASC, b.name ASC
          LIMIT $2 OFFSET $3`,
         params
       );
 
-      // Total para paginación
+      // Total para paginación (mismos filtros, sin LIMIT/OFFSET)
       const countParams: (string | number)[] = [supplierId];
-      if (input.search) countParams.push(`%${input.search}%`);
+      const countClauses: string[] = [];
+      if (input.search) {
+        countParams.push(`%${input.search}%`);
+        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku ILIKE $${countParams.length})`);
+      }
+      if (input.branchId) {
+        countParams.push(input.branchId);
+        countClauses.push(`AND b.id = $${countParams.length}`);
+      }
+
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM public.stocks st
          JOIN public.products p ON p.id = st.product_id
+         JOIN public.branches b ON b.id = st.branch_id
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND st.stock > 0
-           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
+           ${countClauses.join(" ")}`,
         countParams
       );
 
@@ -266,6 +307,7 @@ export const supplierPortalRouter = router({
         rows: res.rows as Array<{
           producto: string;
           int_sku: string;
+          branch_id: string;
           tienda: string;
           sap_id: string;
           stock_actual: number;

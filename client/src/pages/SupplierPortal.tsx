@@ -13,6 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -138,6 +145,7 @@ export default function SupplierPortal() {
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
   const [stockSearch, setStockSearch] = useState("");
+  const [stockBranchId, setStockBranchId] = useState<string | undefined>(undefined);
   const [stockPage, setStockPage] = useState(0);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
@@ -163,9 +171,13 @@ export default function SupplierPortal() {
   const { data: monthlySales, isLoading: monthlyLoading } =
     trpc.supplierPortal.getMonthlySales.useQuery();
 
+  const { data: branchesForStock } =
+    trpc.supplierPortal.getBranchesForStock.useQuery();
+
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
       search: stockSearch || undefined,
+      branchId: stockBranchId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
     });
@@ -671,8 +683,10 @@ export default function SupplierPortal() {
         ══════════════════════════════════════════════ */}
         {activeTab === "stock" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
+            {/* Barra de filtros */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Filtro por producto */}
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nombre o SKU..."
@@ -684,8 +698,47 @@ export default function SupplierPortal() {
                   className="pl-8 h-9"
                 />
               </div>
+
+              {/* Filtro por tienda */}
+              <Select
+                value={stockBranchId ?? "all"}
+                onValueChange={(val) => {
+                  setStockBranchId(val === "all" ? undefined : val);
+                  setStockPage(0);
+                }}
+              >
+                <SelectTrigger className="h-9 w-[200px]">
+                  <Store className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue placeholder="Todas las tiendas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las tiendas</SelectItem>
+                  {branchesForStock?.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Botón limpiar filtros (visible solo si hay algún filtro activo) */}
+              {(stockSearch || stockBranchId) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-muted-foreground"
+                  onClick={() => {
+                    setStockSearch("");
+                    setStockBranchId(undefined);
+                    setStockPage(0);
+                  }}
+                >
+                  Limpiar filtros
+                </Button>
+              )}
+
               {stockData && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground ml-auto">
                   {stockData.total} registros
                 </span>
               )}

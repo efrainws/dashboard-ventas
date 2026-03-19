@@ -1460,3 +1460,4 @@ Fecha: 1 de febrero de 2026
 - [x] Enriquecer listUsers con supplierName via JOIN en backend para mostrar nombre del proveedor en la tabla de usuarios sin depender del buscador
 - [x] Sustituir campo sku por int_sku en todos los queries y componentes
 - [x] Corregir query del catálogo del portal de proveedores para cargar productos por supplier_id del usuario
+- [x] Agregar filtros por tienda y por producto en la tab de Stock del portal de proveedores
