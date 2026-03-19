@@ -140,7 +140,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SupplierPortal() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
@@ -243,13 +243,23 @@ export default function SupplierPortal() {
           </div>
           <div className="flex items-center gap-3">
             {supplierLoading ? (
-              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-10 w-40" />
             ) : (
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-foreground leading-none">
+              <div className="text-right hidden sm:block space-y-0.5">
+                {/* Nombre del proveedor: Italian Plate No 1, mayúsculas */}
+                <p
+                  className="text-xs text-muted-foreground leading-none tracking-wide"
+                  style={{ fontFamily: "'Italian Plate No 1', serif", textTransform: "uppercase" }}
+                >
                   {supplier?.name}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">RUC {supplier?.ruc}</p>
+                {/* Nombre del usuario: Sailec, negrita, capitalize */}
+                <p
+                  className="text-sm font-bold text-foreground leading-none"
+                  style={{ fontFamily: "'Sailec', sans-serif", textTransform: "capitalize" }}
+                >
+                  {user?.name?.toLowerCase()}
+                </p>
               </div>
             )}
             <Button variant="outline" size="sm" onClick={logout} className="gap-1.5">
