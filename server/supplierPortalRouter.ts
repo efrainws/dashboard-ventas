@@ -2,6 +2,12 @@
  * supplierPortalRouter.ts
  * Endpoints para el portal exclusivo de proveedores (supplier_user).
  * Todas las queries son READ-ONLY sobre PostgreSQL.
+ *
+ * NOTA DE DISEÑO: La relación entre productos y proveedores se gestiona
+ * principalmente a través de la tabla relacional `products_supplier`.
+ * El campo `products.supplier_id` es un campo legacy que no siempre está
+ * poblado. Por eso todos los queries usan un subquery de IDs de productos
+ * obtenidos desde `products_supplier` para garantizar cobertura total.
  */
 
 import { z } from "zod";
@@ -19,6 +25,19 @@ function getSupplierIdFromCtx(ctx: { user: { assignedSupplierId?: string | null;
   }
   return ctx.user.assignedSupplierId;
 }
+
+/**
+ * Subquery reutilizable: IDs de productos que pertenecen a un proveedor.
+ * Combina products_supplier (fuente principal) con products.supplier_id (legacy)
+ * para máxima cobertura sin duplicados.
+ */
+const SUPPLIER_PRODUCTS_SUBQUERY = `
+  (
+    SELECT product_id FROM public.products_supplier WHERE supplier_id = $1
+    UNION
+    SELECT id FROM public.products WHERE supplier_id = $1
+  )
+`;
 
 const dateRangeSchema = z.object({
   from: z.string().optional(), // ISO date string YYYY-MM-DD
@@ -70,7 +89,7 @@ export const supplierPortalRouter = router({
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND sh.doc_date::date BETWEEN $2 AND $3`,
         [supplierId, from, to]
       );
@@ -102,7 +121,7 @@ export const supplierPortalRouter = router({
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND sh.doc_date::date BETWEEN $2 AND $3
          GROUP BY sh.doc_date::date
          ORDER BY fecha ASC`,
@@ -140,7 +159,7 @@ export const supplierPortalRouter = router({
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND sh.doc_date::date BETWEEN $2 AND $3
          GROUP BY p.id, p.name, p.int_sku
          ORDER BY total_ventas DESC
@@ -177,7 +196,7 @@ export const supplierPortalRouter = router({
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
          JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND sh.doc_date::date BETWEEN $2 AND $3
          GROUP BY b.id, b.name, b.sap_id
          ORDER BY total_ventas DESC`,
@@ -222,7 +241,7 @@ export const supplierPortalRouter = router({
          FROM public.stocks st
          JOIN public.products p ON p.id = st.product_id
          JOIN public.branches b ON b.id = st.branch_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND st.stock > 0
            ${searchClause}
          ORDER BY p.name ASC, b.name ASC
@@ -237,7 +256,7 @@ export const supplierPortalRouter = router({
         `SELECT COUNT(*)::int AS total
          FROM public.stocks st
          JOIN public.products p ON p.id = st.product_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND st.stock > 0
            ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
         countParams
@@ -287,7 +306,7 @@ export const supplierPortalRouter = router({
          FROM public.receptions r
          JOIN public.products p ON p.id = r.product_id
          JOIN public.branches b ON b.id = r.branch_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND r.date::date BETWEEN $2 AND $3
          ORDER BY r.date DESC
          LIMIT $4 OFFSET $5`,
@@ -298,7 +317,7 @@ export const supplierPortalRouter = router({
         `SELECT COUNT(*)::int AS total
          FROM public.receptions r
          JOIN public.products p ON p.id = r.product_id
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND r.date::date BETWEEN $2 AND $3`,
         [supplierId, from, to]
       );
@@ -333,7 +352,7 @@ export const supplierPortalRouter = router({
        FROM public.sales_detail sd
        JOIN public.products p ON p.id = sd.product_id
        JOIN public.sales_header sh ON sh.id = sd.header_id
-       WHERE p.supplier_id = $1
+       WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
          AND sh.doc_date >= NOW() - INTERVAL '6 months'
        GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
        ORDER BY mes ASC`,
@@ -348,18 +367,22 @@ export const supplierPortalRouter = router({
   }),
 
   /**
-   * Catálogo de productos del proveedor con stock total
+   * Catálogo de productos del proveedor con stock total.
+   * Se carga automáticamente al entrar a la tab Catálogo.
+   * El buscador filtra solo dentro de los productos del proveedor.
    */
   getProductCatalog: protectedProcedure
     .input(
       z.object({
         search: z.string().optional(),
-        limit: z.number().min(1).max(100).default(20),
+        limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any);
+
+      // Construir cláusula de búsqueda solo si hay texto
       const searchClause = input.search
         ? `AND (p.name ILIKE $4 OR p.int_sku ILIKE $4)`
         : "";
@@ -371,14 +394,14 @@ export const supplierPortalRouter = router({
            p.id,
            p.name,
            p.int_sku,
-           p.description,
+           p.short_description                           AS description,
            COALESCE(SUM(st.stock), 0)::int              AS stock_total,
            COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock
          FROM public.products p
          LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            ${searchClause}
-         GROUP BY p.id, p.name, p.int_sku, p.description
+         GROUP BY p.id, p.name, p.int_sku, p.short_description
          ORDER BY p.name ASC
          LIMIT $2 OFFSET $3`,
         params
@@ -389,7 +412,7 @@ export const supplierPortalRouter = router({
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM public.products p
-         WHERE p.supplier_id = $1
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
         countParams
       );
