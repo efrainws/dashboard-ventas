@@ -225,7 +225,18 @@ export default function SupplierPortal() {
       <header className="border-b border-border bg-card sticky top-0 z-40">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <img src="/Logonegrochico.svg" alt="Flora & Fauna" className="h-6" />
+            {/* Logo modo claro */}
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/Logonegro_2fc9cc1a.svg"
+              alt="Flora & Fauna"
+              className="h-6 block dark:hidden"
+            />
+            {/* Logo modo oscuro */}
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/Logoclarochico_eea437f3.svg"
+              alt="Flora & Fauna"
+              className="h-6 hidden dark:block"
+            />
             <span className="text-xs text-muted-foreground border-l border-border pl-3 hidden sm:block">
               Portal de Proveedores
             </span>
