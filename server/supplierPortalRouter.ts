@@ -133,7 +133,7 @@ export const supplierPortalRouter = router({
       const res = await pool.query(
         `SELECT
            p.name                                        AS producto,
-           p.sku,
+           p.int_sku,
            ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
            COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -142,14 +142,14 @@ export const supplierPortalRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.supplier_id = $1
            AND sh.doc_date::date BETWEEN $2 AND $3
-         GROUP BY p.id, p.name, p.sku
+         GROUP BY p.id, p.name, p.int_sku
          ORDER BY total_ventas DESC
          LIMIT $4`,
         [supplierId, from, to, input.limit]
       );
       return res.rows as Array<{
         producto: string;
-        sku: string;
+        int_sku: string;
         total_ventas: string;
         unidades_vendidas: string;
         tickets: number;
@@ -206,7 +206,7 @@ export const supplierPortalRouter = router({
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any);
       const searchClause = input.search
-        ? `AND (p.name ILIKE $4 OR p.sku ILIKE $4)`
+        ? `AND (p.name ILIKE $4 OR p.int_sku ILIKE $4)`
         : "";
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
       if (input.search) params.push(`%${input.search}%`);
@@ -214,7 +214,7 @@ export const supplierPortalRouter = router({
       const res = await pool.query(
         `SELECT
            p.name                                        AS producto,
-           p.sku,
+           p.int_sku,
            b.name                                        AS tienda,
            b.sap_id,
            st.stock                                      AS stock_actual,
@@ -239,14 +239,14 @@ export const supplierPortalRouter = router({
          JOIN public.products p ON p.id = st.product_id
          WHERE p.supplier_id = $1
            AND st.stock > 0
-           ${input.search ? "AND (p.name ILIKE $2 OR p.sku ILIKE $2)" : ""}`,
+           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
         countParams
       );
 
       return {
         rows: res.rows as Array<{
           producto: string;
-          sku: string;
+          int_sku: string;
           tienda: string;
           sap_id: string;
           stock_actual: number;
@@ -280,7 +280,7 @@ export const supplierPortalRouter = router({
            b.name                                        AS tienda,
            b.sap_id,
            p.name                                        AS producto,
-           p.sku,
+           p.int_sku,
            r.ordered_quantity,
            r.received_quantity,
            r.status
@@ -310,7 +310,7 @@ export const supplierPortalRouter = router({
           tienda: string;
           sap_id: string;
           producto: string;
-          sku: string;
+          int_sku: string;
           ordered_quantity: number;
           received_quantity: number | null;
           status: string | null;
@@ -361,7 +361,7 @@ export const supplierPortalRouter = router({
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any);
       const searchClause = input.search
-        ? `AND (p.name ILIKE $4 OR p.sku ILIKE $4)`
+        ? `AND (p.name ILIKE $4 OR p.int_sku ILIKE $4)`
         : "";
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
       if (input.search) params.push(`%${input.search}%`);
@@ -370,7 +370,7 @@ export const supplierPortalRouter = router({
         `SELECT
            p.id,
            p.name,
-           p.sku,
+           p.int_sku,
            p.description,
            COALESCE(SUM(st.stock), 0)::int              AS stock_total,
            COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock
@@ -378,7 +378,7 @@ export const supplierPortalRouter = router({
          LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0
          WHERE p.supplier_id = $1
            ${searchClause}
-         GROUP BY p.id, p.name, p.sku, p.description
+         GROUP BY p.id, p.name, p.int_sku, p.description
          ORDER BY p.name ASC
          LIMIT $2 OFFSET $3`,
         params
@@ -390,7 +390,7 @@ export const supplierPortalRouter = router({
         `SELECT COUNT(*)::int AS total
          FROM public.products p
          WHERE p.supplier_id = $1
-           ${input.search ? "AND (p.name ILIKE $2 OR p.sku ILIKE $2)" : ""}`,
+           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
         countParams
       );
 
@@ -398,7 +398,7 @@ export const supplierPortalRouter = router({
         rows: res.rows as Array<{
           id: string;
           name: string;
-          sku: string;
+          int_sku: string;
           description: string | null;
           stock_total: number;
           tiendas_con_stock: number;

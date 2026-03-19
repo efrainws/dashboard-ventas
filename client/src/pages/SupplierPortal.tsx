@@ -456,13 +456,13 @@ export default function SupplierPortal() {
                         </TableHeader>
                         <TableBody>
                           {topProducts?.map((p, i) => (
-                            <TableRow key={p.sku}>
+                            <TableRow key={p.int_sku}>
                               <TableCell className="text-xs text-muted-foreground w-8">
                                 {i + 1}
                               </TableCell>
                               <TableCell className="text-xs max-w-[180px]">
                                 <p className="truncate font-medium">{p.producto}</p>
-                                <p className="text-muted-foreground">{p.sku}</p>
+                                <p className="text-muted-foreground">{p.int_sku}</p>
                               </TableCell>
                               <TableCell className="text-xs text-right font-medium">
                                 {fmtCurrency(p.total_ventas)}
@@ -604,7 +604,7 @@ export default function SupplierPortal() {
                                 )}
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground font-mono">
-                                {p.sku}
+                                {p.int_sku}
                               </TableCell>
                               <TableCell className="text-right font-medium">
                                 {fmt(p.stock_total)}
@@ -720,7 +720,7 @@ export default function SupplierPortal() {
                                 <p className="truncate">{s.producto}</p>
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground font-mono">
-                                {s.sku}
+                                {s.int_sku}
                               </TableCell>
                               <TableCell className="text-sm">{s.tienda}</TableCell>
                               <TableCell className="text-right font-medium">
@@ -830,7 +830,7 @@ export default function SupplierPortal() {
                               <TableCell className="text-sm">{r.tienda}</TableCell>
                               <TableCell className="text-sm max-w-[180px]">
                                 <p className="truncate">{r.producto}</p>
-                                <p className="text-xs text-muted-foreground">{r.sku}</p>
+                                <p className="text-xs text-muted-foreground">{r.int_sku}</p>
                               </TableCell>
                               <TableCell className="text-right">
                                 {fmt(r.ordered_quantity)}

@@ -1458,3 +1458,4 @@ Fecha: 1 de febrero de 2026
 - [x] Construir portal de proveedores: frontend SupplierPortal.tsx con 4 tabs (Dashboard, Catálogo, Stock, Recepciones)
 - [x] Tests del portal de proveedores: 14 tests de acceso, roles y paginación
 - [x] Enriquecer listUsers con supplierName via JOIN en backend para mostrar nombre del proveedor en la tabla de usuarios sin depender del buscador
+- [x] Sustituir campo sku por int_sku en todos los queries y componentes
