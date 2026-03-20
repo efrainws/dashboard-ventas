@@ -36,6 +36,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -1499,16 +1500,16 @@ export default function SupplierPortal() {
                 </div>
               </div>
 
-              {/* Gráfico de barras diario */}
-              <div style={{ height: Math.max(180, Math.min(dailyDetail.length * 28, 320)) }}>
+              {/* Gráfico de líneas diario */}
+              <div style={{ height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
+                  <LineChart
                     data={dailyDetail.map((r) => ({
                       fecha: format(new Date(r.fecha), "dd/MM", { locale: es }),
                       cantidad: parseFloat(r.cantidad),
                       monto: parseFloat(r.monto),
                     }))}
-                    margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                    margin={{ top: 8, right: 16, left: 8, bottom: 4 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#EAE8E2" vertical={false} />
                     <XAxis
@@ -1521,10 +1522,10 @@ export default function SupplierPortal() {
                       yAxisId="monto"
                       orientation="left"
                       tick={{ fontSize: 10, fill: "#757471", fontFamily: "'Sailec', sans-serif" }}
-                      tickFormatter={(v) => `S/${(v / 1000).toFixed(0)}K`}
+                      tickFormatter={(v) => `S/${(v / 1000).toFixed(1)}K`}
                       axisLine={false}
                       tickLine={false}
-                      width={48}
+                      width={52}
                     />
                     <YAxis
                       yAxisId="qty"
@@ -1546,9 +1547,31 @@ export default function SupplierPortal() {
                         fontSize: 12,
                       }}
                     />
-                    <Bar yAxisId="monto" dataKey="monto" fill="#1A6894" radius={[3, 3, 0, 0]} maxBarSize={28} name="monto" />
-                    <Bar yAxisId="qty" dataKey="cantidad" fill="#008064" radius={[3, 3, 0, 0]} maxBarSize={18} name="cantidad" />
-                  </BarChart>
+                    <Legend
+                      formatter={(value: string) => value === "monto" ? "Monto" : "Cantidad"}
+                      wrapperStyle={{ fontSize: 11, fontFamily: "'Sailec', sans-serif" }}
+                    />
+                    <Line
+                      yAxisId="monto"
+                      type="monotone"
+                      dataKey="monto"
+                      stroke="#1A6894"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "#1A6894", strokeWidth: 0 }}
+                      activeDot={{ r: 5 }}
+                      name="monto"
+                    />
+                    <Line
+                      yAxisId="qty"
+                      type="monotone"
+                      dataKey="cantidad"
+                      stroke="#008064"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "#008064", strokeWidth: 0 }}
+                      activeDot={{ r: 5 }}
+                      name="cantidad"
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
 
