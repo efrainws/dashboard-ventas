@@ -327,7 +327,7 @@ export const supplierPortalRouter = router({
              WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            ) p
            LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
-           WHERE b.active = true ${branchClause}
+           WHERE 1=1 ${branchClause}
            ORDER BY b.sap_id ASC
            LIMIT $3 OFFSET $4`,
           params
@@ -342,7 +342,7 @@ export const supplierPortalRouter = router({
              SELECT id FROM public.products
              WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            ) p
-           WHERE b.active = true ${input.branchId ? `AND b.id = $3` : ""}`,
+           WHERE 1=1 ${input.branchId ? `AND b.id = $3` : ""}`,
           countParams
         );
 

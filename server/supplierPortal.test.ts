@@ -194,3 +194,48 @@ describe("SupplierPortal — Paginación y búsqueda", () => {
     }
   });
 });
+
+describe("SupplierPortal — Bug fix: getStockByProduct no usa b.active (columna inexistente)", () => {
+  it("commercial_specialist con supplierId puede llamar getStockByProduct sin error de columna", async () => {
+    const user = makeUser({
+      role: "commercial_specialist",
+      assignedSupplierId: null,
+    });
+    const caller = appRouter.createCaller(makeCtx(user));
+    try {
+      // Pasa supplierId como override (como lo hace el frontend para admin roles)
+      await caller.supplierPortal.getStockByProduct({
+        supplierId: "0a307477-19f1-414d-b87c-9f5f850733b7",
+        productId: "6637ec1d-2019-485c-ad31-fe225f22170d",
+        limit: 20,
+        offset: 0,
+      });
+    } catch (err: any) {
+      // No debe fallar con INTERNAL_SERVER_ERROR por columna inexistente
+      expect(err.code).not.toBe("INTERNAL_SERVER_ERROR");
+      expect(err.code).not.toBe("FORBIDDEN");
+      expect(err.code).not.toBe("BAD_REQUEST");
+    }
+  });
+
+  it("system_specialist puede llamar getStockByProduct con supplierId y recibir resultados", async () => {
+    const user = makeUser({
+      role: "system_specialist",
+      assignedSupplierId: null,
+    });
+    const caller = appRouter.createCaller(makeCtx(user));
+    try {
+      const result = await caller.supplierPortal.getStockByProduct({
+        supplierId: "0a307477-19f1-414d-b87c-9f5f850733b7",
+        productId: "6637ec1d-2019-485c-ad31-fe225f22170d",
+        limit: 20,
+        offset: 0,
+      });
+      // Si la query funciona, debe retornar un array (puede estar vacío si el proveedor no existe)
+      expect(Array.isArray(result.rows)).toBe(true);
+    } catch (err: any) {
+      // No debe ser INTERNAL_SERVER_ERROR
+      expect(err.code).not.toBe("INTERNAL_SERVER_ERROR");
+    }
+  });
+});
