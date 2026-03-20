@@ -15,10 +15,23 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { TRPCError } from "@trpc/server";
 
-// Helper: obtener supplier_id del usuario autenticado
-function getSupplierIdFromCtx(ctx: { user: { assignedSupplierId?: string | null; role: string } }) {
-  if (ctx.user.role !== "supplier_user" && ctx.user.role !== "system_specialist") {
+// Roles que pueden acceder al portal de proveedores
+const ALLOWED_ROLES = ["supplier_user", "system_specialist"];
+
+// Helper: obtener supplier_id del usuario autenticado o del parámetro de override (para system_specialist)
+function getSupplierIdFromCtx(
+  ctx: { user: { assignedSupplierId?: string | null; role: string } },
+  overrideSupplierId?: string | null
+) {
+  if (!ALLOWED_ROLES.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Acceso solo para proveedores." });
+  }
+  // system_specialist puede pasar un supplierId explícito
+  if (ctx.user.role === "system_specialist") {
+    if (!overrideSupplierId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Selecciona un proveedor para continuar." });
+    }
+    return overrideSupplierId;
   }
   if (!ctx.user.assignedSupplierId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "No tienes un proveedor asignado." });
@@ -46,10 +59,30 @@ const dateRangeSchema = z.object({
 
 export const supplierPortalRouter = router({
   /**
+   * Lista todos los proveedores (solo para system_specialist)
+   * Permite seleccionar un proveedor para ver su portal
+   */
+  listAllSuppliers: protectedProcedure.query(async ({ ctx }) => {
+    if ((ctx.user as any).role !== "system_specialist") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Solo para especialistas de sistemas." });
+    }
+    const res = await pool.query(
+      `SELECT id, ruc, name
+       FROM public.suppliers
+       WHERE status = 'active' OR status IS NULL
+       ORDER BY name ASC
+       LIMIT 500`
+    );
+    return res.rows as Array<{ id: string; ruc: string; name: string }>;
+  }),
+
+  /**
    * Información básica del proveedor asignado al usuario
    */
-  getMySupplier: protectedProcedure.query(async ({ ctx }) => {
-    const supplierId = getSupplierIdFromCtx(ctx as any);
+  getMySupplier: protectedProcedure
+    .input(z.object({ supplierId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
     const res = await pool.query(
       `SELECT id, ruc, name, description, sap_id, status
        FROM public.suppliers
@@ -73,9 +106,9 @@ export const supplierPortalRouter = router({
    * KPIs de ventas del proveedor en el rango de fechas
    */
   getSalesSummary: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeSchema.extend({ supplierId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -106,9 +139,9 @@ export const supplierPortalRouter = router({
    * Ventas diarias del proveedor (para gráfico de tendencia)
    */
   getDailySales: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeSchema.extend({ supplierId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -142,10 +175,11 @@ export const supplierPortalRouter = router({
     .input(
       dateRangeSchema.extend({
         limit: z.number().min(1).max(50).default(10),
+        supplierId: z.string().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -179,9 +213,9 @@ export const supplierPortalRouter = router({
    * Ventas por tienda del proveedor
    */
   getSalesByBranch: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeSchema.extend({ supplierId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -214,8 +248,10 @@ export const supplierPortalRouter = router({
   /**
    * Tiendas que tienen stock de productos del proveedor (para el selector de filtro)
    */
-  getBranchesForStock: protectedProcedure.query(async ({ ctx }) => {
-    const supplierId = getSupplierIdFromCtx(ctx as any);
+  getBranchesForStock: protectedProcedure
+    .input(z.object({ supplierId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
     const res = await pool.query(
       `SELECT DISTINCT b.id, b.name, b.sap_id
        FROM public.stocks st
@@ -238,12 +274,13 @@ export const supplierPortalRouter = router({
       z.object({
         search: z.string().optional(),       // filtra por nombre o int_sku del producto
         branchId: z.string().optional(),     // filtra por tienda específica
+        supplierId: z.string().optional(),   // override para system_specialist
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
 
       // Construir cláusulas dinámicas y lista de parámetros
       const extraClauses: string[] = [];
@@ -325,12 +362,13 @@ export const supplierPortalRouter = router({
       z.object({
         from: z.string().optional(),
         to: z.string().optional(),
+        supplierId: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
       const to = input.to ?? new Date().toISOString().split("T")[0];
 
@@ -383,8 +421,10 @@ export const supplierPortalRouter = router({
   /**
    * Ventas por mes (últimos 6 meses) para gráfico de barras
    */
-  getMonthlySales: protectedProcedure.query(async ({ ctx }) => {
-    const supplierId = getSupplierIdFromCtx(ctx as any);
+  getMonthlySales: protectedProcedure
+    .input(z.object({ supplierId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+    const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
     const res = await pool.query(
       `SELECT
          TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
@@ -417,12 +457,13 @@ export const supplierPortalRouter = router({
     .input(
       z.object({
         search: z.string().optional(),
+        supplierId: z.string().optional(),
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
-      const supplierId = getSupplierIdFromCtx(ctx as any);
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
 
       // Construir cláusula de búsqueda solo si hay texto
       const searchClause = input.search

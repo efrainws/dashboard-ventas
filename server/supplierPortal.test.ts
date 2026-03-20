@@ -149,15 +149,17 @@ describe("SupplierPortal — Acceso correcto para supplier_user con proveedor", 
     }
   });
 
-  it("system_specialist puede acceder al portal de proveedor si tiene supplierId", async () => {
+  it("system_specialist puede acceder al portal de proveedor pasando supplierId como parámetro", async () => {
     const user = makeUser({
       role: "system_specialist",
-      assignedSupplierId: "3b8f3e24-28b3-4096-9c66-d125a29a7ddd",
+      assignedSupplierId: null, // system_specialist no tiene supplier asignado en DB
     });
     const caller = appRouter.createCaller(makeCtx(user));
     try {
-      await caller.supplierPortal.getMySupplier();
+      // El system_specialist pasa el supplierId como parámetro de input
+      await caller.supplierPortal.getMySupplier({ supplierId: "3b8f3e24-28b3-4096-9c66-d125a29a7ddd" });
     } catch (err: any) {
+      // No debe fallar por FORBIDDEN ni por BAD_REQUEST (puede fallar por NOT_FOUND si el ID no existe)
       expect(err.code).not.toBe("FORBIDDEN");
       expect(err.code).not.toBe("BAD_REQUEST");
     }

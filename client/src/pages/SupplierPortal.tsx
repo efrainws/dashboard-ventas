@@ -152,51 +152,87 @@ export default function SupplierPortal() {
   const [recPage, setRecPage] = useState(0);
   const PAGE_SIZE = 20;
 
-  // Queries
-  // Solo ejecutar queries si el usuario es supplier_user
+  // Para system_specialist: proveedor seleccionado manualmente
+  const isSystemSpecialist = user?.role === 'system_specialist';
   const isSupplierUser = user?.role === 'supplier_user';
+  const canAccessPortal = isSupplierUser || isSystemSpecialist;
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>(undefined);
+  const [supplierSearch, setSupplierSearch] = useState("");
 
-  const { data: supplier, isLoading: supplierLoading, error: supplierError } =
-    trpc.supplierPortal.getMySupplier.useQuery(undefined, { enabled: isSupplierUser });
+  // Lista de proveedores para el selector (solo system_specialist)
+  const { data: allSuppliers, isLoading: allSuppliersLoading } =
+    trpc.supplierPortal.listAllSuppliers.useQuery(undefined, { enabled: isSystemSpecialist });
+
+  // El supplierId efectivo: para supplier_user viene del backend, para system_specialist del selector
+  const effectiveSupplierId = isSystemSpecialist ? selectedSupplierId : undefined;
+  // Solo ejecutar queries si tenemos un proveedor definido
+  const queriesEnabled = isSupplierUser || (isSystemSpecialist && !!selectedSupplierId);
+
+  const { data: supplier, isLoading: supplierLoading } =
+    trpc.supplierPortal.getMySupplier.useQuery(
+      { supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: summary, isLoading: summaryLoading } =
-    trpc.supplierPortal.getSalesSummary.useQuery({ from, to }, { enabled: isSupplierUser });
+    trpc.supplierPortal.getSalesSummary.useQuery(
+      { from, to, supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: dailySales, isLoading: dailyLoading } =
-    trpc.supplierPortal.getDailySales.useQuery({ from, to }, { enabled: isSupplierUser });
+    trpc.supplierPortal.getDailySales.useQuery(
+      { from, to, supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: topProducts, isLoading: topLoading } =
-    trpc.supplierPortal.getTopProducts.useQuery({ from, to, limit: 10 }, { enabled: isSupplierUser });
+    trpc.supplierPortal.getTopProducts.useQuery(
+      { from, to, limit: 10, supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: salesByBranch, isLoading: branchLoading } =
-    trpc.supplierPortal.getSalesByBranch.useQuery({ from, to }, { enabled: isSupplierUser });
+    trpc.supplierPortal.getSalesByBranch.useQuery(
+      { from, to, supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: monthlySales, isLoading: monthlyLoading } =
-    trpc.supplierPortal.getMonthlySales.useQuery(undefined, { enabled: isSupplierUser });
+    trpc.supplierPortal.getMonthlySales.useQuery(
+      { supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: branchesForStock } =
-    trpc.supplierPortal.getBranchesForStock.useQuery(undefined, { enabled: isSupplierUser });
+    trpc.supplierPortal.getBranchesForStock.useQuery(
+      { supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
       search: stockSearch || undefined,
       branchId: stockBranchId,
+      supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
-    }, { enabled: isSupplierUser });
+    }, { enabled: queriesEnabled });
 
   const { data: catalogData, isLoading: catalogLoading } =
     trpc.supplierPortal.getProductCatalog.useQuery({
       search: catalogSearch || undefined,
+      supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
       offset: catalogPage * PAGE_SIZE,
-    }, { enabled: isSupplierUser });
+    }, { enabled: queriesEnabled });
 
   const { data: receptionsData, isLoading: recLoading } =
     trpc.supplierPortal.getReceptions.useQuery({
+      supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
       offset: recPage * PAGE_SIZE,
-    }, { enabled: isSupplierUser });
+    }, { enabled: queriesEnabled });
 
   // Colores para gráficos
   const CHART_COLORS = [
@@ -222,8 +258,18 @@ export default function SupplierPortal() {
     }));
   }, [dailySales]);
 
-  // Guard: si el usuario no es supplier_user, mostrar mensaje de acceso denegado
-  if (!loading && user && !isSupplierUser) {
+  // Filtrar proveedores por búsqueda
+  const filteredSuppliers = useMemo(() => {
+    if (!allSuppliers) return [];
+    if (!supplierSearch.trim()) return allSuppliers;
+    const q = supplierSearch.toLowerCase();
+    return allSuppliers.filter(s =>
+      s.name.toLowerCase().includes(q) || s.ruc.includes(q)
+    );
+  }, [allSuppliers, supplierSearch]);
+
+  // Guard: si el usuario no tiene acceso al portal
+  if (!loading && user && !canAccessPortal) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-8">
         <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-8 block dark:hidden" />
@@ -233,12 +279,91 @@ export default function SupplierPortal() {
             ACCESO RESTRINGIDO
           </h2>
           <p className="text-muted-foreground text-sm">
-            Esta página es exclusiva para usuarios proveedor. Tu perfil ({user.role}) no tiene acceso a este portal.
+            Esta página es exclusiva para usuarios proveedor. Tu perfil no tiene acceso a este portal.
           </p>
         </div>
         <Button variant="outline" onClick={() => window.location.href = '/'}>
           Volver al inicio
         </Button>
+      </div>
+    );
+  }
+
+  // Guard: system_specialist sin proveedor seleccionado → mostrar selector
+  if (!loading && user && isSystemSpecialist && !selectedSupplierId) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header mínimo */}
+        <header className="border-b border-border bg-card">
+          <div className="container flex items-center justify-between h-14">
+            <div className="flex items-center gap-3">
+              <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-6 block dark:hidden" />
+              <img src="/Logoclarochico.svg" alt="Flora & Fauna" className="h-6 hidden dark:block" />
+              <span className="text-xs text-muted-foreground border-l border-border pl-3">
+                Portal de Proveedores
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:block" style={{ fontFamily: "'Sailec', sans-serif" }}>
+                {user?.name?.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+              </span>
+              <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </header>
+        {/* Selector de proveedor */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
+          <div className="text-center space-y-1 mb-2">
+            <h2 className="text-lg font-bold tracking-widest uppercase text-foreground"
+              style={{ fontFamily: "'Italian Plate No 1', serif" }}>
+              Selecciona un Proveedor
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Como especialista de sistemas, elige el proveedor cuyo portal deseas consultar.
+            </p>
+          </div>
+          <div className="w-full max-w-md space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre o RUC..."
+                value={supplierSearch}
+                onChange={e => setSupplierSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            {allSuppliersLoading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : (
+              <div className="border border-border rounded-md divide-y divide-border max-h-80 overflow-y-auto">
+                {filteredSuppliers.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-6">No se encontraron proveedores.</p>
+                ) : filteredSuppliers.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSupplierId(s.id)}
+                    className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-foreground" style={{ fontFamily: "'Sailec', sans-serif" }}>
+                      {s.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                    </p>
+                    <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Italian Plate No 1', serif" }}>
+                      RUC: {s.ruc}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/'}>
+            Volver al inicio
+          </Button>
+        </div>
       </div>
     );
   }
@@ -285,6 +410,18 @@ export default function SupplierPortal() {
                   {user?.name?.toLowerCase()}
                 </p>
               </div>
+            )}
+            {isSystemSpecialist && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSelectedSupplierId(undefined); setSupplierSearch(""); }}
+                className="gap-1.5 text-muted-foreground text-xs"
+                title="Cambiar proveedor"
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Cambiar</span>
+              </Button>
             )}
             <Button variant="outline" size="sm" onClick={logout} className="gap-1.5">
               <LogOut className="h-3.5 w-3.5" />
