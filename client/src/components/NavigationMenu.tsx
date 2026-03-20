@@ -23,6 +23,7 @@ import {
   Ticket,
   Users,
   UserCheck,
+  Truck,
   Menu,
   X,
 } from "lucide-react";
@@ -163,6 +164,19 @@ export function NavigationMenu() {
             >
               <Users className="h-4 w-4" />
               <span>Usuarios</span>
+            </Link>
+          )}
+
+          {/* Portal Proveedores — solo system_specialist y commercial_specialist */}
+          {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
+            <Link
+              href="/supplier"
+              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+                isActive("/supplier") ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Truck className="h-4 w-4" />
+              <span>Proveedores</span>
             </Link>
           )}
 
@@ -336,6 +350,22 @@ export function NavigationMenu() {
               >
                 <Users className="h-4 w-4 shrink-0" />
                 <span>Usuarios</span>
+              </Link>
+            )}
+
+            {/* Portal Proveedores — solo system_specialist y commercial_specialist */}
+            {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
+              <Link
+                href="/supplier"
+                onClick={closeMobile}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/supplier")
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Truck className="h-4 w-4 shrink-0" />
+                <span>Proveedores</span>
               </Link>
             )}
 

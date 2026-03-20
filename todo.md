@@ -1462,3 +1462,4 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir query del catálogo del portal de proveedores para cargar productos por supplier_id del usuario
 - [x] Agregar filtros por tienda y por producto en la tab de Stock del portal de proveedores
 - [ ] Permitir que system_specialist acceda al portal de proveedores con selector de proveedor previo a la carga de datos
+- [x] Agregar enlace al portal de proveedores en NavigationMenu para system_specialist y commercial_specialist
