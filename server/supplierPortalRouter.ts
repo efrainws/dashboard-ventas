@@ -288,7 +288,7 @@ export const supplierPortalRouter = router({
 
       if (input.search) {
         params.push(`%${input.search}%`);
-        extraClauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku ILIKE $${params.length})`);
+        extraClauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
       }
       if (input.branchId) {
         params.push(input.branchId);
@@ -322,7 +322,7 @@ export const supplierPortalRouter = router({
       const countClauses: string[] = [];
       if (input.search) {
         countParams.push(`%${input.search}%`);
-        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku ILIKE $${countParams.length})`);
+        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
       }
       if (input.branchId) {
         countParams.push(input.branchId);
@@ -467,7 +467,7 @@ export const supplierPortalRouter = router({
 
       // Construir cláusula de búsqueda solo si hay texto
       const searchClause = input.search
-        ? `AND (p.name ILIKE $4 OR p.int_sku ILIKE $4)`
+        ? `AND (p.name ILIKE $4 OR p.int_sku::text ILIKE $4)`
         : "";
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
       if (input.search) params.push(`%${input.search}%`);
@@ -496,7 +496,7 @@ export const supplierPortalRouter = router({
         `SELECT COUNT(*)::int AS total
          FROM public.products p
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku ILIKE $2)" : ""}`,
+           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku::text ILIKE $2)" : ""}`,
         countParams
       );
 
