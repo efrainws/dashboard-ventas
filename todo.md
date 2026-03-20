@@ -1468,3 +1468,4 @@ Fecha: 1 de febrero de 2026
 - [x] TopProducts: usar exclusivamente paleta de colores aprobada en gráficos e iconos
 - [x] TopProducts: usar exclusivamente tipografías Sailec e ItalianPlate
 - [x] TopProducts: período por defecto = últimos 30 días
+- [x] SupplierPortal: aumentar a 20 el límite de tiendas en el gráfico de ventas por tienda

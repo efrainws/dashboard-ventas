@@ -691,9 +691,9 @@ export default function SupplierPortal() {
                   {branchLoading ? (
                     <Skeleton className="h-52 w-full" />
                   ) : salesByBranch && salesByBranch.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220}>
+                    <ResponsiveContainer width="100%" height={520}>
                       <BarChart
-                        data={salesByBranch.slice(0, 10).map((b) => ({
+                        data={salesByBranch.slice(0, 20).map((b) => ({
                           tienda: b.tienda,
                           ventas: parseFloat(b.total_ventas),
                         }))}
@@ -719,8 +719,8 @@ export default function SupplierPortal() {
                             borderRadius: "0.5rem",
                           }}
                         />
-                        <Bar dataKey="ventas" radius={[0, 4, 4, 0]}>
-                          {salesByBranch.slice(0, 10).map((_, i) => (
+                        <Bar dataKey="ventas" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                          {salesByBranch.slice(0, 20).map((_, i) => (
                             <Cell
                               key={i}
                               fill={CHART_COLORS[i % CHART_COLORS.length]}
