@@ -69,7 +69,6 @@ export const supplierPortalRouter = router({
     const res = await pool.query(
       `SELECT id, ruc, name
        FROM public.suppliers
-       WHERE status = 'active' OR status IS NULL
        ORDER BY name ASC
        LIMIT 500`
     );
