@@ -1463,3 +1463,4 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar filtros por tienda y por producto en la tab de Stock del portal de proveedores
 - [ ] Permitir que system_specialist acceda al portal de proveedores con selector de proveedor previo a la carga de datos
 - [x] Agregar enlace al portal de proveedores en NavigationMenu para system_specialist y commercial_specialist
+- [x] Extender acceso al portal de proveedores para commercial_specialist (backend + frontend)

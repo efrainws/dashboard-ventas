@@ -84,11 +84,12 @@ describe("SupplierPortal — Control de acceso por rol", () => {
     });
   });
 
-  it("commercial_specialist recibe FORBIDDEN en getMySupplier", async () => {
+  it("commercial_specialist sin proveedor seleccionado recibe BAD_REQUEST (debe seleccionar proveedor)", async () => {
     const user = makeUser({ role: "commercial_specialist", assignedSupplierId: null });
     const caller = appRouter.createCaller(makeCtx(user));
+    // commercial_specialist tiene acceso al portal pero debe seleccionar un proveedor
     await expect(caller.supplierPortal.getMySupplier()).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: "BAD_REQUEST",
     });
   });
 });

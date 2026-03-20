@@ -152,14 +152,14 @@ export default function SupplierPortal() {
   const [recPage, setRecPage] = useState(0);
   const PAGE_SIZE = 20;
 
-  // Para system_specialist: proveedor seleccionado manualmente
-  const isSystemSpecialist = user?.role === 'system_specialist';
+  // Para system_specialist y commercial_specialist: proveedor seleccionado manualmente
+  const isSystemSpecialist = user?.role === 'system_specialist' || user?.role === 'commercial_specialist';
   const isSupplierUser = user?.role === 'supplier_user';
   const canAccessPortal = isSupplierUser || isSystemSpecialist;
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>(undefined);
   const [supplierSearch, setSupplierSearch] = useState("");
 
-  // Lista de proveedores para el selector (solo system_specialist)
+  // Lista de proveedores para el selector (system_specialist y commercial_specialist)
   const { data: allSuppliers, isLoading: allSuppliersLoading } =
     trpc.supplierPortal.listAllSuppliers.useQuery(undefined, { enabled: isSystemSpecialist });
 

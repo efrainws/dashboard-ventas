@@ -16,9 +16,10 @@ import { pool } from "./postgres";
 import { TRPCError } from "@trpc/server";
 
 // Roles que pueden acceder al portal de proveedores
-const ALLOWED_ROLES = ["supplier_user", "system_specialist"];
+const ALLOWED_ROLES = ["supplier_user", "system_specialist", "commercial_specialist"];
+const ADMIN_ROLES = ["system_specialist", "commercial_specialist"];
 
-// Helper: obtener supplier_id del usuario autenticado o del parámetro de override (para system_specialist)
+// Helper: obtener supplier_id del usuario autenticado o del parámetro de override (para system_specialist / commercial_specialist)
 function getSupplierIdFromCtx(
   ctx: { user: { assignedSupplierId?: string | null; role: string } },
   overrideSupplierId?: string | null
@@ -26,8 +27,8 @@ function getSupplierIdFromCtx(
   if (!ALLOWED_ROLES.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Acceso solo para proveedores." });
   }
-  // system_specialist puede pasar un supplierId explícito
-  if (ctx.user.role === "system_specialist") {
+  // system_specialist y commercial_specialist pueden pasar un supplierId explícito
+  if (ADMIN_ROLES.includes(ctx.user.role)) {
     if (!overrideSupplierId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Selecciona un proveedor para continuar." });
     }
@@ -59,12 +60,12 @@ const dateRangeSchema = z.object({
 
 export const supplierPortalRouter = router({
   /**
-   * Lista todos los proveedores (solo para system_specialist)
+   * Lista todos los proveedores (solo para system_specialist y commercial_specialist)
    * Permite seleccionar un proveedor para ver su portal
    */
   listAllSuppliers: protectedProcedure.query(async ({ ctx }) => {
-    if ((ctx.user as any).role !== "system_specialist") {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Solo para especialistas de sistemas." });
+    if (!ADMIN_ROLES.includes((ctx.user as any).role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Solo para especialistas de sistemas o comerciales." });
     }
     const res = await pool.query(
       `SELECT id, ruc, name
