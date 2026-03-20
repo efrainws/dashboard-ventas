@@ -1,7 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
-import { NavigationMenu } from "@/components/NavigationMenu";
 import { trpc } from "@/lib/trpc";
+import { NavigationMenu } from "@/components/NavigationMenu";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -22,14 +21,46 @@ import {
   Cell,
 } from "recharts";
 
-// ─── Paleta Flora & Fauna ───────────────────────────────────────────────────
-const BRAND_COLORS = [
-  "#1A6894", "#008064", "#C49705", "#BC2C46",
-  "#4A90A4", "#2E8B57", "#D4A017", "#C0392B",
-  "#5B9BD5", "#27AE60", "#E67E22", "#E74C3C",
+// ─── Paleta de colores aprobada Flora & Fauna ────────────────────────────────
+// Solo se usan los colores de la lista aprobada:
+// #BC2C46, #5E1623, #DEA5A3, #008064, #004032, #80C8CA,
+// #C49705, #624C02, #EACB82, #1A6894, #0D344A, #8DB4CA,
+// #E5BAC1, #724D60, #F2DDDE, #5BB6B7, #2D5B5B, #AEDBDB,
+// #EAE8E2, #757471, #F5F4F1, #232523, #111211, #919291
+const FF_PALETTE = [
+  "#1A6894", // Cobalto
+  "#008064", // Esmeralda
+  "#C49705", // Mostaza
+  "#BC2C46", // Granate
+  "#5BB6B7", // Celeste
+  "#0D344A", // Cobalto oscuro
+  "#004032", // Esmeralda oscuro
+  "#624C02", // Mostaza oscuro
+  "#5E1623", // Granate oscuro
+  "#2D5B5B", // Celeste oscuro
+  "#8DB4CA", // Cobalto claro
+  "#80C8CA", // Celeste claro
+  "#EACB82", // Mostaza claro
+  "#DEA5A3", // Granate claro
+  "#AEDBDB", // Celeste muy claro
+  "#724D60", // Rosado oscuro
+  "#E5BAC1", // Rosado
+  "#757471", // Humo
+  "#232523", // Carbon
+  "#919291", // Humo claro
 ];
 
-const getBarColor = (idx: number) => BRAND_COLORS[idx % BRAND_COLORS.length];
+const getBarColor = (idx: number) => FF_PALETTE[idx % FF_PALETTE.length];
+
+// Colores de iconos KPI — de la paleta aprobada
+const KPI_COLORS = {
+  products: { bg: "#0D344A", icon: "#8DB4CA" },   // Cobalto oscuro / Cobalto claro
+  qty:      { bg: "#004032", icon: "#80C8CA" },   // Esmeralda oscuro / Celeste claro
+  amount:   { bg: "#624C02", icon: "#EACB82" },   // Mostaza oscuro / Mostaza claro
+};
+
+// Colores de medallas — de la paleta aprobada
+const MEDAL_COLORS = ["#C49705", "#757471", "#624C02"]; // Mostaza, Humo, Mostaza oscuro
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatCurrency = (v: number) =>
@@ -43,8 +74,7 @@ const formatCurrency = (v: number) =>
 const formatNumber = (v: number) =>
   new Intl.NumberFormat("es-PE").format(v);
 
-// Truncar nombre largo para el eje Y del gráfico
-const truncate = (s: string, max = 28) =>
+const truncate = (s: string, max = 30) =>
   s.length > max ? s.substring(0, max) + "…" : s;
 
 // ─── Tooltip personalizado ──────────────────────────────────────────────────
@@ -52,24 +82,29 @@ function CustomTooltip({ active, payload, mode }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-background border border-border rounded-lg p-3 shadow-lg text-sm space-y-1 max-w-xs">
-      <p className="font-semibold text-foreground leading-tight">{d.product_name}</p>
-      {d.sku && <p className="text-muted-foreground text-xs">SKU: {d.sku}</p>}
+    <div
+      className="bg-card border border-border rounded-lg p-3 shadow-lg max-w-xs"
+      style={{ fontFamily: "'Sailec', system-ui, sans-serif" }}
+    >
+      <p className="font-semibold text-foreground text-sm leading-tight">{d.product_name}</p>
+      {d.sku && <p className="text-muted-foreground text-xs mt-0.5">SKU: {d.sku}</p>}
       <p className="text-muted-foreground text-xs">{d.category_name}</p>
       <div className="border-t border-border pt-1 mt-1 space-y-0.5">
         {mode === "qty" ? (
-          <p className="font-medium">
-            Cantidad: <span className="text-primary">{formatNumber(d.total_qty)}</span>
+          <p className="font-medium text-sm">
+            Cantidad:{" "}
+            <span style={{ color: "#1A6894" }}>{formatNumber(d.total_qty)}</span>
           </p>
         ) : (
-          <p className="font-medium">
-            Monto: <span className="text-primary">{formatCurrency(d.total_amount)}</span>
+          <p className="font-medium text-sm">
+            Monto:{" "}
+            <span style={{ color: "#008064" }}>{formatCurrency(d.total_amount)}</span>
           </p>
         )}
         <p className="text-muted-foreground text-xs">
           {mode === "qty"
-            ? `Monto total: ${formatCurrency(d.total_amount)}`
-            : `Unidades vendidas: ${formatNumber(d.total_qty)}`}
+            ? `Monto: ${formatCurrency(d.total_amount)}`
+            : `Unidades: ${formatNumber(d.total_qty)}`}
         </p>
         <p className="text-muted-foreground text-xs">Tiendas: {d.branch_count}</p>
       </div>
@@ -89,15 +124,9 @@ interface ProductRow {
   branch_count: number;
 }
 
-function RankingTable({
-  rows,
-  mode,
-}: {
-  rows: ProductRow[];
-  mode: "qty" | "amount";
-}) {
+function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" style={{ fontFamily: "'Sailec', system-ui, sans-serif" }}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
@@ -116,24 +145,27 @@ function RankingTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, idx) => {
+          {rows.map((row) => {
             const isTop3 = row.rank <= 3;
-            const medalColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
             return (
               <tr
                 key={row.product_id}
                 className={`border-b border-border/50 transition-colors hover:bg-muted/40 ${
-                  isTop3 ? "bg-primary/5" : ""
+                  isTop3 ? "bg-muted/20" : ""
                 }`}
               >
                 {/* Rank */}
                 <td className="text-center py-3 px-3">
                   {isTop3 ? (
                     <Trophy
-                      className={`h-4 w-4 mx-auto ${medalColors[row.rank - 1]}`}
+                      className="h-4 w-4 mx-auto"
+                      style={{ color: MEDAL_COLORS[row.rank - 1] }}
                     />
                   ) : (
-                    <span className="text-muted-foreground font-mono text-xs">
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: "#919291" }}
+                    >
                       {String(row.rank).padStart(2, "0")}
                     </span>
                   )}
@@ -144,7 +176,7 @@ function RankingTable({
                     {row.product_name}
                   </p>
                   {row.sku && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs mt-0.5" style={{ color: "#919291" }}>
                       SKU: {row.sku}
                     </p>
                   )}
@@ -156,19 +188,25 @@ function RankingTable({
                   </Badge>
                 </td>
                 {/* Métrica principal */}
-                <td className="py-3 px-3 text-right font-semibold tabular-nums">
+                <td className="py-3 px-3 text-right font-semibold tabular-nums text-foreground">
                   {mode === "qty"
                     ? formatNumber(row.total_qty)
                     : formatCurrency(row.total_amount)}
                 </td>
                 {/* Métrica secundaria */}
-                <td className="py-3 px-3 text-right text-muted-foreground tabular-nums hidden lg:table-cell">
+                <td
+                  className="py-3 px-3 text-right tabular-nums hidden lg:table-cell"
+                  style={{ color: "#757471" }}
+                >
                   {mode === "qty"
                     ? formatCurrency(row.total_amount)
                     : formatNumber(row.total_qty)}
                 </td>
                 {/* Tiendas */}
-                <td className="py-3 px-3 text-center text-muted-foreground hidden lg:table-cell">
+                <td
+                  className="py-3 px-3 text-center hidden lg:table-cell"
+                  style={{ color: "#757471" }}
+                >
                   {row.branch_count}
                 </td>
               </tr>
@@ -180,32 +218,29 @@ function RankingTable({
   );
 }
 
-// ─── Gráfico horizontal ──────────────────────────────────────────────────────
-function HorizontalBarChart({
-  rows,
-  mode,
-}: {
-  rows: ProductRow[];
-  mode: "qty" | "amount";
-}) {
-  // Mostrar solo top 20 en el gráfico para legibilidad
+// ─── Gráfico de barras horizontal ────────────────────────────────────────────
+function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
   const chartData = rows.slice(0, 20).map((r) => ({
     ...r,
     label: truncate(r.product_name),
     value: mode === "qty" ? r.total_qty : r.total_amount,
   }));
 
-  const chartHeight = Math.max(400, chartData.length * 32);
+  const chartHeight = Math.max(420, chartData.length * 34);
 
   return (
-    <div style={{ height: chartHeight }}>
+    <div style={{ height: chartHeight, fontFamily: "'Sailec', system-ui, sans-serif" }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
+          margin={{ top: 4, right: 28, left: 8, bottom: 4 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={false}
+            stroke="#EAE8E2"
+          />
           <XAxis
             type="number"
             tickFormatter={(v) =>
@@ -215,19 +250,22 @@ function HorizontalBarChart({
                 ? `S/ ${(v / 1_000_000).toFixed(1)}M`
                 : `S/ ${(v / 1_000).toFixed(0)}K`
             }
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: "#757471", fontFamily: "'Sailec', system-ui, sans-serif" }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             type="category"
             dataKey="label"
-            width={180}
-            tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }}
+            width={190}
+            tick={{ fontSize: 11, fill: "#232523", fontFamily: "'Sailec', system-ui, sans-serif" }}
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip content={<CustomTooltip mode={mode} />} cursor={{ fill: "hsl(var(--muted))" }} />
+          <Tooltip
+            content={<CustomTooltip mode={mode} />}
+            cursor={{ fill: "#EAE8E2" }}
+          />
           <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
             {chartData.map((_, idx) => (
               <Cell key={idx} fill={getBarColor(idx)} />
@@ -242,7 +280,6 @@ function HorizontalBarChart({
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function TopProducts() {
   const { user, loading: authLoading } = useAuth();
-  const { effectiveTheme } = useTheme();
 
   const {
     dateRange: globalDateRange,
@@ -255,17 +292,19 @@ export default function TopProducts() {
   const isStoreUser = userRole === "store_user";
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  // ── Filtros ──────────────────────────────────────────────────────────────
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    return { from: yesterday, to: yesterdayEnd };
-  });
+  // ── Período por defecto: últimos 30 días ─────────────────────────────────
+  const defaultDateRange = useMemo<DateRange>(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const from = new Date();
+    from.setDate(from.getDate() - 29); // 29 días atrás + hoy = 30 días
+    from.setHours(0, 0, 0, 0);
+    return { from, to: today };
+  }, []);
 
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    () => globalDateRange ?? defaultDateRange
+  );
   const [selectedBranch, setSelectedBranch] = useState<string>(
     () => globalBranchId || "all"
   );
@@ -280,7 +319,7 @@ export default function TopProducts() {
     setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
   }, [selectedBranch, setGlobalBranchId]);
 
-  // ── Construir filtros para queries ───────────────────────────────────────
+  // ── Construir parámetros de query ────────────────────────────────────────
   const toDateStr = (d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -289,52 +328,44 @@ export default function TopProducts() {
   };
 
   const queryFilters = useMemo(() => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const defaultDate = toDateStr(yesterday);
-
+    const fallback = defaultDateRange;
     return {
-      fecha_min: dateRange?.from ? toDateStr(dateRange.from) : defaultDate,
-      fecha_max: dateRange?.to ? toDateStr(dateRange.to) : defaultDate,
-      ...(selectedBranch !== "all" ? { branch_id: selectedBranch } : {}),
+      fecha_min: dateRange?.from ? toDateStr(dateRange.from) : toDateStr(fallback.from!),
+      fecha_max: dateRange?.to   ? toDateStr(dateRange.to)   : toDateStr(fallback.to!),
+      ...(selectedBranch !== "all"   ? { branch_id:   selectedBranch   } : {}),
       ...(selectedCategory !== "all" ? { category_id: selectedCategory } : {}),
     };
-  }, [dateRange, selectedBranch, selectedCategory]);
+  }, [dateRange, selectedBranch, selectedCategory, defaultDateRange]);
 
-  // ── Obtener listas de sucursales y categorías (reutilizando hook existente) ──
+  // Listas de sucursales y categorías reutilizando el hook existente
   const { metrics } = useAggregatedSales(queryFilters as AggregatedSalesFilters);
 
-  // ── Query principal: Top 50 productos ───────────────────────────────────
+  // Query principal
   const { data, isLoading, error } = trpc.sales.getTopProducts.useQuery(queryFilters);
 
   const handleClearFilters = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    setDateRange({ from: yesterday, to: yesterdayEnd });
+    setDateRange(defaultDateRange);
     setSelectedBranch("all");
     setSelectedCategory("all");
   };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   const dateRangeText = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
       return `${dateRange.from.toLocaleDateString("es-PE")} – ${dateRange.to.toLocaleDateString("es-PE")}`;
     }
-    return "Ayer (por defecto)";
+    return "Últimos 30 días";
   }, [dateRange]);
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1A6894" }} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ fontFamily: "'Sailec', system-ui, sans-serif" }}>
       <NavigationMenu />
 
       <div className="container py-8 space-y-8">
@@ -342,14 +373,14 @@ export default function TopProducts() {
         <div className="space-y-1">
           <h1
             className="text-3xl font-bold tracking-tight uppercase"
-            style={{ fontFamily: "Italian Plate No 1, serif" }}
+            style={{ fontFamily: "'Italian Plate No 1', sans-serif", fontWeight: 800 }}
           >
             Top 50 Productos
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs" style={{ color: "#919291" }}>
             Período: {dateRangeText}
           </p>
         </div>
@@ -368,58 +399,74 @@ export default function TopProducts() {
           onClearFilters={handleClearFilters}
         />
 
-        {/* ── Estado de carga ─────────────────────────────────────────────── */}
+        {/* ── Cargando ────────────────────────────────────────────────────── */}
         {isLoading && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1A6894" }} />
             <span className="ml-3 text-lg font-medium">Cargando ranking de productos...</span>
           </div>
         )}
 
         {/* ── Error ───────────────────────────────────────────────────────── */}
         {error && !isLoading && (
-          <Card className="border-destructive">
+          <Card style={{ borderColor: "#BC2C46" }}>
             <CardHeader>
-              <CardTitle className="text-destructive">Error al cargar datos</CardTitle>
+              <CardTitle style={{ color: "#BC2C46", fontFamily: "'Italian Plate No 1', sans-serif" }}>
+                Error al cargar datos
+              </CardTitle>
               <CardDescription>{error.message}</CardDescription>
             </CardHeader>
           </Card>
         )}
 
-        {/* ── KPIs rápidos ────────────────────────────────────────────────── */}
+        {/* ── Contenido principal ─────────────────────────────────────────── */}
         {!isLoading && !error && data && (
           <>
+            {/* KPIs */}
             <div className="grid gap-4 md:grid-cols-3">
+              {/* Productos únicos */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#1A6894]/10 flex items-center justify-center shrink-0">
-                      <Package className="h-5 w-5 text-[#1A6894]" />
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${KPI_COLORS.products.bg}1A` }}
+                    >
+                      <Package className="h-5 w-5" style={{ color: KPI_COLORS.products.bg }} />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Productos únicos (top qty)</p>
-                      <p className="text-2xl font-bold tabular-nums">
+                      <p
+                        className="text-2xl font-bold tabular-nums"
+                        style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                      >
                         {formatNumber(data.byQuantity.length)}
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* #1 por cantidad */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#008064]/10 flex items-center justify-center shrink-0">
-                      <Hash className="h-5 w-5 text-[#008064]" />
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${KPI_COLORS.qty.bg}1A` }}
+                    >
+                      <Hash className="h-5 w-5" style={{ color: KPI_COLORS.qty.bg }} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm text-muted-foreground">Unidades — #1 producto</p>
-                      <p className="text-2xl font-bold tabular-nums">
-                        {data.byQuantity[0]
-                          ? formatNumber(data.byQuantity[0].total_qty)
-                          : "—"}
+                      <p
+                        className="text-2xl font-bold tabular-nums"
+                        style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                      >
+                        {data.byQuantity[0] ? formatNumber(data.byQuantity[0].total_qty) : "—"}
                       </p>
                       {data.byQuantity[0] && (
-                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        <p className="text-xs truncate" style={{ color: "#919291" }}>
                           {data.byQuantity[0].product_name}
                         </p>
                       )}
@@ -427,21 +474,27 @@ export default function TopProducts() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* #1 por monto */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#C49705]/10 flex items-center justify-center shrink-0">
-                      <DollarSign className="h-5 w-5 text-[#C49705]" />
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${KPI_COLORS.amount.bg}1A` }}
+                    >
+                      <DollarSign className="h-5 w-5" style={{ color: KPI_COLORS.amount.bg }} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm text-muted-foreground">Monto — #1 producto</p>
-                      <p className="text-2xl font-bold tabular-nums">
-                        {data.byAmount[0]
-                          ? formatCurrency(data.byAmount[0].total_amount)
-                          : "—"}
+                      <p
+                        className="text-2xl font-bold tabular-nums"
+                        style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                      >
+                        {data.byAmount[0] ? formatCurrency(data.byAmount[0].total_amount) : "—"}
                       </p>
                       {data.byAmount[0] && (
-                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        <p className="text-xs truncate" style={{ color: "#919291" }}>
                           {data.byAmount[0].product_name}
                         </p>
                       )}
@@ -451,7 +504,7 @@ export default function TopProducts() {
               </Card>
             </div>
 
-            {/* ── Tabs: Por Cantidad / Por Monto ──────────────────────────── */}
+            {/* ── Tabs ────────────────────────────────────────────────────── */}
             <Tabs defaultValue="qty">
               <TabsList className="mb-2">
                 <TabsTrigger value="qty" className="gap-2">
@@ -464,7 +517,7 @@ export default function TopProducts() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* ── Tab: Por Cantidad ──────────────────────────────────────── */}
+              {/* Tab: Por Cantidad */}
               <TabsContent value="qty" className="space-y-6">
                 {data.byQuantity.length === 0 ? (
                   <Card>
@@ -474,10 +527,12 @@ export default function TopProducts() {
                   </Card>
                 ) : (
                   <>
-                    {/* Gráfico top 20 */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base font-semibold uppercase tracking-wide" style={{ fontFamily: "Italian Plate No 1, serif" }}>
+                        <CardTitle
+                          className="text-base font-bold uppercase tracking-wide"
+                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                        >
                           Top 20 — Unidades Vendidas
                         </CardTitle>
                         <CardDescription>
@@ -489,10 +544,12 @@ export default function TopProducts() {
                       </CardContent>
                     </Card>
 
-                    {/* Tabla top 50 */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base font-semibold uppercase tracking-wide" style={{ fontFamily: "Italian Plate No 1, serif" }}>
+                        <CardTitle
+                          className="text-base font-bold uppercase tracking-wide"
+                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                        >
                           Ranking Completo — Top 50 por Cantidad
                         </CardTitle>
                         <CardDescription>
@@ -507,7 +564,7 @@ export default function TopProducts() {
                 )}
               </TabsContent>
 
-              {/* ── Tab: Por Monto ─────────────────────────────────────────── */}
+              {/* Tab: Por Monto */}
               <TabsContent value="amount" className="space-y-6">
                 {data.byAmount.length === 0 ? (
                   <Card>
@@ -517,10 +574,12 @@ export default function TopProducts() {
                   </Card>
                 ) : (
                   <>
-                    {/* Gráfico top 20 */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base font-semibold uppercase tracking-wide" style={{ fontFamily: "Italian Plate No 1, serif" }}>
+                        <CardTitle
+                          className="text-base font-bold uppercase tracking-wide"
+                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                        >
                           Top 20 — Monto de Ventas
                         </CardTitle>
                         <CardDescription>
@@ -532,10 +591,12 @@ export default function TopProducts() {
                       </CardContent>
                     </Card>
 
-                    {/* Tabla top 50 */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base font-semibold uppercase tracking-wide" style={{ fontFamily: "Italian Plate No 1, serif" }}>
+                        <CardTitle
+                          className="text-base font-bold uppercase tracking-wide"
+                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+                        >
                           Ranking Completo — Top 50 por Monto
                         </CardTitle>
                         <CardDescription>

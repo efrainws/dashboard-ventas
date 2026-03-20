@@ -1465,3 +1465,6 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar enlace al portal de proveedores en NavigationMenu para system_specialist y commercial_specialist
 - [x] Extender acceso al portal de proveedores para commercial_specialist (backend + frontend)
 - [x] Página Top 50 Productos: ranking por cantidad y por monto con los mismos filtros de fecha/tienda/categoría, gráfico de barras horizontal (top 20) y tabla completa (top 50), integrada en menú Ventas y Home
+- [x] TopProducts: usar exclusivamente paleta de colores aprobada en gráficos e iconos
+- [x] TopProducts: usar exclusivamente tipografías Sailec e ItalianPlate
+- [x] TopProducts: período por defecto = últimos 30 días
