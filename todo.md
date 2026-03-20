@@ -1469,3 +1469,7 @@ Fecha: 1 de febrero de 2026
 - [x] TopProducts: usar exclusivamente tipografías Sailec e ItalianPlate
 - [x] TopProducts: período por defecto = últimos 30 días
 - [x] SupplierPortal: aumentar a 20 el límite de tiendas en el gráfico de ventas por tienda
+- [x] SupplierPortal: nueva pestaña "Ventas" con tabla artículo×tienda (cantidad + monto)
+- [x] SupplierPortal: modal de detalle de ventas por día al hacer clic en una fila
+- [x] SupplierPortal: endpoint getSalesByProductBranch (tabla artículo×tienda)
+- [x] SupplierPortal: endpoint getSalesDailyDetail (detalle diario para el modal)

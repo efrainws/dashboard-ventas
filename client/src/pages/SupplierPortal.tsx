@@ -40,6 +40,13 @@ import {
   Cell,
 } from "recharts";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   TrendingUp,
   Package,
   Store,
@@ -52,6 +59,8 @@ import {
   AlertTriangle,
   BarChart2,
   Truck,
+  ShoppingBag,
+  X,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -128,10 +137,11 @@ function KpiCard({
 
 // ─── Sección: Tabs de navegación ─────────────────────────────────────────────
 
-type Tab = "dashboard" | "productos" | "stock" | "recepciones";
+type Tab = "dashboard" | "ventas" | "productos" | "stock" | "recepciones";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Dashboard", icon: BarChart2 },
+  { id: "ventas", label: "Ventas", icon: ShoppingBag },
   { id: "productos", label: "Catálogo", icon: Package },
   { id: "stock", label: "Stock", icon: Layers },
   { id: "recepciones", label: "Recepciones", icon: Truck },
@@ -150,6 +160,18 @@ export default function SupplierPortal() {
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
   const [recPage, setRecPage] = useState(0);
+  // Estado para la pestaña Ventas
+  const [salesSearch, setSalesSearch] = useState("");
+  const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
+  const [salesPage, setSalesPage] = useState(0);
+  // Modal de detalle diario
+  const [detailModal, setDetailModal] = useState<{
+    open: boolean;
+    productId: string;
+    branchId: string;
+    producto: string;
+    tienda: string;
+  } | null>(null);
   const PAGE_SIZE = 20;
 
   // Para system_specialist y commercial_specialist: proveedor seleccionado manualmente
@@ -233,6 +255,28 @@ export default function SupplierPortal() {
       limit: PAGE_SIZE,
       offset: recPage * PAGE_SIZE,
     }, { enabled: queriesEnabled });
+
+  // Query: tabla ventas por artículo × tienda
+  const { data: salesByPB, isLoading: salesPBLoading } =
+    trpc.supplierPortal.getSalesByProductBranch.useQuery({
+      from,
+      to,
+      supplierId: effectiveSupplierId,
+      search: salesSearch || undefined,
+      branchId: salesBranchId,
+      limit: PAGE_SIZE,
+      offset: salesPage * PAGE_SIZE,
+    }, { enabled: queriesEnabled && activeTab === "ventas" });
+
+  // Query: detalle diario para el modal
+  const { data: dailyDetail, isLoading: dailyDetailLoading } =
+    trpc.supplierPortal.getSalesDailyDetail.useQuery({
+      supplierId: effectiveSupplierId,
+      productId: detailModal?.productId ?? "",
+      branchId: detailModal?.branchId ?? "",
+      from,
+      to,
+    }, { enabled: !!detailModal?.open && !!detailModal.productId && !!detailModal.branchId });
 
   // Colores para gráficos
   const CHART_COLORS = [
@@ -1134,7 +1178,292 @@ export default function SupplierPortal() {
             )}
           </div>
         )}
+
+        {/* ════════════════════════════════════════════
+            TAB: VENTAS (Artículo × Tienda)
+        ════════════════════════════════════════════ */}
+        {activeTab === "ventas" && (
+          <div className="space-y-4">
+            {/* Filtros */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Desde</label>
+                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Hasta</label>
+                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" />
+              </div>
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar producto o SKU..."
+                  value={salesSearch}
+                  onChange={(e) => { setSalesSearch(e.target.value); setSalesPage(0); }}
+                  className="pl-8 text-sm h-8"
+                />
+              </div>
+              {branchesForStock && branchesForStock.length > 0 && (
+                <Select
+                  value={salesBranchId ?? "all"}
+                  onValueChange={(v) => { setSalesBranchId(v === "all" ? undefined : v); setSalesPage(0); }}
+                >
+                  <SelectTrigger className="w-44 h-8 text-sm">
+                    <SelectValue placeholder="Todas las tiendas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    {branchesForStock.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Tabla */}
+            <Card className="border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" style={{ color: "#1A6894" }} />
+                  Ventas por Artículo y Tienda
+                  {salesByPB && (
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      ({salesByPB.total.toLocaleString("es-PE")} combinaciones)
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border/50">
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Producto</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
+                        <TableHead className="w-8"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salesPBLoading && (
+                        [...Array(8)].map((_, i) => (
+                          <TableRow key={i}>
+                            {[...Array(7)].map((_, j) => (
+                              <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      )}
+                      {!salesPBLoading && salesByPB?.rows.map((row, i) => (
+                        <TableRow
+                          key={`${row.product_id}-${row.branch_id}`}
+                          className="cursor-pointer hover:bg-muted/40 transition-colors border-border/50"
+                          onClick={() => setDetailModal({
+                            open: true,
+                            productId: row.product_id,
+                            branchId: row.branch_id,
+                            producto: row.producto,
+                            tienda: row.tienda,
+                          })}
+                        >
+                          <TableCell className="pl-4 font-medium text-sm max-w-[220px]">
+                            <span className="line-clamp-2 leading-tight">{row.producto}</span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{row.sku}</TableCell>
+                          <TableCell className="text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <Store className="h-3 w-3 shrink-0" style={{ color: "#919291" }} />
+                              <span className="truncate max-w-[120px]">{row.tienda}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-medium">{fmt(row.cantidad)}</TableCell>
+                          <TableCell className="text-right tabular-nums font-medium" style={{ color: "#008064" }}>
+                            {fmtCurrency(row.monto)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground text-sm">{row.tickets}</TableCell>
+                          <TableCell className="text-center">
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!salesPBLoading && !salesByPB?.rows.length && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-12">
+                            No hay ventas en el período y filtros seleccionados
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Paginación */}
+            {salesByPB && salesByPB.total > PAGE_SIZE && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Mostrando {salesPage * PAGE_SIZE + 1}–
+                  {Math.min((salesPage + 1) * PAGE_SIZE, salesByPB.total)} de {salesByPB.total.toLocaleString("es-PE")}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={salesPage === 0} onClick={() => setSalesPage((p) => p - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={(salesPage + 1) * PAGE_SIZE >= salesByPB.total} onClick={() => setSalesPage((p) => p + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* ════════════════════════════════════════════
+          MODAL: Detalle de ventas diarias
+      ════════════════════════════════════════════ */}
+      <Dialog
+        open={!!detailModal?.open}
+        onOpenChange={(open) => !open && setDetailModal(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle
+              className="text-base font-bold uppercase tracking-wide leading-tight"
+              style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+            >
+              Detalle de Ventas por Día
+            </DialogTitle>
+            <DialogDescription className="space-y-0.5">
+              <span className="block font-medium text-foreground text-sm">{detailModal?.producto}</span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Store className="h-3 w-3" />
+                {detailModal?.tienda} &middot; {from} – {to}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {dailyDetailLoading ? (
+            <div className="space-y-2 py-4">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+            </div>
+          ) : !dailyDetail?.length ? (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              No hay ventas registradas para este producto y tienda en el período.
+            </p>
+          ) : (
+            <>
+              {/* KPIs del modal */}
+              <div className="grid grid-cols-3 gap-3 my-2">
+                <div className="rounded-lg p-3 text-center" style={{ background: "#0D344A1A" }}>
+                  <p className="text-xs text-muted-foreground mb-0.5">Días con venta</p>
+                  <p className="text-xl font-bold" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: "#0D344A" }}>
+                    {dailyDetail.length}
+                  </p>
+                </div>
+                <div className="rounded-lg p-3 text-center" style={{ background: "#0040321A" }}>
+                  <p className="text-xs text-muted-foreground mb-0.5">Total unidades</p>
+                  <p className="text-xl font-bold" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: "#004032" }}>
+                    {fmt(dailyDetail.reduce((s, r) => s + parseFloat(r.cantidad), 0))}
+                  </p>
+                </div>
+                <div className="rounded-lg p-3 text-center" style={{ background: "#6240021A" }}>
+                  <p className="text-xs text-muted-foreground mb-0.5">Total monto</p>
+                  <p className="text-xl font-bold" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: "#624C02" }}>
+                    {fmtCurrency(dailyDetail.reduce((s, r) => s + parseFloat(r.monto), 0))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Gráfico de barras diario */}
+              <div style={{ height: Math.max(180, Math.min(dailyDetail.length * 28, 320)) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={dailyDetail.map((r) => ({
+                      fecha: format(new Date(r.fecha), "dd/MM", { locale: es }),
+                      cantidad: parseFloat(r.cantidad),
+                      monto: parseFloat(r.monto),
+                    }))}
+                    margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EAE8E2" vertical={false} />
+                    <XAxis
+                      dataKey="fecha"
+                      tick={{ fontSize: 10, fill: "#757471", fontFamily: "'Sailec', sans-serif" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      yAxisId="monto"
+                      orientation="left"
+                      tick={{ fontSize: 10, fill: "#757471", fontFamily: "'Sailec', sans-serif" }}
+                      tickFormatter={(v) => `S/${(v / 1000).toFixed(0)}K`}
+                      axisLine={false}
+                      tickLine={false}
+                      width={48}
+                    />
+                    <YAxis
+                      yAxisId="qty"
+                      orientation="right"
+                      tick={{ fontSize: 10, fill: "#757471", fontFamily: "'Sailec', sans-serif" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={36}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) =>
+                        name === "monto" ? [fmtCurrency(value), "Monto"] : [fmt(value), "Cantidad"]
+                      }
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "0.5rem",
+                        fontFamily: "'Sailec', sans-serif",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar yAxisId="monto" dataKey="monto" fill="#1A6894" radius={[3, 3, 0, 0]} maxBarSize={28} name="monto" />
+                    <Bar yAxisId="qty" dataKey="cantidad" fill="#008064" radius={[3, 3, 0, 0]} maxBarSize={18} name="cantidad" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Tabla detallada */}
+              <div className="overflow-x-auto rounded-md border border-border/50">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/50">
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Fecha</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
+                      <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dailyDetail.map((r) => (
+                      <TableRow key={r.fecha} className="border-border/50">
+                        <TableCell className="pl-4 text-sm font-medium">
+                          {format(new Date(r.fecha), "dd MMM yyyy", { locale: es })}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(r.cantidad)}</TableCell>
+                        <TableCell className="text-right tabular-nums font-medium" style={{ color: "#008064" }}>
+                          {fmtCurrency(r.monto)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{r.tickets}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

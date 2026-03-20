@@ -512,4 +512,149 @@ export const supplierPortalRouter = router({
         total: countRes.rows[0].total as number,
       };
     }),
+
+  /**
+   * Ventas por artículo × tienda en un rango de fechas.
+   * Retorna una fila por cada combinación (producto, sucursal) con cantidad y monto.
+   * Soporta paginación y búsqueda por nombre de producto o SKU.
+   */
+  getSalesByProductBranch: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        supplierId: z.string().optional(),
+        search: z.string().optional(),
+        branchId: z.string().optional(),
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const params: (string | number)[] = [supplierId, from, to, input.limit, input.offset];
+      const clauses: string[] = [];
+
+      if (input.search) {
+        params.push(`%${input.search}%`);
+        clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
+      }
+      if (input.branchId) {
+        params.push(input.branchId);
+        clauses.push(`AND b.id = $${params.length}`);
+      }
+
+      const whereExtra = clauses.join(" ");
+
+      const res = await pool.query(
+        `SELECT
+           p.id                                          AS product_id,
+           p.name                                        AS producto,
+           p.int_sku::text                               AS sku,
+           b.id                                          AS branch_id,
+           b.name                                        AS tienda,
+           b.sap_id,
+           SUM(sd.quantity)::numeric                     AS cantidad,
+           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           COUNT(DISTINCT sh.id)::int                    AS tickets
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND sh.doc_date::date BETWEEN $2 AND $3
+           ${whereExtra}
+         GROUP BY p.id, p.name, p.int_sku, b.id, b.name, b.sap_id
+         ORDER BY monto DESC
+         LIMIT $4 OFFSET $5`,
+        params
+      );
+
+      // Count total rows (same filters, no LIMIT)
+      const countParams: (string | number)[] = [supplierId, from, to];
+      const countClauses: string[] = [];
+      if (input.search) {
+        countParams.push(`%${input.search}%`);
+        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
+      }
+      if (input.branchId) {
+        countParams.push(input.branchId);
+        countClauses.push(`AND b.id = $${countParams.length}`);
+      }
+
+      const countRes = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM (
+           SELECT p.id, b.id AS bid
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           JOIN public.branches b ON b.id = sh.branch_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date::date BETWEEN $2 AND $3
+             ${countClauses.join(" ")}
+           GROUP BY p.id, b.id
+         ) sub`,
+        countParams
+      );
+
+      return {
+        rows: res.rows as Array<{
+          product_id: string;
+          producto: string;
+          sku: string;
+          branch_id: string;
+          tienda: string;
+          sap_id: string;
+          cantidad: string;
+          monto: string;
+          tickets: number;
+        }>,
+        total: countRes.rows[0].total as number,
+      };
+    }),
+
+  /**
+   * Detalle de ventas día a día para un producto+tienda específicos.
+   * Se usa en el modal de detalle al hacer clic en una fila de getSalesByProductBranch.
+   */
+  getSalesDailyDetail: protectedProcedure
+    .input(
+      z.object({
+        supplierId: z.string().optional(),
+        productId: z.string(),
+        branchId: z.string(),
+        from: z.string(),
+        to: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+
+      const res = await pool.query(
+        `SELECT
+           sh.doc_date::date                             AS fecha,
+           SUM(sd.quantity)::numeric                     AS cantidad,
+           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           COUNT(DISTINCT sh.id)::int                    AS tickets
+         FROM public.sales_detail sd
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.products p ON p.id = sd.product_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND sd.product_id = $2
+           AND sh.branch_id = $3
+           AND sh.doc_date::date BETWEEN $4 AND $5
+         GROUP BY sh.doc_date::date
+         ORDER BY fecha ASC`,
+        [supplierId, input.productId, input.branchId, input.from, input.to]
+      );
+
+      return res.rows as Array<{
+        fecha: string;
+        cantidad: string;
+        monto: string;
+        tickets: number;
+      }>;
+    }),
 });
