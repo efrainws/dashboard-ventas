@@ -730,6 +730,186 @@ export const salesRouter = router({
     }),
 
   /**
+   * Obtiene el Top 50 productos por cantidad vendida y por monto de ventas
+   * Soporta filtros de fecha, sucursal y categoría (igual que las otras páginas)
+   */
+  getTopProducts: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_id: z.string().optional(),
+        category_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, category_id } = input;
+
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      const params: any[] = [];
+      let pi = 1;
+
+      const branchClause = (branch_id && branch_id !== 'all')
+        ? (() => { params.push(branch_id); return `AND b.sap_id = $${pi++}`; })()
+        : '';
+
+      const categoryClause = (category_id && category_id !== 'all')
+        ? (() => { params.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}`; })()
+        : '';
+
+      const query = `
+        WITH line_items AS (
+          SELECT
+            prod.id                                   AS product_id,
+            prod.name                                 AS product_name,
+            prod.int_sku                              AS sku,
+            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,
+            b.sap_id                                  AS branch_sap_id,
+            INITCAP(LOWER(COALESCE(
+              g.name, p2.name, c2.name, 'Sin Categoría'
+            )))                                       AS category_name,
+            sd.quantity                               AS qty,
+            sd.total                                  AS amount
+          FROM public.sales_header sh
+          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
+          JOIN public.products       prod ON prod.id       = sd.product_id
+          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id
+          LEFT JOIN public.categories_products cp
+            ON cp.product_id       = prod.id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN public.categories c2 ON c2.id = cp.category_id
+          LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
+          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND sh.doc_date::date >= '${fechaMinDate}'::date
+            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            ${branchClause}
+            ${categoryClause}
+        ),
+        aggregated AS (
+          SELECT
+            product_id,
+            product_name,
+            sku,
+            MAX(category_name)   AS category_name,
+            SUM(qty)             AS total_qty,
+            SUM(amount)          AS total_amount,
+            COUNT(DISTINCT branch_sap_id) AS branch_count
+          FROM line_items
+          GROUP BY product_id, product_name, sku
+        )
+        SELECT
+          product_id,
+          product_name,
+          sku,
+          category_name,
+          total_qty::numeric       AS total_qty,
+          total_amount::numeric    AS total_amount,
+          branch_count,
+          RANK() OVER (ORDER BY total_qty    DESC) AS rank_qty,
+          RANK() OVER (ORDER BY total_amount DESC) AS rank_amount
+        FROM aggregated
+        WHERE total_qty > 0
+        ORDER BY rank_qty
+        LIMIT 50;
+      `;
+
+      // Segunda query para top 50 por monto (necesitamos orden diferente)
+      const queryByAmount = `
+        WITH line_items AS (
+          SELECT
+            prod.id                                   AS product_id,
+            prod.name                                 AS product_name,
+            prod.int_sku                              AS sku,
+            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,
+            b.sap_id                                  AS branch_sap_id,
+            INITCAP(LOWER(COALESCE(
+              g.name, p2.name, c2.name, 'Sin Categoría'
+            )))                                       AS category_name,
+            sd.quantity                               AS qty,
+            sd.total                                  AS amount
+          FROM public.sales_header sh
+          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
+          JOIN public.products       prod ON prod.id       = sd.product_id
+          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id
+          LEFT JOIN public.categories_products cp
+            ON cp.product_id       = prod.id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN public.categories c2 ON c2.id = cp.category_id
+          LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
+          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND sh.doc_date::date >= '${fechaMinDate}'::date
+            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            ${branchClause}
+            ${categoryClause}
+        ),
+        aggregated AS (
+          SELECT
+            product_id,
+            product_name,
+            sku,
+            MAX(category_name)   AS category_name,
+            SUM(qty)             AS total_qty,
+            SUM(amount)          AS total_amount,
+            COUNT(DISTINCT branch_sap_id) AS branch_count
+          FROM line_items
+          GROUP BY product_id, product_name, sku
+        )
+        SELECT
+          product_id,
+          product_name,
+          sku,
+          category_name,
+          total_qty::numeric       AS total_qty,
+          total_amount::numeric    AS total_amount,
+          branch_count,
+          RANK() OVER (ORDER BY total_qty    DESC) AS rank_qty,
+          RANK() OVER (ORDER BY total_amount DESC) AS rank_amount
+        FROM aggregated
+        WHERE total_amount > 0
+        ORDER BY rank_amount
+        LIMIT 50;
+      `;
+
+      try {
+        const [resultByQty, resultByAmount] = await Promise.all([
+          pool.query(query, params),
+          pool.query(queryByAmount, params),
+        ]);
+
+        const mapRow = (row: any, idx: number) => ({
+          rank: idx + 1,
+          product_id: row.product_id,
+          product_name: row.product_name ?? '',
+          sku: row.sku ?? '',
+          category_name: row.category_name ?? 'Sin Categoría',
+          total_qty: Number(row.total_qty ?? 0),
+          total_amount: Number(row.total_amount ?? 0),
+          branch_count: Number(row.branch_count ?? 0),
+        });
+
+        return {
+          success: true,
+          byQuantity: resultByQty.rows.map(mapRow),
+          byAmount: resultByAmount.rows.map(mapRow),
+          metadata: {
+            fecha_min: fechaMinDate,
+            fecha_max: fechaMaxDate,
+            branch_id: branch_id || 'all',
+            category_id: category_id || 'all',
+            generated_at: new Date().toISOString(),
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing top products query:', error);
+        throw new Error('Error al consultar top productos');
+      }
+    }),
+
+  /**
    * Obtiene transacciones identificadas por tienda y día
    * Calcula total de transacciones, identificadas y porcentaje de identificación
    * Soporta filtros de fecha y sucursal

@@ -16,6 +16,7 @@ import SalesVsTarget from "./pages/SalesVsTarget";
 import DiscrepancyTickets from "./pages/DiscrepancyTickets";
 import IdentifiedTransactions from "./pages/IdentifiedTransactions";
 import SupplierHome from "./pages/SupplierHome";
+import TopProducts from "./pages/TopProducts";
 import SupplierPortal from "./pages/SupplierPortal";
 import { AccessDenied } from "./components/AccessDenied";
 import { Loader2 } from "lucide-react";
@@ -110,6 +111,9 @@ function Router() {
             guard="no_supplier"
           />
         )}
+      </Route>
+      <Route path="/top-products">
+        {() => <ProtectedRoute component={TopProducts} path="/top-products" guard="no_supplier" />}
       </Route>
 
       {/* Gestión de usuarios — solo gestores */}

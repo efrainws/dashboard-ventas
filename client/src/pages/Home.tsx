@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -75,6 +75,14 @@ export default function Home() {
       href: "/identified-transactions",
       color: "text-[#BC2C46]", // Granate
       bgColor: "bg-[#BC2C46]/10",
+    },
+    {
+      title: "Top 50 Productos",
+      description: "Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas",
+      icon: Trophy,
+      href: "/top-products",
+      color: "text-[#7B3F9E]", // Púrpura
+      bgColor: "bg-[#7B3F9E]/10",
     },
   ];
 

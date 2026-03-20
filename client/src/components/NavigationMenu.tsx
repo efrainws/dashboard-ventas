@@ -26,6 +26,7 @@ import {
   Truck,
   Menu,
   X,
+  Trophy,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -50,7 +51,8 @@ export function NavigationMenu() {
     location.startsWith("/sales") ||
     location.startsWith("/hourly") ||
     location.startsWith("/sales-vs-target") ||
-    location.startsWith("/identified-transactions");
+    location.startsWith("/identified-transactions") ||
+    location.startsWith("/top-products");
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -132,6 +134,12 @@ export function NavigationMenu() {
                   <Link href="/identified-transactions" className="flex items-center w-full cursor-pointer">
                     <UserCheck className="mr-2 h-4 w-4" />
                     <span>Transacciones Identificadas</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/top-products" className="flex items-center w-full cursor-pointer">
+                    <Trophy className="mr-2 h-4 w-4" />
+                    <span>Top 50 Productos</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -311,6 +319,18 @@ export function NavigationMenu() {
                   >
                     <UserCheck className="h-4 w-4 shrink-0" />
                     <span>Transacciones Identificadas</span>
+                  </Link>
+                  <Link
+                    href="/top-products"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/top-products")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Trophy className="h-4 w-4 shrink-0" />
+                    <span>Top 50 Productos</span>
                   </Link>
                 </div>
               )}
