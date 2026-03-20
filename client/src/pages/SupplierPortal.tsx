@@ -240,6 +240,12 @@ export default function SupplierPortal() {
       { enabled: queriesEnabled }
     );
 
+  const { data: branchesForSales } =
+    trpc.supplierPortal.getBranchesForSales.useQuery(
+      { supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
+
   // Query: lista de productos del proveedor para los Selects (debe ir antes de stock y catálogo)
   const { data: supplierProducts, isLoading: supplierProductsLoading } =
     trpc.supplierPortal.getProductsForSupplier.useQuery(
@@ -249,8 +255,9 @@ export default function SupplierPortal() {
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
+      productId: stockProductId,
       search: stockProductId
-        ? supplierProducts?.find((p) => p.id === stockProductId)?.name
+        ? undefined  // cuando hay productId usamos el CROSS JOIN, no búsqueda por nombre
         : undefined,
       branchId: stockBranchId,
       supplierId: effectiveSupplierId,
@@ -812,7 +819,7 @@ export default function SupplierPortal() {
                     <ResponsiveContainer width="100%" height={520}>
                       <BarChart
                         data={salesByBranch.slice(0, 20).map((b) => ({
-                          tienda: b.tienda,
+                          tienda: b.sap_id ? `${b.tienda} (${b.sap_id})` : b.tienda,
                           ventas: parseFloat(b.total_ventas),
                         }))}
                         layout="vertical"
@@ -1066,7 +1073,7 @@ export default function SupplierPortal() {
                   setStockPage(0);
                 }}
               >
-                <SelectTrigger className="h-9 w-[200px]">
+                <SelectTrigger className="h-9 w-[220px]">
                   <Store className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                   <SelectValue placeholder="Todas las tiendas" />
                 </SelectTrigger>
@@ -1074,7 +1081,7 @@ export default function SupplierPortal() {
                   <SelectItem value="all">Todas las tiendas</SelectItem>
                   {branchesForStock?.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.name}
+                      {b.name}{b.sap_id ? ` (${b.sap_id})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1113,6 +1120,7 @@ export default function SupplierPortal() {
                         <TableHead>Producto</TableHead>
                         <TableHead>SKU</TableHead>
                         <TableHead>Tienda</TableHead>
+                        <TableHead>Cód. SAP</TableHead>
                         <TableHead className="text-right">Stock Actual</TableHead>
                         <TableHead className="text-right">Stock Mín.</TableHead>
                         <TableHead>Alerta</TableHead>
@@ -1122,13 +1130,13 @@ export default function SupplierPortal() {
                       {stockLoading
                         ? Array.from({ length: 8 }).map((_, i) => (
                             <TableRow key={i}>
-                              <TableCell colSpan={6}>
+                              <TableCell colSpan={7}>
                                 <Skeleton className="h-5 w-full" />
                               </TableCell>
                             </TableRow>
                           ))
                         : stockData?.rows.map((s, i) => (
-                            <TableRow key={i}>
+                            <TableRow key={i} className={s.stock_actual === 0 ? "opacity-60" : ""}>
                               <TableCell className="font-medium text-sm max-w-[200px]">
                                 <p className="truncate">{s.producto}</p>
                               </TableCell>
@@ -1136,15 +1144,20 @@ export default function SupplierPortal() {
                                 {s.int_sku}
                               </TableCell>
                               <TableCell className="text-sm">{s.tienda}</TableCell>
+                              <TableCell className="text-xs font-mono text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
                               <TableCell className="text-right font-medium">
-                                {fmt(s.stock_actual)}
+                                {s.stock_actual === 0
+                                  ? <span className="text-muted-foreground">0</span>
+                                  : fmt(s.stock_actual)
+                                }
                               </TableCell>
                               <TableCell className="text-right text-muted-foreground">
                                 {s.min_stock != null ? fmt(s.min_stock) : "—"}
                               </TableCell>
                               <TableCell>
-                                {s.min_stock != null &&
-                                s.stock_actual <= s.min_stock ? (
+                                {s.stock_actual === 0 ? (
+                                  <Badge variant="destructive" className="text-xs">Sin stock</Badge>
+                                ) : s.min_stock != null && s.stock_actual <= s.min_stock ? (
                                   <div className="flex items-center gap-1 text-[var(--ff-mostaza)]">
                                     <AlertTriangle className="h-3.5 w-3.5" />
                                     <span className="text-xs">Bajo mínimo</span>
@@ -1367,18 +1380,18 @@ export default function SupplierPortal() {
                   </SelectContent>
                 </Select>
               </div>
-              {branchesForStock && branchesForStock.length > 0 && (
+              {branchesForSales && branchesForSales.length > 0 && (
                 <Select
                   value={salesBranchId ?? "all"}
                   onValueChange={(v) => { setSalesBranchId(v === "all" ? undefined : v); setSalesPage(0); }}
                 >
-                  <SelectTrigger className="w-44 h-8 text-sm">
+                  <SelectTrigger className="w-52 h-8 text-sm">
                     <SelectValue placeholder="Todas las tiendas" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las tiendas</SelectItem>
-                    {branchesForStock.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    {branchesForSales.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}{b.sap_id ? ` (${b.sap_id})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1421,6 +1434,7 @@ export default function SupplierPortal() {
                         <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Producto</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide">Cód. SAP</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
@@ -1431,13 +1445,13 @@ export default function SupplierPortal() {
                       {salesPBLoading && (
                         [...Array(8)].map((_, i) => (
                           <TableRow key={i}>
-                            {[...Array(7)].map((_, j) => (
+                            {[...Array(8)].map((_, j) => (
                               <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                             ))}
                           </TableRow>
                         ))
                       )}
-                      {!salesPBLoading && salesByPB?.rows.map((row, i) => (
+                      {!salesPBLoading && salesByPB?.rows.map((row) => (
                         <TableRow
                           key={`${row.product_id}-${row.branch_id}`}
                           className="cursor-pointer hover:bg-muted/40 transition-colors border-border/50"
@@ -1456,9 +1470,10 @@ export default function SupplierPortal() {
                           <TableCell className="text-sm">
                             <div className="flex items-center gap-1.5">
                               <Store className="h-3 w-3 shrink-0" style={{ color: "#919291" }} />
-                              <span className="truncate max-w-[120px]">{row.tienda}</span>
+                              <span className="truncate max-w-[140px]">{row.tienda}</span>
                             </div>
                           </TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium">{fmt(row.cantidad)}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium" style={{ color: "#008064" }}>
                             {fmtCurrency(row.monto)}
@@ -1471,9 +1486,21 @@ export default function SupplierPortal() {
                       ))}
                       {!salesPBLoading && !salesByPB?.rows.length && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-12">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-12">
                             No hay ventas en el período y filtros seleccionados
                           </TableCell>
+                        </TableRow>
+                      )}
+                      {/* Fila de totales globales */}
+                      {!salesPBLoading && salesByPB?.totals && salesByPB.rows.length > 0 && (
+                        <TableRow className="border-t-2 border-border font-semibold bg-muted/30">
+                          <TableCell className="pl-4 text-sm" colSpan={4}>TOTAL GENERAL</TableCell>
+                          <TableCell className="text-right tabular-nums text-sm">{fmt(salesByPB.totals.cantidad)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-sm" style={{ color: "#008064" }}>
+                            {fmtCurrency(salesByPB.totals.monto)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{salesByPB.totals.tickets}</TableCell>
+                          <TableCell />
                         </TableRow>
                       )}
                     </TableBody>

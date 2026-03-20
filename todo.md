@@ -1480,3 +1480,7 @@ Fecha: 1 de febrero de 2026
 - [x] SupplierPortal: botón de descarga CSV/Excel en pestaña Ventas (exportar todos los registros filtrados)
 - [x] Corregir dominio en enlaces de correos (creación usuario, reset password, tickets) a dashboard.florayfauna.pe
 - [x] Botón Reenviar Activación en página de usuarios con permisos por rol
+- [x] SupplierPortal: fila de totales en pestaña Ventas (cantidad, monto, tickets)
+- [ ] SupplierPortal: mostrar tiendas como "Nombre (SAP_ID)" ordenadas por sap_id en todos los filtros/selectores
+- [ ] SupplierPortal: agregar columna SAP_ID en tablas de Ventas y Stock
+- [ ] SupplierPortal: completar filas con stock=0 para tiendas sin stock al consultar un producto

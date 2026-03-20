@@ -259,11 +259,33 @@ export const supplierPortalRouter = router({
        JOIN public.branches b ON b.id = st.branch_id
        WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
          AND st.stock > 0
-       ORDER BY b.name ASC`,
+       ORDER BY b.sap_id ASC`,
       [supplierId]
     );
     return res.rows as Array<{ id: string; name: string; sap_id: string }>;
   }),
+
+  /**
+   * Tiendas que tienen ventas del proveedor en cualquier fecha (para el selector de filtro en pestaña Ventas).
+   * Ordenadas por sap_id ASC.
+   */
+  getBranchesForSales: protectedProcedure
+    .input(z.object({ supplierId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
+      const res = await pool.query(
+        `SELECT DISTINCT b.id, b.name, b.sap_id
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+         ORDER BY b.sap_id ASC
+         LIMIT 500`,
+        [supplierId]
+      );
+      return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    }),
 
   /**
    * Stock actual de los productos del proveedor por tienda.
@@ -273,6 +295,7 @@ export const supplierPortalRouter = router({
     .input(
       z.object({
         search: z.string().optional(),       // filtra por nombre o int_sku del producto
+        productId: z.string().optional(),    // ID exacto del producto (para completar con ceros)
         branchId: z.string().optional(),     // filtra por tienda específica
         supplierId: z.string().optional(),   // override para system_specialist
         limit: z.number().min(1).max(200).default(50),
@@ -282,7 +305,62 @@ export const supplierPortalRouter = router({
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
 
-      // Construir cláusulas dinámicas y lista de parámetros
+      // Cuando se filtra por un producto específico, usamos CROSS JOIN con todas las tiendas
+      // para mostrar stock=0 en las tiendas sin inventario.
+      if (input.productId) {
+        const params: (string | number)[] = [supplierId, input.productId, input.limit, input.offset];
+        const branchClause = input.branchId ? `AND b.id = $5` : "";
+        if (input.branchId) params.push(input.branchId);
+
+        const res = await pool.query(
+          `SELECT
+             p.name                                        AS producto,
+             p.int_sku,
+             b.id                                          AS branch_id,
+             b.name                                        AS tienda,
+             b.sap_id,
+             COALESCE(st.stock, 0)                         AS stock_actual,
+             st.min_stock
+           FROM public.branches b
+           CROSS JOIN (
+             SELECT id, name, int_sku FROM public.products
+             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           ) p
+           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
+           WHERE b.active = true ${branchClause}
+           ORDER BY b.sap_id ASC
+           LIMIT $3 OFFSET $4`,
+          params
+        );
+
+        const countParams: (string | number)[] = [supplierId, input.productId];
+        if (input.branchId) countParams.push(input.branchId);
+        const countRes = await pool.query(
+          `SELECT COUNT(*)::int AS total
+           FROM public.branches b
+           CROSS JOIN (
+             SELECT id FROM public.products
+             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           ) p
+           WHERE b.active = true ${input.branchId ? `AND b.id = $3` : ""}`,
+          countParams
+        );
+
+        return {
+          rows: res.rows as Array<{
+            producto: string;
+            int_sku: string;
+            branch_id: string;
+            tienda: string;
+            sap_id: string;
+            stock_actual: number;
+            min_stock: number | null;
+          }>,
+          total: countRes.rows[0].total as number,
+        };
+      }
+
+      // Sin filtro de producto específico: comportamiento original (solo filas con stock > 0)
       const extraClauses: string[] = [];
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
 
@@ -312,7 +390,7 @@ export const supplierPortalRouter = router({
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND st.stock > 0
            ${whereExtra}
-         ORDER BY p.name ASC, b.name ASC
+         ORDER BY p.name ASC, b.sap_id ASC
          LIMIT $2 OFFSET $3`,
         params
       );
@@ -599,6 +677,32 @@ export const supplierPortalRouter = router({
         countParams
       );
 
+      // Totales globales (todos los registros filtrados, sin paginación)
+      const totalsParams: (string | number)[] = [supplierId, from, to];
+      const totalsClauses: string[] = [];
+      if (input.search) {
+        totalsParams.push(`%${input.search}%`);
+        totalsClauses.push(`AND (p.name ILIKE $${totalsParams.length} OR p.int_sku::text ILIKE $${totalsParams.length})`);
+      }
+      if (input.branchId) {
+        totalsParams.push(input.branchId);
+        totalsClauses.push(`AND b.id = $${totalsParams.length}`);
+      }
+      const totalsRes = await pool.query(
+        `SELECT
+           SUM(sd.quantity)::numeric                     AS total_cantidad,
+           ROUND(SUM(sd.total)::numeric, 2)              AS total_monto,
+           COUNT(DISTINCT sh.id)::int                    AS total_tickets
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND sh.doc_date::date BETWEEN $2 AND $3
+           ${totalsClauses.join(" ")}`,
+        totalsParams
+      );
+
       return {
         rows: res.rows as Array<{
           product_id: string;
@@ -612,6 +716,11 @@ export const supplierPortalRouter = router({
           tickets: number;
         }>,
         total: countRes.rows[0].total as number,
+        totals: {
+          cantidad: totalsRes.rows[0].total_cantidad as string,
+          monto: totalsRes.rows[0].total_monto as string,
+          tickets: totalsRes.rows[0].total_tickets as number,
+        },
       };
     }),
 
