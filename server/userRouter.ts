@@ -473,6 +473,79 @@ export const userRouter = router({
    * - cst_user solo puede eliminar store_user
    * - commercial_specialist solo puede eliminar supplier_user
    */
+  /**
+   * Reenvía el correo de activación generando un nuevo token.
+   * Respeta la misma matriz de permisos que createUser:
+   * - system_specialist: puede reenviar a cualquier usuario
+   * - cst_user: solo puede reenviar a store_user
+   * - commercial_specialist: solo puede reenviar a supplier_user
+   */
+  resendActivationEmail: canManageUsersProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const currentRole = ctx.user.role as UserRole;
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
+        }
+
+        const existingUser = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
+        if (existingUser.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
+        }
+
+        const targetUser = existingUser[0];
+
+        // Validar permisos según rol del solicitante
+        if (currentRole === 'cst_user' && targetUser.role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes reenviar activación a usuarios de tipo Usuario Tienda',
+          });
+        }
+        if (currentRole === 'commercial_specialist' && targetUser.role !== 'supplier_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes reenviar activación a usuarios de tipo Usuario Proveedor',
+          });
+        }
+
+        if (!targetUser.email) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'El usuario no tiene correo electrónico registrado',
+          });
+        }
+
+        // Generar nuevo token y enviar correo
+        const appUrl = 'https://dashboard.florayfauna.pe';
+        const activationToken = await createActivationToken(targetUser.id, targetUser.username ?? '');
+        const activationUrl = `${appUrl}/activate/${activationToken}`;
+
+        const emailSent = await sendActivationEmail({
+          name: targetUser.name ?? targetUser.username ?? 'Usuario',
+          email: targetUser.email,
+          username: targetUser.username ?? '',
+          activationUrl,
+          role: targetUser.role ?? 'store_user',
+        });
+
+        if (!emailSent) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'No se pudo enviar el correo. Verifica la configuración de Brevo.',
+          });
+        }
+
+        return { success: true, message: 'Correo de activación reenviado exitosamente' };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error('[User Management] Error resending activation email:', error);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al reenviar correo de activación' });
+      }
+    }),
+
   deleteUser: canManageUsersProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {

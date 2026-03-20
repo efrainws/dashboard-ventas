@@ -230,6 +230,44 @@ describe('User Management Router', () => {
     });
   });
 
+  // ─── resendActivationEmail ─────────────────────────────────────────────────
+
+  describe('resendActivationEmail', () => {
+    it('store_user no puede reenviar activación (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(storeContext);
+      await expect(
+        caller.users.resendActivationEmail({ id: cstContext.user.id })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('cst_user no puede reenviar activación a system_specialist (FORBIDDEN)', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      await expect(
+        caller.users.resendActivationEmail({ id: specialistContext.user.id })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('cst_user puede reenviar activación a store_user con email', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      // store_user de prueba tiene email 'store@test.com'
+      // El envío real de Brevo fallará en test (sin API key válida),
+      // pero el endpoint debe lanzar INTERNAL_SERVER_ERROR (no FORBIDDEN)
+      try {
+        await caller.users.resendActivationEmail({ id: storeContext.user.id });
+      } catch (err: any) {
+        // Esperamos que NO sea FORBIDDEN (los permisos están OK)
+        expect(err.code).not.toBe('FORBIDDEN');
+      }
+    });
+
+    it('rechaza usuario inexistente (NOT_FOUND)', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      await expect(
+        caller.users.resendActivationEmail({ id: 999999 })
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+  });
+
   // ─── deleteUser ─────────────────────────────────────────────────────────────
 
   describe('deleteUser', () => {

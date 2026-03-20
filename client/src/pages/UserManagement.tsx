@@ -51,6 +51,7 @@ import {
   Briefcase,
   Package,
   Search,
+  Send,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
@@ -196,6 +197,37 @@ export default function UserManagement() {
       showToast.error(error.message);
     },
   });
+
+  const [resendingUserId, setResendingUserId] = useState<number | null>(null);
+
+  const resendActivationMutation = trpc.users.resendActivationEmail.useMutation({
+    onSuccess: () => {
+      showToast.success('Correo de activación reenviado', {
+        description: 'El usuario recibirá el nuevo enlace de activación en su correo.',
+        icon: '✉️',
+      });
+      setResendingUserId(null);
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+      setResendingUserId(null);
+    },
+  });
+
+  /**
+   * Determina si el usuario actual puede reenviar activación al usuario objetivo.
+   * Misma lógica que createUser:
+   * - system_specialist → todos
+   * - cst_user → solo store_user
+   * - commercial_specialist → solo supplier_user
+   */
+  const canResendActivation = (targetRole: UserRole): boolean => {
+    if (!currentRole) return false;
+    if (currentRole === 'system_specialist') return true;
+    if (currentRole === 'cst_user') return targetRole === 'store_user';
+    if (currentRole === 'commercial_specialist') return targetRole === 'supplier_user';
+    return false;
+  };
 
   // Verificar permisos — solo gestores pueden acceder
   if (authLoading) {
@@ -456,6 +488,25 @@ export default function UserManagement() {
                         >
                           <Key className="h-4 w-4 text-foreground" />
                         </Button>
+                        {canResendActivation(user.role as UserRole) && user.email && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Reenviar correo de activación"
+                            onClick={() => {
+                              setResendingUserId(user.id);
+                              resendActivationMutation.mutate({ id: user.id });
+                            }}
+                            disabled={resendingUserId === user.id}
+                            className="hover:bg-[#1A6894]/10"
+                          >
+                            {resendingUserId === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-[#1A6894]" />
+                            ) : (
+                              <Send className="h-4 w-4 text-[#1A6894]" />
+                            )}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
