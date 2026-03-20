@@ -657,4 +657,28 @@ export const supplierPortalRouter = router({
         tickets: number;
       }>;
     }),
+
+  /**
+   * Lista todos los productos del proveedor (id, nombre, sku) para el Select desplegable.
+   * Ordenados alfabéticamente por nombre.
+   */
+  getProductsForSupplier: protectedProcedure
+    .input(z.object({ supplierId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
+
+      const res = await pool.query(
+        `SELECT DISTINCT
+           p.id,
+           p.name,
+           p.int_sku::text AS sku
+         FROM public.products p
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+         ORDER BY p.name ASC
+         LIMIT 2000`,
+        [supplierId]
+      );
+
+      return res.rows as Array<{ id: string; name: string; sku: string }>;
+    }),
 });
