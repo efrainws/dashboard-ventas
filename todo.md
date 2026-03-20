@@ -1477,3 +1477,4 @@ Fecha: 1 de febrero de 2026
 - [x] SupplierPortal: reemplazar input de búsqueda de SKU por Select desplegable de productos del proveedor
 - [x] SupplierPortal: reemplazar input de búsqueda en pestaña Catálogo por Select desplegable de productos
 - [x] SupplierPortal: reemplazar input de búsqueda en pestaña Stock por Select desplegable de productos
+- [x] SupplierPortal: botón de descarga CSV/Excel en pestaña Ventas (exportar todos los registros filtrados)

@@ -62,6 +62,8 @@ import {
   Truck,
   ShoppingBag,
   X,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -168,6 +170,8 @@ export default function SupplierPortal() {
   const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
   const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
+  // Estado de exportación
+  const [isExporting, setIsExporting] = useState(false);
   // Modal de detalle diario
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
@@ -294,6 +298,49 @@ export default function SupplierPortal() {
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
     }, { enabled: queriesEnabled && activeTab === "ventas" });
+
+  // Query lazy para exportación (se activa solo al hacer clic en Descargar)
+  const exportQuery = trpc.supplierPortal.exportSalesByProductBranch.useQuery({
+    from,
+    to,
+    supplierId: effectiveSupplierId,
+    search: salesProductId
+      ? supplierProducts?.find((p) => p.id === salesProductId)?.name
+      : undefined,
+    branchId: salesBranchId,
+  }, { enabled: false });
+
+  // Función para descargar CSV
+  const handleDownloadCSV = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportQuery.refetch();
+      const rows = result.data ?? [];
+      if (rows.length === 0) return;
+
+      const headers = ["Producto", "SKU", "Tienda", "Cód. SAP", "Cantidad", "Monto (S/)", "Tickets"];
+      const csvRows = rows.map((r) => [
+        `"${r.producto.replace(/"/g, '""')}"`,
+        r.sku,
+        `"${r.tienda.replace(/"/g, '""')}"`,
+        r.sap_id ?? "",
+        parseFloat(r.cantidad).toFixed(0),
+        parseFloat(r.monto).toFixed(2),
+        r.tickets,
+      ].join(","));
+
+      const csvContent = [headers.join(","), ...csvRows].join("\n");
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ventas_${from}_${to}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Query: detalle diario para el modal
   const { data: dailyDetail, isLoading: dailyDetailLoading } =
@@ -1336,6 +1383,21 @@ export default function SupplierPortal() {
                   </SelectContent>
                 </Select>
               )}
+              {/* Botón de descarga CSV */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 ml-auto gap-1.5 text-xs"
+                onClick={handleDownloadCSV}
+                disabled={isExporting || !queriesEnabled}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5" />
+                )}
+                {isExporting ? "Exportando..." : "Descargar CSV"}
+              </Button>
             </div>
 
             {/* Tabla */}

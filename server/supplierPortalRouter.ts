@@ -659,6 +659,68 @@ export const supplierPortalRouter = router({
     }),
 
   /**
+   * Exportación completa de ventas por artículo y tienda (sin paginación).
+   * Devuelve hasta 10.000 filas para descarga CSV/Excel.
+   */
+  exportSalesByProductBranch: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        supplierId: z.string().optional(),
+        search: z.string().optional(),
+        branchId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      const params: (string | number)[] = [supplierId, from, to];
+      const clauses: string[] = [];
+
+      if (input.search) {
+        params.push(`%${input.search}%`);
+        clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
+      }
+      if (input.branchId) {
+        params.push(input.branchId);
+        clauses.push(`AND b.id = $${params.length}`);
+      }
+
+      const res = await pool.query(
+        `SELECT
+           p.name                                        AS producto,
+           p.int_sku::text                               AS sku,
+           b.name                                        AS tienda,
+           b.sap_id,
+           SUM(sd.quantity)::numeric                     AS cantidad,
+           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           COUNT(DISTINCT sh.id)::int                    AS tickets
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND sh.doc_date::date BETWEEN $2 AND $3
+           ${clauses.join(" ")}
+         GROUP BY p.id, p.name, p.int_sku, b.id, b.name, b.sap_id
+         ORDER BY monto DESC
+         LIMIT 10000`,
+        params
+      );
+
+      return res.rows as Array<{
+        producto: string;
+        sku: string;
+        tienda: string;
+        sap_id: string;
+        cantidad: string;
+        monto: string;
+        tickets: number;
+      }>;
+    }),
+
+  /**
    * Lista todos los productos del proveedor (id, nombre, sku) para el Select desplegable.
    * Ordenados alfabéticamente por nombre.
    */
