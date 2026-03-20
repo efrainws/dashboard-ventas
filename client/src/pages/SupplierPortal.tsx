@@ -1447,7 +1447,10 @@ export default function SupplierPortal() {
         open={!!detailModal?.open}
         onOpenChange={(open) => !open && setDetailModal(null)}
       >
-        <DialogContent className="w-[95vw] md:w-[70vw] max-w-none max-h-[85vh] overflow-y-auto">
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto"
+          style={{ width: "min(70vw, calc(100vw - 2rem))", maxWidth: "none" }}
+        >
           <DialogHeader>
             <DialogTitle
               className="text-base font-bold uppercase tracking-wide leading-tight"
