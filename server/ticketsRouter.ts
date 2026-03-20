@@ -80,10 +80,7 @@ export const ticketsRouter = router({
 
       // Send Brevo email notification to all admin users with email
       try {
-        const req = (ctx as any).req;
-        const protocol = req?.protocol ?? "https";
-        const host = req?.get?.("host") ?? req?.headers?.host ?? "ventasdash-ftg2qpku.manus.space";
-        const appUrl = `${protocol}://${host}`;
+        const appUrl = 'https://dashboard.florayfauna.pe';
 
         const adminRecipients = await getAdminEmails();
 

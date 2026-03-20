@@ -300,11 +300,8 @@ export const userRouter = router({
         // Enviar email de activación si se solicita y hay email
         let emailSent = false;
         if (input.sendWelcomeEmail && input.email) {
-          const req = (ctx as any).req;
-          const protocol = req?.protocol ?? 'https';
-          const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
-          const appUrl = `${protocol}://${host}`;
           const activationToken = await createActivationToken(userId, input.username);
+          const appUrl = 'https://dashboard.florayfauna.pe';
           const activationUrl = `${appUrl}/activate/${activationToken}`;
           emailSent = await sendActivationEmail({
             name: input.name,
@@ -451,10 +448,7 @@ export const userRouter = router({
 
         let emailSent = false;
         if (input.notifyUser && existingUser[0].email) {
-          const req = (ctx as any).req;
-          const protocol = req?.protocol ?? 'https';
-          const host = req?.get?.('host') ?? req?.headers?.host ?? 'ventasdash-ftg2qpku.manus.space';
-          const appUrl = `${protocol}://${host}`;
+          const appUrl = 'https://dashboard.florayfauna.pe';
           emailSent = await sendPasswordResetEmail({
             name: existingUser[0].name ?? existingUser[0].username ?? 'Usuario',
             email: existingUser[0].email,
