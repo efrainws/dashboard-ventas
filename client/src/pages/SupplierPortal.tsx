@@ -154,10 +154,12 @@ export default function SupplierPortal() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
-  const [stockSearch, setStockSearch] = useState("");
+  const [stockProductId, setStockProductId] = useState<string | undefined>(undefined);
+  const [stockProductSearch, setStockProductSearch] = useState("");
   const [stockBranchId, setStockBranchId] = useState<string | undefined>(undefined);
   const [stockPage, setStockPage] = useState(0);
-  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogProductId, setCatalogProductId] = useState<string | undefined>(undefined);
+  const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
   const [recPage, setRecPage] = useState(0);
   // Estado para la pestaña Ventas
@@ -233,9 +235,18 @@ export default function SupplierPortal() {
       { enabled: queriesEnabled }
     );
 
+  // Query: lista de productos del proveedor para los Selects (debe ir antes de stock y catálogo)
+  const { data: supplierProducts, isLoading: supplierProductsLoading } =
+    trpc.supplierPortal.getProductsForSupplier.useQuery(
+      { supplierId: effectiveSupplierId },
+      { enabled: queriesEnabled }
+    );
+
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
-      search: stockSearch || undefined,
+      search: stockProductId
+        ? supplierProducts?.find((p) => p.id === stockProductId)?.name
+        : undefined,
       branchId: stockBranchId,
       supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
@@ -244,7 +255,9 @@ export default function SupplierPortal() {
 
   const { data: catalogData, isLoading: catalogLoading } =
     trpc.supplierPortal.getProductCatalog.useQuery({
-      search: catalogSearch || undefined,
+      search: catalogProductId
+        ? supplierProducts?.find((p) => p.id === catalogProductId)?.name
+        : undefined,
       supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
       offset: catalogPage * PAGE_SIZE,
@@ -256,13 +269,6 @@ export default function SupplierPortal() {
       limit: PAGE_SIZE,
       offset: recPage * PAGE_SIZE,
     }, { enabled: queriesEnabled });
-
-  // Query: lista de productos del proveedor para el Select
-  const { data: supplierProducts, isLoading: supplierProductsLoading } =
-    trpc.supplierPortal.getProductsForSupplier.useQuery(
-      { supplierId: effectiveSupplierId },
-      { enabled: queriesEnabled }
-    );
 
   // Productos filtrados por búsqueda en el Select
   const filteredProducts = useMemo(() => {
@@ -809,18 +815,48 @@ export default function SupplierPortal() {
         ══════════════════════════════════════════════ */}
         {activeTab === "productos" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre o SKU..."
-                  value={catalogSearch}
-                  onChange={(e) => {
-                    setCatalogSearch(e.target.value);
-                    setCatalogPage(0);
-                  }}
-                  className="pl-8 h-9"
-                />
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Filtro por producto - Select desplegable */}
+              <div className="flex-1 min-w-[240px] max-w-sm">
+                <Select
+                  value={catalogProductId ?? "all"}
+                  onValueChange={(v) => { setCatalogProductId(v === "all" ? undefined : v); setCatalogPage(0); }}
+                >
+                  <SelectTrigger className="h-9 text-sm w-full">
+                    <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <div className="px-2 py-1.5 sticky top-0 bg-popover z-10">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Buscar producto o SKU..."
+                          value={catalogProductSearch}
+                          onChange={(e) => setCatalogProductSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          className="w-full pl-7 pr-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                    <SelectItem value="all">Todos los productos</SelectItem>
+                    {(supplierProducts ?? []).filter((p) => {
+                      if (!catalogProductSearch.trim()) return true;
+                      const q = catalogProductSearch.toLowerCase();
+                      return p.name.toLowerCase().includes(q) || p.sku.includes(q);
+                    }).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="truncate">
+                          <span className="font-mono text-xs text-muted-foreground mr-1.5">{p.sku}</span>
+                          {p.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {!supplierProductsLoading && supplierProducts?.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground text-center">Sin resultados</div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               {catalogData && (
                 <span className="text-sm text-muted-foreground">
@@ -931,18 +967,47 @@ export default function SupplierPortal() {
           <div className="space-y-4">
             {/* Barra de filtros */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Filtro por producto */}
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre o SKU..."
-                  value={stockSearch}
-                  onChange={(e) => {
-                    setStockSearch(e.target.value);
-                    setStockPage(0);
-                  }}
-                  className="pl-8 h-9"
-                />
+              {/* Filtro por producto - Select desplegable */}
+              <div className="flex-1 min-w-[240px] max-w-sm">
+                <Select
+                  value={stockProductId ?? "all"}
+                  onValueChange={(v) => { setStockProductId(v === "all" ? undefined : v); setStockPage(0); }}
+                >
+                  <SelectTrigger className="h-9 text-sm w-full">
+                    <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <div className="px-2 py-1.5 sticky top-0 bg-popover z-10">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Buscar producto o SKU..."
+                          value={stockProductSearch}
+                          onChange={(e) => setStockProductSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          className="w-full pl-7 pr-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                    <SelectItem value="all">Todos los productos</SelectItem>
+                    {(supplierProducts ?? []).filter((p) => {
+                      if (!stockProductSearch.trim()) return true;
+                      const q = stockProductSearch.toLowerCase();
+                      return p.name.toLowerCase().includes(q) || p.sku.includes(q);
+                    }).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="truncate">
+                          <span className="font-mono text-xs text-muted-foreground mr-1.5">{p.sku}</span>
+                          {p.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {!supplierProductsLoading && supplierProducts?.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground text-center">Sin resultados</div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Filtro por tienda */}
@@ -968,13 +1033,14 @@ export default function SupplierPortal() {
               </Select>
 
               {/* Botón limpiar filtros (visible solo si hay algún filtro activo) */}
-              {(stockSearch || stockBranchId) && (
+              {(stockProductId || stockBranchId) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-9 text-muted-foreground"
                   onClick={() => {
-                    setStockSearch("");
+                    setStockProductId(undefined);
+                    setStockProductSearch("");
                     setStockBranchId(undefined);
                     setStockPage(0);
                   }}

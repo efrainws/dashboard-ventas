@@ -1475,3 +1475,5 @@ Fecha: 1 de febrero de 2026
 - [x] SupplierPortal: endpoint getSalesDailyDetail (detalle diario para el modal)
 - [x] SupplierPortal: endpoint getProductsForSupplier (lista de productos del proveedor para el Select)
 - [x] SupplierPortal: reemplazar input de búsqueda de SKU por Select desplegable de productos del proveedor
+- [x] SupplierPortal: reemplazar input de búsqueda en pestaña Catálogo por Select desplegable de productos
+- [x] SupplierPortal: reemplazar input de búsqueda en pestaña Stock por Select desplegable de productos
