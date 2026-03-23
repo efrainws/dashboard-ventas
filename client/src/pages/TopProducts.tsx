@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy, Hash, DollarSign, Package, Store } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { useIsMobile } from "@/hooks/useMobile";
 import type { DateRange } from "react-day-picker";
 import {
   BarChart,
@@ -221,7 +220,13 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
 
 // ─── Gráfico de barras horizontal ────────────────────────────────────────────
 function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
-  const isMobile = useIsMobile();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    handler(); // forzar lectura inmediata al montar
+    return () => window.removeEventListener("resize", handler);
+  }, []);
   const chartData = rows.slice(0, 20).map((r) => ({
     ...r,
     label: truncate(r.product_name),
