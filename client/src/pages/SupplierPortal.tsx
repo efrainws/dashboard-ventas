@@ -1522,7 +1522,7 @@ export default function SupplierPortal() {
                             tienda: row.tienda,
                           })}
                         >
-                          <TableCell className="pl-4 font-medium text-sm max-w-[220px]">
+                          <TableCell className="pl-4 text-sm max-w-[220px]">
                             <span className="line-clamp-2 leading-tight">{row.producto}</span>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground font-mono">{row.sku}</TableCell>
@@ -1533,8 +1533,8 @@ export default function SupplierPortal() {
                             </div>
                           </TableCell>
                           <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
-                          <TableCell className="text-right tabular-nums font-medium">{fmt(row.cantidad)}</TableCell>
-                          <TableCell className="text-right tabular-nums font-medium" style={{ color: "#008064" }}>
+                          <TableCell className="text-right tabular-nums">{fmt(row.cantidad)}</TableCell>
+                          <TableCell className="text-right tabular-nums" style={{ color: "#008064" }}>
                             {fmtCurrency(row.monto)}
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-muted-foreground text-sm">{row.tickets}</TableCell>
@@ -1553,7 +1553,7 @@ export default function SupplierPortal() {
                       {/* Fila de totales globales */}
                       {!salesPBLoading && salesByPB?.totals && salesByPB.rows.length > 0 && (
                         <TableRow className="border-t-2 border-border font-semibold bg-muted/30">
-                          <TableCell className="pl-4 text-sm" colSpan={4}>TOTAL GENERAL</TableCell>
+                          <TableCell className="pl-4 text-sm" colSpan={4}>Total General</TableCell>
                           <TableCell className="text-right tabular-nums text-sm">{fmt(salesByPB.totals.cantidad)}</TableCell>
                           <TableCell className="text-right tabular-nums text-sm" style={{ color: "#008064" }}>
                             {fmtCurrency(salesByPB.totals.monto)}
