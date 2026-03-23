@@ -830,6 +830,83 @@ export const supplierPortalRouter = router({
     }),
 
   /**
+   * Exportación completa del stock (sin paginación) para descarga CSV.
+   * Mismos filtros que getStockByProduct pero sin LIMIT/OFFSET.
+   */
+  exportStockByProduct: protectedProcedure
+    .input(
+      z.object({
+        productId: z.string().optional(),
+        branchId: z.string().optional(),
+        supplierId: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+
+      if (input.productId) {
+        const params: (string | number)[] = [supplierId, input.productId];
+        const branchClause = input.branchId ? `AND b.id = $3` : "";
+        if (input.branchId) params.push(input.branchId);
+
+        const res = await pool.query(
+          `SELECT
+             p.name                                        AS producto,
+             p.int_sku,
+             b.id                                          AS branch_id,
+             b.name                                        AS tienda,
+             b.sap_id,
+             COALESCE(st.stock, 0)                         AS stock_actual,
+             st.min_stock
+           FROM public.branches b
+           CROSS JOIN (
+             SELECT id, name, int_sku FROM public.products
+             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           ) p
+           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
+           WHERE 1=1 ${branchClause}
+           ORDER BY b.sap_id ASC`,
+          params
+        );
+        return res.rows as Array<{
+          producto: string; int_sku: string; branch_id: string;
+          tienda: string; sap_id: string; stock_actual: number; min_stock: number | null;
+        }>;
+      }
+
+      // Sin filtro de producto: todos los registros con stock > 0
+      const extraClauses: string[] = [];
+      const params: (string | number)[] = [supplierId];
+      if (input.branchId) {
+        params.push(input.branchId);
+        extraClauses.push(`AND b.id = $${params.length}`);
+      }
+
+      const res = await pool.query(
+        `SELECT
+           p.name                                        AS producto,
+           p.int_sku,
+           b.id                                          AS branch_id,
+           b.name                                        AS tienda,
+           b.sap_id,
+           st.stock                                      AS stock_actual,
+           st.min_stock
+         FROM public.stocks st
+         JOIN public.products p ON p.id = st.product_id
+         JOIN public.branches b ON b.id = st.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND st.stock > 0
+           ${extraClauses.join(" ")}
+         ORDER BY p.name ASC, b.sap_id ASC`,
+        params
+      );
+      return res.rows as Array<{
+        producto: string; int_sku: string; branch_id: string;
+        tienda: string; sap_id: string; stock_actual: number; min_stock: number | null;
+      }>;
+    }),
+
+  /**
    * Lista todos los productos del proveedor (id, nombre, sku) para el Select desplegable.
    * Ordenados alfabéticamente por nombre.
    */

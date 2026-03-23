@@ -170,8 +170,10 @@ export default function SupplierPortal() {
   const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
   const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
-  // Estado de exportación
+  // Estado de exportación (ventas)
   const [isExporting, setIsExporting] = useState(false);
+  // Estado de exportación (stock)
+  const [isExportingStock, setIsExportingStock] = useState(false);
   // Modal de detalle diario
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
@@ -346,6 +348,47 @@ export default function SupplierPortal() {
       URL.revokeObjectURL(url);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  // Query lazy para exportación de stock (se activa solo al hacer clic en Descargar)
+  const exportStockQuery = trpc.supplierPortal.exportStockByProduct.useQuery({
+    productId: stockProductId,
+    branchId: stockBranchId,
+    supplierId: effectiveSupplierId,
+  }, { enabled: false });
+
+  // Función para descargar CSV de stock
+  const handleDownloadStockCSV = async () => {
+    setIsExportingStock(true);
+    try {
+      const result = await exportStockQuery.refetch();
+      const rows = result.data ?? [];
+      if (rows.length === 0) return;
+
+      const headers = ["Producto", "SKU", "Tienda", "Cód. SAP", "Stock Actual", "Stock Mínimo"];
+      const csvRows = rows.map((r) => [
+        `"${r.producto.replace(/"/g, '""')}"`,
+        r.int_sku,
+        `"${r.tienda.replace(/"/g, '""')}"`,
+        r.sap_id ?? "",
+        r.stock_actual,
+        r.min_stock ?? "",
+      ].join(","));
+
+      const csvContent = [headers.join(","), ...csvRows].join("\n");
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const productLabel = stockProductId
+        ? (supplierProducts?.find((p) => p.id === stockProductId)?.sku ?? "producto")
+        : "todos";
+      a.download = `stock_${productLabel}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExportingStock(false);
     }
   };
 
@@ -1104,11 +1147,27 @@ export default function SupplierPortal() {
                 </Button>
               )}
 
-              {stockData && (
-                <span className="text-sm text-muted-foreground ml-auto">
-                  {stockData.total} registros
-                </span>
-              )}
+              <div className="ml-auto flex items-center gap-3">
+                {stockData && (
+                  <span className="text-sm text-muted-foreground">
+                    {stockData.total} registros
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5"
+                  onClick={handleDownloadStockCSV}
+                  disabled={isExportingStock || !queriesEnabled}
+                >
+                  {isExportingStock ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5" />
+                  )}
+                  {isExportingStock ? "Exportando..." : "Descargar CSV"}
+                </Button>
+              </div>
             </div>
 
             <Card className="border-border/50">
