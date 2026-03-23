@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy, Hash, DollarSign, Package, Store } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
+import { useIsMobile } from "@/hooks/useMobile";
 import type { DateRange } from "react-day-picker";
 import {
   BarChart,
@@ -220,6 +221,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
 
 // ─── Gráfico de barras horizontal ────────────────────────────────────────────
 function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
+  const isMobile = useIsMobile();
   const chartData = rows.slice(0, 20).map((r) => ({
     ...r,
     label: truncate(r.product_name),
@@ -234,7 +236,7 @@ function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | 
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 4, right: 28, left: 8, bottom: 4 }}
+          margin={{ top: 4, right: 28, left: isMobile ? 4 : 8, bottom: 4 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -257,8 +259,8 @@ function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | 
           <YAxis
             type="category"
             dataKey="label"
-            width={190}
-            tick={{ fontSize: 11, fill: "#232523", fontFamily: "'Sailec', system-ui, sans-serif" }}
+            width={isMobile ? 0 : 190}
+            tick={isMobile ? false : { fontSize: 11, fill: "#232523", fontFamily: "'Sailec', system-ui, sans-serif" }}
             axisLine={false}
             tickLine={false}
           />

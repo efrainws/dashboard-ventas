@@ -1485,3 +1485,4 @@ Fecha: 1 de febrero de 2026
 - [ ] SupplierPortal: agregar columna SAP_ID en tablas de Ventas y Stock
 - [ ] SupplierPortal: completar filas con stock=0 para tiendas sin stock al consultar un producto
 - [x] SupplierPortal: botón de descarga CSV en pestaña Stock
+- [x] TopProducts: ocultar etiquetas del eje Y en mobile (mostrar solo en tooltip)
