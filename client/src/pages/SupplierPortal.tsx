@@ -496,7 +496,7 @@ export default function SupplierPortal() {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Header ── */}
-      <header className="border-b border-border bg-card sticky top-0 z-40">
+      <header className="border-b border-border sticky top-0 z-40" style={{ backgroundColor: "#f5f4f1" }}>
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             {/* Logo modo claro */}
@@ -557,7 +557,7 @@ export default function SupplierPortal() {
       </header>
 
       {/* ── Tabs de navegación ── */}
-      <div className="border-b border-border bg-card">
+      <div className="border-b border-border" style={{ backgroundColor: "#f5f4f1" }}>
         <div className="container">
           <nav className="flex gap-0">
             {TABS.map((tab) => {
