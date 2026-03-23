@@ -48,6 +48,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   TrendingUp,
   Package,
   Store,
@@ -1510,6 +1516,7 @@ export default function SupplierPortal() {
                           </TableRow>
                         ))
                       )}
+                      <TooltipProvider delayDuration={300}>
                       {!salesPBLoading && salesByPB?.rows.map((row) => (
                         <TableRow
                           key={`${row.product_id}-${row.branch_id}`}
@@ -1523,7 +1530,14 @@ export default function SupplierPortal() {
                           })}
                         >
                           <TableCell className="pl-4 text-sm max-w-[220px]">
-                            <span className="line-clamp-2 leading-tight">{row.producto}</span>
+                            <UITooltip>
+                              <TooltipTrigger asChild>
+                                <span className="line-clamp-2 leading-tight cursor-pointer">{row.producto}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Haz clic para ver el detalle de ventas por día
+                              </TooltipContent>
+                            </UITooltip>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground font-mono">{row.sku}</TableCell>
                           <TableCell className="text-sm">
@@ -1543,6 +1557,7 @@ export default function SupplierPortal() {
                           </TableCell>
                         </TableRow>
                       ))}
+                      </TooltipProvider>
                       {!salesPBLoading && !salesByPB?.rows.length && (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-12">

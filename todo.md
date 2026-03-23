@@ -1492,3 +1492,8 @@ Fecha: 1 de febrero de 2026
 - [x] Sustituir bloques de advertencia amarillos (#FFF8EC/#F0D99A/#7A5C00) por #C49705/#EACB82/#624C02 en todos los correos (bienvenida, reset contraseña, activación)
 - [x] Actualizar stripes decorativos para usar #80C8CA como color intermedio del gradiente
 - [x] Actualizar bordes de role badge para usar #006050
+
+## Mejoras en Tabla Ventas y Modal Detalle Diario (23/03/2026)
+- [x] Agregar fila "Total General" al pie de la tabla del modal de detalle de ventas por día (suma de cantidad, monto y tickets)
+- [x] Quitar negritas (font-medium) del cuerpo de la tabla del modal de detalle diario (fecha, monto)
+- [x] Agregar tooltip en la celda de nombre de producto de la tabla principal de ventas: "Haz clic para ver el detalle de ventas por día"
