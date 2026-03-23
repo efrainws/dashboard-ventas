@@ -1486,3 +1486,9 @@ Fecha: 1 de febrero de 2026
 - [ ] SupplierPortal: completar filas con stock=0 para tiendas sin stock al consultar un producto
 - [x] SupplierPortal: botón de descarga CSV en pestaña Stock
 - [x] TopProducts: ocultar etiquetas del eje Y en mobile (mostrar solo en tooltip)
+
+## Actualización de Colores en Correos (23/03/2026)
+- [x] Actualizar paleta COLORS en server/email.ts: bg #F5F4F1, card #FFFFFF, primary #232523, accent #008064, accentLight #004032, border #EAE8E2
+- [x] Sustituir bloques de advertencia amarillos (#FFF8EC/#F0D99A/#7A5C00) por #C49705/#EACB82/#624C02 en todos los correos (bienvenida, reset contraseña, activación)
+- [x] Actualizar stripes decorativos para usar #80C8CA como color intermedio del gradiente
+- [x] Actualizar bordes de role badge para usar #006050

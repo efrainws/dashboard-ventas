@@ -11,12 +11,12 @@ const LOGO_DARK_URL =
 
 // Brand colors matching the dashboard design
 const COLORS = {
-  bg: "#F5F3EF",
+  bg: "#F5F4F1",
   card: "#FFFFFF",
-  primary: "#252325",
-  accent: "#5C6B3A",
-  accentLight: "#EEF1E6",
-  border: "#E5E2DB",
+  primary: "#232523",
+  accent: "#008064",
+  accentLight: "#004032",
+  border: "#EAE8E2",
   textMuted: "#6B6866",
   textBody: "#3D3B3C",
 };
@@ -69,7 +69,7 @@ function buildWelcomeEmailHtml(params: {
 
           <!-- Decorative stripe -->
           <tr>
-            <td style="height:4px;background:linear-gradient(90deg,${COLORS.accent} 0%,#8FA45A 50%,${COLORS.accent} 100%);"></td>
+            <td style="height:4px;background:linear-gradient(90deg,${COLORS.accent} 0%,#80C8CA 50%,${COLORS.accent} 100%);"></td>
           </tr>
 
           <!-- Body -->
@@ -85,7 +85,7 @@ function buildWelcomeEmailHtml(params: {
               </p>
 
               <!-- Role badge -->
-              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #C8D4A8;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
+              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #006050;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
                 <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.06em;text-transform:uppercase;">
                   ${roleLabel}
                 </span>
@@ -130,8 +130,8 @@ function buildWelcomeEmailHtml(params: {
               <!-- Security notice -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="background-color:#FFF8EC;border:1px solid #F0D99A;border-radius:8px;padding:14px 18px;">
-                    <p style="margin:0;font-size:13px;color:#7A5C00;line-height:1.5;">
+                  <td style="background-color:#C49705;border:1px solid #EACB82;border-radius:8px;padding:14px 18px;">
+                    <p style="margin:0;font-size:13px;color:#624C02;line-height:1.5;">
                       <strong>⚠ Seguridad:</strong> Te recomendamos cambiar tu contraseña en el primer inicio de sesión.
                       Guarda estas credenciales en un lugar seguro y no las compartas.
                     </p>
@@ -303,7 +303,7 @@ function buildPasswordResetEmailHtml(params: {
 
               <!-- Icon + title -->
               <div style="text-align:center;margin-bottom:24px;">
-                <div style="display:inline-block;background-color:#FFF8EC;border:1px solid #F0D99A;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:26px;">
+                <div style="display:inline-block;background-color:#C49705;border:1px solid #EACB82;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:26px;">
                   🔑
                 </div>
               </div>
@@ -354,8 +354,8 @@ function buildPasswordResetEmailHtml(params: {
               <!-- Security notice -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="background-color:#FFF8EC;border:1px solid #F0D99A;border-radius:8px;padding:14px 18px;">
-                    <p style="margin:0;font-size:13px;color:#7A5C00;line-height:1.5;">
+                  <td style="background-color:#C49705;border:1px solid #EACB82;border-radius:8px;padding:14px 18px;">
+                    <p style="margin:0;font-size:13px;color:#624C02;line-height:1.5;">
                       <strong>⚠ Seguridad:</strong> Te recomendamos cambiar esta contraseña inmediatamente después de ingresar.
                       Si no solicitaste este cambio, contacta al administrador del sistema de inmediato.
                     </p>
@@ -811,7 +811,7 @@ function buildActivationEmailHtml(params: {
 
           <!-- Decorative stripe -->
           <tr>
-            <td style="height:4px;background:linear-gradient(90deg,${COLORS.accent} 0%,#8FA45A 50%,${COLORS.accent} 100%);"></td>
+            <td style="height:4px;background:linear-gradient(90deg,${COLORS.accent} 0%,#80C8CA 50%,${COLORS.accent} 100%);"></td>
           </tr>
 
           <!-- Body -->
@@ -827,7 +827,7 @@ function buildActivationEmailHtml(params: {
               </p>
 
               <!-- Role badge -->
-              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #C8D4A8;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
+              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #006050;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
                 <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.06em;text-transform:uppercase;">
                   ${roleLabel}
                 </span>
@@ -889,8 +889,8 @@ function buildActivationEmailHtml(params: {
               <!-- Expiry notice -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
                 <tr>
-                  <td style="background-color:#FFF8EC;border:1px solid #F0D99A;border-radius:8px;padding:14px 18px;">
-                    <p style="margin:0;font-size:13px;color:#7A5C00;line-height:1.5;">
+                  <td style="background-color:#C49705;border:1px solid #EACB82;border-radius:8px;padding:14px 18px;">
+                    <p style="margin:0;font-size:13px;color:#624C02;line-height:1.5;">
                       <strong>⏱ Este enlace expira en 48 horas.</strong> Si no activas tu cuenta en ese tiempo,
                       contacta al administrador para obtener un nuevo enlace.
                     </p>
