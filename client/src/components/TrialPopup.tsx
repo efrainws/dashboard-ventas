@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -39,8 +40,11 @@ function markShownToday(): void {
 export function TrialPopup() {
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const isSupplier = user?.role === "supplier_user";
   const { data: status } = trpc.supplierTrial.getMyStatus.useQuery(undefined, {
     retry: false,
+    enabled: isSupplier,
   });
 
   useEffect(() => {

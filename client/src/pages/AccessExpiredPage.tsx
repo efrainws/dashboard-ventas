@@ -5,17 +5,22 @@
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Lock, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AccessExpiredPage() {
+  const { user } = useAuth();
   const [accepted, setAccepted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const { data: terms, isLoading: termsLoading } = trpc.supplierTrial.getActiveTerms.useQuery();
-  const { data: myStatus } = trpc.supplierTrial.getMyStatus.useQuery();
+  const { data: myStatus } = trpc.supplierTrial.getMyStatus.useQuery(undefined, {
+    enabled: user?.role === "supplier_user",
+    retry: false,
+  });
 
   const utils = trpc.useUtils();
   const requestMutation = trpc.supplierTrial.requestPaidAccess.useMutation({
