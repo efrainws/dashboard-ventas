@@ -1532,3 +1532,14 @@ Fecha: 1 de febrero de 2026
 - [x] Navegación: enlace "Monitoreo" en NavigationMenu para especialistas
 - [x] Tests: 10 tests unitarios para computeSupplierStatus y cálculo de porcentaje
 - [x] 154/154 tests pasan
+
+## Mejoras en Monitoreo de Proveedores y Control de Acceso
+
+- [x] Agregar procedimiento tRPC createSupplierUser en supplierTrialRouter (reutiliza users.createUser)
+- [x] Agregar botón "Nuevo Proveedor" y diálogo de creación en SupplierMonitor
+- [x] Diálogo: campos nombre, email, username, proveedor ID, contraseña temporal
+- [x] Diálogo: mensaje indicando que contraseña no se envía por correo
+- [x] Enviar correo de activación al nuevo usuario proveedor
+- [x] Restringir /admin/users: solo system_specialist (quitar acceso a commercial_specialist y cst_user)
+- [x] Actualizar guard en App.tsx para /admin/users (nuevo guard system_specialist_only)
+- [x] Actualizar NavigationMenu para ocultar enlace Usuarios a commercial_specialist

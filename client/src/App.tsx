@@ -26,7 +26,7 @@ import SupplierMonitor from "./pages/SupplierMonitor";
 import AffiliationReport from "./pages/AffiliationReport";
 import { TrialPopup } from "./components/TrialPopup";
 
-type RouteGuard = "no_supplier" | "managers_only";
+type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only";
 
 /**
  * Ruta protegida con autenticación y control de acceso por perfil.
@@ -75,6 +75,11 @@ function ProtectedRoute({
     user.role !== "cst_user" &&
     user.role !== "commercial_specialist"
   ) {
+    return <AccessDenied />;
+  }
+
+  // Guard: solo system_specialist
+  if (guard === "system_specialist_only" && user.role !== "system_specialist") {
     return <AccessDenied />;
   }
 
@@ -141,9 +146,9 @@ function Router() {
         {() => <ProtectedRoute component={TopProducts} path="/top-products" guard="no_supplier" />}
       </Route>
 
-      {/* Gestión de usuarios — solo gestores */}
+      {/* Gestión de usuarios — solo system_specialist */}
       <Route path="/admin/users">
-        {() => <ProtectedRoute component={UserManagement} path="/admin/users" guard="managers_only" />}
+        {() => <ProtectedRoute component={UserManagement} path="/admin/users" guard="system_specialist_only" />}
       </Route>
 
       <Route path="/404" component={NotFound} />

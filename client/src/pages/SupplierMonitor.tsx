@@ -3,11 +3,12 @@
  * Página de monitoreo de usuarios proveedor.
  * Accesible solo para system_specialist y commercial_specialist.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -29,8 +30,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  Loader2,
+  Clock,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  ShieldCheck,
+  UserPlus,
+  Eye,
+  EyeOff,
+  Info,
+} from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -72,12 +85,247 @@ function fmtDate(d: Date | null | undefined): string {
   return format(new Date(d), "dd/MM/yyyy", { locale: es });
 }
 
+// ─── Diálogo de creación de usuario proveedor ────────────────────────────────
+
+interface CreateSupplierUserDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUserDialogProps) {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    username: "",
+    password: "",
+    supplierSearch: "",
+    assignedSupplierId: "",
+    supplierLabel: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [supplierResults, setSupplierResults] = useState<{ id: string; ruc: string; name: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset al abrir
+  useEffect(() => {
+    if (open) {
+      setForm({ name: "", email: "", username: "", password: "", supplierSearch: "", assignedSupplierId: "", supplierLabel: "" });
+      setShowPassword(false);
+      setSupplierResults([]);
+      setShowDropdown(false);
+    }
+  }, [open]);
+
+  const supplierQuery = trpc.users.getSuppliers.useQuery(
+    { search: form.supplierSearch },
+    { enabled: form.supplierSearch.length >= 2 }
+  );
+
+  useEffect(() => {
+    if (supplierQuery.data?.suppliers) {
+      setSupplierResults(supplierQuery.data.suppliers);
+      setShowDropdown(form.supplierSearch.length >= 2 && supplierQuery.data.suppliers.length > 0);
+    }
+  }, [supplierQuery.data, form.supplierSearch]);
+
+  const createMutation = trpc.users.createUser.useMutation({
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        toast.success("Usuario creado. Se envió el correo de activación.");
+      } else {
+        toast.success("Usuario creado. No se pudo enviar el correo de activación (revisa el email).");
+      }
+      onCreated();
+      onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) return toast.error("El nombre es requerido.");
+    if (!form.username.trim() || form.username.length < 3) return toast.error("El usuario debe tener al menos 3 caracteres.");
+    if (!form.password || form.password.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres.");
+    if (!form.assignedSupplierId) return toast.error("Debes seleccionar un proveedor.");
+
+    createMutation.mutate({
+      name: form.name.trim(),
+      email: form.email.trim() || undefined,
+      username: form.username.trim(),
+      password: form.password,
+      role: "supplier_user",
+      assignedSupplierId: form.assignedSupplierId,
+      sendWelcomeEmail: !!form.email.trim(),
+    });
+  };
+
+  const selectSupplier = (s: { id: string; ruc: string; name: string }) => {
+    setForm((f) => ({
+      ...f,
+      assignedSupplierId: s.id,
+      supplierSearch: `${s.ruc} — ${s.name}`,
+      supplierLabel: `${s.ruc} — ${s.name}`,
+    }));
+    setShowDropdown(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" style={{ color: "#008064" }} />
+            Nuevo Usuario Proveedor
+          </DialogTitle>
+          <DialogDescription>
+            Completa los datos para crear la cuenta de acceso al portal de proveedores.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          {/* Nombre */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sup-name">Nombre completo <span className="text-destructive">*</span></Label>
+            <Input
+              id="sup-name"
+              placeholder="Ej. Juan Pérez"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sup-email">
+              Correo electrónico
+              <span className="text-muted-foreground text-xs ml-1">(opcional, para envío de activación)</span>
+            </Label>
+            <Input
+              id="sup-email"
+              type="email"
+              placeholder="proveedor@empresa.com"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            />
+          </div>
+
+          {/* Username */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sup-username">Usuario <span className="text-destructive">*</span></Label>
+            <Input
+              id="sup-username"
+              placeholder="Mínimo 3 caracteres"
+              value={form.username}
+              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, "") }))}
+            />
+          </div>
+
+          {/* Contraseña */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sup-password">Contraseña temporal <span className="text-destructive">*</span></Label>
+            <div className="relative">
+              <Input
+                id="sup-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Mínimo 6 caracteres"
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((v) => !v)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Proveedor */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sup-supplier">Proveedor asignado <span className="text-destructive">*</span></Label>
+            <div className="relative" ref={dropdownRef}>
+              <Input
+                id="sup-supplier"
+                placeholder="Buscar por RUC..."
+                value={form.supplierSearch}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, supplierSearch: e.target.value, assignedSupplierId: "", supplierLabel: "" }));
+                }}
+                autoComplete="off"
+              />
+              {showDropdown && supplierResults.length > 0 && (
+                <div
+                  className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                  style={{ background: "#fff", border: "1px solid #EAE8E2" }}
+                >
+                  {supplierResults.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                      onClick={() => selectSupplier(s)}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground mr-2">{s.ruc}</span>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {form.assignedSupplierId && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3" style={{ color: "#008064" }} />
+                Proveedor seleccionado: {form.supplierLabel}
+              </p>
+            )}
+          </div>
+
+          {/* Aviso de contraseña */}
+          <div
+            className="flex gap-2 rounded-lg p-3 text-xs"
+            style={{ background: "#FEF3C7", border: "1px solid #FCD34D", color: "#78350F" }}
+          >
+            <Info className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              La contraseña temporal <strong>no se enviará por correo</strong>. Debes comunicársela al usuario por otro medio.
+              {form.email && " Se enviará un enlace de activación al correo indicado para que el usuario establezca su propia contraseña."}
+            </span>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={createMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={createMutation.isPending || !form.name || !form.username || !form.password || !form.assignedSupplierId}
+            style={{ background: "#008064", color: "#fff" }}
+          >
+            {createMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creando...</>
+            ) : (
+              <><UserPlus className="h-4 w-4 mr-2" />Crear usuario</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
 export default function SupplierMonitor() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterStatus, setFilterStatus] = useState<SupplierStatus | "all">("all");
-  const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ userId: number; action: "approve" | "suspend" | "activate_trial" } | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data: suppliers, isLoading, refetch } = trpc.supplierTrial.listSupplierUsers.useQuery(
     filterStatus !== "all" ? { status: filterStatus } : {}
@@ -133,7 +381,6 @@ export default function SupplierMonitor() {
   };
 
   const isPending = approveMutation.isPending || setStatusMutation.isPending || activateTrialMutation.isPending;
-
   const pendingCount = suppliers?.filter((s) => s.effectiveStatus === "access_requested").length ?? 0;
 
   return (
@@ -164,10 +411,18 @@ export default function SupplierMonitor() {
             </Button>
             <Button
               size="sm"
+              variant="outline"
               onClick={() => navigate("/afiliacion")}
-              style={{ background: "#008064", color: "#fff" }}
             >
               Ver reporte de afiliación
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setShowCreateDialog(true)}
+              style={{ background: "#008064", color: "#fff" }}
+            >
+              <UserPlus className="h-4 w-4 mr-1.5" />
+              Nuevo Proveedor
             </Button>
           </div>
         </div>
@@ -280,7 +535,17 @@ export default function SupplierMonitor() {
         </div>
       </div>
 
-      {/* Dialog de confirmación */}
+      {/* Diálogo de creación */}
+      <CreateSupplierUserDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onCreated={() => {
+          utils.supplierTrial.listSupplierUsers.invalidate();
+          refetch();
+        }}
+      />
+
+      {/* Dialog de confirmación de acción */}
       <Dialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

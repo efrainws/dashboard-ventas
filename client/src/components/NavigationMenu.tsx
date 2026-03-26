@@ -163,8 +163,8 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Usuarios — gestores: system_specialist, cst_user, commercial_specialist */}
-          {(user?.role === "system_specialist" || user?.role === "cst_user" || user?.role === "commercial_specialist") && (
+          {/* Usuarios — solo system_specialist */}
+          {user?.role === "system_specialist" && (
             <Link
               href="/admin/users"
               className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
@@ -371,8 +371,8 @@ export function NavigationMenu() {
               )}
             </Link>
 
-            {/* Usuarios — gestores: system_specialist, cst_user, commercial_specialist */}
-            {(user?.role === "system_specialist" || user?.role === "cst_user" || user?.role === "commercial_specialist") && (
+            {/* Usuarios — solo system_specialist */}
+            {user?.role === "system_specialist" && (
               <Link
                 href="/admin/users"
                 onClick={closeMobile}
