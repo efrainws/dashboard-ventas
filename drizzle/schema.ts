@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Roles de usuario:
@@ -37,10 +37,44 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+
+  // ── Trial / Subscription fields (supplier_user only) ──────────────────────
+  /**
+   * Estado del acceso del proveedor:
+   * - trial_active: dentro del período de prueba (activation_date .. trial_end_date)
+   * - trial_expired: trial vencido sin aceptar términos
+   * - subscribed_active: aceptó términos y fue activado para facturación
+   * - access_requested: vencido, aceptó términos, pendiente de aprobación
+   * - suspended: deshabilitado manualmente
+   */
+  supplierStatus: mysqlEnum("supplier_status", [
+    "trial_active",
+    "trial_expired",
+    "subscribed_active",
+    "access_requested",
+    "suspended",
+  ]),
+  /** Fecha en que se activó el acceso (inicio del trial) */
+  activationDate: timestamp("activation_date"),
+  /** Fecha de vencimiento del trial (activationDate + 7 días) */
+  trialEndDate: timestamp("trial_end_date"),
+  /** Fecha en que inició la suscripción facturada */
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  /** ID de la versión de términos aceptada */
+  termsVersionId: int("terms_version_id"),
+  /** Timestamp de aceptación de términos */
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  /** IP desde la que se aceptaron los términos */
+  termsAcceptedIp: varchar("terms_accepted_ip", { length: 64 }),
+  /** ID del usuario que aprobó la solicitud de acceso */
+  approvedById: int("approved_by_id"),
+  /** Timestamp de aprobación */
+  approvedAt: timestamp("approved_at"),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
 /**
  * Store monthly sales targets for tracking performance vs goals.
@@ -131,3 +165,38 @@ export const activationTokens = mysqlTable("activation_tokens", {
 
 export type ActivationToken = typeof activationTokens.$inferSelect;
 export type InsertActivationToken = typeof activationTokens.$inferInsert;
+
+/**
+ * Versiones de los términos y condiciones del servicio.
+ * Solo una versión puede estar activa a la vez (is_active = true).
+ */
+export const termsVersions = mysqlTable("terms_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Número de versión legible (e.g., "1.0", "1.1") */
+  version: varchar("version", { length: 16 }).notNull(),
+  /** Contenido completo de los términos (HTML o Markdown) */
+  content: text("content").notNull(),
+  /** Si esta versión está actualmente vigente */
+  isActive: int("is_active").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TermsVersion = typeof termsVersions.$inferSelect;
+export type InsertTermsVersion = typeof termsVersions.$inferInsert;
+
+/**
+ * Registro de aceptaciones de términos por usuario.
+ * Cada vez que un usuario acepta una versión de términos se crea un registro.
+ */
+export const termsAcceptance = mysqlTable("terms_acceptance", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  termsVersionId: int("terms_version_id").notNull(),
+  /** Timestamp de aceptación */
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  /** IP desde la que se aceptó */
+  ip: varchar("ip", { length: 64 }),
+});
+
+export type TermsAcceptance = typeof termsAcceptance.$inferSelect;
+export type InsertTermsAcceptance = typeof termsAcceptance.$inferInsert;

@@ -27,6 +27,7 @@ import {
   Menu,
   X,
   Trophy,
+  Activity,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -185,6 +186,19 @@ export function NavigationMenu() {
             >
               <Truck className="h-4 w-4" />
               <span>Proveedores</span>
+            </Link>
+          )}
+
+          {/* Monitoreo proveedores — solo system_specialist y commercial_specialist */}
+          {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
+            <Link
+              href="/monitoreo-proveedores"
+              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+                isActive("/monitoreo-proveedores") || isActive("/afiliacion") ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Activity className="h-4 w-4" />
+              <span>Monitoreo</span>
             </Link>
           )}
 
@@ -386,6 +400,22 @@ export function NavigationMenu() {
               >
                 <Truck className="h-4 w-4 shrink-0" />
                 <span>Proveedores</span>
+              </Link>
+            )}
+
+            {/* Monitoreo proveedores — solo system_specialist y commercial_specialist */}
+            {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
+              <Link
+                href="/monitoreo-proveedores"
+                onClick={closeMobile}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/monitoreo-proveedores") || isActive("/afiliacion")
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Activity className="h-4 w-4 shrink-0" />
+                <span>Monitoreo Proveedores</span>
               </Link>
             )}
 

@@ -1497,3 +1497,38 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar fila "Total General" al pie de la tabla del modal de detalle de ventas por día (suma de cantidad, monto y tickets)
 - [x] Quitar negritas (font-medium) del cuerpo de la tabla del modal de detalle diario (fecha, monto)
 - [x] Agregar tooltip en la celda de nombre de producto de la tabla principal de ventas: "Haz clic para ver el detalle de ventas por día"
+
+## Módulo de Gestión de Usuarios Proveedor (Trial / Suscripción)
+- [ ] Extender tabla users con campos de trial/suscripción en drizzle/schema.ts
+- [ ] Crear tabla terms_versions en drizzle/schema.ts
+- [ ] Crear tabla terms_acceptance en drizzle/schema.ts
+- [ ] Ejecutar migración pnpm db:push
+- [ ] Helpers de DB: getSupplierUserStatus, acceptTerms, approveAccessRequest, suspendUser, reactivateUser
+- [ ] Procedimientos tRPC: supplierTrial router (getStatus, acceptTerms, requestAccess, approveRequest, changeStatus, resendInvitation, getTermsDetail)
+- [ ] UI: Popup diario de trial (una vez por día calendario)
+- [ ] UI: Página de términos con checkbox obligatorio
+- [ ] UI: Página independiente de acceso vencido con flujo de solicitud
+- [ ] UI: Página de monitoreo de usuarios proveedor (solo commercial_specialist / systems_specialist)
+- [ ] UI: Página de reporte de afiliación con indicador_primer_mes y porcentaje_cobro
+- [ ] Exportación CSV en monitoreo y reporte de afiliación
+- [ ] Notificación "faltan 2 días para vencer trial" (día 5 desde activation_date)
+- [ ] Notificación al usuario al aceptar términos
+- [ ] Notificación a especialistas cuando usuario solicite acceso facturado
+- [ ] Notificación al usuario cuando su solicitud sea aprobada
+
+## Módulo Trial/Suscripción Proveedores (completado)
+
+- [x] Schema BD: campos trial en users, tablas terms_versions y terms_acceptance
+- [x] Migración ejecutada (pnpm db:push)
+- [x] Helpers DB: computeSupplierStatus, activateSupplierTrial, acceptTerms, requestPaidAccess, approveAccessRequest, getAffiliationReport
+- [x] Router tRPC: supplierTrialRouter con 11 procedimientos
+- [x] Emails: sendTrialExpiryWarning, sendTermsAcceptedEmail, sendAccessRequestedEmail, sendAccessApprovedEmail
+- [x] UI: TrialPopup (popup diario una vez por día)
+- [x] UI: TermsPage (/terminos - página de términos con checkbox obligatorio)
+- [x] UI: AccessExpiredPage (/acceso-vencido - solicitud de acceso facturado)
+- [x] UI: SupplierMonitor (/monitoreo-proveedores - solo especialistas)
+- [x] UI: AffiliationReport (/afiliacion - reporte con exportación CSV)
+- [x] Job: trialAlertJob (alertas diarias de trial por vencer, registrado en index.ts)
+- [x] Navegación: enlace "Monitoreo" en NavigationMenu para especialistas
+- [x] Tests: 10 tests unitarios para computeSupplierStatus y cálculo de porcentaje
+- [x] 154/154 tests pasan

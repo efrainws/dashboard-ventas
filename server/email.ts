@@ -1002,3 +1002,181 @@ export async function sendActivationEmail(params: ActivationEmailParams): Promis
     return false;
   }
 }
+
+// ─── Trial / Subscription Email Functions ────────────────────────────────────
+
+/** Envía aviso de que faltan 2 días para vencer el trial */
+export async function sendTrialExpiryWarning(params: {
+  to: string;
+  name: string;
+  trialEndDate: Date;
+}): Promise<boolean> {
+  const { to, name, trialEndDate } = params;
+  const endDateStr = trialEndDate.toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
+  const year = new Date().getFullYear();
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"/><title>Tu período de prueba está por vencer</title></head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background-color:${COLORS.accent};padding:0 40px;border-radius:12px 12px 0 0;text-align:center;">
+          <img src="${LOGO_DARK_URL}" alt="Flora &amp; Fauna" style="height:36px;margin:24px 0;display:block;margin-left:auto;margin-right:auto;" />
+        </td></tr>
+        <tr><td style="background-color:${COLORS.card};padding:40px;border-radius:0 0 12px 12px;border:1px solid ${COLORS.border};">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${COLORS.primary};">Tu período de prueba está por vencer</h1>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">Hola <strong>${name}</strong>, tu acceso de prueba al Portal de Proveedores vence el <strong>${endDateStr}</strong>.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">Para continuar accediendo, acepta los términos del servicio facturado antes de que expire tu período de prueba.</p>
+          <p style="margin:32px 0 0;font-size:12px;color:${COLORS.textMuted};">© ${year} Flora &amp; Fauna. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const apiKey = ENV.brevoApiKey;
+  if (!apiKey) { console.warn("[Email] BREVO_API_KEY not set"); return false; }
+  try {
+    const client = new BrevoClient({ apiKey });
+    await client.transactionalEmails.sendTransacEmail({
+      sender: { name: "Flora & Fauna · Dashboard", email: "portaldeventas@florayfauna.pe" },
+      to: [{ email: to, name }],
+      subject: "⚠️ Tu período de prueba vence en 2 días",
+      htmlContent: html,
+    });
+    return true;
+  } catch (e) {
+    console.error("[Email] sendTrialExpiryWarning failed:", e);
+    return false;
+  }
+}
+
+/** Envía confirmación al proveedor cuando acepta los términos */
+export async function sendTermsAcceptedEmail(params: { to: string; name: string }): Promise<boolean> {
+  const { to, name } = params;
+  const year = new Date().getFullYear();
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"/><title>Términos aceptados</title></head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background-color:${COLORS.accent};padding:0 40px;border-radius:12px 12px 0 0;text-align:center;">
+          <img src="${LOGO_DARK_URL}" alt="Flora &amp; Fauna" style="height:36px;margin:24px 0;display:block;margin-left:auto;margin-right:auto;" />
+        </td></tr>
+        <tr><td style="background-color:${COLORS.card};padding:40px;border-radius:0 0 12px 12px;border:1px solid ${COLORS.border};">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${COLORS.primary};">Términos aceptados correctamente</h1>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">Hola <strong>${name}</strong>, hemos registrado tu aceptación de los términos del servicio facturado. Tu acceso al Portal de Proveedores ha sido activado.</p>
+          <p style="margin:32px 0 0;font-size:12px;color:${COLORS.textMuted};">© ${year} Flora &amp; Fauna. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const apiKey = ENV.brevoApiKey;
+  if (!apiKey) { console.warn("[Email] BREVO_API_KEY not set"); return false; }
+  try {
+    const client = new BrevoClient({ apiKey });
+    await client.transactionalEmails.sendTransacEmail({
+      sender: { name: "Flora & Fauna · Dashboard", email: "portaldeventas@florayfauna.pe" },
+      to: [{ email: to, name }],
+      subject: "✅ Acceso al servicio activado – Flora & Fauna",
+      htmlContent: html,
+    });
+    return true;
+  } catch (e) {
+    console.error("[Email] sendTermsAcceptedEmail failed:", e);
+    return false;
+  }
+}
+
+/** Notifica a especialistas que un proveedor solicitó acceso facturado */
+export async function sendAccessRequestedEmail(params: { userName: string; userEmail: string }): Promise<boolean> {
+  const { userName, userEmail } = params;
+  const { getSpecialistEmails } = await import("./db");
+  const specialists = await getSpecialistEmails();
+  if (!specialists.length) return false;
+
+  const year = new Date().getFullYear();
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"/><title>Solicitud de acceso facturado</title></head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background-color:${COLORS.primary};padding:0 40px;border-radius:12px 12px 0 0;text-align:center;">
+          <img src="${LOGO_DARK_URL}" alt="Flora &amp; Fauna" style="height:36px;margin:24px 0;display:block;margin-left:auto;margin-right:auto;" />
+        </td></tr>
+        <tr><td style="background-color:${COLORS.card};padding:40px;border-radius:0 0 12px 12px;border:1px solid ${COLORS.border};">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${COLORS.primary};">Solicitud de acceso al servicio facturado</h1>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">El proveedor <strong>${userName}</strong> (${userEmail}) ha solicitado activación del servicio facturado tras aceptar los términos y condiciones.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">Ingresa al módulo de Monitoreo de Proveedores para aprobar o rechazar la solicitud.</p>
+          <p style="margin:32px 0 0;font-size:12px;color:${COLORS.textMuted};">© ${year} Flora &amp; Fauna. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const apiKey = ENV.brevoApiKey;
+  if (!apiKey) { console.warn("[Email] BREVO_API_KEY not set"); return false; }
+  try {
+    const client = new BrevoClient({ apiKey });
+    await client.transactionalEmails.sendTransacEmail({
+      sender: { name: "Flora & Fauna · Dashboard", email: "portaldeventas@florayfauna.pe" },
+      to: specialists.map((s) => ({ email: s.email, name: s.name ?? "Especialista" })),
+      subject: `🔔 Solicitud de acceso facturado – ${userName}`,
+      htmlContent: html,
+    });
+    return true;
+  } catch (e) {
+    console.error("[Email] sendAccessRequestedEmail failed:", e);
+    return false;
+  }
+}
+
+/** Notifica al proveedor que su solicitud de acceso fue aprobada */
+export async function sendAccessApprovedEmail(params: { to: string; name: string }): Promise<boolean> {
+  const { to, name } = params;
+  const year = new Date().getFullYear();
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"/><title>Acceso aprobado</title></head>
+<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};min-height:100vh;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background-color:${COLORS.accent};padding:0 40px;border-radius:12px 12px 0 0;text-align:center;">
+          <img src="${LOGO_DARK_URL}" alt="Flora &amp; Fauna" style="height:36px;margin:24px 0;display:block;margin-left:auto;margin-right:auto;" />
+        </td></tr>
+        <tr><td style="background-color:${COLORS.card};padding:40px;border-radius:0 0 12px 12px;border:1px solid ${COLORS.border};">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${COLORS.primary};">¡Tu acceso ha sido aprobado!</h1>
+          <p style="margin:0 0 24px;font-size:15px;color:${COLORS.textBody};line-height:1.6;">Hola <strong>${name}</strong>, tu solicitud de acceso al servicio facturado del Portal de Proveedores ha sido aprobada. Ya puedes acceder con todas las funcionalidades disponibles.</p>
+          <p style="margin:32px 0 0;font-size:12px;color:${COLORS.textMuted};">© ${year} Flora &amp; Fauna. Todos los derechos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const apiKey = ENV.brevoApiKey;
+  if (!apiKey) { console.warn("[Email] BREVO_API_KEY not set"); return false; }
+  try {
+    const client = new BrevoClient({ apiKey });
+    await client.transactionalEmails.sendTransacEmail({
+      sender: { name: "Flora & Fauna · Dashboard", email: "portaldeventas@florayfauna.pe" },
+      to: [{ email: to, name }],
+      subject: "✅ Tu acceso al servicio ha sido aprobado – Flora & Fauna",
+      htmlContent: html,
+    });
+    return true;
+  } catch (e) {
+    console.error("[Email] sendAccessApprovedEmail failed:", e);
+    return false;
+  }
+}

@@ -20,6 +20,11 @@ import TopProducts from "./pages/TopProducts";
 import SupplierPortal from "./pages/SupplierPortal";
 import { AccessDenied } from "./components/AccessDenied";
 import { Loader2 } from "lucide-react";
+import TermsPage from "./pages/TermsPage";
+import AccessExpiredPage from "./pages/AccessExpiredPage";
+import SupplierMonitor from "./pages/SupplierMonitor";
+import AffiliationReport from "./pages/AffiliationReport";
+import { TrialPopup } from "./components/TrialPopup";
 
 type RouteGuard = "no_supplier" | "managers_only";
 
@@ -87,6 +92,26 @@ function Router() {
         {() => <ProtectedRoute component={SupplierPortal} path="/supplier" />}
       </Route>
 
+      {/* Términos del servicio — accesible para proveedores */}
+      <Route path="/terminos">
+        {() => <ProtectedRoute component={TermsPage} path="/terminos" />}
+      </Route>
+
+      {/* Acceso vencido — accesible para proveedores */}
+      <Route path="/acceso-vencido">
+        {() => <ProtectedRoute component={AccessExpiredPage} path="/acceso-vencido" />}
+      </Route>
+
+      {/* Monitoreo de proveedores — solo especialistas */}
+      <Route path="/monitoreo-proveedores">
+        {() => <ProtectedRoute component={SupplierMonitor} path="/monitoreo-proveedores" guard="managers_only" />}
+      </Route>
+
+      {/* Reporte de afiliación — solo especialistas */}
+      <Route path="/afiliacion">
+        {() => <ProtectedRoute component={AffiliationReport} path="/afiliacion" guard="managers_only" />}
+      </Route>
+
       {/* Páginas generales — bloqueadas para supplier_user */}
       <Route path="/">
         {() => <ProtectedRoute component={Home} path="/" guard="no_supplier" />}
@@ -135,6 +160,7 @@ function App() {
         <FiltersProvider>
           <TooltipProvider>
             <Toaster />
+            <TrialPopup />
             <Router />
           </TooltipProvider>
         </FiltersProvider>

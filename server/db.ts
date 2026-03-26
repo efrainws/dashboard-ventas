@@ -1,6 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { DiscrepancyTicket, discrepancyTickets, InsertDiscrepancyTicket, InsertUser, users } from "../drizzle/schema";
+import {
+  DiscrepancyTicket, discrepancyTickets, InsertDiscrepancyTicket,
+  InsertUser, users,
+  termsVersions, termsAcceptance, TermsVersion, TermsAcceptance,
+  SupplierStatus,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -227,4 +232,281 @@ export async function getAdminEmails(): Promise<Array<{ name: string | null; ema
     .where(eq(users.role, "system_specialist"));
 
   return admins.filter((a): a is { name: string | null; email: string } => !!a.email);
+}
+
+// ─── Supplier Trial / Subscription Helpers ──────────────────────────────────
+
+/**
+ * Calcula el estado efectivo del proveedor basado en fechas y estado almacenado.
+ * Actualiza automáticamente trial_active → trial_expired si el trial venció.
+ */
+export function computeSupplierStatus(user: {
+  supplierStatus: SupplierStatus | null | undefined;
+  trialEndDate: Date | null | undefined;
+}): SupplierStatus | null {
+  if (!user.supplierStatus) return null;
+  if (
+    user.supplierStatus === "trial_active" &&
+    user.trialEndDate &&
+    new Date() > user.trialEndDate
+  ) {
+    return "trial_expired";
+  }
+  return user.supplierStatus;
+}
+
+/** Obtiene todos los usuarios proveedor con su estado efectivo calculado */
+export async function getSupplierUsers(filters?: {
+  status?: SupplierStatus;
+}): Promise<Array<typeof users.$inferSelect & { effectiveStatus: SupplierStatus | null }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [eq(users.role, "supplier_user")];
+  const rows = await db.select().from(users).where(and(...conditions)).orderBy(desc(users.createdAt));
+
+  const withStatus = rows.map((u) => ({
+    ...u,
+    effectiveStatus: computeSupplierStatus(u),
+  }));
+
+  if (filters?.status) {
+    return withStatus.filter((u) => u.effectiveStatus === filters.status);
+  }
+  return withStatus;
+}
+
+/** Activa el trial de un usuario proveedor (establece activationDate y trialEndDate) */
+export async function activateSupplierTrial(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+  const trialEnd = new Date(now);
+  trialEnd.setDate(trialEnd.getDate() + 7);
+
+  await db.update(users).set({
+    supplierStatus: "trial_active",
+    activationDate: now,
+    trialEndDate: trialEnd,
+  }).where(eq(users.id, userId));
+}
+
+/** Registra la aceptación de términos y cambia el estado a subscribed_active */
+export async function acceptTerms(params: {
+  userId: number;
+  termsVersionId: number;
+  ip: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+
+  // Registrar en terms_acceptance
+  await db.insert(termsAcceptance).values({
+    userId: params.userId,
+    termsVersionId: params.termsVersionId,
+    acceptedAt: now,
+    ip: params.ip,
+  });
+
+  // Actualizar usuario
+  await db.update(users).set({
+    supplierStatus: "subscribed_active",
+    termsVersionId: params.termsVersionId,
+    termsAcceptedAt: now,
+    termsAcceptedIp: params.ip,
+    subscriptionStartDate: now,
+  }).where(eq(users.id, params.userId));
+}
+
+/** Registra solicitud de acceso facturado (trial_expired → access_requested) */
+export async function requestPaidAccess(params: {
+  userId: number;
+  termsVersionId: number;
+  ip: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+
+  await db.insert(termsAcceptance).values({
+    userId: params.userId,
+    termsVersionId: params.termsVersionId,
+    acceptedAt: now,
+    ip: params.ip,
+  });
+
+  await db.update(users).set({
+    supplierStatus: "access_requested",
+    termsVersionId: params.termsVersionId,
+    termsAcceptedAt: now,
+    termsAcceptedIp: params.ip,
+  }).where(eq(users.id, params.userId));
+}
+
+/** Aprueba la solicitud de acceso facturado (access_requested → subscribed_active) */
+export async function approveAccessRequest(params: {
+  userId: number;
+  approvedById: number;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+
+  await db.update(users).set({
+    supplierStatus: "subscribed_active",
+    subscriptionStartDate: now,
+    approvedById: params.approvedById,
+    approvedAt: now,
+  }).where(eq(users.id, params.userId));
+}
+
+/** Cambia el estado de un usuario proveedor manualmente */
+export async function setSupplierStatus(userId: number, status: SupplierStatus): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(users).set({ supplierStatus: status }).where(eq(users.id, userId));
+}
+
+// ─── Terms Versions Helpers ──────────────────────────────────────────────────
+
+/** Obtiene la versión de términos activa */
+export async function getActiveTermsVersion(): Promise<TermsVersion | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(termsVersions)
+    .where(eq(termsVersions.isActive, 1))
+    .limit(1);
+
+  return result[0];
+}
+
+/** Obtiene todas las versiones de términos */
+export async function getAllTermsVersions(): Promise<TermsVersion[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(termsVersions).orderBy(desc(termsVersions.createdAt));
+}
+
+/** Crea una nueva versión de términos y la activa (desactiva las anteriores) */
+export async function createTermsVersion(data: {
+  version: string;
+  content: string;
+}): Promise<{ id: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Desactivar versiones anteriores
+  await db.update(termsVersions).set({ isActive: 0 });
+
+  const result = await db.insert(termsVersions).values({
+    version: data.version,
+    content: data.content,
+    isActive: 1,
+  });
+
+  return { id: (result[0] as any).insertId };
+}
+
+/** Obtiene el historial de aceptaciones de términos de un usuario */
+export async function getUserTermsAcceptance(userId: number): Promise<TermsAcceptance[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(termsAcceptance)
+    .where(eq(termsAcceptance.userId, userId))
+    .orderBy(desc(termsAcceptance.acceptedAt));
+}
+
+/** Obtiene usuarios proveedor para el reporte de afiliación */
+export async function getAffiliationReport(): Promise<Array<{
+  id: number;
+  name: string | null;
+  email: string | null;
+  assignedSupplierId: string | null;
+  activationDate: Date | null;
+  subscriptionStartDate: Date | null;
+  supplierStatus: SupplierStatus | null;
+  effectiveStatus: SupplierStatus | null;
+  primerMes: boolean;
+  porcentajeCobro: number | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.role, "supplier_user"))
+    .orderBy(users.name);
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  return rows.map((u) => {
+    const effectiveStatus = computeSupplierStatus(u);
+    let primerMes = false;
+    let porcentajeCobro: number | null = null;
+
+    if (u.subscriptionStartDate) {
+      const sd = new Date(u.subscriptionStartDate);
+      primerMes = sd.getFullYear() === currentYear && sd.getMonth() === currentMonth;
+
+      // Días desde subscription_start_date hasta fin de mes / total días del mes
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0); // último día del mes
+      const totalDays = endOfMonth.getDate();
+      const daysRemaining = endOfMonth.getDate() - sd.getDate() + 1;
+      porcentajeCobro = Math.min(1, Math.max(0, daysRemaining / totalDays));
+    }
+
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      assignedSupplierId: u.assignedSupplierId,
+      activationDate: u.activationDate,
+      subscriptionStartDate: u.subscriptionStartDate,
+      supplierStatus: u.supplierStatus as SupplierStatus | null,
+      effectiveStatus,
+      primerMes,
+      porcentajeCobro,
+    };
+  });
+}
+
+/** Obtiene usuarios especialistas (commercial_specialist y systems_specialist) con email */
+export async function getSpecialistEmails(): Promise<Array<{ name: string | null; email: string }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const specialists = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(
+      and(
+        // commercial_specialist or system_specialist
+        eq(users.role, "commercial_specialist")
+      )
+    );
+
+  const systemSpecialists = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.role, "system_specialist"));
+
+  return [...specialists, ...systemSpecialists].filter(
+    (u): u is { name: string | null; email: string } => !!u.email
+  );
 }
