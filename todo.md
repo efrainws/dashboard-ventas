@@ -1551,3 +1551,14 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar columna "Proveedor ID" en SupplierMonitor para mostrar RUC — Nombre
 - [x] Actualizar columna "Proveedor" en AffiliationReport para mostrar RUC — Nombre
 - [x] Actualizar exportación CSV para incluir RUC y nombre en lugar del ID
+
+## Estado pending_activation y registro de fechas de trial
+
+- [x] Agregar estado "pending_activation" al enum SupplierStatus en drizzle/schema.ts
+- [x] Ejecutar pnpm db:push para migrar la BD
+- [x] Actualizar computeSupplierStatus para manejar pending_activation
+- [x] Actualizar activateAccount en activationRouter: registrar activationDate y trialEndDate al activar (trial_active) o solo activationDate (subscribed_active)
+- [x] Agregar selector de estado inicial (pending_activation / subscribed_active) en diálogo de creación de SupplierMonitor
+- [x] Actualizar procedimiento createUser para aceptar y guardar el initialStatus del proveedor
+- [x] Actualizar STATUS_LABELS en SupplierMonitor y AffiliationReport para incluir pending_activation
+- [x] Actualizar StatusBadge y filtro de estado en SupplierMonitor para incluir pending_activation

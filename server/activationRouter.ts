@@ -239,10 +239,46 @@ export const activationRouter = router({
       // 6. Hash and save the new password
       const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-      await db
-        .update(users)
-        .set({ password: hashedNewPassword, updatedAt: new Date() })
-        .where(eq(users.id, user.id));
+      const now = new Date();
+
+      // Para supplier_user con estado pending_activation → activar trial automáticamente
+      const isSupplierPendingActivation =
+        user.role === "supplier_user" && user.supplierStatus === "pending_activation";
+
+      // Para supplier_user con subscribed_active → solo registrar activationDate si no tiene
+      const isSupplierSubscribedNoActivation =
+        user.role === "supplier_user" &&
+        user.supplierStatus === "subscribed_active" &&
+        !user.activationDate;
+
+      if (isSupplierPendingActivation) {
+        const trialEnd = new Date(now);
+        trialEnd.setDate(trialEnd.getDate() + 7);
+        await db
+          .update(users)
+          .set({
+            password: hashedNewPassword,
+            updatedAt: now,
+            supplierStatus: "trial_active",
+            activationDate: now,
+            trialEndDate: trialEnd,
+          })
+          .where(eq(users.id, user.id));
+      } else if (isSupplierSubscribedNoActivation) {
+        await db
+          .update(users)
+          .set({
+            password: hashedNewPassword,
+            updatedAt: now,
+            activationDate: now,
+          })
+          .where(eq(users.id, user.id));
+      } else {
+        await db
+          .update(users)
+          .set({ password: hashedNewPassword, updatedAt: now })
+          .where(eq(users.id, user.id));
+      }
 
       // 7. Mark token as used
       await db

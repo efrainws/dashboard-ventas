@@ -242,9 +242,12 @@ export async function getAdminEmails(): Promise<Array<{ name: string | null; ema
  * Actualiza automáticamente trial_active → trial_expired si el trial venció.
  */
 export function computeSupplierStatus(user: {
-  supplierStatus: SupplierStatus | null | undefined;
-  trialEndDate: Date | null | undefined;
+  supplierStatus: string | null;
+  activationDate: Date | null;
+  trialEndDate: Date | null;
 }): SupplierStatus | null {
+  // pending_activation: cuenta creada pero aún no activada por el usuario
+  if (user.supplierStatus === "pending_activation") return "pending_activation";
   if (!user.supplierStatus) return null;
   if (
     user.supplierStatus === "trial_active" &&
@@ -253,7 +256,7 @@ export function computeSupplierStatus(user: {
   ) {
     return "trial_expired";
   }
-  return user.supplierStatus;
+  return user.supplierStatus as SupplierStatus;
 }
 
 /** Obtiene todos los usuarios proveedor con su estado efectivo calculado */

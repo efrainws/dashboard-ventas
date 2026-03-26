@@ -48,6 +48,7 @@ export const users = mysqlTable("users", {
    * - suspended: deshabilitado manualmente
    */
   supplierStatus: mysqlEnum("supplier_status", [
+    "pending_activation",
     "trial_active",
     "trial_expired",
     "subscribed_active",
@@ -74,7 +75,7 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-export type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
+export type SupplierStatus = "pending_activation" | "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
 /**
  * Store monthly sales targets for tracking performance vs goals.

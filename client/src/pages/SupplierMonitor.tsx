@@ -49,9 +49,10 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
-type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
+type SupplierStatus = "pending_activation" | "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
 const STATUS_LABELS: Record<SupplierStatus, string> = {
+  pending_activation: "Pendiente de activación",
   trial_active: "Trial activo",
   trial_expired: "Trial vencido",
   subscribed_active: "Suscrito activo",
@@ -60,6 +61,7 @@ const STATUS_LABELS: Record<SupplierStatus, string> = {
 };
 
 const STATUS_COLORS: Record<SupplierStatus, { bg: string; text: string; border: string }> = {
+  pending_activation: { bg: "#EFF6FF", text: "#1E40AF", border: "#BFDBFE" },
   trial_active: { bg: "#DCFCE7", text: "#004032", border: "#86EFAC" },
   trial_expired: { bg: "#FEE2E2", text: "#7F1D1D", border: "#FCA5A5" },
   subscribed_active: { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
@@ -102,6 +104,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
     supplierSearch: "",
     assignedSupplierId: "",
     supplierLabel: "",
+    initialSupplierStatus: "pending_activation" as "pending_activation" | "subscribed_active",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [supplierResults, setSupplierResults] = useState<{ id: string; ruc: string; name: string }[]>([]);
@@ -111,7 +114,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
   // Reset al abrir
   useEffect(() => {
     if (open) {
-      setForm({ name: "", email: "", username: "", password: "", supplierSearch: "", assignedSupplierId: "", supplierLabel: "" });
+      setForm({ name: "", email: "", username: "", password: "", supplierSearch: "", assignedSupplierId: "", supplierLabel: "", initialSupplierStatus: "pending_activation" });
       setShowPassword(false);
       setSupplierResults([]);
       setShowDropdown(false);
@@ -157,6 +160,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
       role: "supplier_user",
       assignedSupplierId: form.assignedSupplierId,
       sendWelcomeEmail: !!form.email.trim(),
+      initialSupplierStatus: form.initialSupplierStatus,
     });
   };
 
@@ -282,6 +286,37 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
                 Proveedor seleccionado: {form.supplierLabel}
               </p>
             )}
+          </div>
+
+          {/* Estado inicial del proveedor */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Estado inicial de acceso <span className="text-destructive">*</span></Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, initialSupplierStatus: "pending_activation" }))}
+                className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                  form.initialSupplierStatus === "pending_activation"
+                    ? "border-[#008064] bg-[#008064]/5 ring-1 ring-[#008064]"
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+              >
+                <span className="text-xs font-semibold">Iniciar trial</span>
+                <span className="text-xs text-muted-foreground">7 días de prueba al activar cuenta</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, initialSupplierStatus: "subscribed_active" }))}
+                className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                  form.initialSupplierStatus === "subscribed_active"
+                    ? "border-[#008064] bg-[#008064]/5 ring-1 ring-[#008064]"
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+              >
+                <span className="text-xs font-semibold">Suscripción activa</span>
+                <span className="text-xs text-muted-foreground">Acceso facturado desde el inicio</span>
+              </button>
+            </div>
           </div>
 
           {/* Aviso de contraseña */}
@@ -436,6 +471,7 @@ export default function SupplierMonitor() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="pending_activation">Pendiente de activación</SelectItem>
               <SelectItem value="trial_active">Trial activo</SelectItem>
               <SelectItem value="trial_expired">Trial vencido</SelectItem>
               <SelectItem value="access_requested">Solicitud pendiente</SelectItem>

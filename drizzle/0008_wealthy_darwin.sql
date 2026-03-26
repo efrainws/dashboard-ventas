@@ -1,0 +1,1 @@
+ALTER TABLE `users` MODIFY COLUMN `supplier_status` enum('pending_activation','trial_active','trial_expired','subscribed_active','access_requested','suspended');

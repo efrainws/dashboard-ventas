@@ -230,6 +230,7 @@ export const userRouter = router({
         assignedStoreCode: z.string().optional(),
         assignedSupplierId: z.string().optional(),
         sendWelcomeEmail: z.boolean().default(true),
+        initialSupplierStatus: z.enum(["pending_activation", "subscribed_active"]).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -283,6 +284,16 @@ export const userRouter = router({
         // Hash de la contraseña
         const hashedPassword = await bcrypt.hash(input.password, 10);
 
+        // Para supplier_user: determinar estado inicial
+        const supplierInitialStatus =
+          input.role === 'supplier_user'
+            ? (input.initialSupplierStatus ?? 'pending_activation')
+            : undefined;
+
+        // Para subscribed_active: registrar subscriptionStartDate inmediatamente
+        const subscriptionStart =
+          supplierInitialStatus === 'subscribed_active' ? new Date() : undefined;
+
         // Crear usuario
         const [newUser] = await db.insert(users).values({
           username: input.username,
@@ -293,6 +304,8 @@ export const userRouter = router({
           assignedStoreCode: input.role === 'store_user' ? (input.assignedStoreCode || null) : null,
           assignedSupplierId: input.role === 'supplier_user' ? (input.assignedSupplierId || null) : null,
           loginMethod: 'local',
+          ...(supplierInitialStatus ? { supplierStatus: supplierInitialStatus } : {}),
+          ...(subscriptionStart ? { subscriptionStartDate: subscriptionStart } : {}),
         });
 
         const userId = (newUser as any).insertId as number;

@@ -133,7 +133,7 @@ export const supplierTrialRouter = router({
 
   // ── Listar usuarios proveedor (solo especialistas) ────────────────────────
   listSupplierUsers: specialistProcedure
-    .input(z.object({ status: z.enum(["trial_active", "trial_expired", "subscribed_active", "access_requested", "suspended"]).optional() }))
+    .input(z.object({ status: z.enum(["pending_activation", "trial_active", "trial_expired", "subscribed_active", "access_requested", "suspended"]).optional() }))
     .query(async ({ input }) => {
       return getSupplierUsers(input.status ? { status: input.status } : undefined);
     }),
@@ -168,7 +168,7 @@ export const supplierTrialRouter = router({
   setStatus: specialistProcedure
     .input(z.object({
       userId: z.number(),
-      status: z.enum(["trial_active", "trial_expired", "subscribed_active", "access_requested", "suspended"]),
+      status: z.enum(["pending_activation", "trial_active", "trial_expired", "subscribed_active", "access_requested", "suspended"]),
     }))
     .mutation(async ({ input }) => {
       await setSupplierStatus(input.userId, input.status);

@@ -23,6 +23,7 @@ import { useLocation } from "wouter";
 type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
 const STATUS_LABELS: Record<string, string> = {
+  pending_activation: "Pendiente de activación",
   trial_active: "Trial activo",
   trial_expired: "Trial vencido",
   subscribed_active: "Suscrito activo",
