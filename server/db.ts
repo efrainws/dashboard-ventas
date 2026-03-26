@@ -7,6 +7,7 @@ import {
   SupplierStatus,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { pool } from './postgres';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -258,17 +259,43 @@ export function computeSupplierStatus(user: {
 /** Obtiene todos los usuarios proveedor con su estado efectivo calculado */
 export async function getSupplierUsers(filters?: {
   status?: SupplierStatus;
-}): Promise<Array<typeof users.$inferSelect & { effectiveStatus: SupplierStatus | null }>> {
+}): Promise<Array<typeof users.$inferSelect & { effectiveStatus: SupplierStatus | null; supplierRuc: string | null; supplierName: string | null }>> {
   const db = await getDb();
   if (!db) return [];
 
   const conditions = [eq(users.role, "supplier_user")];
   const rows = await db.select().from(users).where(and(...conditions)).orderBy(desc(users.createdAt));
 
-  const withStatus = rows.map((u) => ({
-    ...u,
-    effectiveStatus: computeSupplierStatus(u),
-  }));
+  // Enriquecer con RUC y nombre del proveedor desde PostgreSQL (una sola consulta)
+  const supplierIds = Array.from(
+    new Set(rows.filter((u) => u.assignedSupplierId).map((u) => u.assignedSupplierId as string))
+  );
+
+  let supplierMap: Record<string, { ruc: string; name: string }> = {};
+  if (supplierIds.length > 0) {
+    try {
+      const placeholders = supplierIds.map((_, i) => `$${i + 1}`).join(", ");
+      const result = await pool.query(
+        `SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})`,
+        supplierIds
+      );
+      for (const row of result.rows) {
+        supplierMap[String(row.id)] = { ruc: row.ruc, name: row.name };
+      }
+    } catch (pgErr) {
+      console.warn("[getSupplierUsers] Could not enrich supplier data:", pgErr);
+    }
+  }
+
+  const withStatus = rows.map((u) => {
+    const sup = u.assignedSupplierId ? supplierMap[u.assignedSupplierId] : undefined;
+    return {
+      ...u,
+      effectiveStatus: computeSupplierStatus(u),
+      supplierRuc: sup?.ruc ?? null,
+      supplierName: sup?.name ?? null,
+    };
+  });
 
   if (filters?.status) {
     return withStatus.filter((u) => u.effectiveStatus === filters.status);
@@ -435,6 +462,8 @@ export async function getAffiliationReport(): Promise<Array<{
   name: string | null;
   email: string | null;
   assignedSupplierId: string | null;
+  supplierRuc: string | null;
+  supplierName: string | null;
   activationDate: Date | null;
   subscriptionStartDate: Date | null;
   supplierStatus: SupplierStatus | null;
@@ -451,12 +480,34 @@ export async function getAffiliationReport(): Promise<Array<{
     .where(eq(users.role, "supplier_user"))
     .orderBy(users.name);
 
+  // Enriquecer con RUC y nombre del proveedor desde PostgreSQL (una sola consulta)
+  const supplierIds = Array.from(
+    new Set(rows.filter((u) => u.assignedSupplierId).map((u) => u.assignedSupplierId as string))
+  );
+
+  let supplierMap: Record<string, { ruc: string; name: string }> = {};
+  if (supplierIds.length > 0) {
+    try {
+      const placeholders = supplierIds.map((_, i) => `$${i + 1}`).join(", ");
+      const result = await pool.query(
+        `SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})`,
+        supplierIds
+      );
+      for (const row of result.rows) {
+        supplierMap[String(row.id)] = { ruc: row.ruc, name: row.name };
+      }
+    } catch (pgErr) {
+      console.warn("[getAffiliationReport] Could not enrich supplier data:", pgErr);
+    }
+  }
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
   return rows.map((u) => {
     const effectiveStatus = computeSupplierStatus(u);
+    const sup = u.assignedSupplierId ? supplierMap[u.assignedSupplierId] : undefined;
     let primerMes = false;
     let porcentajeCobro: number | null = null;
 
@@ -476,6 +527,8 @@ export async function getAffiliationReport(): Promise<Array<{
       name: u.name,
       email: u.email,
       assignedSupplierId: u.assignedSupplierId,
+      supplierRuc: sup?.ruc ?? null,
+      supplierName: sup?.name ?? null,
       activationDate: u.activationDate,
       subscriptionStartDate: u.subscriptionStartDate,
       supplierStatus: u.supplierStatus as SupplierStatus | null,

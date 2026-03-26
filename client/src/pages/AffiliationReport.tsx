@@ -45,7 +45,8 @@ function exportCSV(data: any[]) {
     "ID",
     "Nombre",
     "Email",
-    "Proveedor ID",
+    "RUC Proveedor",
+    "Nombre Proveedor",
     "Estado efectivo",
     "Fecha activación",
     "Fecha inicio suscripción",
@@ -57,7 +58,8 @@ function exportCSV(data: any[]) {
     r.id,
     r.name ?? "",
     r.email ?? "",
-    r.assignedSupplierId ?? "",
+    r.supplierRuc ?? r.assignedSupplierId ?? "",
+    r.supplierName ?? "",
     STATUS_LABELS[r.effectiveStatus ?? ""] ?? r.effectiveStatus ?? "",
     fmtDate(r.activationDate),
     fmtDate(r.subscriptionStartDate),
@@ -159,7 +161,7 @@ export default function AffiliationReport() {
               <TableRow style={{ background: "#F5F4F1" }}>
                 <TableHead className="text-xs font-semibold">Nombre</TableHead>
                 <TableHead className="text-xs font-semibold">Email</TableHead>
-                <TableHead className="text-xs font-semibold">Proveedor ID</TableHead>
+                <TableHead className="text-xs font-semibold">Proveedor</TableHead>
                 <TableHead className="text-xs font-semibold">Estado</TableHead>
                 <TableHead className="text-xs font-semibold">Activación</TableHead>
                 <TableHead className="text-xs font-semibold">Inicio suscripción</TableHead>
@@ -186,7 +188,12 @@ export default function AffiliationReport() {
                     <TableRow key={r.id} className="hover:bg-muted/30">
                       <TableCell className="text-sm">{r.name ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{r.email ?? "—"}</TableCell>
-                      <TableCell className="text-sm font-mono text-xs">{r.assignedSupplierId ?? "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {r.supplierRuc && r.supplierName
+                          ? <span><span className="font-mono text-xs text-muted-foreground">{r.supplierRuc}</span> — {r.supplierName}</span>
+                          : <span className="text-muted-foreground text-xs">{r.assignedSupplierId ?? "—"}</span>
+                        }
+                      </TableCell>
                       <TableCell>
                         <span className="text-xs text-muted-foreground">
                           {STATUS_LABELS[r.effectiveStatus ?? ""] ?? r.effectiveStatus ?? "—"}

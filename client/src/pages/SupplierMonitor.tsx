@@ -457,7 +457,7 @@ export default function SupplierMonitor() {
               <TableRow style={{ background: "#F5F4F1" }}>
                 <TableHead className="text-xs font-semibold">Nombre</TableHead>
                 <TableHead className="text-xs font-semibold">Email</TableHead>
-                <TableHead className="text-xs font-semibold">Proveedor ID</TableHead>
+                <TableHead className="text-xs font-semibold">Proveedor</TableHead>
                 <TableHead className="text-xs font-semibold">Estado</TableHead>
                 <TableHead className="text-xs font-semibold">Activación</TableHead>
                 <TableHead className="text-xs font-semibold">Fin trial</TableHead>
@@ -483,7 +483,12 @@ export default function SupplierMonitor() {
                   <TableRow key={s.id} className="hover:bg-muted/30">
                     <TableCell className="text-sm">{s.name ?? "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{s.email ?? "—"}</TableCell>
-                    <TableCell className="text-sm font-mono text-xs">{s.assignedSupplierId ?? "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {s.supplierRuc && s.supplierName
+                        ? <span><span className="font-mono text-xs text-muted-foreground">{s.supplierRuc}</span> — {s.supplierName}</span>
+                        : <span className="text-muted-foreground text-xs">{s.assignedSupplierId ?? "—"}</span>
+                      }
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status={s.effectiveStatus as SupplierStatus | null} />
                     </TableCell>

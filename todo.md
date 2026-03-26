@@ -1543,3 +1543,11 @@ Fecha: 1 de febrero de 2026
 - [x] Restringir /admin/users: solo system_specialist (quitar acceso a commercial_specialist y cst_user)
 - [x] Actualizar guard en App.tsx para /admin/users (nuevo guard system_specialist_only)
 - [x] Actualizar NavigationMenu para ocultar enlace Usuarios a commercial_specialist
+
+## RUC y nombre de proveedor en tablas y CSV
+
+- [x] Enriquecer getSupplierUsers en db.ts con RUC y nombre del proveedor (JOIN a PostgreSQL)
+- [x] Enriquecer getAffiliationReport en db.ts con RUC y nombre del proveedor
+- [x] Actualizar columna "Proveedor ID" en SupplierMonitor para mostrar RUC — Nombre
+- [x] Actualizar columna "Proveedor" en AffiliationReport para mostrar RUC — Nombre
+- [x] Actualizar exportación CSV para incluir RUC y nombre en lugar del ID
