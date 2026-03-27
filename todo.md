@@ -1562,3 +1562,8 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar procedimiento createUser para aceptar y guardar el initialStatus del proveedor
 - [x] Actualizar STATUS_LABELS en SupplierMonitor y AffiliationReport para incluir pending_activation
 - [x] Actualizar StatusBadge y filtro de estado en SupplierMonitor para incluir pending_activation
+
+## Fix: supplierStatus inicial no se guarda al crear usuario proveedor
+
+- [x] Corregir el INSERT en createUser para incluir supplierStatus con el valor de initialSupplierStatus
+- [x] Verificar que el campo supplierStatus existe en el schema de drizzle para el INSERT

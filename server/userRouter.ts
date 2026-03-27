@@ -295,7 +295,7 @@ export const userRouter = router({
           supplierInitialStatus === 'subscribed_active' ? new Date() : undefined;
 
         // Crear usuario
-        const [newUser] = await db.insert(users).values({
+        const insertValues: Parameters<typeof db.insert>[0] extends any ? any : never = {
           username: input.username,
           password: hashedPassword,
           name: input.name,
@@ -303,10 +303,11 @@ export const userRouter = router({
           role: input.role,
           assignedStoreCode: input.role === 'store_user' ? (input.assignedStoreCode || null) : null,
           assignedSupplierId: input.role === 'supplier_user' ? (input.assignedSupplierId || null) : null,
-          loginMethod: 'local',
-          ...(supplierInitialStatus ? { supplierStatus: supplierInitialStatus } : {}),
-          ...(subscriptionStart ? { subscriptionStartDate: subscriptionStart } : {}),
-        });
+          loginMethod: 'local' as const,
+          supplierStatus: supplierInitialStatus ?? null,
+          subscriptionStartDate: subscriptionStart ?? null,
+        };
+        const [newUser] = await db.insert(users).values(insertValues);
 
         const userId = (newUser as any).insertId as number;
 
