@@ -1567,3 +1567,12 @@ Fecha: 1 de febrero de 2026
 
 - [x] Corregir el INSERT en createUser para incluir supplierStatus con el valor de initialSupplierStatus
 - [x] Verificar que el campo supplierStatus existe en el schema de drizzle para el INSERT
+
+## Fix: colores de fondo en modo oscuro - SupplierMonitor y AffiliationReport
+
+- [x] Reemplazar style="background: #F5F4F1" por bg-background en SupplierMonitor
+- [x] Reemplazar style="background: #fff" por bg-card en tablas y cards de SupplierMonitor
+- [x] Reemplazar style="border: 1px solid #EAE8E2" por border-border en SupplierMonitor
+- [x] Reemplazar style="background: #F5F4F1" por bg-background en AffiliationReport
+- [x] Reemplazar style="background: #fff" por bg-card en tablas y cards de AffiliationReport
+- [x] Reemplazar style="border: 1px solid #EAE8E2" por border-border en AffiliationReport

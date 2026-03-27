@@ -102,7 +102,7 @@ export default function AffiliationReport() {
   const totalFirstMonth = report?.filter((r) => r.primerMes).length ?? 0;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F4F1" }}>
+    <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
@@ -146,8 +146,7 @@ export default function AffiliationReport() {
           ].map((kpi) => (
             <div
               key={kpi.label}
-              className="rounded-lg p-4"
-              style={{ background: "#fff", border: "1px solid #EAE8E2" }}
+            className="rounded-lg p-4 bg-card border border-border"
             >
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{kpi.label}</p>
               <p className="text-3xl font-bold" style={{ color: kpi.color }}>{kpi.value}</p>
@@ -156,10 +155,10 @@ export default function AffiliationReport() {
         </div>
 
         {/* Tabla */}
-        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #EAE8E2", background: "#fff" }}>
+        <div className="rounded-lg overflow-hidden border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow style={{ background: "#F5F4F1" }}>
+              <TableRow className="bg-muted/50">
                 <TableHead className="text-xs font-semibold">Nombre</TableHead>
                 <TableHead className="text-xs font-semibold">Email</TableHead>
                 <TableHead className="text-xs font-semibold">Proveedor</TableHead>
@@ -221,7 +220,7 @@ export default function AffiliationReport() {
                     </TableRow>
                   ))}
                   {/* Fila de totales */}
-                  <TableRow style={{ background: "#F5F4F1", fontWeight: 600 }}>
+                  <TableRow className="bg-muted/50 font-semibold">
                     <TableCell colSpan={6} className="text-sm font-semibold">Total General</TableCell>
                     <TableCell className="text-center text-sm font-semibold">{totalFirstMonth}</TableCell>
                     <TableCell className="text-right text-sm font-semibold">

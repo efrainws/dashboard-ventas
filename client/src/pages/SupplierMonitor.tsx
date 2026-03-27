@@ -263,8 +263,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               />
               {showDropdown && supplierResults.length > 0 && (
                 <div
-                  className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                  style={{ background: "#fff", border: "1px solid #EAE8E2" }}
+                  className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto bg-card border border-border"
                 >
                   {supplierResults.map((s) => (
                     <button
@@ -419,7 +418,7 @@ export default function SupplierMonitor() {
   const pendingCount = suppliers?.filter((s) => s.effectiveStatus === "access_requested").length ?? 0;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F4F1" }}>
+    <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
@@ -434,8 +433,7 @@ export default function SupplierMonitor() {
           </div>
           <div className="flex items-center gap-3">
             {pendingCount > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: "#FEF3C7", color: "#78350F", border: "1px solid #FCD34D" }}>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700">
                 <AlertTriangle className="h-4 w-4" />
                 {pendingCount} solicitud{pendingCount > 1 ? "es" : ""} pendiente{pendingCount > 1 ? "s" : ""}
               </div>
@@ -487,10 +485,10 @@ export default function SupplierMonitor() {
         </div>
 
         {/* Tabla */}
-        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #EAE8E2", background: "#fff" }}>
+        <div className="rounded-lg overflow-hidden border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow style={{ background: "#F5F4F1" }}>
+              <TableRow className="bg-muted/50">
                 <TableHead className="text-xs font-semibold">Nombre</TableHead>
                 <TableHead className="text-xs font-semibold">Email</TableHead>
                 <TableHead className="text-xs font-semibold">Proveedor</TableHead>
