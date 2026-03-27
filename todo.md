@@ -1657,3 +1657,7 @@ Fecha: 1 de febrero de 2026
 
 - [x] Agregar commercial_specialist a la lista de roles redirigidos en UserManagement.tsx (acceso directo por URL)
 - [x] Verificar que el guard system_specialist_only en App.tsx bloquea correctamente
+
+## Renombrar botón "Proveedores" en navegación
+
+- [x] Cambiar texto "Proveedores" por "Ventas por Proveedor" en NavigationMenu (desktop y mobile)

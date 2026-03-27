@@ -185,7 +185,7 @@ export function NavigationMenu() {
               }`}
             >
               <Truck className="h-4 w-4" />
-              <span>Proveedores</span>
+              <span>Ventas por Proveedor</span>
             </Link>
           )}
 
@@ -399,7 +399,7 @@ export function NavigationMenu() {
                 }`}
               >
                 <Truck className="h-4 w-4 shrink-0" />
-                <span>Proveedores</span>
+                <span>Ventas por Proveedor</span>
               </Link>
             )}
 
