@@ -189,7 +189,7 @@ export function NavigationMenu() {
             </Link>
           )}
 
-          {/* Monitoreo proveedores — solo system_specialist y commercial_specialist */}
+          {/* Administración proveedores — solo system_specialist y commercial_specialist */}
           {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
             <Link
               href="/monitoreo-proveedores"
@@ -198,7 +198,7 @@ export function NavigationMenu() {
               }`}
             >
               <Activity className="h-4 w-4" />
-              <span>Monitoreo</span>
+              <span>Administración de Proveedores</span>
             </Link>
           )}
 
@@ -403,7 +403,7 @@ export function NavigationMenu() {
               </Link>
             )}
 
-            {/* Monitoreo proveedores — solo system_specialist y commercial_specialist */}
+            {/* Administración proveedores — solo system_specialist y commercial_specialist */}
             {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
               <Link
                 href="/monitoreo-proveedores"
@@ -415,7 +415,7 @@ export function NavigationMenu() {
                 }`}
               >
                 <Activity className="h-4 w-4 shrink-0" />
-                <span>Monitoreo Proveedores</span>
+                <span>Administración de Proveedores</span>
               </Link>
             )}
 

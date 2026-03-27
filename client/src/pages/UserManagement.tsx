@@ -70,14 +70,14 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 /**
  * Roles que cada tipo de usuario puede crear:
- * - system_specialist → todos
+ * - system_specialist → todos excepto supplier_user (se crea desde Administración de Proveedores)
  * - cst_user → solo store_user
- * - commercial_specialist → solo supplier_user
+ * - commercial_specialist → ninguno (usa Administración de Proveedores)
  */
 const CREATABLE_ROLES: Record<UserRole, UserRole[]> = {
-  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user'],
+  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user'],
   cst_user: ['store_user'],
-  commercial_specialist: ['supplier_user'],
+  commercial_specialist: [],
   store_user: [],
   supplier_user: [],
 };
@@ -247,9 +247,11 @@ export default function UserManagement() {
 
   const getDefaultRole = (): UserRole => {
     if (currentRole === 'cst_user') return 'store_user';
-    if (currentRole === 'commercial_specialist') return 'supplier_user';
     return 'store_user';
   };
+
+  // commercial_specialist no puede crear usuarios desde esta página
+  const canCreateUsers = availableRoles.length > 0;
 
   const openCreateDialog = () => {
     const defaultRole = getDefaultRole();
@@ -422,13 +424,15 @@ export default function UserManagement() {
               )}
             </p>
           </div>
-          <Button
-            onClick={openCreateDialog}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Nuevo Usuario
-          </Button>
+          {canCreateUsers && (
+            <Button
+              onClick={openCreateDialog}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Nuevo Usuario
+            </Button>
+          )}
         </div>
 
         {/* Tabla de Usuarios */}

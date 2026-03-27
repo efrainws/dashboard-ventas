@@ -1,6 +1,6 @@
 /**
  * SupplierMonitor.tsx
- * Página de monitoreo de usuarios proveedor.
+ * Página de administración de usuarios proveedor.
  * Accesible solo para system_specialist y commercial_specialist.
  */
 import { useState, useEffect, useRef } from "react";
@@ -471,7 +471,7 @@ export default function SupplierMonitor() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
-              Monitoreo de Proveedores
+              Administración de Proveedores
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Gestión del ciclo de vida de acceso de usuarios proveedor

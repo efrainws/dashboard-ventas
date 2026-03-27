@@ -1626,3 +1626,9 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar procedimiento tRPC activateSubscription en supplierTrialRouter
 - [x] Agregar botón "Activar suscripción" en SupplierMonitor con diálogo de confirmación
 - [x] Visible en todos los estados excepto subscribed_active (trial_expired, suspended, trial_active, access_requested, pending_activation)
+
+## Renombrar Monitoreo → Administración de Proveedores
+
+- [x] Cambiar título de la página SupplierMonitor.tsx a "Administración de Proveedores"
+- [x] Actualizar botón/enlace "Monitoreo" en NavigationMenu a "Administración de Proveedores"
+- [x] Quitar opción de creación de usuarios proveedor en la página de usuarios (/admin/users)
