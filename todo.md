@@ -1582,3 +1582,7 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar NavigationMenu en SupplierMonitor
 - [x] Agregar NavigationMenu en AffiliationReport
 - [x] Ajustar padding-top en ambas páginas para compensar la altura del nav fijo (pt-20)
+
+## Fix: colores modo oscuro en NavigationMenu (portal proveedores)
+
+- [x] Reemplazar backgroundColor #f5f4f1 en header y tabs del SupplierPortal por bg-background
