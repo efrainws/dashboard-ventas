@@ -19,6 +19,7 @@ import { Loader2, Download, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
+import { NavigationMenu } from "@/components/NavigationMenu";
 
 type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
@@ -103,7 +104,8 @@ export default function AffiliationReport() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-8 max-w-6xl mx-auto space-y-6">
+      <NavigationMenu />
+      <div className="container py-8 max-w-6xl mx-auto space-y-6 pt-20">
 
         {/* Header */}
         <div className="flex items-start justify-between">

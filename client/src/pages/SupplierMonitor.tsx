@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { NavigationMenu } from "@/components/NavigationMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -419,7 +420,8 @@ export default function SupplierMonitor() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-8 max-w-6xl mx-auto space-y-6">
+      <NavigationMenu />
+      <div className="container py-8 max-w-6xl mx-auto space-y-6 pt-20">
 
         {/* Header */}
         <div className="flex items-start justify-between">

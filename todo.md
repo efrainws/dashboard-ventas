@@ -1576,3 +1576,9 @@ Fecha: 1 de febrero de 2026
 - [x] Reemplazar style="background: #F5F4F1" por bg-background en AffiliationReport
 - [x] Reemplazar style="background: #fff" por bg-card en tablas y cards de AffiliationReport
 - [x] Reemplazar style="border: 1px solid #EAE8E2" por border-border en AffiliationReport
+
+## Barra de navegación en SupplierMonitor y AffiliationReport
+
+- [x] Agregar NavigationMenu en SupplierMonitor
+- [x] Agregar NavigationMenu en AffiliationReport
+- [x] Ajustar padding-top en ambas páginas para compensar la altura del nav fijo (pt-20)
