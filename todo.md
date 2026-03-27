@@ -1647,3 +1647,13 @@ Fecha: 1 de febrero de 2026
 - [x] Acción para activar una versión (desactiva la anterior)
 - [x] Acción para eliminar versión (solo si no tiene aceptaciones)
 - [x] Vista previa del contenido (renderizado como texto con scroll)
+
+## Quitar acceso al menú de Usuarios para commercial_specialist
+
+- [x] Ocultar enlace "Usuarios" en NavigationMenu para commercial_specialist (desktop y mobile) — ya estaba correcto
+- [x] Proteger la ruta /admin/users para redirigir a commercial_specialist si accede directamente
+
+## Bloquear acceso directo por URL a /admin/users para commercial_specialist
+
+- [x] Agregar commercial_specialist a la lista de roles redirigidos en UserManagement.tsx (acceso directo por URL)
+- [x] Verificar que el guard system_specialist_only en App.tsx bloquea correctamente

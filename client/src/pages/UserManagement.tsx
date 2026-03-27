@@ -238,7 +238,7 @@ export default function UserManagement() {
     );
   }
 
-  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user') {
+  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user' || currentRole === 'commercial_specialist') {
     setLocation('/');
     return null;
   }
@@ -403,8 +403,6 @@ export default function UserManagement() {
   const managerHint =
     currentRole === 'cst_user'
       ? 'Solo puedes gestionar Usuarios Tienda'
-      : currentRole === 'commercial_specialist'
-      ? 'Solo puedes gestionar Usuarios Proveedor'
       : null;
 
   return (
@@ -609,7 +607,7 @@ export default function UserManagement() {
                     setSupplierSearchInput('');
                     setSupplierSearch('');
                   }}
-                  disabled={currentRole === 'cst_user' || currentRole === 'commercial_specialist'}
+                  disabled={currentRole === 'cst_user'}
                 >
                   <SelectTrigger id="role">
                     <SelectValue />
