@@ -4,6 +4,14 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 import {
   CheckCircle2,
   AlertCircle,
@@ -13,6 +21,8 @@ import {
   EyeOff,
   ShieldCheck,
   User,
+  FileText,
+  X,
 } from "lucide-react";
 
 // ─── Password strength helper ─────────────────────────────────────────────────
@@ -65,6 +75,15 @@ export default function ActivateAccount() {
   const [activated, setActivated] = useState(false);
   const [activatedUsername, setActivatedUsername] = useState("");
 
+  // ── T&C state (only for subscribed_active) ──
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+
+  // Determine if this user needs to accept T&C during activation
+  const requiresTerms =
+    tokenData?.role === "supplier_user" &&
+    tokenData?.supplierStatus === "subscribed_active";
+
   // ── Activation mutation ──
   const activateMutation = trpc.activation.activateAccount.useMutation({
     onSuccess: (data) => {
@@ -94,8 +113,20 @@ export default function ActivateAccount() {
       setFormError("Las contraseñas no coinciden");
       return;
     }
+    if (requiresTerms && !termsAccepted) {
+      setFormError("Debes aceptar los términos y condiciones para activar tu cuenta");
+      return;
+    }
 
-    activateMutation.mutate({ token, temporaryPassword, newPassword, confirmPassword });
+    activateMutation.mutate({
+      token,
+      temporaryPassword,
+      newPassword,
+      confirmPassword,
+      ...(requiresTerms && tokenData?.activeTermsVersionId
+        ? { termsVersionId: tokenData.activeTermsVersionId, termsAccepted: true }
+        : {}),
+    });
   };
 
   // ── Redirect to login after activation ──
@@ -334,6 +365,64 @@ export default function ActivateAccount() {
           )}
         </div>
 
+        {/* ── Términos y condiciones (solo para subscribed_active) ── */}
+        {requiresTerms && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-card px-3 text-xs text-muted-foreground font-body uppercase tracking-wider">
+                  Términos y condiciones
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+              {/* Botón para ver T&C */}
+              <button
+                type="button"
+                onClick={() => setTermsDialogOpen(true)}
+                className="flex items-center gap-2 text-sm font-body text-primary hover:underline underline-offset-2 transition-colors"
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>
+                  Ver Términos y Condiciones
+                  {tokenData.activeTermsVersion && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      (v{tokenData.activeTermsVersion})
+                    </span>
+                  )}
+                </span>
+              </button>
+
+              {/* Checkbox obligatorio */}
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="termsCheck"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  disabled={activateMutation.isPending}
+                  className="mt-0.5 shrink-0"
+                />
+                <Label
+                  htmlFor="termsCheck"
+                  className="text-sm font-body leading-relaxed text-foreground cursor-pointer"
+                >
+                  Declaro que he leído los términos y condiciones en su totalidad y estoy de acuerdo con ellos
+                </Label>
+              </div>
+
+              {!termsAccepted && (
+                <p className="text-xs text-muted-foreground font-body">
+                  Debes aceptar los términos y condiciones para poder activar tu cuenta.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Error message */}
         {formError && (
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
@@ -346,7 +435,7 @@ export default function ActivateAccount() {
         <Button
           type="submit"
           className="w-full font-body uppercase tracking-wider"
-          disabled={activateMutation.isPending}
+          disabled={activateMutation.isPending || (requiresTerms && !termsAccepted)}
           size="lg"
         >
           {activateMutation.isPending ? (
@@ -373,6 +462,61 @@ export default function ActivateAccount() {
           })}
         </p>
       )}
+
+      {/* ── Popup de Términos y Condiciones ── */}
+      <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="font-heading uppercase tracking-wide text-lg">
+                Términos y Condiciones
+                {tokenData.activeTermsVersion && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground normal-case tracking-normal">
+                    v{tokenData.activeTermsVersion}
+                  </span>
+                )}
+              </DialogTitle>
+            </div>
+          </DialogHeader>
+
+          {/* Contenido scrollable */}
+          <div className="flex-1 overflow-y-auto pr-1">
+            {tokenData.activeTermsContent ? (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none font-body text-sm leading-relaxed text-foreground"
+                dangerouslySetInnerHTML={{ __html: tokenData.activeTermsContent }}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground" />
+                <p className="text-muted-foreground font-body text-sm">
+                  Los términos y condiciones no están disponibles en este momento.
+                  Contacta al administrador.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer del popup */}
+          <div className="flex-shrink-0 pt-4 border-t border-border flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setTermsDialogOpen(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => {
+                setTermsAccepted(true);
+                setTermsDialogOpen(false);
+              }}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              He leído y acepto
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </ActivationShell>
   );
 }
@@ -390,8 +534,12 @@ function ActivationShell({ children }: { children: React.ReactNode }) {
         <img
           src="/Logonegro.svg"
           alt="Flora & Fauna"
-          className="h-7 w-auto"
-          style={{ filter: "var(--logo-filter, none)" }}
+          className="h-7 w-auto block dark:hidden"
+        />
+        <img
+          src="/Logoclarochico.svg"
+          alt="Flora & Fauna"
+          className="h-7 w-auto hidden dark:block"
         />
         <p
           className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-body"
@@ -419,11 +567,6 @@ function ActivationShell({ children }: { children: React.ReactNode }) {
 
         {children}
       </div>
-
-      {/* Footer */}
-      <p className="mt-8 text-xs text-muted-foreground font-body">
-        © {new Date().getFullYear()} Flora &amp; Fauna · Dashboard de Ventas
-      </p>
     </div>
   );
 }

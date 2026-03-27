@@ -351,6 +351,36 @@ export async function acceptTerms(params: {
   }).where(eq(users.id, params.userId));
 }
 
+/**
+ * Registra la aceptación de términos sin cambiar el supplierStatus.
+ * Usado durante la activación de cuenta de usuarios subscribed_active.
+ */
+export async function recordTermsAcceptanceOnly(params: {
+  userId: number;
+  termsVersionId: number;
+  ip: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+
+  // Registrar en terms_acceptance
+  await db.insert(termsAcceptance).values({
+    userId: params.userId,
+    termsVersionId: params.termsVersionId,
+    acceptedAt: now,
+    ip: params.ip,
+  });
+
+  // Actualizar solo los campos de T&C en el usuario (sin cambiar supplierStatus)
+  await db.update(users).set({
+    termsVersionId: params.termsVersionId,
+    termsAcceptedAt: now,
+    termsAcceptedIp: params.ip,
+  }).where(eq(users.id, params.userId));
+}
+
 /** Registra solicitud de acceso facturado (trial_expired → access_requested) */
 export async function requestPaidAccess(params: {
   userId: number;

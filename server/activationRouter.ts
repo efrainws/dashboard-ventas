@@ -16,10 +16,12 @@ import { z } from "zod";
 import { router, publicProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
+import { acceptTerms, recordTermsAcceptanceOnly, getActiveTermsVersion } from "./db";
 import { activationTokens, users } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { notifyOwner } from "./_core/notification";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -115,10 +117,27 @@ export const activationRouter = router({
         });
       }
 
+      // Fetch user's supplierStatus so the frontend knows whether to show T&C
+      const userRows = await db
+        .select({ supplierStatus: users.supplierStatus, role: users.role })
+        .from(users)
+        .where(eq(users.id, record.userId))
+        .limit(1);
+
+      const userInfo = userRows[0];
+
+      // Fetch active terms version id
+      const activeTerms = await getActiveTermsVersion();
+
       return {
         valid: true,
         username: record.username,
         expiresAt: record.expiresAt,
+        supplierStatus: userInfo?.supplierStatus ?? null,
+        role: userInfo?.role ?? null,
+        activeTermsVersionId: activeTerms?.id ?? null,
+        activeTermsContent: activeTerms?.content ?? null,
+        activeTermsVersion: activeTerms?.version ?? null,
       };
     }),
 
@@ -139,10 +158,13 @@ export const activationRouter = router({
           .string()
           .min(8, "La nueva contraseña debe tener al menos 8 caracteres"),
         confirmPassword: z.string().min(1, "Confirma tu nueva contraseña"),
+        // Para supplier_user con subscribed_active: aceptación obligatoria de T&C
+        termsVersionId: z.number().optional(),
+        termsAccepted: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const { token, temporaryPassword, newPassword, confirmPassword } = input;
+    .mutation(async ({ input, ctx }) => {
+      const { token, temporaryPassword, newPassword, confirmPassword, termsVersionId, termsAccepted } = input;
 
       // 1. Passwords must match
       if (newPassword !== confirmPassword) {
@@ -251,6 +273,16 @@ export const activationRouter = router({
         user.supplierStatus === "subscribed_active" &&
         !user.activationDate;
 
+      // Validar que subscribed_active haya aceptado los T&C
+      if (isSupplierSubscribedNoActivation) {
+        if (!termsAccepted || !termsVersionId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Debes aceptar los términos y condiciones para activar tu cuenta",
+          });
+        }
+      }
+
       if (isSupplierPendingActivation) {
         const trialEnd = new Date(now);
         trialEnd.setDate(trialEnd.getDate() + 7);
@@ -271,8 +303,29 @@ export const activationRouter = router({
             password: hashedNewPassword,
             updatedAt: now,
             activationDate: now,
+            subscriptionStartDate: now,
           })
           .where(eq(users.id, user.id));
+
+        // Registrar aceptación de T&C (sin cambiar supplierStatus, ya es subscribed_active)
+        if (termsVersionId) {
+          const ip = (ctx as any)?.req?.ip ?? (ctx as any)?.req?.headers?.["x-forwarded-for"] ?? "unknown";
+          await recordTermsAcceptanceOnly({
+            userId: user.id,
+            termsVersionId,
+            ip: Array.isArray(ip) ? ip[0] : String(ip),
+          });
+        }
+
+        // Notificar activación exitosa
+        try {
+          await notifyOwner({
+            title: "Proveedor activó su cuenta",
+            content: `El usuario ${user.name ?? user.username} (${user.email ?? ""}) activó su cuenta con suscripción activa.`,
+          });
+        } catch (e) {
+          console.error("[activationRouter] Error enviando notificación:", e);
+        }
       } else {
         await db
           .update(users)

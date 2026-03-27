@@ -1591,3 +1591,14 @@ Fecha: 1 de febrero de 2026
 
 - [x] Cambiar max-w-6xl por max-w-screen-2xl en SupplierMonitor
 - [x] Cambiar max-w-6xl por max-w-screen-2xl en AffiliationReport
+
+## Términos y condiciones en activación de cuenta
+
+- [ ] Agregar procedimiento tRPC acceptTerms que registra en terms_acceptance
+- [ ] Actualizar activateAccount para aceptar termsAccepted + IP y registrar aceptación si subscribed_active
+- [ ] Actualizar página de activación frontend: mostrar checkbox + popup de T&C para supplier_user subscribed_active
+- [ ] Popup de T&C: cargar contenido desde getLatestTerms, cerrar con botón
+- [ ] Bloquear botón "Activar cuenta" si checkbox no está marcado (solo para subscribed_active)
+- [ ] Registrar subscription_start_date = fecha de activación para subscribed_active
+- [ ] Asegurar registro de términos en supplierTrialRouter.acceptTerms antes de cambio de estado
+- [ ] Enviar notificación de activación exitosa al owner
