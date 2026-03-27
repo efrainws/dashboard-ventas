@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,8 @@ export default function ActivateAccount() {
   // ── T&C state (only for subscribed_active) ──
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  // Ref to always read the latest termsAccepted value inside handleSubmit (avoids stale closure)
+  const termsAcceptedRef = useRef(false);
 
   // Determine if this user needs to accept T&C during activation
   const requiresTerms =
@@ -113,7 +115,7 @@ export default function ActivateAccount() {
       setFormError("Las contraseñas no coinciden");
       return;
     }
-    if (requiresTerms && !termsAccepted) {
+    if (requiresTerms && !termsAcceptedRef.current) {
       setFormError("Debes aceptar los términos y condiciones para activar tu cuenta");
       return;
     }
@@ -402,7 +404,13 @@ export default function ActivateAccount() {
                 <Checkbox
                   id="termsCheck"
                   checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  onCheckedChange={(checked) => {
+                    const val = checked === true;
+                    termsAcceptedRef.current = val;
+                    setTermsAccepted(val);
+                    // Clear any prior T&C error when user checks the box
+                    if (val) setFormError("");
+                  }}
                   disabled={activateMutation.isPending}
                   className="mt-0.5 shrink-0"
                 />

@@ -1602,3 +1602,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Registrar subscription_start_date = fecha de activación para subscribed_active
 - [ ] Asegurar registro de términos en supplierTrialRouter.acceptTerms antes de cambio de estado
 - [ ] Enviar notificación de activación exitosa al owner
+
+## Fix: bug checkbox T&C en ActivateAccount
+
+- [x] Corregir bug stale closure en termsAccepted: usar useRef + limpiar formError al marcar checkbox
