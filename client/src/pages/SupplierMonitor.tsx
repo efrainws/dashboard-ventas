@@ -88,6 +88,39 @@ function fmtDate(d: Date | null | undefined): string {
   return format(new Date(d), "dd/MM/yyyy", { locale: es });
 }
 
+// ─── Botón de reenvío de activación ────────────────────────────────────────
+
+function ResendActivationButton({ userId, userName }: { userId: number; userName: string }) {
+  const utils = trpc.useUtils();
+  const resend = trpc.activation.resendActivation.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      utils.supplierTrial.listSupplierUsers.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 text-xs"
+      disabled={resend.isPending}
+      onClick={() => resend.mutate({ userId })}
+      title={`Reenviar correo de activación a ${userName}`}
+    >
+      {resend.isPending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5 mr-1" />
+      )}
+      Reenviar
+    </Button>
+  );
+}
+
 // ─── Diálogo de creación de usuario proveedor ────────────────────────────────
 
 interface CreateSupplierUserDialogProps {
@@ -498,19 +531,20 @@ export default function SupplierMonitor() {
                 <TableHead className="text-xs font-semibold">Activación</TableHead>
                 <TableHead className="text-xs font-semibold">Fin trial</TableHead>
                 <TableHead className="text-xs font-semibold">Suscripción</TableHead>
+                <TableHead className="text-xs font-semibold">T&amp;C aceptados</TableHead>
                 <TableHead className="text-xs font-semibold text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
+                  <TableCell colSpan={9} className="text-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" style={{ color: "#008064" }} />
                   </TableCell>
                 </TableRow>
               ) : !suppliers?.length ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground text-sm">
+                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground text-sm">
                     No hay usuarios proveedor con este filtro.
                   </TableCell>
                 </TableRow>
@@ -531,8 +565,18 @@ export default function SupplierMonitor() {
                     <TableCell className="text-sm text-muted-foreground">{fmtDate(s.activationDate)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmtDate(s.trialEndDate)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmtDate(s.subscriptionStartDate)}</TableCell>
+                    <TableCell className="text-sm">
+                      {s.termsAcceptedAt ? (
+                        <span className="text-xs text-muted-foreground">{fmtDate(s.termsAcceptedAt)}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
+                        {s.effectiveStatus === "pending_activation" && (
+                          <ResendActivationButton userId={s.id} userName={s.name ?? s.email ?? ""} />
+                        )}
                         {s.effectiveStatus === "access_requested" && (
                           <Button
                             size="sm"

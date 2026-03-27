@@ -13,7 +13,7 @@
  */
 
 import { z } from "zod";
-import { router, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { acceptTerms, recordTermsAcceptanceOnly, getActiveTermsVersion } from "./db";
@@ -22,6 +22,7 @@ import { eq, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
+import { sendActivationEmail } from "./email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -343,6 +344,100 @@ export const activationRouter = router({
         success: true,
         message: "Cuenta activada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.",
         username: user.username,
+      };
+    }),
+
+  /**
+   * Resends the activation email to a supplier_user in pending_activation status.
+   * Invalidates any existing unused tokens and creates a fresh 48-hour token.
+   * Only accessible by system_specialist or commercial_specialist.
+   */
+  resendActivation: protectedProcedure
+    .input(z.object({ userId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const callerRole = ctx.user.role;
+      if (callerRole !== "system_specialist" && callerRole !== "commercial_specialist") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Solo los especialistas pueden reenviar correos de activación",
+        });
+      }
+
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Base de datos no disponible",
+        });
+      }
+
+      // Fetch the target user
+      const userRows = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+
+      if (userRows.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" });
+      }
+
+      const user = userRows[0];
+
+      if (user.role !== "supplier_user") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Solo se puede reenviar la activación a usuarios proveedor",
+        });
+      }
+
+      if (user.supplierStatus !== "pending_activation") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "El usuario ya activó su cuenta o no está en estado pendiente de activación",
+        });
+      }
+
+      if (!user.email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "El usuario no tiene correo electrónico registrado",
+        });
+      }
+
+      // Invalidate all existing unused tokens for this user
+      await db
+        .update(activationTokens)
+        .set({ used: 1 })
+        .where(and(eq(activationTokens.userId, user.id), eq(activationTokens.used, 0)));
+
+      // Create a fresh token
+      const newToken = generateToken();
+      const expiresAt = expiresIn48h();
+
+      await db.insert(activationTokens).values({
+        token: newToken,
+        userId: user.id,
+        username: user.username ?? "",
+        expiresAt,
+        used: 0,
+      });
+
+      // Send the activation email
+      const appUrl = "https://dashboard.florayfauna.pe";
+      const activationUrl = `${appUrl}/activate/${newToken}`;
+
+      await sendActivationEmail({
+        name: user.name ?? user.username ?? "",
+        email: user.email ?? "",
+        username: user.username ?? "",
+        activationUrl,
+        role: user.role ?? "supplier_user",
+      });
+
+      return {
+        success: true,
+        message: `Correo de activación reenviado a ${user.email}`,
       };
     }),
 });

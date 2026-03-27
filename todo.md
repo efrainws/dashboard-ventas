@@ -1606,3 +1606,17 @@ Fecha: 1 de febrero de 2026
 ## Fix: bug checkbox T&C en ActivateAccount
 
 - [x] Corregir bug stale closure en termsAccepted: usar useRef + limpiar formError al marcar checkbox
+
+## Mejoras en Monitoreo de Proveedores (2026-03-27)
+
+- [ ] Procedimiento tRPC resendActivation en activationRouter (genera nuevo token + reenvía correo)
+- [ ] Botón "Reenviar activación" en tabla de Monitoreo solo para usuarios pending_activation
+- [ ] Columna "T&C aceptados" en tabla de Monitoreo con fecha formateada (termsAcceptedAt)
+- [ ] Columna T&C: mostrar "—" si no ha aceptado, fecha si ya aceptó
+
+## Botón Reenviar Activación y Columna T&C en Monitoreo
+
+- [x] Agregar procedimiento tRPC resendActivation en activationRouter (invalida tokens anteriores, genera nuevo, reenvía correo)
+- [x] Agregar componente ResendActivationButton en SupplierMonitor (visible solo para pending_activation)
+- [x] Agregar columna "T&C aceptados" con fecha termsAcceptedAt en tabla de SupplierMonitor
+- [x] Actualizar colSpan de filas vacías/cargando de 8 a 9
