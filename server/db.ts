@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   DiscrepancyTicket, discrepancyTickets, InsertDiscrepancyTicket,
@@ -595,4 +595,80 @@ export async function getSpecialistEmails(): Promise<Array<{ name: string | null
   return [...specialists, ...systemSpecialists].filter(
     (u): u is { name: string | null; email: string } => !!u.email
   );
+}
+
+/** Actualiza el contenido y/o versión de un T&C existente */
+export async function updateTermsVersion(data: {
+  id: number;
+  version?: string;
+  content?: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const updateData: Record<string, unknown> = {};
+  if (data.version !== undefined) updateData.version = data.version;
+  if (data.content !== undefined) updateData.content = data.content;
+
+  if (Object.keys(updateData).length === 0) return;
+
+  await db.update(termsVersions).set(updateData).where(eq(termsVersions.id, data.id));
+}
+
+/** Activa una versión de T&C y desactiva las demás */
+export async function setActiveTermsVersion(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Desactivar todas
+  await db.update(termsVersions).set({ isActive: 0 });
+  // Activar la seleccionada
+  await db.update(termsVersions).set({ isActive: 1 }).where(eq(termsVersions.id, id));
+}
+
+/** Elimina una versión de T&C (solo si no tiene aceptaciones) */
+export async function deleteTermsVersion(id: number): Promise<{ deleted: boolean; reason?: string }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Verificar si tiene aceptaciones
+  const acceptances = await db
+    .select({ id: termsAcceptance.id })
+    .from(termsAcceptance)
+    .where(eq(termsAcceptance.termsVersionId, id))
+    .limit(1);
+
+  if (acceptances.length > 0) {
+    return { deleted: false, reason: "Esta versión tiene aceptaciones registradas y no puede eliminarse" };
+  }
+
+  await db.delete(termsVersions).where(eq(termsVersions.id, id));
+  return { deleted: true };
+}
+
+/** Obtiene todas las versiones de T&C con conteo de aceptaciones */
+export async function getAllTermsVersionsWithCount(): Promise<Array<TermsVersion & { acceptanceCount: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const versions = await db.select().from(termsVersions).orderBy(desc(termsVersions.createdAt));
+
+  // Contar aceptaciones por versión en una sola consulta
+  const counts = await db
+    .select({
+      termsVersionId: termsAcceptance.termsVersionId,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(termsAcceptance)
+    .groupBy(termsAcceptance.termsVersionId);
+
+  const countMap: Record<number, number> = {};
+  for (const row of counts) {
+    countMap[row.termsVersionId] = Number(row.count);
+  }
+
+  return versions.map((v) => ({
+    ...v,
+    acceptanceCount: countMap[v.id] ?? 0,
+  }));
 }

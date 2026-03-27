@@ -15,10 +15,14 @@ import {
   setSupplierStatus,
   getActiveTermsVersion,
   getAllTermsVersions,
+  getAllTermsVersionsWithCount,
   getUserTermsAcceptance,
   getAffiliationReport,
   computeSupplierStatus,
   createTermsVersion,
+  updateTermsVersion,
+  setActiveTermsVersion,
+  deleteTermsVersion,
 } from "./db";
 import { getUserById } from "./db";
 import { notifyOwner } from "./_core/notification";
@@ -242,5 +246,37 @@ export const supplierTrialRouter = router({
     .input(z.object({ version: z.string().min(1), content: z.string().min(10) }))
     .mutation(async ({ input }) => {
       return createTermsVersion(input);
+    }),
+
+  // ── Obtener todas las versiones con conteo de aceptaciones ───────────────
+  getAllTermsVersionsWithCount: specialistProcedure.query(async () => {
+    return getAllTermsVersionsWithCount();
+  }),
+
+  // ── Actualizar una versión de T&C ─────────────────────────────────────────
+  updateTermsVersion: specialistProcedure
+    .input(z.object({
+      id: z.number(),
+      version: z.string().min(1).optional(),
+      content: z.string().min(10).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await updateTermsVersion(input);
+      return { success: true };
+    }),
+
+  // ── Activar una versión específica ────────────────────────────────────────
+  setActiveTermsVersion: specialistProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await setActiveTermsVersion(input.id);
+      return { success: true };
+    }),
+
+  // ── Eliminar una versión (solo si no tiene aceptaciones) ──────────────────
+  deleteTermsVersion: specialistProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      return deleteTermsVersion(input.id);
     }),
 });

@@ -34,6 +34,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
   Loader2,
   Clock,
   XCircle,
@@ -44,6 +56,13 @@ import {
   Eye,
   EyeOff,
   Info,
+  FileText,
+  Plus,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -118,6 +137,402 @@ function ResendActivationButton({ userId, userName }: { userId: number; userName
       )}
       Reenviar
     </Button>
+  );
+}
+
+// ─── Diálogo de gestión de Términos y Condiciones ────────────────────────────
+
+type TermsVersion = {
+  id: number;
+  version: string;
+  content: string;
+  isActive: number;
+  createdAt: Date;
+  acceptanceCount: number;
+};
+
+type TermsDialogMode = "list" | "create" | "edit" | "preview";
+
+function TermsManagerDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const [mode, setMode] = useState<TermsDialogMode>("list");
+  const [selectedVersion, setSelectedVersion] = useState<TermsVersion | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TermsVersion | null>(null);
+  const [activateTarget, setActivateTarget] = useState<TermsVersion | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const [form, setForm] = useState({ version: "", content: "" });
+
+  const { data: versions, isLoading, refetch } = trpc.supplierTrial.getAllTermsVersionsWithCount.useQuery(
+    undefined,
+    { enabled: open }
+  );
+
+  // Reset al abrir
+  useEffect(() => {
+    if (open) {
+      setMode("list");
+      setSelectedVersion(null);
+      setDeleteTarget(null);
+      setActivateTarget(null);
+      setExpandedId(null);
+    }
+  }, [open]);
+
+  const createMutation = trpc.supplierTrial.createTermsVersion.useMutation({
+    onSuccess: () => {
+      toast.success("Versión creada y activada correctamente.");
+      utils.supplierTrial.getAllTermsVersionsWithCount.invalidate();
+      setMode("list");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateMutation = trpc.supplierTrial.updateTermsVersion.useMutation({
+    onSuccess: () => {
+      toast.success("Versión actualizada correctamente.");
+      utils.supplierTrial.getAllTermsVersionsWithCount.invalidate();
+      setMode("list");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const activateMutation = trpc.supplierTrial.setActiveTermsVersion.useMutation({
+    onSuccess: () => {
+      toast.success("Versión activada. Los proveedores verán esta versión al ingresar.");
+      utils.supplierTrial.getAllTermsVersionsWithCount.invalidate();
+      setActivateTarget(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = trpc.supplierTrial.deleteTermsVersion.useMutation({
+    onSuccess: (result) => {
+      if (result.deleted) {
+        toast.success("Versión eliminada.");
+        utils.supplierTrial.getAllTermsVersionsWithCount.invalidate();
+      } else {
+        toast.error(result.reason ?? "No se pudo eliminar la versión.");
+      }
+      setDeleteTarget(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openCreate = () => {
+    setForm({ version: "", content: "" });
+    setMode("create");
+  };
+
+  const openEdit = (v: TermsVersion) => {
+    setSelectedVersion(v);
+    setForm({ version: v.version, content: v.content });
+    setMode("edit");
+  };
+
+  const openPreview = (v: TermsVersion) => {
+    setSelectedVersion(v);
+    setMode("preview");
+  };
+
+  const handleSubmit = () => {
+    if (!form.version.trim()) return toast.error("El número de versión es requerido.");
+    if (form.content.trim().length < 10) return toast.error("El contenido debe tener al menos 10 caracteres.");
+
+    if (mode === "create") {
+      createMutation.mutate({ version: form.version.trim(), content: form.content.trim() });
+    } else if (mode === "edit" && selectedVersion) {
+      updateMutation.mutate({ id: selectedVersion.id, version: form.version.trim(), content: form.content.trim() });
+    }
+  };
+
+  const isMutating = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <div className="flex items-center gap-2">
+              {(mode === "edit" || mode === "preview") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setMode("list")}
+                >
+                  ← Volver
+                </Button>
+              )}
+              {mode === "create" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setMode("list")}
+                >
+                  ← Volver
+                </Button>
+              )}
+              <DialogTitle className="text-lg font-semibold">
+                {mode === "list" && "Gestión de Términos y Condiciones"}
+                {mode === "create" && "Nueva versión de T&C"}
+                {mode === "edit" && `Editar versión ${selectedVersion?.version}`}
+                {mode === "preview" && `Vista previa — versión ${selectedVersion?.version}`}
+              </DialogTitle>
+            </div>
+            <DialogDescription>
+              {mode === "list" && "Administra las versiones de los términos y condiciones. Solo una versión puede estar activa a la vez."}
+              {mode === "create" && "Al crear una nueva versión, esta quedará activa automáticamente y desactivará la versión anterior."}
+              {mode === "edit" && "Modifica el contenido o el número de versión. El estado activo/inactivo no cambia al editar."}
+              {mode === "preview" && "Contenido completo de esta versión de términos y condiciones."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* ── LISTA ── */}
+          {mode === "list" && (
+            <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+              <div className="flex justify-end shrink-0">
+                <Button size="sm" onClick={openCreate} style={{ background: "#008064", color: "#fff" }}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Nueva versión
+                </Button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 pr-1">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !versions || versions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                    <FileText className="h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No hay versiones de T&C registradas.</p>
+                    <Button size="sm" onClick={openCreate} style={{ background: "#008064", color: "#fff" }}>
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      Crear primera versión
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {versions.map((v) => (
+                      <div
+                        key={v.id}
+                        className={`rounded-lg border p-4 transition-colors ${
+                          v.isActive ? "border-[#008064]/40 bg-[#008064]/5" : "border-border bg-card"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm text-foreground">
+                                  Versión {v.version}
+                                </span>
+                                {v.isActive ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#008064]/10 text-[#008064] border border-[#008064]/30">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Activa
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+                                    Inactiva
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  {fmtDate(v.createdAt)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span>
+                                  {v.acceptanceCount === 0
+                                    ? "Sin aceptaciones"
+                                    : `${v.acceptanceCount} aceptación${v.acceptanceCount !== 1 ? "es" : ""}`}
+                                </span>
+                                <button
+                                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                  onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}
+                                >
+                                  {expandedId === v.id ? (
+                                    <><ChevronUp className="h-3 w-3" /> Ocultar contenido</>
+                                  ) : (
+                                    <><ChevronDown className="h-3 w-3" /> Ver contenido</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Acciones */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {!v.isActive && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                style={{ borderColor: "#008064", color: "#008064" }}
+                                onClick={() => setActivateTarget(v)}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                Activar
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="Editar"
+                              onClick={() => openEdit(v)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title={v.acceptanceCount > 0 ? "No se puede eliminar: tiene aceptaciones" : "Eliminar"}
+                              disabled={v.isActive === 1 || v.acceptanceCount > 0}
+                              onClick={() => setDeleteTarget(v)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Contenido expandible */}
+                        {expandedId === v.id && (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed max-h-48 overflow-y-auto">
+                              {v.content}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── CREAR / EDITAR ── */}
+          {(mode === "create" || mode === "edit") && (
+            <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+              <div className="overflow-y-auto flex-1 pr-1 space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="tc-version">Número de versión</Label>
+                  <Input
+                    id="tc-version"
+                    placeholder="Ej: 1.0, 2.1, 2024-01"
+                    value={form.version}
+                    onChange={(e) => setForm({ ...form, version: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Identificador legible de esta versión (ej: "1.0", "2.0", "2025-01").
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="tc-content">Contenido de los términos</Label>
+                  <Textarea
+                    id="tc-content"
+                    placeholder="Escribe aquí el texto completo de los términos y condiciones..."
+                    value={form.content}
+                    onChange={(e) => setForm({ ...form, content: e.target.value })}
+                    className="min-h-[280px] font-mono text-sm resize-y"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Puedes usar texto plano o Markdown. Este contenido se mostrará a los proveedores al activar su cuenta.
+                  </p>
+                </div>
+
+                {mode === "create" && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                      <strong>Al crear esta versión quedará activa automáticamente.</strong>{" "}
+                      La versión anterior será desactivada. Los proveedores que aún no han aceptado verán esta nueva versión.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="shrink-0">
+                <Button variant="outline" onClick={() => setMode("list")} disabled={isMutating}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isMutating}
+                  style={{ background: "#008064", color: "#fff" }}
+                >
+                  {isMutating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {mode === "create" ? "Crear versión" : "Guardar cambios"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* ── VISTA PREVIA ── */}
+          {mode === "preview" && selectedVersion && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="overflow-y-auto flex-1 pr-1">
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
+                  {selectedVersion.content}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar activación */}
+      <AlertDialog open={!!activateTarget} onOpenChange={(o) => { if (!o) setActivateTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Activar versión {activateTarget?.version}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta versión pasará a estar activa y la versión anterior quedará inactiva.
+              Los proveedores que aún no han aceptado los T&C verán esta versión al ingresar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={activateMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => activateTarget && activateMutation.mutate({ id: activateTarget.id })}
+              disabled={activateMutation.isPending}
+              style={{ background: "#008064" }}
+            >
+              {activateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Activar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmar eliminación */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar versión {deleteTarget?.version}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Solo se pueden eliminar versiones sin aceptaciones registradas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate({ id: deleteTarget.id })}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -220,7 +635,6 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
             Completa los datos para crear la cuenta de acceso al portal de proveedores.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-4 py-1">
           {/* Nombre */}
           <div className="space-y-1.5">
@@ -232,7 +646,6 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </div>
-
           {/* Email */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-email">
@@ -247,7 +660,6 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             />
           </div>
-
           {/* Username */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-username">Usuario <span className="text-destructive">*</span></Label>
@@ -258,7 +670,6 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, "") }))}
             />
           </div>
-
           {/* Contraseña */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-password">Contraseña temporal <span className="text-destructive">*</span></Label>
@@ -275,13 +686,11 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShowPassword((v) => !v)}
-                tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
-
           {/* Proveedor */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-supplier">Proveedor asignado <span className="text-destructive">*</span></Label>
@@ -296,9 +705,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
                 autoComplete="off"
               />
               {showDropdown && supplierResults.length > 0 && (
-                <div
-                  className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto bg-card border border-border"
-                >
+                <div className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto bg-card border border-border">
                   {supplierResults.map((s) => (
                     <button
                       key={s.id}
@@ -320,8 +727,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               </p>
             )}
           </div>
-
-          {/* Estado inicial del proveedor */}
+          {/* Estado inicial */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Estado inicial de acceso <span className="text-destructive">*</span></Label>
             <div className="grid grid-cols-2 gap-2">
@@ -351,8 +757,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               </button>
             </div>
           </div>
-
-          {/* Aviso de contraseña */}
+          {/* Aviso contraseña */}
           <div
             className="flex gap-2 rounded-lg p-3 text-xs"
             style={{ background: "#FEF3C7", border: "1px solid #FCD34D", color: "#78350F" }}
@@ -360,11 +765,10 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
             <Info className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
               La contraseña temporal <strong>no se enviará por correo</strong>. Debes comunicársela al usuario por otro medio.
-              {form.email && " Se enviará un enlace de activación al correo indicado para que el usuario establezca su propia contraseña."}
+              {form.email && " Se enviará un enlace de activación al correo indicado."}
             </span>
           </div>
         </div>
-
         <DialogFooter className="gap-2 pt-2">
           <Button variant="outline" onClick={onClose} disabled={createMutation.isPending}>
             Cancelar
@@ -394,6 +798,7 @@ export default function SupplierMonitor() {
   const [filterStatus, setFilterStatus] = useState<SupplierStatus | "all">("all");
   const [confirmAction, setConfirmAction] = useState<{ userId: number; action: "approve" | "suspend" | "activate_trial" | "activate_subscription" } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
 
   const { data: suppliers, isLoading, refetch } = trpc.supplierTrial.listSupplierUsers.useQuery(
     filterStatus !== "all" ? { status: filterStatus } : {}
@@ -484,6 +889,14 @@ export default function SupplierMonitor() {
                 {pendingCount} solicitud{pendingCount > 1 ? "es" : ""} pendiente{pendingCount > 1 ? "s" : ""}
               </div>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTermsDialog(true)}
+            >
+              <FileText className="h-4 w-4 mr-1.5" />
+              Términos y Condiciones
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-1.5" />
               Actualizar
@@ -523,68 +936,59 @@ export default function SupplierMonitor() {
               <SelectItem value="suspended">Suspendido</SelectItem>
             </SelectContent>
           </Select>
-          {suppliers && (
-            <span className="text-xs text-muted-foreground">
-              {suppliers.length} usuario{suppliers.length !== 1 ? "s" : ""}
-            </span>
-          )}
         </div>
 
         {/* Tabla */}
-        <div className="rounded-lg overflow-hidden border border-border bg-card">
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="text-xs font-semibold">Nombre</TableHead>
-                <TableHead className="text-xs font-semibold">Email</TableHead>
-                <TableHead className="text-xs font-semibold">Proveedor</TableHead>
-                <TableHead className="text-xs font-semibold">Estado</TableHead>
-                <TableHead className="text-xs font-semibold">Activación</TableHead>
-                <TableHead className="text-xs font-semibold">Fin trial</TableHead>
-                <TableHead className="text-xs font-semibold">Suscripción</TableHead>
-                <TableHead className="text-xs font-semibold">T&amp;C aceptados</TableHead>
-                <TableHead className="text-xs font-semibold text-right">Acciones</TableHead>
+              <TableRow className="border-b border-border bg-muted/30">
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Usuario</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Proveedor</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estado</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Activación</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fin trial</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">T&C aceptados</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" style={{ color: "#008064" }} />
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
-              ) : !suppliers?.length ? (
+              ) : !suppliers || suppliers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground text-sm">
-                    No hay usuarios proveedor con este filtro.
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground text-sm">
+                    No hay usuarios proveedor registrados.
                   </TableCell>
                 </TableRow>
               ) : (
                 suppliers.map((s) => (
-                  <TableRow key={s.id} className="hover:bg-muted/30">
-                    <TableCell className="text-sm">{s.name ?? "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{s.email ?? "—"}</TableCell>
-                    <TableCell className="text-sm">
-                      {s.supplierRuc && s.supplierName
-                        ? <span><span className="font-mono text-xs text-muted-foreground">{s.supplierRuc}</span> — {s.supplierName}</span>
-                        : <span className="text-muted-foreground text-xs">{s.assignedSupplierId ?? "—"}</span>
-                      }
+                  <TableRow key={s.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">{s.name ?? "—"}</span>
+                        <span className="text-xs text-muted-foreground">{s.email ?? "—"}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{s.username ?? "—"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-mono text-muted-foreground">{s.supplierRuc ?? "—"}</span>
+                        <span className="text-sm">{s.supplierName ?? s.assignedSupplierId ?? "—"}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={s.effectiveStatus as SupplierStatus | null} />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmtDate(s.activationDate)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmtDate(s.trialEndDate)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{fmtDate(s.subscriptionStartDate)}</TableCell>
-                    <TableCell className="text-sm">
-                      {s.termsAcceptedAt ? (
-                        <span className="text-xs text-muted-foreground">{fmtDate(s.termsAcceptedAt)}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
+                    <TableCell className="text-sm text-muted-foreground">{fmtDate(s.termsAcceptedAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
                         {s.effectiveStatus === "pending_activation" && (
                           <ResendActivationButton userId={s.id} userName={s.name ?? s.email ?? ""} />
                         )}
@@ -643,7 +1047,13 @@ export default function SupplierMonitor() {
         </div>
       </div>
 
-      {/* Diálogo de creación */}
+      {/* Diálogo de gestión de T&C */}
+      <TermsManagerDialog
+        open={showTermsDialog}
+        onClose={() => setShowTermsDialog(false)}
+      />
+
+      {/* Diálogo de creación de proveedor */}
       <CreateSupplierUserDialog
         open={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}

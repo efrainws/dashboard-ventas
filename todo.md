@@ -1632,3 +1632,18 @@ Fecha: 1 de febrero de 2026
 - [x] Cambiar título de la página SupplierMonitor.tsx a "Administración de Proveedores"
 - [x] Actualizar botón/enlace "Monitoreo" en NavigationMenu a "Administración de Proveedores"
 - [x] Quitar opción de creación de usuarios proveedor en la página de usuarios (/admin/users)
+
+## Gestión de Términos y Condiciones en Administración de Proveedores
+
+- [x] Revisar procedimientos tRPC existentes para T&C (getAllTermsVersions, createTermsVersion)
+- [x] Agregar procedimiento updateTermsVersion (editar contenido/versión)
+- [x] Agregar procedimiento setActiveTermsVersion (activar una versión específica)
+- [x] Agregar procedimiento deleteTermsVersion (eliminar versión inactiva)
+- [x] Crear componente TermsManagerDialog en SupplierMonitor.tsx
+- [x] Botón "Términos y Condiciones" en el header de Administración de Proveedores
+- [x] Lista de versiones con estado activo/inactivo, fecha de creación y número de aceptaciones
+- [x] Formulario para crear nueva versión (campos: versión, contenido)
+- [x] Formulario para editar versión existente
+- [x] Acción para activar una versión (desactiva la anterior)
+- [x] Acción para eliminar versión (solo si no tiene aceptaciones)
+- [x] Vista previa del contenido (renderizado como texto con scroll)
