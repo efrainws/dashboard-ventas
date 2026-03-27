@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 // ─── Password strength helper ─────────────────────────────────────────────────
+// v2 - fix: useRef for termsAccepted stale closure (2026-03-27)
 
 function getPasswordStrength(password: string): {
   score: number;
