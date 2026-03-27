@@ -392,7 +392,7 @@ export default function SupplierMonitor() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterStatus, setFilterStatus] = useState<SupplierStatus | "all">("all");
-  const [confirmAction, setConfirmAction] = useState<{ userId: number; action: "approve" | "suspend" | "activate_trial" } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ userId: number; action: "approve" | "suspend" | "activate_trial" | "activate_subscription" } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data: suppliers, isLoading, refetch } = trpc.supplierTrial.listSupplierUsers.useQuery(
@@ -428,6 +428,15 @@ export default function SupplierMonitor() {
     onError: (e) => toast.error(e.message),
   });
 
+  const activateSubscriptionMutation = trpc.supplierTrial.activateSubscription.useMutation({
+    onSuccess: () => {
+      utils.supplierTrial.listSupplierUsers.invalidate();
+      toast.success("Suscripción activada. El proveedor ha sido notificado.");
+      setConfirmAction(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   // Guard de rol
   if (!user || (user.role !== "system_specialist" && user.role !== "commercial_specialist")) {
     return (
@@ -445,10 +454,12 @@ export default function SupplierMonitor() {
       setStatusMutation.mutate({ userId: confirmAction.userId, status: "suspended" });
     } else if (confirmAction.action === "activate_trial") {
       activateTrialMutation.mutate({ userId: confirmAction.userId });
+    } else if (confirmAction.action === "activate_subscription") {
+      activateSubscriptionMutation.mutate({ userId: confirmAction.userId });
     }
   };
 
-  const isPending = approveMutation.isPending || setStatusMutation.isPending || activateTrialMutation.isPending;
+  const isPending = approveMutation.isPending || setStatusMutation.isPending || activateTrialMutation.isPending || activateSubscriptionMutation.isPending;
   const pendingCount = suppliers?.filter((s) => s.effectiveStatus === "access_requested").length ?? 0;
 
   return (
@@ -599,6 +610,18 @@ export default function SupplierMonitor() {
                             Activar trial
                           </Button>
                         )}
+                        {s.effectiveStatus !== "subscribed_active" && s.effectiveStatus && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            style={{ borderColor: "#008064", color: "#008064" }}
+                            onClick={() => setConfirmAction({ userId: s.id, action: "activate_subscription" })}
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                            Activar suscripción
+                          </Button>
+                        )}
                         {s.effectiveStatus !== "suspended" && s.effectiveStatus && (
                           <Button
                             size="sm"
@@ -638,11 +661,13 @@ export default function SupplierMonitor() {
               {confirmAction?.action === "approve" && "Aprobar solicitud de acceso"}
               {confirmAction?.action === "suspend" && "Suspender acceso"}
               {confirmAction?.action === "activate_trial" && "Activar período de prueba"}
+              {confirmAction?.action === "activate_subscription" && "Activar suscripción"}
             </DialogTitle>
             <DialogDescription>
               {confirmAction?.action === "approve" && "El proveedor pasará a estado 'Suscrito activo' y recibirá una notificación por correo."}
               {confirmAction?.action === "suspend" && "El proveedor perderá acceso inmediatamente. Podrás reactivarlo después."}
               {confirmAction?.action === "activate_trial" && "Se iniciará un nuevo período de prueba de 7 días para este usuario."}
+              {confirmAction?.action === "activate_subscription" && "El proveedor pasará a estado suscrito activo de forma inmediata y recibirá una notificación por correo."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-2">

@@ -1620,3 +1620,9 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar componente ResendActivationButton en SupplierMonitor (visible solo para pending_activation)
 - [x] Agregar columna "T&C aceptados" con fecha termsAcceptedAt en tabla de SupplierMonitor
 - [x] Actualizar colSpan de filas vacías/cargando de 8 a 9
+
+## Botón Activar Suscripción en Monitoreo
+
+- [x] Agregar procedimiento tRPC activateSubscription en supplierTrialRouter
+- [x] Agregar botón "Activar suscripción" en SupplierMonitor con diálogo de confirmación
+- [x] Visible en todos los estados excepto subscribed_active (trial_expired, suspended, trial_active, access_requested, pending_activation)

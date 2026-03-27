@@ -22,7 +22,7 @@ import {
 } from "./db";
 import { getUserById } from "./db";
 import { notifyOwner } from "./_core/notification";
-import { sendTrialExpiryWarning, sendTermsAcceptedEmail, sendAccessRequestedEmail, sendAccessApprovedEmail } from "./email";
+import { sendTrialExpiryWarning, sendTermsAcceptedEmail, sendAccessRequestedEmail, sendAccessApprovedEmail, sendAccessApprovedEmail as sendSubscriptionActivatedEmail } from "./email";
 
 // ─── Guard: solo especialistas ────────────────────────────────────────────────
 const specialistProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -180,6 +180,44 @@ export const supplierTrialRouter = router({
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ input }) => {
       await activateSupplierTrial(input.userId);
+      return { success: true };
+    }),
+
+  // ── Activar suscripción directamente (sin pasar por trial) ───────────────
+  activateSubscription: specialistProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const targetUser = await getUserById(String(input.userId));
+      if (!targetUser) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Permitido desde cualquier estado excepto subscribed_active ya activo
+      const effectiveStatus = computeSupplierStatus(targetUser);
+      if (effectiveStatus === "subscribed_active") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "El usuario ya tiene una suscripción activa" });
+      }
+
+      const now = new Date();
+      await approveAccessRequest({ userId: input.userId, approvedById: ctx.user.id });
+
+      // Notificar al usuario
+      if (targetUser.email) {
+        try {
+          await sendSubscriptionActivatedEmail({ to: targetUser.email, name: targetUser.name ?? "Proveedor" });
+        } catch (e) {
+          console.error("[supplierTrialRouter] Error enviando email de suscripción activada:", e);
+        }
+      }
+
+      // Notificar al owner
+      try {
+        await notifyOwner({
+          title: "Suscripción activada",
+          content: `El especialista ${ctx.user.name} activó la suscripción de ${targetUser.name ?? targetUser.email}.`,
+        });
+      } catch (e) {
+        console.error("[supplierTrialRouter] Error notificando owner:", e);
+      }
+
       return { success: true };
     }),
 
