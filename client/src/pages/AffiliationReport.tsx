@@ -105,7 +105,7 @@ export default function AffiliationReport() {
   return (
     <div className="min-h-screen bg-background">
       <NavigationMenu />
-      <div className="container py-8 max-w-6xl mx-auto space-y-6 pt-20">
+      <div className="container py-8 max-w-screen-2xl mx-auto space-y-6 pt-20">
 
         {/* Header */}
         <div className="flex items-start justify-between">

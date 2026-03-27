@@ -1586,3 +1586,8 @@ Fecha: 1 de febrero de 2026
 ## Fix: colores modo oscuro en NavigationMenu (portal proveedores)
 
 - [x] Reemplazar backgroundColor #f5f4f1 en header y tabs del SupplierPortal por bg-background
+
+## Ampliar ancho tablas SupplierMonitor y AffiliationReport
+
+- [x] Cambiar max-w-6xl por max-w-screen-2xl en SupplierMonitor
+- [x] Cambiar max-w-6xl por max-w-screen-2xl en AffiliationReport
