@@ -154,7 +154,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "ventas", label: "Ventas", icon: ShoppingBag },
   { id: "productos", label: "Catálogo", icon: Package },
   { id: "stock", label: "Stock", icon: Layers },
-  { id: "recepciones", label: "Recepciones", icon: Truck },
+  { id: "recepciones", label: "Entregas de Mercancía", icon: Truck },
 ];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -1270,7 +1270,7 @@ export default function SupplierPortal() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">
-                Órdenes de Compra / Recepciones
+                Entregas de Mercancía
               </h2>
               {receptionsData && (
                 <span className="text-sm text-muted-foreground">
@@ -1345,7 +1345,7 @@ export default function SupplierPortal() {
                             colSpan={7}
                             className="text-center text-sm text-muted-foreground py-10"
                           >
-                            No hay recepciones registradas en el período
+                            No hay entregas de mercancía registradas en el período
                           </TableCell>
                         </TableRow>
                       )}
@@ -1355,7 +1355,7 @@ export default function SupplierPortal() {
               </CardContent>
             </Card>
 
-            {/* Paginación recepciones */}
+            {/* Paginación entregas de mercancía */}
             {receptionsData && receptionsData.total > PAGE_SIZE && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">

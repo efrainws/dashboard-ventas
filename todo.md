@@ -1669,3 +1669,8 @@ Fecha: 1 de febrero de 2026
 - [x] Convertir exportación de stock a Excel (.xlsx)
 - [x] Convertir exportación de ventas a Excel (.xlsx)
 - [x] Convertir cualquier otra exportación CSV a Excel (.xlsx) — no hay otras
+
+## Renombrar pestaña Recepciones en portal de proveedores
+
+- - [x] Cambiar "Recepciones" por "Entregas de Mercancía" en la pestaña de navegación
+- [x] Cambiar "Recepciones" por "Entregas de Mercancía" en el encabezado de la sección
