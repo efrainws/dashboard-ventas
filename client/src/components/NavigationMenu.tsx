@@ -221,6 +221,7 @@ export function NavigationMenu() {
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
                       : user?.role === 'supplier_user' ? 'Usuario Proveedor'
+                      : user?.role === 'own_brand_user' ? 'Usuario Marca Propia'
                       : user?.role}
                   </p>
                 </div>
@@ -432,6 +433,7 @@ export function NavigationMenu() {
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
                       : user?.role === 'supplier_user' ? 'Usuario Proveedor'
+                      : user?.role === 'own_brand_user' ? 'Usuario Marca Propia'
                       : user?.role}
                   </span>
                 </div>

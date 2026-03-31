@@ -24,9 +24,10 @@ import TermsPage from "./pages/TermsPage";
 import AccessExpiredPage from "./pages/AccessExpiredPage";
 import SupplierMonitor from "./pages/SupplierMonitor";
 import AffiliationReport from "./pages/AffiliationReport";
+import OwnBrandPortal from "./pages/OwnBrandPortal";
 import { TrialPopup } from "./components/TrialPopup";
 
-type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only";
+type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "own_brand_only";
 
 /**
  * Ruta protegida con autenticación y control de acceso por perfil.
@@ -83,6 +84,17 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
+  // Guard: own_brand_user, system_specialist y admin
+  const OWN_BRAND_ROLES = ["own_brand_user", "system_specialist", "admin"];
+  if (guard === "own_brand_only" && !OWN_BRAND_ROLES.includes(user.role)) {
+    return <AccessDenied />;
+  }
+
+  // own_brand_user → redirigir siempre a su portal exclusivo (excepto si ya está en /marca-propia)
+  if (user.role === "own_brand_user" && path !== "/marca-propia") {
+    return <Redirect to="/marca-propia" />;
+  }
+
   return <Component />;
 }
 
@@ -105,6 +117,11 @@ function Router() {
       {/* Acceso vencido — accesible para proveedores */}
       <Route path="/acceso-vencido">
         {() => <ProtectedRoute component={AccessExpiredPage} path="/acceso-vencido" />}
+      </Route>
+
+      {/* Portal Marca Propia — own_brand_user, system_specialist, admin */}
+      <Route path="/marca-propia">
+        {() => <ProtectedRoute component={OwnBrandPortal} path="/marca-propia" guard="own_brand_only" />}
       </Route>
 
       {/* Monitoreo de proveedores — solo especialistas */}

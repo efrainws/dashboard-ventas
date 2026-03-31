@@ -15,7 +15,8 @@ export type UserRole =
   | 'cst_user'
   | 'commercial_specialist'
   | 'store_user'
-  | 'supplier_user';
+  | 'supplier_user'
+  | 'own_brand_user';
 
 /**
  * Etiquetas legibles para los roles
@@ -26,6 +27,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
   supplier_user: 'Usuario Proveedor',
+  own_brand_user: 'Usuario Marca Propia',
 };
 
 /**
@@ -226,7 +228,7 @@ export const userRouter = router({
         password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
         name: z.string().min(1, 'El nombre es requerido'),
         email: z.string().email('Email inválido').optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user']).default('store_user'),
+        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
         assignedStoreCode: z.string().optional(),
         assignedSupplierId: z.string().optional(),
         sendWelcomeEmail: z.boolean().default(true),
@@ -347,7 +349,7 @@ export const userRouter = router({
         username: z.string().min(3).optional(),
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user']).optional(),
+        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
         assignedStoreCode: z.string().nullable().optional(),
         assignedSupplierId: z.string().nullable().optional(),
       })

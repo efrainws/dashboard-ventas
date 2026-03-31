@@ -14,6 +14,7 @@ import { ticketsRouter } from "./ticketsRouter";
 import { activationRouter } from "./activationRouter";
 import { supplierPortalRouter } from "./supplierPortalRouter";
 import { supplierTrialRouter } from "./supplierTrialRouter";
+import { ownBrandRouter } from "./ownBrandRouter";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -25,6 +26,7 @@ export const appRouter = router({
   activation: activationRouter,
   supplierPortal: supplierPortalRouter,
   supplierTrial: supplierTrialRouter,
+  ownBrand: ownBrandRouter,
   auth: router({
     me: publicProcedure.query(opts => {
       const user = opts.ctx.user;

@@ -58,7 +58,7 @@ import { toast as showToast } from 'sonner';
 import { NavigationMenu } from '@/components/NavigationMenu';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
-type UserRole = 'system_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user';
+type UserRole = 'system_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user' | 'own_brand_user';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
@@ -66,6 +66,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
   supplier_user: 'Usuario Proveedor',
+  own_brand_user: 'Usuario Marca Propia',
 };
 
 /**
@@ -75,11 +76,12 @@ const ROLE_LABELS: Record<UserRole, string> = {
  * - commercial_specialist → ninguno (usa Administración de Proveedores)
  */
 const CREATABLE_ROLES: Record<UserRole, UserRole[]> = {
-  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user'],
+  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'own_brand_user'],
   cst_user: ['store_user'],
   commercial_specialist: [],
   store_user: [],
   supplier_user: [],
+  own_brand_user: [],
 };
 
 type User = {

@@ -1674,3 +1674,19 @@ Fecha: 1 de febrero de 2026
 
 - - [x] Cambiar "Recepciones" por "Entregas de Mercancía" en la pestaña de navegación
 - [x] Cambiar "Recepciones" por "Entregas de Mercancía" en el encabezado de la sección
+
+## Portal Marca Propia
+
+- [x] Revisar esquema de BD y portal de proveedores existente
+- [x] Agregar rol own_brand_user al enum de roles en drizzle/schema.ts
+- [x] Crear tabla own_brand_brands en BD (id, brand_id, created_at) con seeds iniciales
+- [x] Migrar BD con pnpm db:push
+- [x] Crear server/ownBrandRouter.ts con procedimientos: getKPIs, getSalesByProductBranch, getStockByProduct, getReceptions, getCatalog, getBranchesForStock, getBranchesForSales, exportSales, exportStock, listBrands, addBrand, removeBrand, listAllBrands
+- [x] Registrar ownBrandRouter en server/routers.ts
+- [x] Crear client/src/pages/OwnBrandPortal.tsx basado en SupplierPortal.tsx
+- [x] Pestaña "Marcas" en OwnBrandPortal solo visible para admin y own_brand_user
+- [x] Eliminar toda referencia a "proveedor" en textos, labels y variables del nuevo portal
+- [x] Agregar ruta /marca-propia en App.tsx con guard own_brand_only
+- [x] Agregar enlace "Portal Marca Propia" en NavigationMenu para own_brand_user y system_specialist
+- [x] Actualizar userRouter para soportar creación de own_brand_user
+- [x] Escribir tests para ownBrandRouter (17 tests, 184 total)

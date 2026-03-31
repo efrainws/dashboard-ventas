@@ -7,6 +7,7 @@ import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "d
  * - commercial_specialist: Especialista Comercial. Igual que cst_user pero solo puede crear supplier_user.
  * - store_user: Usuario Tienda. Solo ve datos de su tienda asignada (assigned_store_code). No puede crear usuarios.
  * - supplier_user: Usuario Proveedor. Solo accede al módulo de proveedores. Requiere assigned_supplier_id.
+ * - own_brand_user: Usuario Marca Propia. Accede al Portal Marca Propia. Mismos accesos que commercial_specialist.
  */
 export const users = mysqlTable("users", {
   /**
@@ -23,7 +24,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["system_specialist", "cst_user", "commercial_specialist", "store_user", "supplier_user"]).default("cst_user").notNull(),
+  role: mysqlEnum("role", ["system_specialist", "cst_user", "commercial_specialist", "store_user", "supplier_user", "own_brand_user"]).default("cst_user").notNull(),
   /**
    * SAP ID de la tienda asignada al usuario.
    * Obligatorio para store_user. Vacío para los demás roles.
@@ -201,3 +202,19 @@ export const termsAcceptance = mysqlTable("terms_acceptance", {
 
 export type TermsAcceptance = typeof termsAcceptance.$inferSelect;
 export type InsertTermsAcceptance = typeof termsAcceptance.$inferInsert;
+
+/**
+ * Marcas configuradas globalmente como "Marca Propia".
+ * Cualquier usuario own_brand_user ve todos los artículos cuyas marcas estén en esta tabla.
+ * La configuración es global para toda la empresa; no hay asignación por usuario.
+ * Seeds iniciales: f51ff5db-d8e0-47a3-8057-e85f0ae62fa4 y bc20be58-3ad4-47c3-bebf-cae8607d99ce.
+ */
+export const ownBrandBrands = mysqlTable("own_brand_brands", {
+  id: int("id").autoincrement().primaryKey(),
+  /** UUID de la marca en la tabla public.brands de PostgreSQL */
+  brandId: varchar("brand_id", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OwnBrandBrand = typeof ownBrandBrands.$inferSelect;
+export type InsertOwnBrandBrand = typeof ownBrandBrands.$inferInsert;
