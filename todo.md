@@ -1690,3 +1690,8 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar enlace "Portal Marca Propia" en NavigationMenu para own_brand_user y system_specialist
 - [x] Actualizar userRouter para soportar creación de own_brand_user
 - [x] Escribir tests para ownBrandRouter (17 tests, 184 total)
+
+## Dropdown "Portales Adicionales" en navegación
+
+- [x] Agrupar "Ventas por Proveedor" y "Portal Marca Propia" en un dropdown "Portales Adicionales" (desktop y mobile)
+- [x] Visible para admin, system_specialist y commercial_specialist (admin también ve Portal Marca Propia)

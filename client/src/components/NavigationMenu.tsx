@@ -28,6 +28,8 @@ import {
   X,
   Trophy,
   Activity,
+  Tag,
+  Layers,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -163,43 +165,58 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Usuarios — solo system_specialist */}
-          {user?.role === "system_specialist" && (
-            <Link
-              href="/admin/users"
-              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/admin/users") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>Usuarios</span>
-            </Link>
-          )}
-
-          {/* Portal Proveedores — solo system_specialist y commercial_specialist */}
-          {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
-            <Link
-              href="/supplier"
-              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/supplier") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Truck className="h-4 w-4" />
-              <span>Ventas por Proveedor</span>
-            </Link>
-          )}
-
-          {/* Administración proveedores — solo system_specialist y commercial_specialist */}
-          {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
-            <Link
-              href="/monitoreo-proveedores"
-              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/monitoreo-proveedores") || isActive("/afiliacion") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Activity className="h-4 w-4" />
-              <span>Administración de Proveedores</span>
-            </Link>
+          {/* Portales Adicionales — system_specialist, commercial_specialist, admin, own_brand_user */}
+          {(["system_specialist", "commercial_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`flex items-center space-x-1 text-sm font-medium ${
+                    isActive("/supplier") || isActive("/monitoreo-proveedores") || isActive("/afiliacion") || isActive("/marca-propia")
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <Layers className="h-4 w-4" />
+                  <span>Portales Adicionales</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Portales Adicionales</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {/* Ventas por Proveedor — system_specialist, commercial_specialist, admin */}
+                  {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/supplier" className="flex items-center w-full cursor-pointer">
+                        <Truck className="mr-2 h-4 w-4" />
+                        <span>Ventas por Proveedor</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {/* Administración de Proveedores — system_specialist, commercial_specialist, admin */}
+                  {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/monitoreo-proveedores" className="flex items-center w-full cursor-pointer">
+                        <Activity className="mr-2 h-4 w-4" />
+                        <span>Administración de Proveedores</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  {/* Portal Marca Propia — system_specialist, admin, own_brand_user */}
+                  {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/marca-propia" className="flex items-center w-full cursor-pointer">
+                        <Tag className="mr-2 h-4 w-4" />
+                        <span>Portal Marca Propia</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* User Menu */}
@@ -388,36 +405,61 @@ export function NavigationMenu() {
               </Link>
             )}
 
-            {/* Portal Proveedores — solo system_specialist y commercial_specialist */}
-            {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
-              <Link
-                href="/supplier"
-                onClick={closeMobile}
-                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/supplier")
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <Truck className="h-4 w-4 shrink-0" />
-                <span>Ventas por Proveedor</span>
-              </Link>
-            )}
-
-            {/* Administración proveedores — solo system_specialist y commercial_specialist */}
-            {(user?.role === "system_specialist" || user?.role === "commercial_specialist") && (
-              <Link
-                href="/monitoreo-proveedores"
-                onClick={closeMobile}
-                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/monitoreo-proveedores") || isActive("/afiliacion")
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <Activity className="h-4 w-4 shrink-0" />
-                <span>Administración de Proveedores</span>
-              </Link>
+            {/* Portales Adicionales — system_specialist, commercial_specialist, admin, own_brand_user */}
+            {(["system_specialist", "commercial_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+              <>
+                <div className="px-3 pt-2 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Layers className="h-3 w-3" />
+                    Portales Adicionales
+                  </p>
+                </div>
+                {/* Ventas por Proveedor */}
+                {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                  <Link
+                    href="/supplier"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ml-2 ${
+                      isActive("/supplier")
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Truck className="h-4 w-4 shrink-0" />
+                    <span>Ventas por Proveedor</span>
+                  </Link>
+                )}
+                {/* Administración de Proveedores */}
+                {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                  <Link
+                    href="/monitoreo-proveedores"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ml-2 ${
+                      isActive("/monitoreo-proveedores") || isActive("/afiliacion")
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Activity className="h-4 w-4 shrink-0" />
+                    <span>Administración de Proveedores</span>
+                  </Link>
+                )}
+                {/* Portal Marca Propia */}
+                {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+                  <Link
+                    href="/marca-propia"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ml-2 ${
+                      isActive("/marca-propia")
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Tag className="h-4 w-4 shrink-0" />
+                    <span>Portal Marca Propia</span>
+                  </Link>
+                )}
+              </>
             )}
 
             {/* Separador */}
