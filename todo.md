@@ -1661,3 +1661,11 @@ Fecha: 1 de febrero de 2026
 ## Renombrar botón "Proveedores" en navegación
 
 - [x] Cambiar texto "Proveedores" por "Ventas por Proveedor" en NavigationMenu (desktop y mobile)
+
+## Cambiar exportación CSV a Excel en portal de proveedores
+
+- [x] Instalar librería xlsx (SheetJS) en el proyecto
+- [x] Localizar todos los puntos de exportación CSV en el portal de proveedores
+- [x] Convertir exportación de stock a Excel (.xlsx)
+- [x] Convertir exportación de ventas a Excel (.xlsx)
+- [x] Convertir cualquier otra exportación CSV a Excel (.xlsx) — no hay otras

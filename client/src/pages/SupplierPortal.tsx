@@ -5,6 +5,7 @@
  * stock actual, recepciones y catálogo de productos.
  */
 
+import * as XLSX from "xlsx";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -325,7 +326,7 @@ export default function SupplierPortal() {
     branchId: salesBranchId,
   }, { enabled: false });
 
-  // Función para descargar CSV
+  // Función para descargar Excel de ventas
   const handleDownloadCSV = async () => {
     setIsExporting(true);
     try {
@@ -333,25 +334,22 @@ export default function SupplierPortal() {
       const rows = result.data ?? [];
       if (rows.length === 0) return;
 
-      const headers = ["Producto", "SKU", "Tienda", "Cód. SAP", "Cantidad", "Monto (S/)", "Tickets"];
-      const csvRows = rows.map((r) => [
-        `"${r.producto.replace(/"/g, '""')}"`,
-        r.sku,
-        `"${r.tienda.replace(/"/g, '""')}"`,
-        r.sap_id ?? "",
-        parseFloat(r.cantidad).toFixed(0),
-        parseFloat(r.monto).toFixed(2),
-        r.tickets,
-      ].join(","));
-
-      const csvContent = [headers.join(","), ...csvRows].join("\n");
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ventas_${from}_${to}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const wsData = [
+        ["Producto", "SKU", "Tienda", "Cód. SAP", "Cantidad", "Monto (S/)", "Tickets"],
+        ...rows.map((r) => [
+          r.producto,
+          r.sku,
+          r.tienda,
+          r.sap_id ?? "",
+          parseFloat(r.cantidad),
+          parseFloat(r.monto),
+          r.tickets,
+        ]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+      XLSX.writeFile(wb, `ventas_${from}_${to}.xlsx`);
     } finally {
       setIsExporting(false);
     }
@@ -364,7 +362,7 @@ export default function SupplierPortal() {
     supplierId: effectiveSupplierId,
   }, { enabled: false });
 
-  // Función para descargar CSV de stock
+  // Función para descargar Excel de stock
   const handleDownloadStockCSV = async () => {
     setIsExportingStock(true);
     try {
@@ -372,27 +370,24 @@ export default function SupplierPortal() {
       const rows = result.data ?? [];
       if (rows.length === 0) return;
 
-      const headers = ["Producto", "SKU", "Tienda", "Cód. SAP", "Stock Actual", "Stock Mínimo"];
-      const csvRows = rows.map((r) => [
-        `"${r.producto.replace(/"/g, '""')}"`,
-        r.int_sku,
-        `"${r.tienda.replace(/"/g, '""')}"`,
-        r.sap_id ?? "",
-        r.stock_actual,
-        r.min_stock ?? "",
-      ].join(","));
-
-      const csvContent = [headers.join(","), ...csvRows].join("\n");
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+      const wsData = [
+        ["Producto", "SKU", "Tienda", "Cód. SAP", "Stock Actual", "Stock Mínimo"],
+        ...rows.map((r) => [
+          r.producto,
+          r.int_sku,
+          r.tienda,
+          r.sap_id ?? "",
+          r.stock_actual,
+          r.min_stock ?? "",
+        ]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Stock");
       const productLabel = stockProductId
         ? (supplierProducts?.find((p) => p.id === stockProductId)?.sku ?? "producto")
         : "todos";
-      a.download = `stock_${productLabel}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      XLSX.writeFile(wb, `stock_${productLabel}.xlsx`);
     } finally {
       setIsExportingStock(false);
     }
@@ -1171,7 +1166,7 @@ export default function SupplierPortal() {
                   ) : (
                     <FileDown className="h-3.5 w-3.5" />
                   )}
-                  {isExportingStock ? "Exportando..." : "Descargar CSV"}
+                  {isExportingStock ? "Exportando..." : "Descargar Excel"}
                 </Button>
               </div>
             </div>
@@ -1461,7 +1456,7 @@ export default function SupplierPortal() {
                   </SelectContent>
                 </Select>
               )}
-              {/* Botón de descarga CSV */}
+              {/* Botón de descarga Excel */}
               <Button
                 variant="outline"
                 size="sm"
@@ -1474,7 +1469,7 @@ export default function SupplierPortal() {
                 ) : (
                   <FileDown className="h-3.5 w-3.5" />
                 )}
-                {isExporting ? "Exportando..." : "Descargar CSV"}
+                {isExporting ? "Exportando..." : "Descargar Excel"}
               </Button>
             </div>
 
