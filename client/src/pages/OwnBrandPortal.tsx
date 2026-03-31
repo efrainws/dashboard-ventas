@@ -1,6 +1,6 @@
 /*
  * OwnBrandPortal.tsx
- * Portal exclusivo para usuarios Marca Propia (own_brand_user, system_specialist, admin).
+ * Portal exclusivo para usuarios Marca Propia (own_brand_user, system_specialist, admin, commercial_specialist).
  * Muestra KPIs, tendencia de ventas, top productos, ventas por tienda,
  * stock actual, entregas de mercadería, catálogo de productos y administración de marcas.
  *
@@ -338,9 +338,10 @@ export default function OwnBrandPortal() {
   } | null>(null);
   const PAGE_SIZE = 20;
 
-  const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin"];
+  const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
   const canAccessPortal = !!user && ALLOWED_ROLES.includes(user.role as string);
-  const canManageBrands = ["admin", "own_brand_user", "system_specialist"].includes(user?.role as string);
+  // Solo admin y own_brand_user pueden gestionar (agregar/eliminar) marcas de Marca Propia
+  const canManageBrands = ["admin", "own_brand_user"].includes(user?.role as string);
 
   // Queries
   const { data: summary, isLoading: summaryLoading } =

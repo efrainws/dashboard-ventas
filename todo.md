@@ -1701,3 +1701,9 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar commercial_specialist al guard de la ruta /marca-propia en App.tsx
 - [x] Agregar commercial_specialist al ítem "Portal Marca Propia" en NavigationMenu (desktop y mobile)
 - [x] Agregar commercial_specialist al guard del ownBrandRouter (protectedProcedure)
+
+## Auditoría de permisos Portal Marca Propia
+
+- [x] Corregir ALLOWED_ROLES en OwnBrandPortal.tsx para incluir commercial_specialist
+- [x] Corregir canManageBrands en OwnBrandPortal.tsx — solo admin y own_brand_user gestionan marcas
+- [x] Actualizar comentario del archivo OwnBrandPortal.tsx para reflejar los 4 roles
