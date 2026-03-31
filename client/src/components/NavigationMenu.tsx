@@ -205,8 +205,8 @@ export function NavigationMenu() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  {/* Portal Marca Propia — system_specialist, admin, own_brand_user */}
-                  {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+                  {/* Portal Marca Propia — system_specialist, admin, own_brand_user, commercial_specialist */}
+                  {(["system_specialist", "admin", "own_brand_user", "commercial_specialist"].includes(user?.role as string)) && (
                     <DropdownMenuItem asChild>
                       <Link href="/marca-propia" className="flex items-center w-full cursor-pointer">
                         <Tag className="mr-2 h-4 w-4" />
@@ -445,7 +445,7 @@ export function NavigationMenu() {
                   </Link>
                 )}
                 {/* Portal Marca Propia */}
-                {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+                {(["system_specialist", "admin", "own_brand_user", "commercial_specialist"].includes(user?.role as string)) && (
                   <Link
                     href="/marca-propia"
                     onClick={closeMobile}

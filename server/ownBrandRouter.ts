@@ -18,7 +18,7 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
 // Roles que pueden acceder al Portal Marca Propia
-const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin"];
+const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
 
 function assertAccess(role: string) {
   if (!ALLOWED_ROLES.includes(role)) {

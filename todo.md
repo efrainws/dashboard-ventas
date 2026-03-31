@@ -1695,3 +1695,9 @@ Fecha: 1 de febrero de 2026
 
 - [x] Agrupar "Ventas por Proveedor" y "Portal Marca Propia" en un dropdown "Portales Adicionales" (desktop y mobile)
 - [x] Visible para admin, system_specialist y commercial_specialist (admin también ve Portal Marca Propia)
+
+## Acceso de commercial_specialist al Portal Marca Propia
+
+- [x] Agregar commercial_specialist al guard de la ruta /marca-propia en App.tsx
+- [x] Agregar commercial_specialist al ítem "Portal Marca Propia" en NavigationMenu (desktop y mobile)
+- [x] Agregar commercial_specialist al guard del ownBrandRouter (protectedProcedure)

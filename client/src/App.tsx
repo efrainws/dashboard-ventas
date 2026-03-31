@@ -84,8 +84,8 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
-  // Guard: own_brand_user, system_specialist y admin
-  const OWN_BRAND_ROLES = ["own_brand_user", "system_specialist", "admin"];
+  // Guard: own_brand_user, system_specialist, admin y commercial_specialist
+  const OWN_BRAND_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
   if (guard === "own_brand_only" && !OWN_BRAND_ROLES.includes(user.role)) {
     return <AccessDenied />;
   }
