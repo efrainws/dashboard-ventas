@@ -244,6 +244,16 @@ export function NavigationMenu() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {/* Gestión de Usuarios — system_specialist y cst_user */}
+              {(["system_specialist", "cst_user"].includes(user?.role as string)) && (
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/users" className="flex items-center w-full cursor-pointer">
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Gestión de Usuarios</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Cerrar Sesión</span>
@@ -460,6 +470,22 @@ export function NavigationMenu() {
                   </Link>
                 )}
               </>
+            )}
+
+            {/* Gestión de Usuarios (mobile) — system_specialist y cst_user */}
+            {(["system_specialist", "cst_user"].includes(user?.role as string)) && (
+              <Link
+                href="/admin/users"
+                onClick={closeMobile}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/admin/users")
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                <span>Gestión de Usuarios</span>
+              </Link>
             )}
 
             {/* Separador */}

@@ -1707,3 +1707,7 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir ALLOWED_ROLES en OwnBrandPortal.tsx para incluir commercial_specialist
 - [x] Corregir canManageBrands en OwnBrandPortal.tsx — solo admin y own_brand_user gestionan marcas
 - [x] Actualizar comentario del archivo OwnBrandPortal.tsx para reflejar los 4 roles
+
+## Acceso a Gestión de Usuarios desde menú desplegable
+
+- [x] Agregar enlace "Gestión de Usuarios" en el menú desplegable del perfil para system_specialist y cst_user (desktop y mobile)
