@@ -1,0 +1,1 @@
+ALTER TABLE `discrepancy_tickets` ADD `related_sale_id` varchar(64);

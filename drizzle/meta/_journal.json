@@ -71,6 +71,13 @@
       "when": 1774994109763,
       "tag": "0009_shallow_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1775487472307,
+      "tag": "0010_curious_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

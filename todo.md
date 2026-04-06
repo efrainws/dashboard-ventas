@@ -1711,3 +1711,13 @@ Fecha: 1 de febrero de 2026
 ## Acceso a Gestión de Usuarios desde menú desplegable
 
 - [x] Agregar enlace "Gestión de Usuarios" en el menú desplegable del perfil para system_specialist y cst_user (desktop y mobile)
+
+## Campo "Venta relacionada" en modal de creación de tickets
+
+- [x] Revisar schema de tickets en BD y modal de creación actual
+- [x] Agregar campo `related_sale_id` (nullable) en tabla tickets del schema de Drizzle
+- [x] Migrar BD con pnpm db:push
+- [x] Actualizar procedimiento createTicket en ticketRouter para aceptar related_sale_id
+- [x] Agregar campo de venta en el modal de creación: autocompletado con la venta con error, editable
+- [x] Mostrar el campo related_sale_id en la vista de detalle del ticket
+- [x] 184 tests pasan, 0 errores TS

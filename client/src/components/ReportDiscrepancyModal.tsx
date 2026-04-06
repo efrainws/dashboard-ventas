@@ -31,6 +31,8 @@ export interface DiscrepancyContext {
   storeId?: string;
   storeName?: string;
   dashboardAmount?: number;
+  /** ID de la venta con error. La plataforma lo autocompleta pero el usuario puede editarlo. */
+  relatedSaleId?: string;
 }
 
 interface ReportDiscrepancyModalProps {
@@ -49,6 +51,7 @@ export function ReportDiscrepancyModal({
   const [description, setDescription] = useState("");
   const [dataSource, setDataSource] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [relatedSaleId, setRelatedSaleId] = useState(context.relatedSaleId ?? "");
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState<number | null>(null);
 
@@ -78,6 +81,7 @@ export function ReportDiscrepancyModal({
       description: description.trim(),
       dataSource: dataSource.trim() || undefined,
       priority,
+      relatedSaleId: relatedSaleId.trim() || undefined,
     });
   };
 
@@ -86,6 +90,7 @@ export function ReportDiscrepancyModal({
     setDescription("");
     setDataSource("");
     setPriority("medium");
+    setRelatedSaleId(context.relatedSaleId ?? "");
     setSubmitted(false);
     setTicketId(null);
     onClose();
@@ -165,6 +170,41 @@ export function ReportDiscrepancyModal({
             </div>
 
             <div className="space-y-4">
+              {/* Venta relacionada */}
+              <div className="space-y-1.5">
+                <Label htmlFor="relatedSaleId" className="flex items-center gap-1.5">
+                  Venta relacionada
+                  <span className="text-muted-foreground text-xs">(opcional)</span>
+                  {context.relatedSaleId && (
+                    <span className="ml-1 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      Autocompletado
+                    </span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="relatedSaleId"
+                    placeholder="Ej: 00123456, T-2024-001..."
+                    value={relatedSaleId}
+                    onChange={(e) => setRelatedSaleId(e.target.value)}
+                    maxLength={64}
+                    className="font-mono text-sm"
+                  />
+                  {relatedSaleId && relatedSaleId !== (context.relatedSaleId ?? "") && (
+                    <button
+                      type="button"
+                      onClick={() => setRelatedSaleId(context.relatedSaleId ?? "")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      Restaurar
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Identificador de la transacción o venta con el error reportado.
+                </p>
+              </div>
+
               {/* Analyst amount */}
               <div className="space-y-1.5">
                 <Label htmlFor="analystAmount">

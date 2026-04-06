@@ -30,6 +30,8 @@ export const ticketsRouter = router({
         description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
         dataSource: z.string().optional(),
         priority: z.enum(["low", "medium", "high"]).default("medium"),
+        /** ID de la venta relacionada (autocomplete editable) */
+        relatedSaleId: z.string().max(64).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -53,6 +55,7 @@ export const ticketsRouter = router({
         status: "open",
         reportedById: ctx.user.id,
         reportedByName: ctx.user.name ?? ctx.user.username ?? "Usuario",
+        relatedSaleId: input.relatedSaleId ?? null,
       });
 
       // Notify owner/admins about the new ticket

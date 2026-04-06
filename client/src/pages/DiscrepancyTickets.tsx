@@ -398,6 +398,12 @@ export default function DiscrepancyTickets() {
                       <span>{selectedTicketData.dataSource}</span>
                     </div>
                   )}
+                  {(selectedTicketData as any).relatedSaleId && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Venta relacionada</span>
+                      <span className="font-mono text-sm">{(selectedTicketData as any).relatedSaleId}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
