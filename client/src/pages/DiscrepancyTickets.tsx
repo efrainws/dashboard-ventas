@@ -398,10 +398,12 @@ export default function DiscrepancyTickets() {
                       <span>{selectedTicketData.dataSource}</span>
                     </div>
                   )}
-                  {(selectedTicketData as any).relatedSaleId && (
+                  {(selectedTicketData as any).relatedSaleAmount && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Venta relacionada</span>
-                      <span className="font-mono text-sm">{(selectedTicketData as any).relatedSaleId}</span>
+                      <span className="text-muted-foreground">Monto venta con error</span>
+                      <span className="font-mono text-sm">
+                        S/ {parseFloat((selectedTicketData as any).relatedSaleAmount).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
                   )}
                 </div>

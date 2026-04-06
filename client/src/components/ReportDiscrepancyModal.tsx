@@ -31,8 +31,8 @@ export interface DiscrepancyContext {
   storeId?: string;
   storeName?: string;
   dashboardAmount?: number;
-  /** ID de la venta con error. La plataforma lo autocompleta pero el usuario puede editarlo. */
-  relatedSaleId?: string;
+  /** Monto de la venta con error. La plataforma lo autocompleta pero el usuario puede editarlo. */
+  relatedSaleAmount?: number;
 }
 
 interface ReportDiscrepancyModalProps {
@@ -51,7 +51,9 @@ export function ReportDiscrepancyModal({
   const [description, setDescription] = useState("");
   const [dataSource, setDataSource] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
-  const [relatedSaleId, setRelatedSaleId] = useState(context.relatedSaleId ?? "");
+  const [relatedSaleAmount, setRelatedSaleAmount] = useState(
+    context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : ""
+  );
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState<number | null>(null);
 
@@ -81,7 +83,7 @@ export function ReportDiscrepancyModal({
       description: description.trim(),
       dataSource: dataSource.trim() || undefined,
       priority,
-      relatedSaleId: relatedSaleId.trim() || undefined,
+      relatedSaleAmount: relatedSaleAmount ? parseFloat(relatedSaleAmount) : undefined,
     });
   };
 
@@ -90,7 +92,7 @@ export function ReportDiscrepancyModal({
     setDescription("");
     setDataSource("");
     setPriority("medium");
-    setRelatedSaleId(context.relatedSaleId ?? "");
+    setRelatedSaleAmount(context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : "");
     setSubmitted(false);
     setTicketId(null);
     onClose();
@@ -170,12 +172,12 @@ export function ReportDiscrepancyModal({
             </div>
 
             <div className="space-y-4">
-              {/* Venta relacionada */}
+              {/* Venta relacionada - monto */}
               <div className="space-y-1.5">
-                <Label htmlFor="relatedSaleId" className="flex items-center gap-1.5">
-                  Venta relacionada
+                <Label htmlFor="relatedSaleAmount" className="flex items-center gap-1.5">
+                  Monto de la venta con error
                   <span className="text-muted-foreground text-xs">(opcional)</span>
-                  {context.relatedSaleId && (
+                  {context.relatedSaleAmount !== undefined && (
                     <span className="ml-1 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                       Autocompletado
                     </span>
@@ -183,17 +185,24 @@ export function ReportDiscrepancyModal({
                 </Label>
                 <div className="relative">
                   <Input
-                    id="relatedSaleId"
-                    placeholder="Ej: 00123456, T-2024-001..."
-                    value={relatedSaleId}
-                    onChange={(e) => setRelatedSaleId(e.target.value)}
-                    maxLength={64}
+                    id="relatedSaleAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ej: 1250.50"
+                    value={relatedSaleAmount}
+                    onChange={(e) => setRelatedSaleAmount(e.target.value)}
                     className="font-mono text-sm"
                   />
-                  {relatedSaleId && relatedSaleId !== (context.relatedSaleId ?? "") && (
+                  {relatedSaleAmount &&
+                    relatedSaleAmount !== (context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : "") && (
                     <button
                       type="button"
-                      onClick={() => setRelatedSaleId(context.relatedSaleId ?? "")}
+                      onClick={() =>
+                        setRelatedSaleAmount(
+                          context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : ""
+                        )
+                      }
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground underline"
                     >
                       Restaurar
@@ -201,7 +210,7 @@ export function ReportDiscrepancyModal({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Identificador de la transacción o venta con el error reportado.
+                  Monto de la transacción o venta que presenta el error reportado.
                 </p>
               </div>
 

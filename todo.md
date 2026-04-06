@@ -1721,3 +1721,12 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar campo de venta en el modal de creación: autocompletado con la venta con error, editable
 - [x] Mostrar el campo related_sale_id en la vista de detalle del ticket
 - [x] 184 tests pasan, 0 errores TS
+
+## Corrección campo "Venta relacionada" en tickets
+
+- [x] Renombrar relatedSaleId → relatedSaleAmount (monto numérico, no identificador de texto)
+- [x] Migrar BD: cambiar columna related_sale_id (varchar) a related_sale_amount (decimal)
+- [x] Actualizar ticketsRouter: cambiar z.string() por z.number() para relatedSaleAmount
+- [x] Actualizar ReportDiscrepancyModal: campo numérico con autocompletado desde dashboardAmount del contexto
+- [x] Mostrar relatedSaleAmount en la vista de detalle del ticket con formato de moneda (S/ X,XXX.XX)
+- [x] 184 tests pasan, 0 errores TS

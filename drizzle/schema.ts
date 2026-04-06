@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Roles de usuario:
@@ -138,11 +138,10 @@ export const discrepancyTickets = mysqlTable("discrepancy_tickets", {
   /** User name who resolved the ticket */
   resolvedByName: varchar("resolved_by_name", { length: 128 }),
   /**
-   * ID de la venta relacionada con la discrepancia.
-   * La plataforma lo autocompleta con el contexto activo, pero el usuario puede editarlo.
-   * Puede ser un ticket number, folio de venta u otro identificador de la transacción.
+   * Monto de la venta relacionada con la discrepancia.
+   * La plataforma lo autocompleta con el monto del contexto activo, pero el usuario puede editarlo.
    */
-  relatedSaleId: varchar("related_sale_id", { length: 64 }),
+  relatedSaleAmount: decimal("related_sale_amount", { precision: 14, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
