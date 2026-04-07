@@ -689,6 +689,7 @@ export const ownBrandRouter = router({
     .input(
       dateRangeSchema.extend({
         search: z.string().optional(),
+        productIds: z.array(z.string()).optional(), // múltiples productos
         branchId: z.string().optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
@@ -708,10 +709,13 @@ export const ownBrandRouter = router({
       const limitIdx = toIdx + 1;
       const offsetIdx = limitIdx + 1;
 
-      const params: (string | number)[] = [...brandParams, from, to, input.limit, input.offset];
+      const params: (string | number | string[])[] = [...brandParams, from, to, input.limit, input.offset];
       const clauses: string[] = [];
 
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        params.push(input.productIds);
+        clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
+      } else if (input.search) {
         params.push(`%${input.search}%`);
         clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
       }
@@ -745,9 +749,12 @@ export const ownBrandRouter = router({
       );
 
       // Count
-      const countParams: (string | number)[] = [...brandParams, from, to];
+      const countParams: (string | number | string[])[] = [...brandParams, from, to];
       const countClauses: string[] = [];
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        countParams.push(input.productIds);
+        countClauses.push(`AND p.id = ANY($${countParams.length}::uuid[])`);
+      } else if (input.search) {
         countParams.push(`%${input.search}%`);
         countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
       }
@@ -773,9 +780,12 @@ export const ownBrandRouter = router({
       );
 
       // Totales
-      const totalsParams: (string | number)[] = [...brandParams, from, to];
+      const totalsParams: (string | number | string[])[] = [...brandParams, from, to];
       const totalsClauses: string[] = [];
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        totalsParams.push(input.productIds);
+        totalsClauses.push(`AND p.id = ANY($${totalsParams.length}::uuid[])`);
+      } else if (input.search) {
         totalsParams.push(`%${input.search}%`);
         totalsClauses.push(`AND (p.name ILIKE $${totalsParams.length} OR p.int_sku::text ILIKE $${totalsParams.length})`);
       }
@@ -849,7 +859,7 @@ export const ownBrandRouter = router({
    * Exportación completa de ventas por artículo × tienda (sin paginación).
    */
   exportSalesByProductBranch: protectedProcedure
-    .input(dateRangeSchema.extend({ search: z.string().optional(), branchId: z.string().optional() }))
+    .input(dateRangeSchema.extend({ search: z.string().optional(), productIds: z.array(z.string()).optional(), branchId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -862,10 +872,13 @@ export const ownBrandRouter = router({
       const fromIdx = brandParams.length + 1;
       const toIdx = fromIdx + 1;
 
-      const params: (string | number)[] = [...brandParams, from, to];
+      const params: (string | number | string[])[] = [...brandParams, from, to];
       const clauses: string[] = [];
 
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        params.push(input.productIds);
+        clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
+      } else if (input.search) {
         params.push(`%${input.search}%`);
         clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
       }

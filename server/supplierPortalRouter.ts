@@ -601,6 +601,7 @@ export const supplierPortalRouter = router({
       dateRangeSchema.extend({
         supplierId: z.string().optional(),
         search: z.string().optional(),
+        productIds: z.array(z.string()).optional(), // múltiples productos
         branchId: z.string().optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
@@ -611,10 +612,13 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-      const params: (string | number)[] = [supplierId, from, to, input.limit, input.offset];
+      const params: (string | number | string[])[] = [supplierId, from, to, input.limit, input.offset];
       const clauses: string[] = [];
 
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        params.push(input.productIds);
+        clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
+      } else if (input.search) {
         params.push(`%${input.search}%`);
         clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
       }
@@ -650,9 +654,12 @@ export const supplierPortalRouter = router({
       );
 
       // Count total rows (same filters, no LIMIT)
-      const countParams: (string | number)[] = [supplierId, from, to];
+      const countParams: (string | number | string[])[] = [supplierId, from, to];
       const countClauses: string[] = [];
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        countParams.push(input.productIds);
+        countClauses.push(`AND p.id = ANY($${countParams.length}::uuid[])`);
+      } else if (input.search) {
         countParams.push(`%${input.search}%`);
         countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
       }
@@ -678,9 +685,12 @@ export const supplierPortalRouter = router({
       );
 
       // Totales globales (todos los registros filtrados, sin paginación)
-      const totalsParams: (string | number)[] = [supplierId, from, to];
+      const totalsParams: (string | number | string[])[] = [supplierId, from, to];
       const totalsClauses: string[] = [];
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        totalsParams.push(input.productIds);
+        totalsClauses.push(`AND p.id = ANY($${totalsParams.length}::uuid[])`);
+      } else if (input.search) {
         totalsParams.push(`%${input.search}%`);
         totalsClauses.push(`AND (p.name ILIKE $${totalsParams.length} OR p.int_sku::text ILIKE $${totalsParams.length})`);
       }
@@ -776,6 +786,7 @@ export const supplierPortalRouter = router({
       dateRangeSchema.extend({
         supplierId: z.string().optional(),
         search: z.string().optional(),
+        productIds: z.array(z.string()).optional(), // múltiples productos
         branchId: z.string().optional(),
       })
     )
@@ -784,10 +795,13 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-      const params: (string | number)[] = [supplierId, from, to];
+      const params: (string | number | string[])[] = [supplierId, from, to];
       const clauses: string[] = [];
 
-      if (input.search) {
+      if (input.productIds && input.productIds.length > 0) {
+        params.push(input.productIds);
+        clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
+      } else if (input.search) {
         params.push(`%${input.search}%`);
         clauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
       }

@@ -1730,3 +1730,18 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar ReportDiscrepancyModal: campo numérico con autocompletado desde dashboardAmount del contexto
 - [x] Mostrar relatedSaleAmount en la vista de detalle del ticket con formato de moneda (S/ X,XXX.XX)
 - [x] 184 tests pasan, 0 errores TS
+
+## Filtro múltiple de productos en pestaña Ventas (Portales)
+- [x] Crear componente MultiProductSelect reutilizable con checkboxes y búsqueda interna
+- [x] Reemplazar Select único de productos en pestaña Ventas de SupplierPortal por MultiProductSelect
+- [x] Reemplazar Select único de productos en pestaña Ventas de OwnBrandPortal por MultiProductSelect
+- [x] Actualizar estado salesProductId (string | undefined) → salesProductIds (string[]) en ambos portales
+- [x] Actualizar query getSalesByProductBranch para pasar array de IDs en lugar de uno solo
+- [x] Actualizar query exportSalesByProductBranch para pasar array de IDs
+- [x] Actualizar router supplierPortal.getSalesByProductBranch para aceptar productIds: string[]
+- [x] Actualizar router supplierPortal.exportSalesByProductBranch para aceptar productIds: string[]
+- [x] Actualizar router ownBrand.getSalesByProductBranch para aceptar productIds: string[]
+- [x] Actualizar router ownBrand.exportSalesByProductBranch para aceptar productIds: string[]
+- [x] Actualizar SQL en ambos routers para filtrar con IN (array) en lugar de = (uno solo)
+- [x] Mostrar badge con cantidad de productos seleccionados en el trigger del selector
+- [ ] Guardar checkpoint
