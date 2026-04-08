@@ -82,7 +82,7 @@ export default function Login() {
               className="text-3xl font-bold mb-1"
               style={{
                 color: GRAPHITE,
-                fontFamily: 'ItalianPlateNo1, Georgia, serif',
+                fontFamily: "'Italian Plate No 1', Georgia, serif",
                 letterSpacing: '-0.01em',
               }}
             >
