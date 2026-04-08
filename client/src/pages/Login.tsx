@@ -58,8 +58,6 @@ export default function Login() {
           style={{ color: STONE, fontFamily: 'Sailec, sans-serif' }}
         >
           Dashboard de Análisis de Ventas
-          <br />
-          <span style={{ color: PARCHMENT }}>Flora &amp; Fauna</span>
         </p>
       </div>
 
@@ -88,9 +86,7 @@ export default function Login() {
             >
               INICIAR SESIÓN
             </h1>
-            <p className="text-sm" style={{ color: STONE }}>
-              Acceso restringido · Solo personal autorizado
-            </p>
+
           </div>
 
           {/* Formulario */}
