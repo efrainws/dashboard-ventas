@@ -135,8 +135,8 @@ function CoverageTag({ days }: { days: number | null }) {
     return <span className="text-xs" style={{ color: '#919291' }}>—</span>;
   }
   const isAlert = days < COVERAGE_ALERT_THRESHOLD;
-  // Paleta semáforo sin bordes, fondo sólido, texto blanco (estándar StyleGuide)
-  const bg = isAlert ? '#BC2C46' : days < 15 ? '#C49705' : '#008064';
+  // Semáforo: rojo < 5 días | verde 5–10 días | amarillo > 10 días
+  const bg = isAlert ? '#BC2C46' : days <= 10 ? '#008064' : '#C49705';
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums whitespace-nowrap"

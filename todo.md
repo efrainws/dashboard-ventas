@@ -1761,4 +1761,8 @@ Fecha: 1 de febrero de 2026
 
 ## Top 50 — Corrección de tags de cobertura
 - [x] Eliminar bordes de CoverageTag y aplicar estilo de badge sin borde (solo fondo sólido, sin outline)
+- [x] Guardar checkpoint
+
+## Top 50 — Semáforo de cobertura invertido
+- [x] Cambiar lógica: rojo < 5 días, verde 5–10 días, amarillo > 10 días
 - [ ] Guardar checkpoint
