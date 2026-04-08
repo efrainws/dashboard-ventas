@@ -39,8 +39,20 @@ describe("getTopProducts", () => {
         : "";
 
     const orderCol =
-      orderBy === "qty" ? "total_qty DESC" : "total_amount DESC";
-    const whereCol = orderBy === "qty" ? "total_qty > 0" : "total_amount > 0";
+      orderBy === "qty" ? "a.total_qty DESC" : "a.total_amount DESC";
+    const whereCol = orderBy === "qty" ? "a.total_qty > 0" : "a.total_amount > 0";
+
+    // Número de días del período para calcular venta diaria y cobertura
+    const daysDiff = Math.max(
+      1,
+      Math.round(
+        (new Date(fechaMax).getTime() - new Date(fechaMin).getTime()) / 86_400_000
+      ) + 1
+    );
+
+    const stockBranchClause = branchId && branchId !== 'all'
+      ? `AND sb.sap_id = '${branchId.replace(/'/g, "''")}' `
+      : '';
 
     const query = `
       WITH line_items AS (
@@ -81,16 +93,37 @@ describe("getTopProducts", () => {
           COUNT(DISTINCT branch_sap_id) AS branch_count
         FROM line_items
         GROUP BY product_id, product_name, sku
+      ),
+      stock_agg AS (
+        SELECT
+          s.product_id,
+          SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
+        FROM public.stocks s
+        LEFT JOIN public.branches sb ON sb.id = s.branch_id
+        WHERE 1=1
+          ${stockBranchClause}
+        GROUP BY s.product_id
       )
       SELECT
-        product_id,
-        product_name,
-        sku,
-        category_name,
-        total_qty::numeric    AS total_qty,
-        total_amount::numeric AS total_amount,
-        branch_count
-      FROM aggregated
+        a.product_id,
+        a.product_name,
+        a.sku,
+        a.category_name,
+        a.total_qty::numeric                                          AS total_qty,
+        a.total_amount::numeric                                       AS total_amount,
+        a.branch_count,
+        COALESCE(sa.total_stock, 0)::numeric                         AS total_stock,
+        ROUND((a.total_qty::numeric / ${daysDiff}), 2)               AS avg_daily_qty,
+        CASE
+          WHEN a.total_qty > 0
+          THEN ROUND(
+            COALESCE(sa.total_stock, 0)::numeric / (a.total_qty::numeric / ${daysDiff}),
+            1
+          )
+          ELSE NULL
+        END                                                           AS coverage_days
+      FROM aggregated a
+      LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
       WHERE ${whereCol}
       ORDER BY ${orderCol}
       LIMIT 50;
@@ -117,7 +150,12 @@ describe("getTopProducts", () => {
       expect(row).toHaveProperty("total_qty");
       expect(row).toHaveProperty("total_amount");
       expect(row).toHaveProperty("branch_count");
+      expect(row).toHaveProperty("total_stock");
+      expect(row).toHaveProperty("avg_daily_qty");
+      expect(row).toHaveProperty("coverage_days");
       expect(Number(row.total_qty)).toBeGreaterThan(0);
+      expect(Number(row.total_stock)).toBeGreaterThanOrEqual(0);
+      expect(Number(row.avg_daily_qty)).toBeGreaterThan(0);
     });
   });
 
@@ -198,7 +236,7 @@ describe("getTopProducts", () => {
     expect(result.rows.length).toBe(0);
   });
 
-  // ── Test 7: los valores numéricos son válidos ────────────────────────────
+  // ── Test 7: los valores numéricos son válidos ────────────────────────────────
   it("total_qty y total_amount son números válidos y positivos", { timeout: 30_000 }, async () => {
     const result = await runTopProductsQuery({
       fechaMin: FECHA_MIN,
@@ -213,6 +251,30 @@ describe("getTopProducts", () => {
       expect(isNaN(amount)).toBe(false);
       expect(qty).toBeGreaterThan(0);
       expect(amount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ── Test 8: cobertura se calcula correctamente ─────────────────────────────
+  it("coverage_days es nulo o un número no negativo", { timeout: 30_000 }, async () => {
+    const result = await runTopProductsQuery({
+      fechaMin: FECHA_MIN,
+      fechaMax: FECHA_MAX,
+      orderBy: "qty",
+    });
+
+    result.rows.forEach((row) => {
+      if (row.coverage_days !== null) {
+        const coverage = Number(row.coverage_days);
+        expect(isNaN(coverage)).toBe(false);
+        expect(coverage).toBeGreaterThanOrEqual(0);
+        // Verificar consistencia: cobertura = stock / venta_diaria
+        const stock = Number(row.total_stock);
+        const avgDaily = Number(row.avg_daily_qty);
+        if (avgDaily > 0) {
+          const expectedCoverage = Math.round((stock / avgDaily) * 10) / 10;
+          expect(Math.abs(coverage - expectedCoverage)).toBeLessThan(0.2);
+        }
+      }
     });
   });
 });

@@ -122,11 +122,47 @@ interface ProductRow {
   total_qty: number;
   total_amount: number;
   branch_count: number;
+  total_stock: number;
+  avg_daily_qty: number;
+  coverage_days: number | null;
+}
+
+// Umbral de cobertura crítica (días)
+const COVERAGE_ALERT_THRESHOLD = 5;
+
+function CoverageTag({ days }: { days: number | null }) {
+  if (days === null) {
+    return <span className="text-xs" style={{ color: '#919291' }}>—</span>;
+  }
+  const isAlert = days < COVERAGE_ALERT_THRESHOLD;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums whitespace-nowrap"
+      style={{
+        backgroundColor: isAlert ? '#BC2C46' : days < 15 ? '#C4970520' : '#00806420',
+        color: isAlert ? '#F5F4F1' : days < 15 ? '#624C02' : '#004032',
+        border: isAlert ? '1px solid #BC2C46' : days < 15 ? '1px solid #C49705' : '1px solid #008064',
+      }}
+      title={isAlert ? `Cobertura crítica: ${days} días (umbral: ${COVERAGE_ALERT_THRESHOLD} días)` : `${days} días de cobertura`}
+    >
+      {isAlert && '⚠ '}{days}d
+    </span>
+  );
 }
 
 function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
+  const alertCount = rows.filter(r => r.coverage_days !== null && r.coverage_days < COVERAGE_ALERT_THRESHOLD).length;
   return (
     <div className="overflow-x-auto" style={{ fontFamily: "'Sailec', system-ui, sans-serif" }}>
+      {alertCount > 0 && (
+        <div
+          className="flex items-center gap-2 px-4 py-2 text-xs font-medium"
+          style={{ backgroundColor: '#BC2C4615', borderBottom: '1px solid #BC2C4630', color: '#BC2C46' }}
+        >
+          <span className="text-sm">⚠️</span>
+          {alertCount} producto{alertCount > 1 ? 's' : ''} con cobertura crítica (&lt; {COVERAGE_ALERT_THRESHOLD} días)
+        </div>
+      )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
@@ -139,6 +175,9 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
             <th className="text-right py-3 px-3 font-medium hidden lg:table-cell">
               {mode === "qty" ? "Monto (S/)" : "Cantidad"}
             </th>
+            <th className="text-right py-3 px-3 font-medium hidden xl:table-cell">Stock</th>
+            <th className="text-right py-3 px-3 font-medium hidden xl:table-cell">Vta. Diaria</th>
+            <th className="text-center py-3 px-3 font-medium">Cobertura</th>
             <th className="text-center py-3 px-3 font-medium hidden lg:table-cell">
               <Store className="h-3.5 w-3.5 inline" />
             </th>
@@ -147,11 +186,16 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
         <tbody>
           {rows.map((row) => {
             const isTop3 = row.rank <= 3;
+            const isCoverageAlert = row.coverage_days !== null && row.coverage_days < COVERAGE_ALERT_THRESHOLD;
             return (
               <tr
                 key={row.product_id}
                 className={`border-b border-border/50 transition-colors hover:bg-muted/40 ${
-                  isTop3 ? "bg-muted/20" : ""
+                  isCoverageAlert
+                    ? 'bg-[#BC2C460A]'
+                    : isTop3
+                    ? 'bg-muted/20'
+                    : ''
                 }`}
               >
                 {/* Rank */}
@@ -201,6 +245,24 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                   {mode === "qty"
                     ? formatCurrency(row.total_amount)
                     : formatNumber(row.total_qty)}
+                </td>
+                {/* Stock actual */}
+                <td
+                  className="py-3 px-3 text-right tabular-nums hidden xl:table-cell"
+                  style={{ color: isCoverageAlert ? '#BC2C46' : '#232523', fontWeight: isCoverageAlert ? 600 : 400 }}
+                >
+                  {formatNumber(Math.round(row.total_stock))}
+                </td>
+                {/* Venta diaria promedio */}
+                <td
+                  className="py-3 px-3 text-right tabular-nums hidden xl:table-cell"
+                  style={{ color: "#757471" }}
+                >
+                  {row.avg_daily_qty > 0 ? formatNumber(Math.round(row.avg_daily_qty * 10) / 10) : '—'}
+                </td>
+                {/* Cobertura */}
+                <td className="py-3 px-3 text-center">
+                  <CoverageTag days={row.coverage_days} />
                 </td>
                 {/* Tiendas */}
                 <td

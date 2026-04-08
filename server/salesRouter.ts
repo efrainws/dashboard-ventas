@@ -759,6 +759,20 @@ export const salesRouter = router({
         ? (() => { params.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}`; })()
         : '';
 
+      // Cláusula de stock: si hay filtro de tienda, solo el stock de esa tienda;
+      // si no, suma el stock de todas las tiendas (a través del branch_id de branches).
+      const stockBranchClause = (branch_id && branch_id !== 'all')
+        ? `AND sb.sap_id = '${branch_id.replace(/'/g, "''")}' `
+        : '';
+
+      // Número de días del período para calcular venta diaria promedio
+      const daysDiff = Math.max(
+        1,
+        Math.round(
+          (new Date(fechaMaxDate).getTime() - new Date(fechaMinDate).getTime()) / 86_400_000
+        ) + 1
+      );
+
       const query = `
         WITH line_items AS (
           SELECT
@@ -799,19 +813,44 @@ export const salesRouter = router({
             COUNT(DISTINCT branch_sap_id) AS branch_count
           FROM line_items
           GROUP BY product_id, product_name, sku
+        ),
+        -- Stock actual: suma del stock de todas las tiendas en scope
+        stock_agg AS (
+          SELECT
+            s.product_id,
+            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
+          FROM public.stocks s
+          LEFT JOIN public.branches sb ON sb.id = s.branch_id
+          WHERE 1=1
+            ${stockBranchClause}
+          GROUP BY s.product_id
         )
         SELECT
-          product_id,
-          product_name,
-          sku,
-          category_name,
-          total_qty::numeric       AS total_qty,
-          total_amount::numeric    AS total_amount,
-          branch_count,
-          RANK() OVER (ORDER BY total_qty    DESC) AS rank_qty,
-          RANK() OVER (ORDER BY total_amount DESC) AS rank_amount
-        FROM aggregated
-        WHERE total_qty > 0
+          a.product_id,
+          a.product_name,
+          a.sku,
+          a.category_name,
+          a.total_qty::numeric                                         AS total_qty,
+          a.total_amount::numeric                                      AS total_amount,
+          a.branch_count,
+          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,
+          -- Venta diaria promedio = total_qty / días del período
+          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,
+          -- Cobertura = stock / venta_diaria (NULL si venta_diaria = 0)
+          CASE
+            WHEN a.total_qty > 0
+            THEN ROUND(
+              COALESCE(sa.total_stock, 0)::numeric
+              / (a.total_qty::numeric / ${daysDiff}),
+              1
+            )
+            ELSE NULL
+          END                                                          AS coverage_days,
+          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,
+          RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount
+        FROM aggregated a
+        LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
+        WHERE a.total_qty > 0
         ORDER BY rank_qty
         LIMIT 50;
       `;
@@ -857,19 +896,41 @@ export const salesRouter = router({
             COUNT(DISTINCT branch_sap_id) AS branch_count
           FROM line_items
           GROUP BY product_id, product_name, sku
+        ),
+        stock_agg AS (
+          SELECT
+            s.product_id,
+            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
+          FROM public.stocks s
+          LEFT JOIN public.branches sb ON sb.id = s.branch_id
+          WHERE 1=1
+            ${stockBranchClause}
+          GROUP BY s.product_id
         )
         SELECT
-          product_id,
-          product_name,
-          sku,
-          category_name,
-          total_qty::numeric       AS total_qty,
-          total_amount::numeric    AS total_amount,
-          branch_count,
-          RANK() OVER (ORDER BY total_qty    DESC) AS rank_qty,
-          RANK() OVER (ORDER BY total_amount DESC) AS rank_amount
-        FROM aggregated
-        WHERE total_amount > 0
+          a.product_id,
+          a.product_name,
+          a.sku,
+          a.category_name,
+          a.total_qty::numeric                                         AS total_qty,
+          a.total_amount::numeric                                      AS total_amount,
+          a.branch_count,
+          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,
+          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,
+          CASE
+            WHEN a.total_qty > 0
+            THEN ROUND(
+              COALESCE(sa.total_stock, 0)::numeric
+              / (a.total_qty::numeric / ${daysDiff}),
+              1
+            )
+            ELSE NULL
+          END                                                          AS coverage_days,
+          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,
+          RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount
+        FROM aggregated a
+        LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
+        WHERE a.total_amount > 0
         ORDER BY rank_amount
         LIMIT 50;
       `;
@@ -889,6 +950,9 @@ export const salesRouter = router({
           total_qty: Number(row.total_qty ?? 0),
           total_amount: Number(row.total_amount ?? 0),
           branch_count: Number(row.branch_count ?? 0),
+          total_stock: Number(row.total_stock ?? 0),
+          avg_daily_qty: Number(row.avg_daily_qty ?? 0),
+          coverage_days: row.coverage_days != null ? Number(row.coverage_days) : null,
         });
 
         return {

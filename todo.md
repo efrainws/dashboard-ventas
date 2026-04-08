@@ -1750,4 +1750,11 @@ Fecha: 1 de febrero de 2026
 - [x] Crear StyleGuide.tsx con secciones: Intro, Colores, Tipografía, Logos, Botones, Badges, Cards, Tabla, Gráficos, Formularios, Indicadores KPI
 - [x] Agregar bloque CSS exportable como comentario en la página
 - [x] Registrar ruta pública /style-guide en App.tsx (sin ProtectedRoute)
+- [x] Guardar checkpoint
+
+## Top 50 — Stock y Cobertura
+- [x] Actualizar getTopProducts en salesRouter.ts para incluir stock total por producto (JOIN con stocks) y calcular venta diaria promedio y cobertura
+- [x] Actualizar interfaz ProductRow en TopProducts.tsx para incluir stock, avg_daily_qty y coverage
+- [x] Agregar columnas Stock, Venta Diaria y Cobertura en RankingTable
+- [x] Agregar tag de alerta rojo para cobertura < 5 días
 - [ ] Guardar checkpoint
