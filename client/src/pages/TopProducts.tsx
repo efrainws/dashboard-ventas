@@ -135,14 +135,12 @@ function CoverageTag({ days }: { days: number | null }) {
     return <span className="text-xs" style={{ color: '#919291' }}>—</span>;
   }
   const isAlert = days < COVERAGE_ALERT_THRESHOLD;
+  // Paleta semáforo sin bordes, fondo sólido, texto blanco (estándar StyleGuide)
+  const bg = isAlert ? '#BC2C46' : days < 15 ? '#C49705' : '#008064';
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums whitespace-nowrap"
-      style={{
-        backgroundColor: isAlert ? '#BC2C46' : days < 15 ? '#C4970520' : '#00806420',
-        color: isAlert ? '#F5F4F1' : days < 15 ? '#624C02' : '#004032',
-        border: isAlert ? '1px solid #BC2C46' : days < 15 ? '1px solid #C49705' : '1px solid #008064',
-      }}
+      style={{ backgroundColor: bg, color: '#F5F4F1' }}
       title={isAlert ? `Cobertura crítica: ${days} días (umbral: ${COVERAGE_ALERT_THRESHOLD} días)` : `${days} días de cobertura`}
     >
       {isAlert && '⚠ '}{days}d

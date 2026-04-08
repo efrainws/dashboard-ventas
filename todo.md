@@ -1757,4 +1757,8 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar interfaz ProductRow en TopProducts.tsx para incluir stock, avg_daily_qty y coverage
 - [x] Agregar columnas Stock, Venta Diaria y Cobertura en RankingTable
 - [x] Agregar tag de alerta rojo para cobertura < 5 días
+- [x] Guardar checkpoint
+
+## Top 50 — Corrección de tags de cobertura
+- [x] Eliminar bordes de CoverageTag y aplicar estilo de badge sin borde (solo fondo sólido, sin outline)
 - [ ] Guardar checkpoint
