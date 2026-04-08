@@ -1744,4 +1744,10 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar router ownBrand.exportSalesByProductBranch para aceptar productIds: string[]
 - [x] Actualizar SQL en ambos routers para filtrar con IN (array) en lugar de = (uno solo)
 - [x] Mostrar badge con cantidad de productos seleccionados en el trigger del selector
+- [x] Guardar checkpoint
+
+## Style Guide — Página pública de referencia de diseño
+- [x] Crear StyleGuide.tsx con secciones: Intro, Colores, Tipografía, Logos, Botones, Badges, Cards, Tabla, Gráficos, Formularios, Indicadores KPI
+- [x] Agregar bloque CSS exportable como comentario en la página
+- [x] Registrar ruta pública /style-guide en App.tsx (sin ProtectedRoute)
 - [ ] Guardar checkpoint

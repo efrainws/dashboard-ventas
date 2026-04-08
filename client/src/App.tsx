@@ -26,6 +26,7 @@ import SupplierMonitor from "./pages/SupplierMonitor";
 import AffiliationReport from "./pages/AffiliationReport";
 import OwnBrandPortal from "./pages/OwnBrandPortal";
 import { TrialPopup } from "./components/TrialPopup";
+import StyleGuide from "./pages/StyleGuide";
 
 type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "own_brand_only";
 
@@ -103,6 +104,9 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/activate/:token" component={ActivateAccount} />
+
+      {/* Style Guide — página pública de referencia de diseño, sin autenticación */}
+      <Route path="/style-guide" component={StyleGuide} />
 
       {/* Portal exclusivo para proveedores */}
       <Route path="/supplier">
