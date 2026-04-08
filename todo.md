@@ -1765,4 +1765,9 @@ Fecha: 1 de febrero de 2026
 
 ## Top 50 — Semáforo de cobertura invertido
 - [x] Cambiar lógica: rojo < 5 días, verde 5–10 días, amarillo > 10 días
+- [x] Guardar checkpoint
+
+## Login — Copia del diseño de Sanborja
+- [x] Inspeccionar y documentar el diseño de login de sanborjadash
+- [x] Replicar el diseño en la página de login de Flora & Fauna
 - [ ] Guardar checkpoint
