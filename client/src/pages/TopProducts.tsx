@@ -7,7 +7,8 @@ import { useFilters } from "@/contexts/FiltersContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trophy, Hash, DollarSign, Package, Store } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Trophy, Hash, DollarSign, Package, Store, X } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import {
@@ -148,7 +149,144 @@ function CoverageTag({ days }: { days: number | null }) {
   );
 }
 
+// ─── Modal de detalle de fila (móvil) ──────────────────────────────────────
+function ProductDetailModal({
+  row,
+  mode,
+  onClose,
+}: {
+  row: ProductRow | null;
+  mode: "qty" | "amount";
+  onClose: () => void;
+}) {
+  if (!row) return null;
+  const isCoverageAlert = row.coverage_days !== null && row.coverage_days < COVERAGE_ALERT_THRESHOLD;
+
+  const fields: { label: string; value: React.ReactNode }[] = [
+    {
+      label: "Posición",
+      value: (
+        <span className="flex items-center gap-2">
+          {row.rank <= 3 ? (
+            <Trophy className="h-4 w-4" style={{ color: MEDAL_COLORS[row.rank - 1] }} />
+          ) : null}
+          <span className="font-mono font-semibold">#{row.rank}</span>
+        </span>
+      ),
+    },
+    { label: "SKU", value: row.sku || "—" },
+    {
+      label: "Categoría",
+      value: <Badge variant="secondary" className="text-xs font-normal">{row.category_name}</Badge>,
+    },
+    {
+      label: "Unidades vendidas",
+      value: <span className="font-semibold tabular-nums" style={{ color: "#1A6894" }}>{formatNumber(row.total_qty)}</span>,
+    },
+    {
+      label: "Monto vendido",
+      value: <span className="font-semibold tabular-nums" style={{ color: "#008064" }}>{formatCurrency(row.total_amount)}</span>,
+    },
+    {
+      label: "Ticket promedio",
+      value: (
+        <span className="tabular-nums" style={{ color: "#C49705" }}>
+          {row.total_qty > 0 ? formatCurrency(row.total_amount / row.total_qty) : "—"}
+        </span>
+      ),
+    },
+    {
+      label: "Tiendas",
+      value: (
+        <span className="flex items-center gap-1">
+          <Store className="h-3.5 w-3.5" style={{ color: "#757471" }} />
+          {row.branch_count}
+        </span>
+      ),
+    },
+    {
+      label: "Stock actual",
+      value: (
+        <span
+          className="font-semibold tabular-nums"
+          style={{ color: isCoverageAlert ? "#BC2C46" : "#232523" }}
+        >
+          {formatNumber(Math.round(row.total_stock))}
+        </span>
+      ),
+    },
+    {
+      label: "Venta diaria promedio",
+      value: (
+        <span className="tabular-nums" style={{ color: "#757471" }}>
+          {row.avg_daily_qty > 0 ? row.avg_daily_qty.toFixed(1) : "—"}
+        </span>
+      ),
+    },
+    {
+      label: "Cobertura",
+      value: <CoverageTag days={row.coverage_days} />,
+    },
+  ];
+
+  return (
+    <Dialog open={!!row} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="max-w-sm mx-auto rounded-2xl"
+        style={{ fontFamily: "'Sailec', system-ui, sans-serif", backgroundColor: "#F5F4F1" }}
+      >
+        <DialogHeader className="pb-2">
+          {/* Rank badge */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <DialogTitle
+                className="text-base font-semibold leading-snug"
+                style={{ color: "#232523" }}
+              >
+                {row.product_name}
+              </DialogTitle>
+              {row.sku && (
+                <p className="text-xs mt-0.5" style={{ color: "#919291" }}>SKU: {row.sku}</p>
+              )}
+            </div>
+            {isCoverageAlert && (
+              <span
+                className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                style={{ backgroundColor: "#BC2C46", color: "#F5F4F1" }}
+              >
+                ⚠ Cobertura crítica
+              </span>
+            )}
+          </div>
+        </DialogHeader>
+
+        {/* Separador */}
+        <div className="border-t border-border/60 my-1" />
+
+        {/* Campos en tabla de dos columnas */}
+        <div className="space-y-0">
+          {fields.map(({ label, value }, i) => (
+            <div
+              key={label}
+              className="flex items-center justify-between py-2.5 px-1"
+              style={{
+                borderBottom: i < fields.length - 1 ? "1px solid #EAE8E2" : "none",
+              }}
+            >
+              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#919291" }}>
+                {label}
+              </span>
+              <span className="text-sm text-right">{value}</span>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amount" }) {
+  const [selectedRow, setSelectedRow] = useState<ProductRow | null>(null);
   const alertCount = rows.filter(r => r.coverage_days !== null && r.coverage_days < COVERAGE_ALERT_THRESHOLD).length;
   return (
     <div className="overflow-x-auto" style={{ fontFamily: "'Sailec', system-ui, sans-serif" }}>
@@ -161,6 +299,9 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
           {alertCount} producto{alertCount > 1 ? 's' : ''} con cobertura crítica (&lt; {COVERAGE_ALERT_THRESHOLD} días)
         </div>
       )}
+      {/* Modal de detalle (móvil) */}
+      <ProductDetailModal row={selectedRow} mode={mode} onClose={() => setSelectedRow(null)} />
+
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
@@ -188,7 +329,8 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
             return (
               <tr
                 key={row.product_id}
-                className={`border-b border-border/50 transition-colors hover:bg-muted/40 ${
+                onClick={() => setSelectedRow(row)}
+                className={`border-b border-border/50 transition-colors hover:bg-muted/40 cursor-pointer md:cursor-default ${
                   isCoverageAlert
                     ? 'bg-[#BC2C460A]'
                     : isTop3

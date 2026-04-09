@@ -1771,3 +1771,9 @@ Fecha: 1 de febrero de 2026
 - [x] Inspeccionar y documentar el diseño de login de sanborjadash
 - [x] Replicar el diseño en la página de login de Flora & Fauna
 - [x] Guardar checkpoint
+
+## Top 50 — Modal de detalle en vista móvil
+- [x] Agregar estado selectedRow y modal de detalle en TopProducts.tsx
+- [x] Modal muestra todos los campos de la fila de forma legible (rank, SKU, nombre, categoría, unidades, monto, ticket promedio, stock, venta diaria, cobertura con badge)
+- [x] Fila clickeable en móvil con indicador visual (cursor pointer, hover sutil)
+- [ ] Guardar checkpoint
