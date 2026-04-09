@@ -265,63 +265,64 @@ class SDKServer {
     }
 
     // Intentar decodificar el JWT para determinar si es local o de Manus OAuth
+    let payload: Record<string, unknown>;
     try {
       const secretKey = this.getSessionSecret();
-      const { payload } = await jwtVerify(sessionCookie, secretKey, {
+      const result = await jwtVerify(sessionCookie, secretKey, {
         algorithms: ["HS256"],
       });
-
-      // Si tiene userId, es un JWT local (de nuestro login)
-      if (payload.userId && (typeof payload.userId === "string" || typeof payload.userId === "number")) {
-        const userId = String(payload.userId);
-        const user = await db.getUserById(userId);
-        if (!user) {
-          throw ForbiddenError("User not found");
-        }
-        return user;
-      }
-
-      // Si tiene openId, es un JWT de Manus OAuth
-      if (payload.openId && typeof payload.openId === "string") {
-        const sessionUserId = payload.openId;
-        const signedInAt = new Date();
-        let user = await db.getUserByOpenId(sessionUserId);
-
-        // If user not in DB, sync from OAuth server automatically
-        if (!user) {
-          try {
-            const userInfo = await this.getUserInfoWithJwt(sessionCookie);
-            await db.upsertUser({
-              openId: userInfo.openId,
-              name: userInfo.name || null,
-              email: userInfo.email ?? null,
-              loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-              lastSignedIn: signedInAt,
-            });
-            user = await db.getUserByOpenId(userInfo.openId);
-          } catch (error) {
-            console.error("[Auth] Failed to sync user from OAuth:", error);
-            throw ForbiddenError("Failed to sync user info");
-          }
-        }
-
-        if (!user) {
-          throw ForbiddenError("User not found");
-        }
-
-        await db.upsertUser({
-          openId: user.openId,
-          lastSignedIn: signedInAt,
-        });
-
-        return user;
-      }
-
-      throw ForbiddenError("Invalid JWT payload");
+      payload = result.payload as Record<string, unknown>;
     } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
+      console.warn("[Auth] JWT verification failed", String(error));
       throw ForbiddenError("Invalid session cookie");
     }
+
+    // Si tiene userId, es un JWT local (de nuestro login con username/password)
+    if (payload.userId !== undefined && payload.userId !== null) {
+      const userId = String(payload.userId);
+      const user = await db.getUserById(userId);
+      if (!user) {
+        throw ForbiddenError("User not found");
+      }
+      return user;
+    }
+
+    // Si tiene openId, es un JWT de Manus OAuth
+    if (payload.openId && typeof payload.openId === "string") {
+      const signedInAt = new Date();
+      let user = await db.getUserByOpenId(payload.openId);
+
+      // If user not in DB, sync from OAuth server automatically
+      if (!user) {
+        try {
+          const userInfo = await this.getUserInfoWithJwt(sessionCookie);
+          await db.upsertUser({
+            openId: userInfo.openId,
+            name: userInfo.name || null,
+            email: userInfo.email ?? null,
+            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+            lastSignedIn: signedInAt,
+          });
+          user = await db.getUserByOpenId(userInfo.openId);
+        } catch (error) {
+          console.error("[Auth] Failed to sync user from OAuth:", error);
+          throw ForbiddenError("Failed to sync user info");
+        }
+      }
+
+      if (!user) {
+        throw ForbiddenError("User not found");
+      }
+
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt,
+      });
+
+      return user;
+    }
+
+    throw ForbiddenError("Invalid JWT payload — missing userId or openId");
   }
 }
 

@@ -1781,3 +1781,14 @@ Fecha: 1 de febrero de 2026
 ## Login — Corrección campo usuario
 - [x] Cambiar campo email por nombre de usuario (type text, label "Usuario", placeholder "nombre.apellido", autocomplete username)
 - [x] Guardar checkpoint
+
+## Login — Revertir mecánica de autenticación
+- [ ] Revisar Login.tsx actual para identificar qué mecánica fue copiada del proyecto Sanborja
+- [ ] Restaurar flujo OAuth/username+password original del proyecto, manteniendo el diseño visual
+- [ ] Verificar que el acceso a módulos protegidos funciona correctamente
+- [ ] Guardar checkpoint
+
+## Login — Corrección de sesión (redirige de vuelta al login)
+- [x] Diagnosticar: el catch en authenticateRequest capturaba ForbiddenError internos y los relanzaba como "Invalid session cookie", rompiendo el flujo de JWT local con userId
+- [x] Separar la verificación JWT del manejo de userId/openId para que errores de DB no sean capturados como errores de JWT inválido
+- [ ] Guardar checkpoint
