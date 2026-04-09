@@ -1791,4 +1791,11 @@ Fecha: 1 de febrero de 2026
 ## Login — Corrección de sesión (redirige de vuelta al login)
 - [x] Diagnosticar: el catch en authenticateRequest capturaba ForbiddenError internos y los relanzaba como "Invalid session cookie", rompiendo el flujo de JWT local con userId
 - [x] Separar la verificación JWT del manejo de userId/openId para que errores de DB no sean capturados como errores de JWT inválido
+- [x] Guardar checkpoint
+
+## Login — Diagnóstico profundo (redirige sin mensaje de error)
+- [x] Verificar que la cookie se establece correctamente tras el login
+- [x] Verificar que trpc.auth.me retorna el usuario después del login
+- [x] Causa raíz: Express sin 'trust proxy' → isSecureRequest() devuelve false → cookie sin flag Secure → navegador HTTPS la descarta silenciosamente
+- [x] Corregir: agregar app.set('trust proxy', 1) en index.ts
 - [ ] Guardar checkpoint
