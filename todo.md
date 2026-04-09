@@ -1780,4 +1780,4 @@ Fecha: 1 de febrero de 2026
 
 ## Login — Corrección campo usuario
 - [x] Cambiar campo email por nombre de usuario (type text, label "Usuario", placeholder "nombre.apellido", autocomplete username)
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint

@@ -104,7 +104,7 @@ export default function Login() {
               <Input
                 id="username"
                 type="text"
-                placeholder="nombre.apellido"
+                placeholder="usuario"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loginMutation.isPending}
