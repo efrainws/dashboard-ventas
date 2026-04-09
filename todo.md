@@ -1776,4 +1776,8 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar estado selectedRow y modal de detalle en TopProducts.tsx
 - [x] Modal muestra todos los campos de la fila de forma legible (rank, SKU, nombre, categoría, unidades, monto, ticket promedio, stock, venta diaria, cobertura con badge)
 - [x] Fila clickeable en móvil con indicador visual (cursor pointer, hover sutil)
+- [x] Guardar checkpoint
+
+## Login — Corrección campo usuario
+- [x] Cambiar campo email por nombre de usuario (type text, label "Usuario", placeholder "nombre.apellido", autocomplete username)
 - [ ] Guardar checkpoint

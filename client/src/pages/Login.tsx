@@ -12,7 +12,7 @@ const STONE      = '#919291'; // texto secundario / labels
 const PARCHMENT  = '#EAE8E2'; // texto tienda en panel izquierdo
 
 export default function Login() {
-  const [email, setEmail]           = useState('');
+  const [username, setUsername]      = useState('');
   const [password, setPassword]     = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError]           = useState('');
@@ -30,11 +30,11 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password.trim()) {
-      setError('Por favor ingresa correo y contraseña.');
+    if (!username.trim() || !password.trim()) {
+      setError('Por favor ingresa usuario y contraseña.');
       return;
     }
-    loginMutation.mutate({ username: email, password });
+    loginMutation.mutate({ username, password });
   };
 
   return (
@@ -92,23 +92,23 @@ export default function Login() {
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Campo correo */}
+            {/* Campo usuario */}
             <div className="space-y-1.5">
               <Label
-                htmlFor="email"
+                htmlFor="username"
                 className="text-xs font-semibold uppercase tracking-wider"
                 style={{ color: STONE }}
               >
-                Correo electrónico
+                Usuario
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="nombre.apellido"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 disabled={loginMutation.isPending}
-                autoComplete="email"
+                autoComplete="username"
                 className="h-11 text-sm"
                 style={{
                   borderColor: 'rgba(145,146,145,0.314)',
