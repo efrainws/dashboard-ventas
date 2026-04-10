@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LogOut, TrendingUp, DollarSign, Filter, Moon, Sun, Users, ShoppingCart, Calendar } from "lucide-react";
+import { Loader2, TrendingUp, DollarSign, ShoppingCart, Calendar, BarChart2 } from "lucide-react";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { SalesLineChart } from "@/components/SalesLineChart";
@@ -56,6 +56,7 @@ export default function SalesByCategory() {
     }
   }, [isStoreUser, assignedStoreCode]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce", "Rappi"]);
 
   // Calcular días del mes para la proyección mensual
   const daysInMonth = useMemo(() => {
@@ -113,7 +114,27 @@ export default function SalesByCategory() {
   }, [dateRange, selectedBranch, selectedCategory]);
 
   // Obtener datos agregados con filtros
-  const { data, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
+  const { data: rawData, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
+
+  // Filtrar por canal en el frontend (igual que HourlyAnalysis)
+  const data = useMemo(() => {
+    if (!rawData || selectedChannels.length === 3) return rawData;
+    return rawData.filter((row: any) => selectedChannels.includes(row.sales_channel));
+  }, [rawData, selectedChannels]);
+
+  // Recalcular métricas con datos filtrados por canal
+  const filteredMetrics = useMemo(() => {
+    if (!data || selectedChannels.length === 3) return metrics;
+    const totalSales = data.reduce((sum: number, row: any) => sum + parseFloat(row.sales_amount || '0'), 0);
+    const uniqueSaleIds = new Set<string>();
+    data.forEach((row: any) => {
+      if (row.sale_ids && Array.isArray(row.sale_ids)) {
+        row.sale_ids.forEach((id: string) => uniqueSaleIds.add(id));
+      }
+    });
+    const totalTickets = uniqueSaleIds.size;
+    return { ...metrics, totalSales, totalTickets };
+  }, [data, metrics, selectedChannels]);
 
   // Obtener comparación con período anterior
   const comparisonQuery = trpc.sales.getAggregatedComparison.useQuery(
@@ -181,6 +202,7 @@ export default function SalesByCategory() {
     setDateRange(undefined);
     setSelectedBranch("all");
     setSelectedCategory("all");
+    setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
   };
 
   if (authLoading) {
@@ -250,6 +272,8 @@ export default function SalesByCategory() {
           selectedCategory={selectedCategory}
           categories={metrics.categories}
           onCategoryChange={setSelectedCategory}
+          selectedChannels={selectedChannels}
+          onChannelsChange={setSelectedChannels}
           onClearFilters={handleClearFilters}
         />
 
@@ -274,10 +298,10 @@ export default function SalesByCategory() {
         {/* KPIs principales */}
         {!isLoading && !error && (
           <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <KPICard
                 title="Ventas Totales"
-                value={metrics.totalSales}
+                value={filteredMetrics.totalSales}
                 previousValue={comparisonQuery.data?.previous.total_sales}
                 format="currency"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
@@ -286,7 +310,7 @@ export default function SalesByCategory() {
 
               <KPICard
                 title="Total Transacciones"
-                value={metrics.totalTickets || 0}
+                value={filteredMetrics.totalTickets || 0}
                 previousValue={comparisonQuery.data?.previous.total_tickets}
                 format="number"
                 icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
@@ -295,7 +319,7 @@ export default function SalesByCategory() {
 
               <KPICard
                 title="Ticket Promedio"
-                value={(metrics.totalTickets || 0) > 0 ? metrics.totalSales / (metrics.totalTickets || 1) : 0}
+                value={(filteredMetrics.totalTickets || 0) > 0 ? filteredMetrics.totalSales / (filteredMetrics.totalTickets || 1) : 0}
                 previousValue={
                   comparisonQuery.data && comparisonQuery.data.previous.total_tickets > 0
                     ? comparisonQuery.data.previous.total_sales / comparisonQuery.data.previous.total_tickets
@@ -308,7 +332,7 @@ export default function SalesByCategory() {
 
               <KPICard
                 title="Promedio por Día"
-                value={numberOfDays > 0 ? metrics.totalSales / numberOfDays : 0}
+                value={numberOfDays > 0 ? filteredMetrics.totalSales / numberOfDays : 0}
                 previousValue={
                   comparisonQuery.data && numberOfDays > 0
                     ? comparisonQuery.data.previous.total_sales / numberOfDays
@@ -317,6 +341,14 @@ export default function SalesByCategory() {
                 format="currency"
                 icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
                 showComparison={!!comparisonQuery.data}
+              />
+
+              <KPICard
+                title="Proyección Mensual"
+                value={numberOfDays > 0 ? (filteredMetrics.totalSales / numberOfDays) * daysInMonth : 0}
+                format="currency"
+                icon={<BarChart2 className="h-4 w-4 text-muted-foreground" />}
+                showComparison={false}
               />
             </div>
 

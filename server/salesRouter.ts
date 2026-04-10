@@ -56,7 +56,17 @@ export const salesRouter = router({
             p.id   AS parent_category_id,
             p.name AS parent_category_name,
             g.id   AS grandparent_category_id,
-            g.name AS grandparent_category_name
+            g.name AS grandparent_category_name,
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM methods_payment mp
+                WHERE mp.header_id = sh.id
+                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+              ) THEN 'Rappi'
+              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+                THEN 'eCommerce'
+              ELSE 'Presencial'
+            END AS sales_channel
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
@@ -74,6 +84,7 @@ export const salesRouter = router({
           branch_sap_id,
           branch_name,
           branch_address,
+          sales_channel,
           COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)
             AS category_abuelo_id,
           INITCAP(LOWER(COALESCE(
@@ -93,6 +104,7 @@ export const salesRouter = router({
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
           branch_name, branch_address,
+          sales_channel,
           category_abuelo_id, category_abuelo_name
         ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER), category_abuelo_name;
       `;

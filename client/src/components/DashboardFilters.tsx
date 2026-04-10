@@ -9,8 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
-import { Lock, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, Lock, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
+
+const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
+type Channel = typeof ALL_CHANNELS[number];
 
 export interface DashboardFiltersProps {
   // Rango de fechas
@@ -26,6 +32,10 @@ export interface DashboardFiltersProps {
   selectedCategory: string;
   categories: Array<{ id: string; name: string }>;
   onCategoryChange: (categoryId: string) => void;
+
+  // Canal de ventas (opcional)
+  selectedChannels?: string[];
+  onChannelsChange?: (channels: string[]) => void;
 
   // Limpiar filtros
   onClearFilters: () => void;
@@ -43,13 +53,17 @@ export function DashboardFilters({
   selectedCategory,
   categories,
   onCategoryChange,
+  selectedChannels,
+  onChannelsChange,
   onClearFilters,
   branchLocked = false,
 }: DashboardFiltersProps) {
+  const showChannelFilter = selectedChannels !== undefined && onChannelsChange !== undefined;
   const hasActiveFilters =
     dateRange !== undefined ||
     selectedBranch !== "all" ||
-    selectedCategory !== "all";
+    selectedCategory !== "all" ||
+    (showChannelFilter && selectedChannels!.length < ALL_CHANNELS.length);
 
   const lockedBranchName = branchLocked
     ? branches.find(b => b.sap_id === selectedBranch)?.name ?? selectedBranch
@@ -74,7 +88,7 @@ export function DashboardFilters({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className={`grid gap-6 ${showChannelFilter ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {/* Rango de Fechas */}
           <div className="space-y-2">
             <Label>Rango de Fechas</Label>
@@ -129,6 +143,77 @@ export function DashboardFilters({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Canal de Ventas — solo si se pasa la prop */}
+          {showChannelFilter && (
+            <div className="space-y-2">
+              <Label>Canal de Ventas</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between font-normal h-9 px-3"
+                  >
+                    <span className="truncate text-sm">
+                      {selectedChannels!.length === 0
+                        ? "Sin canales"
+                        : selectedChannels!.length === ALL_CHANNELS.length
+                        ? "Todos los canales"
+                        : selectedChannels!.join(", ")}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {selectedChannels!.length > 0 && selectedChannels!.length < ALL_CHANNELS.length && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                          {selectedChannels!.length}
+                        </Badge>
+                      )}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </div>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-52 p-2" align="start">
+                  <div className="space-y-1">
+                    <div
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                      onClick={() => onChannelsChange!(ALL_CHANNELS as unknown as string[])}
+                    >
+                      <Checkbox
+                        checked={selectedChannels!.length === ALL_CHANNELS.length}
+                        onCheckedChange={() => onChannelsChange!(ALL_CHANNELS as unknown as string[])}
+                      />
+                      <span className="text-sm">Todos los canales</span>
+                    </div>
+                    <div className="border-t my-1" />
+                    {ALL_CHANNELS.map((channel) => (
+                      <div
+                        key={channel}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                        onClick={() => {
+                          onChannelsChange!(
+                            selectedChannels!.includes(channel)
+                              ? selectedChannels!.filter(c => c !== channel)
+                              : [...selectedChannels!, channel]
+                          );
+                        }}
+                      >
+                        <Checkbox
+                          checked={selectedChannels!.includes(channel)}
+                          onCheckedChange={() => {
+                            onChannelsChange!(
+                              selectedChannels!.includes(channel)
+                                ? selectedChannels!.filter(c => c !== channel)
+                                : [...selectedChannels!, channel]
+                            );
+                          }}
+                        />
+                        <span className="text-sm">{channel}</span>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

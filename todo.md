@@ -1802,4 +1802,13 @@ Fecha: 1 de febrero de 2026
 
 ## Top 50 — Modalidad por defecto
 - [x] Cambiar valor por defecto del tab de análisis de 'quantity' a 'amount'
+- [x] Guardar checkpoint
+
+## Análisis de Categorías — Filtro de canal y proyección mensual
+- [x] Revisar lógica de canal en Análisis por Horas (router + UI)
+- [x] Actualizar router de categorías para incluir sales_channel en el SELECT (mismo CASE que getHourlySales)
+- [x] Agregar selector de canal multi-checkbox en DashboardFilters (prop opcional)
+- [x] Agregar selector de canal en UI de Análisis de Categorías
+- [x] Filtrar datos por canal en frontend y recalcular métricas
+- [x] Agregar proyección mensual como 5to KPI en Análisis de Categorías
 - [ ] Guardar checkpoint
