@@ -1815,4 +1815,4 @@ Fecha: 1 de febrero de 2026
 
 ## Renombrar "Análisis por Categorías" → "Análisis General"
 - [x] Reemplazar nombre en navegación, títulos, cards de home y metadatos
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
