@@ -40,7 +40,7 @@ import {
 import { toast } from "sonner";
 
 const MODULE_LABELS: Record<string, string> = {
-  "sales-by-category": "Análisis por Categorías",
+  "sales-by-category": "Análisis General",
   "hourly-analysis": "Análisis por Horas",
   "sales-vs-target": "Ventas vs Meta",
 };
@@ -209,7 +209,7 @@ export default function DiscrepancyTickets() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los módulos</SelectItem>
-              <SelectItem value="sales-by-category">Análisis por Categorías</SelectItem>
+              <SelectItem value="sales-by-category">Análisis General</SelectItem>
               <SelectItem value="hourly-analysis">Análisis por Horas</SelectItem>
               <SelectItem value="sales-vs-target">Ventas vs Meta</SelectItem>
             </SelectContent>

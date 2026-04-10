@@ -118,7 +118,7 @@ export function NavigationMenu() {
                 <DropdownMenuItem asChild>
                   <Link href="/sales" className="flex items-center w-full cursor-pointer">
                     <BarChart3 className="mr-2 h-4 w-4" />
-                    <span>Análisis por Categorías</span>
+                    <span>Análisis General</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -324,7 +324,7 @@ export function NavigationMenu() {
                     }`}
                   >
                     <BarChart3 className="h-4 w-4 shrink-0" />
-                    <span>Análisis por Categorías</span>
+                    <span>Análisis General</span>
                   </Link>
                   <Link
                     href="/hourly"

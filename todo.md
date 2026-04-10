@@ -1811,4 +1811,8 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar selector de canal en UI de Análisis de Categorías
 - [x] Filtrar datos por canal en frontend y recalcular métricas
 - [x] Agregar proyección mensual como 5to KPI en Análisis de Categorías
+- [x] Guardar checkpoint
+
+## Renombrar "Análisis por Categorías" → "Análisis General"
+- [x] Reemplazar nombre en navegación, títulos, cards de home y metadatos
 - [ ] Guardar checkpoint

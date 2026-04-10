@@ -45,7 +45,7 @@ export default function Home() {
   // Colores de la paleta Flora & Fauna
   const salesModules = [
     {
-      title: "Análisis por Categorías",
+      title: "Análisis General",
       description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
       icon: BarChart3,
       href: "/sales",
