@@ -714,7 +714,7 @@ export default function TopProducts() {
             </div>
 
             {/* ── Tabs ────────────────────────────────────────────────────── */}
-            <Tabs defaultValue="qty">
+            <Tabs defaultValue="amount">
               <TabsList className="mb-2">
                 <TabsTrigger value="qty" className="gap-2">
                   <Hash className="h-4 w-4" />

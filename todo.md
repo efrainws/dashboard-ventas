@@ -1798,4 +1798,8 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar que trpc.auth.me retorna el usuario después del login
 - [x] Causa raíz: Express sin 'trust proxy' → isSecureRequest() devuelve false → cookie sin flag Secure → navegador HTTPS la descarta silenciosamente
 - [x] Corregir: agregar app.set('trust proxy', 1) en index.ts
+- [x] Guardar checkpoint
+
+## Top 50 — Modalidad por defecto
+- [x] Cambiar valor por defecto del tab de análisis de 'quantity' a 'amount'
 - [ ] Guardar checkpoint
