@@ -9,9 +9,10 @@ import { sendPasswordResetEmail, sendActivationEmail } from './email';
 import { pool } from './postgres';
 import { createActivationToken } from './activationRouter';
 
-// ─── Tipos de rol ─────────────────────────────────────────────────────────────
+// --- Tipos de rol ---
 export type UserRole =
   | 'system_specialist'
+  | 'operations_specialist'
   | 'cst_user'
   | 'commercial_specialist'
   | 'store_user'
@@ -23,6 +24,7 @@ export type UserRole =
  */
 export const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
+  operations_specialist: 'Especialista de Operaciones',
   cst_user: 'Usuario CST',
   commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
@@ -33,7 +35,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 /**
  * Roles que pueden gestionar usuarios (acceder a /admin/users)
  */
-const MANAGER_ROLES: UserRole[] = ['system_specialist', 'cst_user', 'commercial_specialist'];
+const MANAGER_ROLES: UserRole[] = ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist'];
 
 // ─── Procedimientos con restricción de rol ────────────────────────────────────
 
@@ -95,7 +97,10 @@ export const userRouter = router({
 
       const currentRole = ctx.user.role as UserRole;
       let filteredUsers = allUsers;
-      if (currentRole === 'cst_user') {
+      if (currentRole === 'operations_specialist') {
+        // Especialista de Operaciones: solo ve usuarios de tienda
+        filteredUsers = allUsers.filter(u => u.role === 'store_user');
+      } else if (currentRole === 'cst_user') {
         filteredUsers = allUsers.filter(u => u.role === 'store_user');
       } else if (currentRole === 'commercial_specialist') {
         filteredUsers = allUsers.filter(u => u.role === 'supplier_user');
@@ -228,7 +233,7 @@ export const userRouter = router({
         password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
         name: z.string().min(1, 'El nombre es requerido'),
         email: z.string().email('Email inválido').optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
+        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
         assignedStoreCode: z.string().optional(),
         assignedSupplierId: z.string().optional(),
         sendWelcomeEmail: z.boolean().default(true),
@@ -240,6 +245,12 @@ export const userRouter = router({
         const currentRole = ctx.user.role as UserRole;
 
         // Validar permisos de creación por rol
+        if (currentRole === 'operations_specialist' && input.role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes crear usuarios de tipo Usuario Tienda',
+          });
+        }
         if (currentRole === 'cst_user' && input.role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -349,7 +360,7 @@ export const userRouter = router({
         username: z.string().min(3).optional(),
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
-        role: z.enum(['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
+        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
         assignedStoreCode: z.string().nullable().optional(),
         assignedSupplierId: z.string().nullable().optional(),
       })
@@ -370,6 +381,12 @@ export const userRouter = router({
         }
 
         // Validar permisos de edición por rol
+        if (currentRole === 'operations_specialist' && existingUser[0].role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes editar usuarios de tipo Usuario Tienda',
+          });
+        }
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -446,6 +463,12 @@ export const userRouter = router({
         }
 
         // Validar permisos por rol
+        if (currentRole === 'operations_specialist' && existingUser[0].role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes cambiar la contraseña de usuarios de tipo Usuario Tienda',
+          });
+        }
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -514,6 +537,12 @@ export const userRouter = router({
         const targetUser = existingUser[0];
 
         // Validar permisos según rol del solicitante
+        if (currentRole === 'operations_specialist' && targetUser.role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes reenviar activación a usuarios de tipo Usuario Tienda',
+          });
+        }
         if (currentRole === 'cst_user' && targetUser.role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -577,6 +606,12 @@ export const userRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
         }
 
+        if (currentRole === 'operations_specialist' && existingUser[0].role !== 'store_user') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Solo puedes eliminar usuarios de tipo Usuario Tienda',
+          });
+        }
         if (currentRole === 'cst_user' && existingUser[0].role !== 'store_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',

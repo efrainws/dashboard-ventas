@@ -1816,3 +1816,13 @@ Fecha: 1 de febrero de 2026
 ## Renombrar "Análisis por Categorías" → "Análisis General"
 - [x] Reemplazar nombre en navegación, títulos, cards de home y metadatos
 - [x] Guardar checkpoint
+
+## Nuevo rol: Especialista de Operaciones (operations_specialist)
+
+- [x] Agregar enum 'operations_specialist' al schema de la BD y migrar
+- [x] Actualizar router: operations_specialist solo lista/crea/edita/elimina usuarios con role='store_user'
+- [x] Actualizar UI panel de usuarios: filtrar lista a solo tienda para operations_specialist
+- [x] Actualizar NavigationMenu: mostrar acceso a panel de usuarios para operations_specialist
+- [x] Actualizar permisos de creación de usuarios: operations_specialist solo puede crear usuarios de tienda
+- [ ] Guardar checkpoint
+- [ ] Guardar checkpoint

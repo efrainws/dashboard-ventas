@@ -58,10 +58,11 @@ import { toast as showToast } from 'sonner';
 import { NavigationMenu } from '@/components/NavigationMenu';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
-type UserRole = 'system_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user' | 'own_brand_user';
+type UserRole = 'system_specialist' | 'operations_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user' | 'own_brand_user';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
+  operations_specialist: 'Especialista de Operaciones',
   cst_user: 'Usuario CST',
   commercial_specialist: 'Especialista Comercial',
   store_user: 'Usuario Tienda',
@@ -76,7 +77,8 @@ const ROLE_LABELS: Record<UserRole, string> = {
  * - commercial_specialist → ninguno (usa Administración de Proveedores)
  */
 const CREATABLE_ROLES: Record<UserRole, UserRole[]> = {
-  system_specialist: ['system_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'own_brand_user'],
+  system_specialist: ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'own_brand_user'],
+  operations_specialist: ['store_user'],
   cst_user: ['store_user'],
   commercial_specialist: [],
   store_user: [],
@@ -226,6 +228,7 @@ export default function UserManagement() {
   const canResendActivation = (targetRole: UserRole): boolean => {
     if (!currentRole) return false;
     if (currentRole === 'system_specialist') return true;
+    if (currentRole === 'operations_specialist') return targetRole === 'store_user';
     if (currentRole === 'cst_user') return targetRole === 'store_user';
     if (currentRole === 'commercial_specialist') return targetRole === 'supplier_user';
     return false;
@@ -240,7 +243,7 @@ export default function UserManagement() {
     );
   }
 
-  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user' || currentRole === 'commercial_specialist') {
+  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user' || currentRole === 'commercial_specialist' || currentRole === 'own_brand_user') {
     setLocation('/');
     return null;
   }

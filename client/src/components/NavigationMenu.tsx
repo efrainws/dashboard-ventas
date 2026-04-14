@@ -234,6 +234,7 @@ export function NavigationMenu() {
                   <p className="text-sm font-medium">{user?.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {user?.role === 'system_specialist' ? 'Especialista de Sistemas'
+                      : user?.role === 'operations_specialist' ? 'Especialista de Operaciones'
                       : user?.role === 'cst_user' ? 'Usuario CST'
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
@@ -244,8 +245,8 @@ export function NavigationMenu() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {/* Gestión de Usuarios — system_specialist y cst_user */}
-              {(["system_specialist", "cst_user"].includes(user?.role as string)) && (
+              {/* Gestión de Usuarios — system_specialist, operations_specialist y cst_user */}
+              {(["system_specialist", "operations_specialist", "cst_user"].includes(user?.role as string)) && (
                 <DropdownMenuItem asChild>
                   <Link href="/admin/users" className="flex items-center w-full cursor-pointer">
                     <Users className="mr-2 h-4 w-4" />
@@ -399,8 +400,8 @@ export function NavigationMenu() {
               )}
             </Link>
 
-            {/* Usuarios — solo system_specialist */}
-            {user?.role === "system_specialist" && (
+            {/* Usuarios — system_specialist y operations_specialist */}
+            {(["system_specialist", "operations_specialist"].includes(user?.role as string)) && (
               <Link
                 href="/admin/users"
                 onClick={closeMobile}
@@ -472,8 +473,8 @@ export function NavigationMenu() {
               </>
             )}
 
-            {/* Gestión de Usuarios (mobile) — system_specialist y cst_user */}
-            {(["system_specialist", "cst_user"].includes(user?.role as string)) && (
+            {/* Gestión de Usuarios (mobile) — system_specialist, operations_specialist y cst_user */}
+            {(["system_specialist", "operations_specialist", "cst_user"].includes(user?.role as string)) && (
               <Link
                 href="/admin/users"
                 onClick={closeMobile}
@@ -497,6 +498,7 @@ export function NavigationMenu() {
                   <span className="font-medium text-foreground">{user?.name}</span>
                   <span className="text-xs">
                     {user?.role === 'system_specialist' ? 'Especialista de Sistemas'
+                      : user?.role === 'operations_specialist' ? 'Especialista de Operaciones'
                       : user?.role === 'cst_user' ? 'Usuario CST'
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
