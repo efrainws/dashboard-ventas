@@ -1423,7 +1423,7 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar HourlyAnalysis.tsx: bloquear filtro de tienda para store_user
 - [x] Actualizar SalesVsTarget.tsx: bloquear filtro de tienda para store_user
 - [x] Actualizar IdentifiedTransactions.tsx: bloquear filtro de tienda para store_user
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Bug: Filtro de tienda para store_user falla con sap_id
 - [ ] Corregir 5 endpoints del salesRouter para filtrar por b.sap_id en lugar de UUID
@@ -1786,7 +1786,7 @@ Fecha: 1 de febrero de 2026
 - [ ] Revisar Login.tsx actual para identificar qué mecánica fue copiada del proyecto Sanborja
 - [ ] Restaurar flujo OAuth/username+password original del proyecto, manteniendo el diseño visual
 - [ ] Verificar que el acceso a módulos protegidos funciona correctamente
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Login — Corrección de sesión (redirige de vuelta al login)
 - [x] Diagnosticar: el catch en authenticateRequest capturaba ForbiddenError internos y los relanzaba como "Invalid session cookie", rompiendo el flujo de JWT local con userId
@@ -1835,4 +1835,4 @@ Fecha: 1 de febrero de 2026
 - [x] HourlyAnalysis: pasar dashboardAmount (filteredMetrics.totalSales) al contexto del botón de discrepancia
 - [x] SalesVsTarget: pasar dashboardAmount (totalSales de la tienda filtrada) al contexto del botón de discrepancia
 - [x] ReportDiscrepancyModal: cuando se abre, inicializar relatedSaleAmount con dashboardAmount si no se pasó relatedSaleAmount explícito
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint

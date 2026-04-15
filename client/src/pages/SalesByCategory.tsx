@@ -415,7 +415,7 @@ export default function SalesByCategory() {
           storeId: selectedBranch !== "all" ? selectedBranch : undefined,
           storeName:
             selectedBranch !== "all"
-              ? metrics.branches.find((b) => b.id === selectedBranch)?.name
+              ? (metrics.branches.find((b: any) => b.sap_id === selectedBranch)?.name ?? selectedBranch)
               : "Todas las tiendas",
           dashboardAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
           relatedSaleAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
