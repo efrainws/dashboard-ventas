@@ -4,7 +4,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,8 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const FF = {
+  granate:       "#BC2C46",
+  esmeralda:     "#008064",
+  mostaza:       "#C49705",
+  cobalto:       "#1A6894",
+  carbon:        "#232523",
+  humo:          "#919291",
+  beige:         "#EAE8E2",
+  hueso:         "#F5F4F1",
+  blanco:        "#FFFFFF",
+  granateLight:  "#FAEAED",
+  esmeraldaLight:"#E6F4F1",
+  mostazaLight:  "#FDF6E3",
+  cobaltaLight:  "#E8F1F7",
+};
 
 export interface DiscrepancyContext {
   module: string;
@@ -51,22 +67,25 @@ export function ReportDiscrepancyModal({
   const [description, setDescription] = useState("");
   const [dataSource, setDataSource] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
-  // Usar relatedSaleAmount si viene explícito, sino usar dashboardAmount como valor inicial
-  const initialRelatedAmount = context.relatedSaleAmount !== undefined
-    ? context.relatedSaleAmount
-    : context.dashboardAmount;
+
+  const initialRelatedAmount =
+    context.relatedSaleAmount !== undefined
+      ? context.relatedSaleAmount
+      : context.dashboardAmount;
+
   const [relatedSaleAmount, setRelatedSaleAmount] = useState(
     initialRelatedAmount !== undefined ? String(initialRelatedAmount) : ""
   );
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState<number | null>(null);
 
-  // Sincronizar el monto cuando el modal se abre con un nuevo contexto
+  // Sincronizar cuando el modal se abre con nuevo contexto
   useEffect(() => {
     if (open) {
-      const amt = context.relatedSaleAmount !== undefined
-        ? context.relatedSaleAmount
-        : context.dashboardAmount;
+      const amt =
+        context.relatedSaleAmount !== undefined
+          ? context.relatedSaleAmount
+          : context.dashboardAmount;
       setRelatedSaleAmount(amt !== undefined ? String(amt) : "");
     }
   }, [open, context.relatedSaleAmount, context.dashboardAmount]);
@@ -106,7 +125,11 @@ export function ReportDiscrepancyModal({
     setDescription("");
     setDataSource("");
     setPriority("medium");
-    setRelatedSaleAmount(initialRelatedAmount !== undefined ? String(initialRelatedAmount) : "");
+    const amt =
+      context.relatedSaleAmount !== undefined
+        ? context.relatedSaleAmount
+        : context.dashboardAmount;
+    setRelatedSaleAmount(amt !== undefined ? String(amt) : "");
     setSubmitted(false);
     setTicketId(null);
     onClose();
@@ -125,91 +148,155 @@ export function ReportDiscrepancyModal({
       ? Math.round(parseFloat(analystAmount)) - context.dashboardAmount
       : null;
 
+  const isAmountModified =
+    relatedSaleAmount !== "" &&
+    relatedSaleAmount !== (initialRelatedAmount !== undefined ? String(initialRelatedAmount) : "");
+
+  // Priority colors
+  const priorityConfig = {
+    low:    { label: "Baja — diferencia menor, no urgente",     dot: FF.esmeralda },
+    medium: { label: "Media — requiere revisión pronto",         dot: FF.mostaza },
+    high:   { label: "Alta — diferencia significativa, urgente", dot: FF.granate },
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent
+        className="sm:max-w-[540px] p-0 overflow-hidden"
+        style={{ borderRadius: 14, border: `1px solid ${FF.beige}` }}
+      >
         {submitted ? (
-          <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <CheckCircle2 className="h-14 w-14 text-emerald-600" />
-            <DialogHeader>
-              <DialogTitle>Ticket #{ticketId} creado</DialogTitle>
-              <DialogDescription>
-                Tu reporte fue enviado al equipo técnico. Recibirás una
-                notificación cuando sea revisado.
-              </DialogDescription>
-            </DialogHeader>
-            <Button onClick={handleClose} className="mt-2">
+          /* ── Success state ── */
+          <div className="flex flex-col items-center gap-4 py-10 px-8 text-center">
+            <div
+              className="flex items-center justify-center h-16 w-16 rounded-full"
+              style={{ background: FF.esmeraldaLight }}
+            >
+              <CheckCircle2 className="h-8 w-8" style={{ color: FF.esmeralda }} />
+            </div>
+            <div className="space-y-1">
+              <h2
+                className="text-xl font-bold uppercase tracking-wide"
+                style={{ fontFamily: "'Italian Plate No 1', serif", color: FF.carbon }}
+              >
+                Ticket #{ticketId} creado
+              </h2>
+              <p className="text-sm" style={{ color: FF.humo }}>
+                Tu reporte fue enviado al equipo técnico. Recibirás una notificación cuando sea revisado.
+              </p>
+            </div>
+            <Button
+              onClick={handleClose}
+              className="mt-2 font-medium"
+              style={{ background: FF.carbon, color: FF.blanco }}
+            >
               Cerrar
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-[#BC2C46]" />
-                <DialogTitle>Reportar Discrepancia</DialogTitle>
-              </div>
-              <DialogDescription>
-                Reporta una diferencia entre los datos del dashboard y tu fuente
-                de información. El equipo técnico recibirá una alerta inmediata.
-              </DialogDescription>
-            </DialogHeader>
-
-            {/* Context summary */}
-            <div className="my-4 rounded-md bg-muted/50 border p-3 text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Módulo</span>
-                <span className="font-medium">{context.moduleLabel}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Período</span>
-                <span className="font-medium">
-                  {context.dateFrom ? formatDate(context.dateFrom) : "—"}
-                  {context.dateFrom && context.dateTo && context.dateFrom !== context.dateTo &&
-                    ` → ${formatDate(context.dateTo!)}`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tienda</span>
-                <span className="font-medium">
-                  {context.storeName ?? "Todas las tiendas"}
-                </span>
-              </div>
-              {context.dashboardAmount !== undefined && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monto en dashboard</span>
-                  <span className="font-medium font-mono">
-                    {formatAmount(context.dashboardAmount)}
+            {/* ── Header ── */}
+            <div
+              className="px-6 py-5"
+              style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.blanco }}
+            >
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2.5">
+                  <span
+                    className="flex items-center justify-center h-8 w-8 rounded-lg"
+                    style={{ background: FF.granateLight }}
+                  >
+                    <AlertTriangle className="h-4 w-4" style={{ color: FF.granate }} />
                   </span>
-                </div>
-              )}
+                  <span
+                    className="text-base font-bold uppercase tracking-wide"
+                    style={{ fontFamily: "'Italian Plate No 1', serif", color: FF.carbon }}
+                  >
+                    Reportar Discrepancia
+                  </span>
+                </DialogTitle>
+                <p className="text-xs mt-1.5 ml-10" style={{ color: FF.humo }}>
+                  Reporta una diferencia entre los datos del dashboard y tu fuente de información.
+                  El equipo técnico recibirá una alerta inmediata.
+                </p>
+              </DialogHeader>
             </div>
 
-            <div className="space-y-4">
-              {/* Venta relacionada - monto */}
+            {/* ── Context summary ── */}
+            <div
+              className="mx-6 mt-4 rounded-lg overflow-hidden text-sm"
+              style={{ border: `1px solid ${FF.beige}` }}
+            >
+              <div
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+                style={{
+                  background: FF.hueso,
+                  color: FF.humo,
+                  borderBottom: `1px solid ${FF.beige}`,
+                  fontFamily: "'Italian Plate No 1', serif",
+                }}
+              >
+                Contexto del reporte
+              </div>
+              <div style={{ background: FF.blanco }}>
+                {[
+                  { label: "Módulo",   value: context.moduleLabel },
+                  {
+                    label: "Período",
+                    value: context.dateFrom
+                      ? context.dateFrom !== context.dateTo && context.dateTo
+                        ? `${formatDate(context.dateFrom)} → ${formatDate(context.dateTo)}`
+                        : formatDate(context.dateFrom)
+                      : "—",
+                  },
+                  { label: "Tienda",   value: context.storeName ?? "Todas las tiendas" },
+                  ...(context.dashboardAmount !== undefined
+                    ? [{ label: "Monto en dashboard", value: formatAmount(context.dashboardAmount) }]
+                    : []),
+                ].map((row, i, arr) => (
+                  <div
+                    key={row.label}
+                    className="flex justify-between items-center px-3 py-2"
+                    style={{
+                      borderBottom: i < arr.length - 1 ? `1px solid ${FF.beige}` : "none",
+                    }}
+                  >
+                    <span style={{ color: FF.humo }}>{row.label}</span>
+                    <span className="font-medium" style={{ color: FF.carbon }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Form fields ── */}
+            <div className="px-6 py-4 space-y-4">
+
+              {/* Monto de la venta con error */}
               <div className="space-y-1.5">
-                <Label htmlFor="relatedSaleAmount" className="flex items-center gap-1.5">
+                <Label className="flex items-center gap-1.5 text-sm font-medium" style={{ color: FF.carbon }}>
                   Monto de la venta con error
-                  <span className="text-muted-foreground text-xs">(opcional)</span>
+                  <span className="text-xs" style={{ color: FF.humo }}>(opcional)</span>
                   {initialRelatedAmount !== undefined && (
-                    <span className="ml-1 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                      style={{ background: FF.cobaltaLight, color: FF.cobalto, border: `1px solid #B8D3E4` }}
+                    >
                       Autocompletado
                     </span>
                   )}
                 </Label>
                 <div className="relative">
                   <Input
-                    id="relatedSaleAmount"
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder="Ej: 1250.50"
                     value={relatedSaleAmount}
                     onChange={(e) => setRelatedSaleAmount(e.target.value)}
-                    className="font-mono text-sm"
+                    className="font-mono text-sm pr-20"
+                    style={{ borderColor: FF.beige }}
                   />
-                  {relatedSaleAmount &&
-                    relatedSaleAmount !== (initialRelatedAmount !== undefined ? String(initialRelatedAmount) : "") && (
+                  {isAmountModified && (
                     <button
                       type="button"
                       onClick={() =>
@@ -217,101 +304,128 @@ export function ReportDiscrepancyModal({
                           initialRelatedAmount !== undefined ? String(initialRelatedAmount) : ""
                         )
                       }
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground underline"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs rounded px-1.5 py-0.5"
+                      style={{ color: FF.cobalto }}
                     >
+                      <RotateCcw className="h-3 w-3" />
                       Restaurar
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs" style={{ color: FF.humo }}>
                   Monto de la transacción o venta que presenta el error reportado.
                 </p>
               </div>
 
-              {/* Analyst amount */}
+              {/* Monto según tu fuente */}
               <div className="space-y-1.5">
-                <Label htmlFor="analystAmount">
+                <Label className="text-sm font-medium" style={{ color: FF.carbon }}>
                   Monto según tu fuente{" "}
-                  <span className="text-muted-foreground text-xs">(opcional)</span>
+                  <span className="text-xs" style={{ color: FF.humo }}>(opcional)</span>
                 </Label>
                 <Input
-                  id="analystAmount"
                   type="number"
                   placeholder="Ej: 150000"
                   value={analystAmount}
                   onChange={(e) => setAnalystAmount(e.target.value)}
+                  style={{ borderColor: FF.beige }}
                 />
                 {difference !== null && (
-                  <p
-                    className={`text-xs font-medium ${
-                      difference > 0 ? "text-[#C49705]" : "text-[#BC2C46]"
-                    }`}
+                  <div
+                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium"
+                    style={{
+                      background: difference > 0 ? FF.mostazaLight : FF.granateLight,
+                      color: difference > 0 ? "#624C02" : FF.granate,
+                      border: `1px solid ${difference > 0 ? "#E8D080" : "#E8B0BC"}`,
+                    }}
                   >
-                    Diferencia: {difference > 0 ? "+" : ""}
-                    {formatAmount(Math.abs(difference))}
-                    {difference > 0
-                      ? " (dashboard muestra menos)"
-                      : " (dashboard muestra más)"}
-                  </p>
+                    <span>
+                      Diferencia: {difference > 0 ? "+" : ""}
+                      {formatAmount(Math.abs(difference))}
+                    </span>
+                    <span style={{ opacity: 0.7 }}>
+                      {difference > 0 ? "— dashboard muestra menos" : "— dashboard muestra más"}
+                    </span>
+                  </div>
                 )}
               </div>
 
-              {/* Data source */}
+              {/* Fuente de datos */}
               <div className="space-y-1.5">
-                <Label htmlFor="dataSource">
+                <Label className="text-sm font-medium" style={{ color: FF.carbon }}>
                   Fuente de datos{" "}
-                  <span className="text-muted-foreground text-xs">(opcional)</span>
+                  <span className="text-xs" style={{ color: FF.humo }}>(opcional)</span>
                 </Label>
                 <Input
-                  id="dataSource"
                   placeholder="Ej: SAP, reporte Excel, sistema POS..."
                   value={dataSource}
                   onChange={(e) => setDataSource(e.target.value)}
+                  style={{ borderColor: FF.beige }}
                 />
               </div>
 
-              {/* Description */}
+              {/* Descripción */}
               <div className="space-y-1.5">
-                <Label htmlFor="description">
-                  Descripción <span className="text-destructive">*</span>
+                <Label className="text-sm font-medium" style={{ color: FF.carbon }}>
+                  Descripción <span style={{ color: FF.granate }}>*</span>
                 </Label>
                 <Textarea
-                  id="description"
                   placeholder="Describe la discrepancia encontrada, qué datos no coinciden y cualquier contexto relevante..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   required
                   minLength={10}
+                  style={{ borderColor: FF.beige }}
                 />
               </div>
 
-              {/* Priority */}
+              {/* Prioridad */}
               <div className="space-y-1.5">
-                <Label>Prioridad</Label>
+                <Label className="text-sm font-medium" style={{ color: FF.carbon }}>
+                  Prioridad
+                </Label>
                 <Select
                   value={priority}
                   onValueChange={(v) => setPriority(v as "low" | "medium" | "high")}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger style={{ borderColor: FF.beige }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">🟢 Baja — diferencia menor, no urgente</SelectItem>
-                    <SelectItem value="medium">🟡 Media — requiere revisión pronto</SelectItem>
-                    <SelectItem value="high">🔴 Alta — diferencia significativa, urgente</SelectItem>
+                    {(["low", "medium", "high"] as const).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-full inline-block"
+                            style={{ background: priorityConfig[p].dot }}
+                          />
+                          {priorityConfig[p].label}
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={handleClose}>
+            {/* ── Footer ── */}
+            <DialogFooter
+              className="px-6 py-4"
+              style={{ borderTop: `1px solid ${FF.beige}`, background: FF.hueso }}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                style={{ borderColor: FF.beige, color: FF.carbon, background: FF.blanco }}
+              >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={!description.trim() || createTicket.isPending}
+                style={{ background: FF.carbon, color: FF.blanco }}
               >
                 {createTicket.isPending ? (
                   <>
@@ -320,7 +434,7 @@ export function ReportDiscrepancyModal({
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-4 w-4" style={{ color: FF.granate }} />
                     Enviar Reporte
                   </>
                 )}

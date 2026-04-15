@@ -1850,3 +1850,9 @@ Fecha: 1 de febrero de 2026
 - [x] Crear script seed que inserta la conexión PostgreSQL configurada en db_connections
 - [x] Ejecutar el seed y verificar que aparece en la tabla
 - [x] Guardar checkpoint
+
+## Aplicar Design System Flora & Fauna
+- [x] DatabaseConnections: aplicar paleta FF, tipografía, tabla, badges y botones del style guide
+- [x] ReportDiscrepancyModal: aplicar paleta FF, tipografía, inputs y botones del style guide
+- [x] Email de activación: aplicar paleta FF, tipografía y estructura del style guide
+- [x] Guardar checkpoint

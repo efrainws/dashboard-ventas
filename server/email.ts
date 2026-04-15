@@ -9,16 +9,22 @@ import { ENV } from "./_core/env";
 const LOGO_DARK_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663237488769/yXNYDcQnGVpTzYUo.svg";
 
-// Brand colors matching the dashboard design
+// Brand colors — Flora & Fauna Design System
 const COLORS = {
-  bg: "#F5F4F1",
-  card: "#FFFFFF",
-  primary: "#232523",
-  accent: "#008064",
-  accentLight: "#004032",
-  border: "#EAE8E2",
-  textMuted: "#6B6866",
-  textBody: "#3D3B3C",
+  bg: "#F5F4F1",          // Hueso
+  card: "#FFFFFF",         // Blanco
+  primary: "#232523",      // Carbón
+  accent: "#008064",       // Esmeralda
+  accentLight: "#E6F4F1", // Esmeralda claro
+  granate: "#BC2C46",      // Granate
+  granateLight: "#FAEAED",
+  mostaza: "#C49705",      // Mostaza
+  mostazaLight: "#FDF6E3",
+  cobalto: "#1A6894",      // Cobalto
+  cobaltaLight: "#E8F1F7",
+  border: "#EAE8E2",       // Beige
+  textMuted: "#919291",    // Humo
+  textBody: "#232523",     // Carbón
 };
 
 /**
@@ -84,9 +90,9 @@ function buildWelcomeEmailHtml(params: {
                 A continuación encontrarás tus credenciales de acceso.
               </p>
 
-              <!-- Role badge -->
-              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #006050;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
-                <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.06em;text-transform:uppercase;">
+              <!-- Role badge — Esmeralda claro (activo) -->
+              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #A0D4C8;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
+                <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.08em;text-transform:uppercase;">
                   ${roleLabel}
                 </span>
               </div>
@@ -156,8 +162,8 @@ function buildWelcomeEmailHtml(params: {
                 Este correo fue generado automáticamente por el sistema de gestión de usuarios.<br/>
                 Si no solicitaste esta cuenta, por favor contacta al administrador del sistema.
               </p>
-              <p style="margin:0;font-size:11px;color:#A8A4A0;">
-                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              <p style="margin:0;font-size:11px;color:${COLORS.textMuted};">
+                &copy; ${year} Flora &amp; Fauna &middot; Dashboard de Ventas
               </p>
             </td>
           </tr>
@@ -380,8 +386,8 @@ function buildPasswordResetEmailHtml(params: {
                 Este correo fue generado automáticamente por el sistema de gestión de usuarios.<br/>
                 Si no reconoces esta acción, contacta al administrador del sistema.
               </p>
-              <p style="margin:0;font-size:11px;color:#A8A4A0;">
-                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              <p style="margin:0;font-size:11px;color:${COLORS.textMuted};">
+                &copy; ${year} Flora &amp; Fauna &middot; Dashboard de Ventas
               </p>
             </td>
           </tr>
@@ -664,8 +670,8 @@ function buildTicketNotificationEmailHtml(params: {
                 Este correo fue generado automáticamente por el sistema de tickets de discrepancias.<br/>
                 Para gestionar este ticket, ingresa al dashboard con tu cuenta de administrador.
               </p>
-              <p style="margin:0;font-size:11px;color:#A8A4A0;">
-                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              <p style="margin:0;font-size:11px;color:${COLORS.textMuted};">
+                &copy; ${year} Flora &amp; Fauna &middot; Dashboard de Ventas
               </p>
             </td>
           </tr>
@@ -826,9 +832,9 @@ function buildActivationEmailHtml(params: {
                 Para activarla y establecer tu contraseña definitiva, haz clic en el botón a continuación.
               </p>
 
-              <!-- Role badge -->
-              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #006050;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
-                <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.06em;text-transform:uppercase;">
+              <!-- Role badge — Esmeralda claro (activo) -->
+              <div style="display:inline-block;background-color:${COLORS.accentLight};border:1px solid #A0D4C8;border-radius:20px;padding:4px 14px;margin-bottom:28px;">
+                <span style="font-size:12px;font-weight:600;color:${COLORS.accent};letter-spacing:0.08em;text-transform:uppercase;">
                   ${roleLabel}
                 </span>
               </div>
@@ -878,7 +884,7 @@ function buildActivationEmailHtml(params: {
                   <td align="center">
                     <a
                       href="${activationUrl}"
-                      style="display:inline-block;background-color:${COLORS.primary};color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:16px 40px;border-radius:8px;"
+                      style="display:inline-block;background-color:${COLORS.primary};color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;padding:16px 44px;border-radius:8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;"
                     >
                       Activar mi cuenta →
                     </a>
@@ -886,12 +892,12 @@ function buildActivationEmailHtml(params: {
                 </tr>
               </table>
 
-              <!-- Expiry notice -->
+              <!-- Expiry notice — Mostaza claro (advertencia) -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
                 <tr>
-                  <td style="background-color:#C49705;border:1px solid #EACB82;border-radius:8px;padding:14px 18px;">
+                  <td style="background-color:${COLORS.mostazaLight};border:1px solid #E8D080;border-radius:8px;padding:14px 18px;">
                     <p style="margin:0;font-size:13px;color:#624C02;line-height:1.5;">
-                      <strong>⏱ Este enlace expira en 48 horas.</strong> Si no activas tu cuenta en ese tiempo,
+                      <strong style="color:${COLORS.mostaza};">&#9200; Este enlace expira en 48 horas.</strong> Si no activas tu cuenta en ese tiempo,
                       contacta al administrador para obtener un nuevo enlace.
                     </p>
                   </td>
@@ -921,8 +927,8 @@ function buildActivationEmailHtml(params: {
                 Este correo fue generado automáticamente por el sistema de gestión de usuarios.<br/>
                 Si no solicitaste esta cuenta, por favor ignora este mensaje o contacta al administrador.
               </p>
-              <p style="margin:0;font-size:11px;color:#A8A4A0;">
-                © ${year} Flora &amp; Fauna · Dashboard de Ventas
+              <p style="margin:0;font-size:11px;color:${COLORS.textMuted};">
+                &copy; ${year} Flora &amp; Fauna &middot; Dashboard de Ventas
               </p>
             </td>
           </tr>
