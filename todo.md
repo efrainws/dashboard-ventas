@@ -1845,3 +1845,8 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar acceso en menú de usuario (desktop y mobile) solo para system_specialist
 - [x] Escribir tests del router de conexiones
 - [x] Guardar checkpoint
+
+## Seed conexión PostgreSQL por defecto
+- [x] Crear script seed que inserta la conexión PostgreSQL configurada en db_connections
+- [x] Ejecutar el seed y verificar que aparece en la tabla
+- [x] Guardar checkpoint
