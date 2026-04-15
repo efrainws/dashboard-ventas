@@ -30,6 +30,7 @@ import {
   Activity,
   Tag,
   Layers,
+  Database,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -251,6 +252,15 @@ export function NavigationMenu() {
                   <Link href="/admin/users" className="flex items-center w-full cursor-pointer">
                     <Users className="mr-2 h-4 w-4" />
                     <span>Gestión de Usuarios</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {/* Conexiones DB — solo system_specialist */}
+              {user?.role === "system_specialist" && (
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/db-connections" className="flex items-center w-full cursor-pointer">
+                    <Database className="mr-2 h-4 w-4" />
+                    <span>Conexiones de BD</span>
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -486,6 +496,22 @@ export function NavigationMenu() {
               >
                 <Users className="h-4 w-4 shrink-0" />
                 <span>Gestión de Usuarios</span>
+              </Link>
+            )}
+
+            {/* Conexiones DB (mobile) — solo system_specialist */}
+            {user?.role === "system_specialist" && (
+              <Link
+                href="/admin/db-connections"
+                onClick={closeMobile}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/admin/db-connections")
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Database className="h-4 w-4 shrink-0" />
+                <span>Conexiones de BD</span>
               </Link>
             )}
 

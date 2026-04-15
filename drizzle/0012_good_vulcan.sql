@@ -1,0 +1,22 @@
+CREATE TABLE `db_connections` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(128) NOT NULL,
+	`description` text,
+	`host` varchar(255) NOT NULL,
+	`port` int NOT NULL DEFAULT 5432,
+	`database` varchar(128) NOT NULL,
+	`username` varchar(128) NOT NULL,
+	`password_encrypted` text NOT NULL,
+	`ssl_enabled` int NOT NULL DEFAULT 1,
+	`ssl_mode` varchar(32) DEFAULT 'require',
+	`purpose` enum('sales','stock','both','other') NOT NULL DEFAULT 'both',
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_test_status` varchar(16) DEFAULT 'pending',
+	`last_test_message` text,
+	`last_tested_at` timestamp,
+	`created_by_id` int NOT NULL,
+	`created_by_name` varchar(128) NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `db_connections_id` PRIMARY KEY(`id`)
+);

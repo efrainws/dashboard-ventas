@@ -85,6 +85,13 @@
       "when": 1776184835362,
       "tag": "0011_bored_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1776275345760,
+      "tag": "0012_good_vulcan",
+      "breakpoints": true
     }
   ]
 }

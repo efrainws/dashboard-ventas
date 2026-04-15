@@ -27,8 +27,9 @@ import AffiliationReport from "./pages/AffiliationReport";
 import OwnBrandPortal from "./pages/OwnBrandPortal";
 import { TrialPopup } from "./components/TrialPopup";
 import StyleGuide from "./pages/StyleGuide";
+import DatabaseConnections from "./pages/DatabaseConnections";
 
-type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "own_brand_only";
+type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
 
 /**
  * Ruta protegida con autenticación y control de acceso por perfil.
@@ -86,6 +87,11 @@ function ProtectedRoute({
     user.role !== "system_specialist" &&
     user.role !== "operations_specialist"
   ) {
+    return <AccessDenied />;
+  }
+
+  // Guard: SOLO system_specialist (sin operations_specialist)
+  if (guard === "system_specialist_strict" && user.role !== "system_specialist") {
     return <AccessDenied />;
   }
 
@@ -174,6 +180,11 @@ function Router() {
       {/* Gestión de usuarios — solo system_specialist */}
       <Route path="/admin/users">
         {() => <ProtectedRoute component={UserManagement} path="/admin/users" guard="system_specialist_only" />}
+      </Route>
+
+      {/* Conexiones de base de datos — SOLO system_specialist */}
+      <Route path="/admin/db-connections">
+        {() => <ProtectedRoute component={DatabaseConnections} path="/admin/db-connections" guard="system_specialist_strict" />}
       </Route>
 
       <Route path="/404" component={NotFound} />

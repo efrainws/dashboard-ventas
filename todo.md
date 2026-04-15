@@ -1836,3 +1836,12 @@ Fecha: 1 de febrero de 2026
 - [x] SalesVsTarget: pasar dashboardAmount (totalSales de la tienda filtrada) al contexto del botón de discrepancia
 - [x] ReportDiscrepancyModal: cuando se abre, inicializar relatedSaleAmount con dashboardAmount si no se pasó relatedSaleAmount explícito
 - [x] Guardar checkpoint
+
+## Página de Configuración de Conexiones PostgreSQL
+- [x] Agregar tabla db_connections al schema de Drizzle y correr db:push
+- [x] Crear router tRPC para CRUD de conexiones (solo system_specialist)
+- [x] Crear página DatabaseConnections con tabla y modal de edición/creación
+- [x] Agregar ruta /admin/db-connections en App.tsx con guard system_specialist_strict
+- [x] Agregar acceso en menú de usuario (desktop y mobile) solo para system_specialist
+- [x] Escribir tests del router de conexiones
+- [x] Guardar checkpoint

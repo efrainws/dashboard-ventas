@@ -224,3 +224,50 @@ export const ownBrandBrands = mysqlTable("own_brand_brands", {
 
 export type OwnBrandBrand = typeof ownBrandBrands.$inferSelect;
 export type InsertOwnBrandBrand = typeof ownBrandBrands.$inferInsert;
+
+/**
+ * Conexiones a bases de datos PostgreSQL externas.
+ * Almacena los parámetros de conexión para las fuentes de datos de ventas y stock.
+ * Solo accesible y editable por system_specialist.
+ * Las contraseñas se almacenan cifradas en el servidor.
+ */
+export const dbConnections = mysqlTable("db_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Nombre descriptivo de la conexión (e.g., "Producción - Ventas") */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** Descripción opcional del propósito de la conexión */
+  description: text("description"),
+  /** Host o IP del servidor PostgreSQL */
+  host: varchar("host", { length: 255 }).notNull(),
+  /** Puerto de conexión (default 5432) */
+  port: int("port").notNull().default(5432),
+  /** Nombre de la base de datos */
+  database: varchar("database", { length: 128 }).notNull(),
+  /** Usuario de la base de datos */
+  username: varchar("username", { length: 128 }).notNull(),
+  /** Contraseña cifrada (AES-256) */
+  passwordEncrypted: text("password_encrypted").notNull(),
+  /** Si la conexión usa SSL */
+  sslEnabled: int("ssl_enabled").default(1).notNull(),
+  /** Modo SSL: disable, require, verify-ca, verify-full */
+  sslMode: varchar("ssl_mode", { length: 32 }).default("require"),
+  /** Propósito de la conexión: sales (ventas), stock (inventario), both */
+  purpose: mysqlEnum("purpose", ["sales", "stock", "both", "other"]).default("both").notNull(),
+  /** Si esta conexión está activa */
+  isActive: int("is_active").default(1).notNull(),
+  /** Último resultado de prueba de conexión: ok, error, pending */
+  lastTestStatus: varchar("last_test_status", { length: 16 }).default("pending"),
+  /** Mensaje del último test de conexión */
+  lastTestMessage: text("last_test_message"),
+  /** Timestamp del último test */
+  lastTestedAt: timestamp("last_tested_at"),
+  /** ID del usuario que creó la conexión */
+  createdById: int("created_by_id").notNull(),
+  /** Nombre del usuario que creó la conexión */
+  createdByName: varchar("created_by_name", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DbConnection = typeof dbConnections.$inferSelect;
+export type InsertDbConnection = typeof dbConnections.$inferInsert;
