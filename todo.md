@@ -1824,5 +1824,8 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar UI panel de usuarios: filtrar lista a solo tienda para operations_specialist
 - [x] Actualizar NavigationMenu: mostrar acceso a panel de usuarios para operations_specialist
 - [x] Actualizar permisos de creación de usuarios: operations_specialist solo puede crear usuarios de tienda
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
+
+## Fix: operations_specialist acceso denegado en /users
+- [x] Identificar y corregir la guarda de ruta que bloquea a operations_specialist en /users (guard system_specialist_only en App.tsx no incluía operations_specialist)
 - [ ] Guardar checkpoint

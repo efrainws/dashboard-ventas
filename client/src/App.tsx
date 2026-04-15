@@ -80,8 +80,12 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
-  // Guard: solo system_specialist
-  if (guard === "system_specialist_only" && user.role !== "system_specialist") {
+  // Guard: solo system_specialist y operations_specialist
+  if (
+    guard === "system_specialist_only" &&
+    user.role !== "system_specialist" &&
+    user.role !== "operations_specialist"
+  ) {
     return <AccessDenied />;
   }
 
