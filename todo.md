@@ -1856,3 +1856,11 @@ Fecha: 1 de febrero de 2026
 - [x] ReportDiscrepancyModal: aplicar paleta FF, tipografía, inputs y botones del style guide
 - [x] Email de activación: aplicar paleta FF, tipografía y estructura del style guide
 - [x] Guardar checkpoint
+
+## Toggles de dimensiones en tabla de ventas del portal proveedor
+- [x] Agregar estado showStore y showProduct en SupplierPortal
+- [x] Agregar toggles visuales en la barra de filtros de la pestaña Ventas
+- [x] Implementar agrupación client-side cuando se ocultan dimensiones
+- [x] Ocultar columnas Tienda/Cód.SAP y Producto/SKU según estado
+- [x] Actualizar fila de totales y paginación para la vista agrupada
+- [ ] Guardar checkpoint
