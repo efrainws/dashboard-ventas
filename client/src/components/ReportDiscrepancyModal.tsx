@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -51,11 +51,25 @@ export function ReportDiscrepancyModal({
   const [description, setDescription] = useState("");
   const [dataSource, setDataSource] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  // Usar relatedSaleAmount si viene explícito, sino usar dashboardAmount como valor inicial
+  const initialRelatedAmount = context.relatedSaleAmount !== undefined
+    ? context.relatedSaleAmount
+    : context.dashboardAmount;
   const [relatedSaleAmount, setRelatedSaleAmount] = useState(
-    context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : ""
+    initialRelatedAmount !== undefined ? String(initialRelatedAmount) : ""
   );
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState<number | null>(null);
+
+  // Sincronizar el monto cuando el modal se abre con un nuevo contexto
+  useEffect(() => {
+    if (open) {
+      const amt = context.relatedSaleAmount !== undefined
+        ? context.relatedSaleAmount
+        : context.dashboardAmount;
+      setRelatedSaleAmount(amt !== undefined ? String(amt) : "");
+    }
+  }, [open, context.relatedSaleAmount, context.dashboardAmount]);
 
   const createTicket = trpc.tickets.create.useMutation({
     onSuccess: (data) => {
@@ -92,7 +106,7 @@ export function ReportDiscrepancyModal({
     setDescription("");
     setDataSource("");
     setPriority("medium");
-    setRelatedSaleAmount(context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : "");
+    setRelatedSaleAmount(initialRelatedAmount !== undefined ? String(initialRelatedAmount) : "");
     setSubmitted(false);
     setTicketId(null);
     onClose();
@@ -177,7 +191,7 @@ export function ReportDiscrepancyModal({
                 <Label htmlFor="relatedSaleAmount" className="flex items-center gap-1.5">
                   Monto de la venta con error
                   <span className="text-muted-foreground text-xs">(opcional)</span>
-                  {context.relatedSaleAmount !== undefined && (
+                  {initialRelatedAmount !== undefined && (
                     <span className="ml-1 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                       Autocompletado
                     </span>
@@ -195,12 +209,12 @@ export function ReportDiscrepancyModal({
                     className="font-mono text-sm"
                   />
                   {relatedSaleAmount &&
-                    relatedSaleAmount !== (context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : "") && (
+                    relatedSaleAmount !== (initialRelatedAmount !== undefined ? String(initialRelatedAmount) : "") && (
                     <button
                       type="button"
                       onClick={() =>
                         setRelatedSaleAmount(
-                          context.relatedSaleAmount !== undefined ? String(context.relatedSaleAmount) : ""
+                          initialRelatedAmount !== undefined ? String(initialRelatedAmount) : ""
                         )
                       }
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground underline"

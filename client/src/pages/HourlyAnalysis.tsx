@@ -441,13 +441,16 @@ export default function HourlyAnalysis() {
         variant="fab"
         context={{
           module: "hourly-analysis",
+          moduleLabel: "Análisis por Horas",
           dateFrom: filters.fecha_min,
           dateTo: filters.fecha_max,
           storeId: selectedBranch !== "all" ? selectedBranch : undefined,
           storeName:
             selectedBranch !== "all"
               ? metrics.branches?.find((b: any) => b.sap_id === selectedBranch)?.name
-              : undefined,
+              : "Todas las tiendas",
+          dashboardAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
+          relatedSaleAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
         }}
       />
     </div>

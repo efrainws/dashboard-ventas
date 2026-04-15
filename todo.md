@@ -1828,4 +1828,11 @@ Fecha: 1 de febrero de 2026
 
 ## Fix: operations_specialist acceso denegado en /users
 - [x] Identificar y corregir la guarda de ruta que bloquea a operations_specialist en /users (guard system_specialist_only en App.tsx no incluía operations_specialist)
+- [x] Guardar checkpoint
+
+## Autocompletado en Reporte de Discrepancias
+- [x] SalesByCategory: pasar dashboardAmount (filteredMetrics.totalSales) al contexto del botón de discrepancia
+- [x] HourlyAnalysis: pasar dashboardAmount (filteredMetrics.totalSales) al contexto del botón de discrepancia
+- [x] SalesVsTarget: pasar dashboardAmount (totalSales de la tienda filtrada) al contexto del botón de discrepancia
+- [x] ReportDiscrepancyModal: cuando se abre, inicializar relatedSaleAmount con dashboardAmount si no se pasó relatedSaleAmount explícito
 - [ ] Guardar checkpoint

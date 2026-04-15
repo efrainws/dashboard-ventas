@@ -329,19 +329,39 @@ export default function SalesVsTarget() {
       />
 
       {/* Floating button to report discrepancies */}
-      <ReportDiscrepancyButton
-        variant="fab"
-        context={{
-          module: "sales-vs-target",
-          dateFrom: dateRange?.from ? toLocalDateStr(dateRange.from) : undefined,
-          dateTo: dateRange?.to ? toLocalDateStr(dateRange.to) : undefined,
-          storeId: effectiveStoreFilter.length === 1 ? effectiveStoreFilter[0] : undefined,
-          storeName:
-            effectiveStoreFilter.length === 1
-              ? availableStores.find((s) => s.id === effectiveStoreFilter[0])?.name
-              : undefined,
-        }}
-      />
+      {(() => {
+        // Determinar tienda y monto para el contexto del reporte
+        const singleStoreId = effectiveStoreFilter.length === 1 ? effectiveStoreFilter[0] : undefined;
+        const singleStore = singleStoreId
+          ? data?.stores?.find((s) => (s.store_sap_id || s.store_id) === singleStoreId)
+          : undefined;
+        // Si hay más de una tienda, sumar todas las ventas del período
+        const totalSalesAmount = data?.stores
+          ? Math.round(data.stores.reduce((sum, s) => sum + s.total_sales, 0))
+          : undefined;
+        const contextAmount = singleStore
+          ? Math.round(singleStore.total_sales)
+          : totalSalesAmount;
+        return (
+          <ReportDiscrepancyButton
+            variant="fab"
+            context={{
+              module: "sales-vs-target",
+              moduleLabel: "Ventas vs Meta",
+              dateFrom: dateRange?.from ? toLocalDateStr(dateRange.from) : undefined,
+              dateTo: dateRange?.to ? toLocalDateStr(dateRange.to) : undefined,
+              storeId: singleStoreId,
+              storeName: singleStoreId
+                ? availableStores.find((s) => s.id === singleStoreId)?.name
+                : effectiveStoreFilter.length === 0
+                  ? "Todas las tiendas"
+                  : `${effectiveStoreFilter.length} tiendas seleccionadas`,
+              dashboardAmount: contextAmount && contextAmount > 0 ? contextAmount : undefined,
+              relatedSaleAmount: contextAmount && contextAmount > 0 ? contextAmount : undefined,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
