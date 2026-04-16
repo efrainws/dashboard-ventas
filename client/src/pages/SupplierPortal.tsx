@@ -76,6 +76,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
+import { SortableTableHead } from "@/components/SortableTableHead";
 import { format, subDays, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -185,6 +186,18 @@ export default function SupplierPortal() {
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
+  // Ordenamiento de la tabla de ventas
+  type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "cantidad" | "monto" | "tickets";
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const handleSortCol = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  };
   // Estado de exportación (stock)
   const [isExportingStock, setIsExportingStock] = useState(false);
   // Modal de detalle diario
@@ -451,6 +464,28 @@ export default function SupplierPortal() {
 
     return Array.from(map.values());
   }, [salesByPB?.rows, showStore, showProduct]);
+
+  // ── Ordenamiento de filas ──────────────────────────────────────────────────────
+  const sortedSalesRows = useMemo(() => {
+    if (!sortCol) return groupedSalesRows;
+    return [...groupedSalesRows].sort((a, b) => {
+      let va: string | number;
+      let vb: string | number;
+      if (sortCol === "cantidad" || sortCol === "monto" || sortCol === "tickets") {
+        va = Number(a[sortCol]);
+        vb = Number(b[sortCol]);
+      } else if (sortCol === "sap_id") {
+        va = a.sap_id ?? "";
+        vb = b.sap_id ?? "";
+      } else {
+        va = (a[sortCol as keyof typeof a] as string) ?? "";
+        vb = (b[sortCol as keyof typeof b] as string) ?? "";
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [groupedSalesRows, sortCol, sortDir]);
 
   // Colores para gráficos
   const CHART_COLORS = [
@@ -1543,13 +1578,13 @@ export default function SupplierPortal() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border/50">
-                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Producto</TableHead>}
-                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>}
-                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>}
-                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Cód. SAP</TableHead>}
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
+                        {showProduct && <SortableTableHead label="Producto" col="producto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} className="pl-4" />}
+                        {showProduct && <SortableTableHead label="SKU" col="sku" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showStore && <SortableTableHead label="Tienda" col="tienda" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showStore && <SortableTableHead label="Cód. SAP" col="sap_id" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        <SortableTableHead label="Cantidad" col="cantidad" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
+                        <SortableTableHead label="Monto (S/)" col="monto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
+                        <SortableTableHead label="Tickets" col="tickets" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         {showProduct && showStore && <TableHead className="w-8"></TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -1564,7 +1599,7 @@ export default function SupplierPortal() {
                         ))
                       )}
                       <TooltipProvider delayDuration={300}>
-                      {!salesPBLoading && groupedSalesRows.map((row, idx) => {
+                        {!salesPBLoading && sortedSalesRows.map((row, idx) => {
                         const canDrill = showProduct && showStore && row.product_id && row.branch_id;
                         return (
                           <TableRow

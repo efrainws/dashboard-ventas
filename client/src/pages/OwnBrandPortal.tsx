@@ -85,6 +85,7 @@ import { format, subDays, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
+import { SortableTableHead } from "@/components/SortableTableHead";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -335,6 +336,18 @@ export default function OwnBrandPortal() {
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
+  // Ordenamiento de la tabla de ventas
+  type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "cantidad" | "monto" | "tickets";
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const handleSortCol = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  };
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
     productId: string;
@@ -529,6 +542,28 @@ export default function OwnBrandPortal() {
 
     return Array.from(map.values());
   }, [salesByPB?.rows, showStore, showProduct]);
+
+  // ── Ordenamiento de filas ──────────────────────────────────────────────────────
+  const sortedSalesRows = useMemo(() => {
+    if (!sortCol) return groupedSalesRows;
+    return [...groupedSalesRows].sort((a, b) => {
+      let va: string | number;
+      let vb: string | number;
+      if (sortCol === "cantidad" || sortCol === "monto" || sortCol === "tickets") {
+        va = Number(a[sortCol]);
+        vb = Number(b[sortCol]);
+      } else if (sortCol === "sap_id") {
+        va = a.sap_id ?? "";
+        vb = b.sap_id ?? "";
+      } else {
+        va = (a[sortCol as keyof typeof a] as string) ?? "";
+        vb = (b[sortCol as keyof typeof b] as string) ?? "";
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [groupedSalesRows, sortCol, sortDir]);
 
   const CHART_COLORS = [
     "#008064", "#1A6894", "#5BB6B7", "#C49705", "#BC2C46", "#E5BAC1",
@@ -1199,13 +1234,13 @@ export default function OwnBrandPortal() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border/50">
-                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Artículo</TableHead>}
-                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>}
-                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>}
-                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Cód. SAP</TableHead>}
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
+                        {showProduct && <SortableTableHead label="Artículo" col="producto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} className="pl-4" />}
+                        {showProduct && <SortableTableHead label="SKU" col="sku" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showStore && <SortableTableHead label="Tienda" col="tienda" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showStore && <SortableTableHead label="Cód. SAP" col="sap_id" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        <SortableTableHead label="Cantidad" col="cantidad" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
+                        <SortableTableHead label="Monto (S/)" col="monto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
+                        <SortableTableHead label="Tickets" col="tickets" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         {showProduct && showStore && <TableHead className="w-8"></TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -1220,7 +1255,7 @@ export default function OwnBrandPortal() {
                         ))
                       )}
                       <TooltipProvider delayDuration={300}>
-                        {!salesPBLoading && groupedSalesRows.map((row, idx) => {
+                        {!salesPBLoading && sortedSalesRows.map((row, idx) => {
                           const canDrill = showProduct && showStore && row.product_id && row.branch_id;
                           return (
                             <TableRow

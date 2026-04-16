@@ -1863,7 +1863,7 @@ Fecha: 1 de febrero de 2026
 - [x] Implementar agrupación client-side cuando se ocultan dimensiones
 - [x] Ocultar columnas Tienda/Cód.SAP y Producto/SKU según estado
 - [x] Actualizar fila de totales y paginación para la vista agrupada
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
 
 ## Toggles de dimensiones en tabla de ventas del portal Marca Propia
 - [x] Agregar estados showStore y showProduct en el portal de Marca Propia
@@ -1871,4 +1871,11 @@ Fecha: 1 de febrero de 2026
 - [x] Implementar agrupación client-side cuando se ocultan dimensiones
 - [x] Ocultar columnas Tienda/Cód.SAP y Producto/SKU según estado
 - [x] Actualizar fila de totales para la vista agrupada
+- [x] Guardar checkpoint
+
+## Ordenamiento por columna en tablas de ventas
+- [x] Portal Proveedor: agregar estado sortColumn/sortDir y lógica de ordenamiento en groupedSalesRows
+- [x] Portal Proveedor: actualizar headers de tabla con indicadores de orden y onClick
+- [x] Portal Marca Propia: agregar estado sortColumn/sortDir y lógica de ordenamiento en groupedSalesRows
+- [x] Portal Marca Propia: actualizar headers de tabla con indicadores de orden y onClick
 - [ ] Guardar checkpoint
