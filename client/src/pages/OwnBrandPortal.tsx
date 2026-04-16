@@ -77,6 +77,8 @@ import {
   Plus,
   Trash2,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -330,6 +332,9 @@ export default function OwnBrandPortal() {
   const [productSearch, setProductSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingStock, setIsExportingStock] = useState(false);
+  // Toggles de dimensiones en la tabla de ventas
+  const [showStore, setShowStore] = useState(true);
+  const [showProduct, setShowProduct] = useState(true);
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
     productId: string;
@@ -477,6 +482,53 @@ export default function OwnBrandPortal() {
       from,
       to,
     }, { enabled: !!detailModal?.open && !!detailModal.productId && !!detailModal.branchId });
+
+  // ── Agrupación de filas de ventas según dimensiones activas ──────────────────
+  const groupedSalesRows = useMemo(() => {
+    const rows = salesByPB?.rows ?? [];
+    if (showStore && showProduct) return rows; // Sin agrupación
+
+    type GroupKey = string;
+    const map = new Map<GroupKey, {
+      product_id: string;
+      branch_id: string;
+      producto: string;
+      sku: string;
+      tienda: string;
+      sap_id: string | null;
+      cantidad: number;
+      monto: number;
+      tickets: number;
+    }>();
+
+    for (const row of rows) {
+      const keyParts: string[] = [];
+      if (showProduct) keyParts.push(row.product_id);
+      if (showStore) keyParts.push(row.branch_id);
+      const key: GroupKey = keyParts.join("|") || "all";
+
+      if (map.has(key)) {
+        const existing = map.get(key)!;
+        existing.cantidad += parseFloat(row.cantidad as unknown as string);
+        existing.monto += parseFloat(row.monto as unknown as string);
+        existing.tickets += Number(row.tickets);
+      } else {
+        map.set(key, {
+          product_id: showProduct ? row.product_id : "",
+          branch_id: showStore ? row.branch_id : "",
+          producto: showProduct ? row.producto : "(Todos los artículos)",
+          sku: showProduct ? row.sku : "—",
+          tienda: showStore ? row.tienda : "(Todas las tiendas)",
+          sap_id: showStore ? row.sap_id : null,
+          cantidad: parseFloat(row.cantidad as unknown as string),
+          monto: parseFloat(row.monto as unknown as string),
+          tickets: Number(row.tickets),
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [salesByPB?.rows, showStore, showProduct]);
 
   const CHART_COLORS = [
     "#008064", "#1A6894", "#5BB6B7", "#C49705", "#BC2C46", "#E5BAC1",
@@ -1093,7 +1145,38 @@ export default function OwnBrandPortal() {
                   </SelectContent>
                 </Select>
               )}
-              <Button variant="outline" size="sm" className="h-8 ml-auto gap-1.5 text-xs" onClick={handleDownloadCSV} disabled={isExporting || !canAccessPortal}>
+              {/* Toggles de dimensiones */}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <span className="text-xs text-muted-foreground mr-1">Mostrar:</span>
+                <button
+                  type="button"
+                  onClick={() => setShowProduct((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+                    showProduct
+                      ? "bg-[#232523] text-white border-[#232523]"
+                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
+                  }`}
+                  title={showProduct ? "Ocultar dimensión Artículo" : "Mostrar dimensión Artículo"}
+                >
+                  {showProduct ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                  Artículo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStore((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+                    showStore
+                      ? "bg-[#232523] text-white border-[#232523]"
+                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
+                  }`}
+                  title={showStore ? "Ocultar dimensión Tienda" : "Mostrar dimensión Tienda"}
+                >
+                  {showStore ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                  Tienda
+                </button>
+              </div>
+
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleDownloadCSV} disabled={isExporting || !canAccessPortal}>
                 {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                 {isExporting ? "Exportando..." : "Descargar Excel"}
               </Button>
@@ -1116,62 +1199,92 @@ export default function OwnBrandPortal() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border/50">
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Artículo</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wide">Cód. SAP</TableHead>
+                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide pl-4">Artículo</TableHead>}
+                        {showProduct && <TableHead className="text-xs font-semibold uppercase tracking-wide">SKU</TableHead>}
+                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Tienda</TableHead>}
+                        {showStore && <TableHead className="text-xs font-semibold uppercase tracking-wide">Cód. SAP</TableHead>}
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Cantidad</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Monto (S/)</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">Tickets</TableHead>
-                        <TableHead className="w-8"></TableHead>
+                        {showProduct && showStore && <TableHead className="w-8"></TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {salesPBLoading && (
                         [...Array(8)].map((_, i) => (
                           <TableRow key={i}>
-                            {[...Array(8)].map((_, j) => (
+                            {[...Array((showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3)].map((_, j) => (
                               <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                             ))}
                           </TableRow>
                         ))
                       )}
                       <TooltipProvider delayDuration={300}>
-                        {!salesPBLoading && salesByPB?.rows.map((row) => (
-                          <TableRow
-                            key={`${row.product_id}-${row.branch_id}`}
-                            className="cursor-pointer hover:bg-muted/40 transition-colors border-border/50"
-                            onClick={() => setDetailModal({
-                              open: true,
-                              productId: row.product_id,
-                              branchId: row.branch_id,
-                              producto: row.producto,
-                              tienda: row.tienda,
-                            })}
-                          >
-                            <TableCell className="pl-4 text-sm max-w-[220px]">
-                              <UITooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="line-clamp-2 leading-tight cursor-pointer">{row.producto}</span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  Haz clic para ver el detalle de ventas por día
-                                </TooltipContent>
-                              </UITooltip>
-                            </TableCell>
-                            <TableCell className="text-xs font-mono text-muted-foreground">{row.sku}</TableCell>
-                            <TableCell className="text-sm">{row.tienda}</TableCell>
-                            <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
-                            <TableCell className="text-right tabular-nums text-sm">{fmt(row.cantidad)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-sm font-medium" style={{ color: "#008064" }}>{fmtCurrency(row.monto)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{row.tickets}</TableCell>
-                            <TableCell className="text-muted-foreground text-xs pr-4">›</TableCell>
-                          </TableRow>
-                        ))}
+                        {!salesPBLoading && groupedSalesRows.map((row, idx) => {
+                          const canDrill = showProduct && showStore && row.product_id && row.branch_id;
+                          return (
+                            <TableRow
+                              key={`${row.product_id || "all"}-${row.branch_id || "all"}-${idx}`}
+                              className={`transition-colors border-border/50 ${canDrill ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                              onClick={() => {
+                                if (!canDrill) return;
+                                setDetailModal({
+                                  open: true,
+                                  productId: row.product_id,
+                                  branchId: row.branch_id,
+                                  producto: row.producto,
+                                  tienda: row.tienda,
+                                });
+                              }}
+                            >
+                              {showProduct && (
+                                <TableCell className="pl-4 text-sm max-w-[220px]">
+                                  {canDrill ? (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="line-clamp-2 leading-tight cursor-pointer">{row.producto}</span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        Haz clic para ver el detalle de ventas por día
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  ) : (
+                                    <span className="line-clamp-2 leading-tight">{row.producto}</span>
+                                  )}
+                                </TableCell>
+                              )}
+                              {showProduct && (
+                                <TableCell className="text-xs font-mono text-muted-foreground">{row.sku}</TableCell>
+                              )}
+                              {showStore && (
+                                <TableCell className="text-sm">
+                                  <div className="flex items-center gap-1.5">
+                                    <Store className="h-3 w-3 shrink-0" style={{ color: "#919291" }} />
+                                    <span className="truncate max-w-[140px]">{row.tienda}</span>
+                                  </div>
+                                </TableCell>
+                              )}
+                              {showStore && (
+                                <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
+                              )}
+                              <TableCell className="text-right tabular-nums text-sm">{fmt(row.cantidad)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-sm font-medium" style={{ color: "#008064" }}>{fmtCurrency(row.monto)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{row.tickets}</TableCell>
+                              {showProduct && showStore && (
+                                <TableCell className="text-muted-foreground text-xs pr-4">
+                                  {canDrill ? "›" : ""}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
                       </TooltipProvider>
                       {!salesPBLoading && !salesByPB?.rows.length && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
+                          <TableCell
+                            colSpan={(showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3}
+                            className="text-center text-sm text-muted-foreground py-10"
+                          >
                             Sin ventas en el período seleccionado
                           </TableCell>
                         </TableRow>
