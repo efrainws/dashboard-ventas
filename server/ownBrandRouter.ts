@@ -689,8 +689,10 @@ export const ownBrandRouter = router({
     .input(
       dateRangeSchema.extend({
         search: z.string().optional(),
-        productIds: z.array(z.string()).optional(), // múltiples productos
+        productIds: z.array(z.string()).optional(),
         branchId: z.string().optional(),
+        groupByProduct: z.boolean().default(true),
+        groupByStore: z.boolean().default(true),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -702,6 +704,24 @@ export const ownBrandRouter = router({
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
       if (brandIds.length === 0) return { rows: [], total: 0, totals: { cantidad: "0", monto: "0", tickets: 0 } };
+
+      const gp = input.groupByProduct !== false;
+      const gs = input.groupByStore !== false;
+
+      const selectProduct = gp
+        ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
+        : `NULL::uuid AS product_id, '(Todos los productos)' AS producto, '\u2014' AS sku,`;
+      const selectStore = gs
+        ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
+        : `NULL::uuid AS branch_id, '(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const groupByDims = [
+        ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
+        ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+      ].join(", ") || "1=1";
+      const countGroupBy = [
+        ...(gp ? ["p.id"] : []),
+        ...(gs ? ["b.id"] : []),
+      ].join(", ") || "1";
 
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const fromIdx = brandParams.length + 1;
@@ -726,12 +746,8 @@ export const ownBrandRouter = router({
 
       const res = await pool.query(
         `SELECT
-           p.id                                          AS product_id,
-           p.name                                        AS producto,
-           p.int_sku::text                               AS sku,
-           b.id                                          AS branch_id,
-           b.name                                        AS tienda,
-           b.sap_id,
+           ${selectProduct}
+           ${selectStore}
            SUM(sd.quantity)::numeric                     AS cantidad,
            ROUND(SUM(sd.total)::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -742,7 +758,7 @@ export const ownBrandRouter = router({
          WHERE p.id IN ${subquery}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
            ${clauses.join(" ")}
-         GROUP BY p.id, p.name, p.int_sku, b.id, b.name, b.sap_id
+         GROUP BY ${groupByDims}
          ORDER BY monto DESC
          LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
         params
@@ -766,7 +782,7 @@ export const ownBrandRouter = router({
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM (
-           SELECT p.id, b.id AS bid
+           SELECT ${countGroupBy === "1" ? "1" : countGroupBy}
            FROM public.sales_detail sd
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
@@ -774,7 +790,7 @@ export const ownBrandRouter = router({
            WHERE p.id IN ${subquery}
              AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
              ${countClauses.join(" ")}
-           GROUP BY p.id, b.id
+           GROUP BY ${countGroupBy}
          ) sub`,
         countParams
       );
@@ -859,7 +875,13 @@ export const ownBrandRouter = router({
    * Exportación completa de ventas por artículo × tienda (sin paginación).
    */
   exportSalesByProductBranch: protectedProcedure
-    .input(dateRangeSchema.extend({ search: z.string().optional(), productIds: z.array(z.string()).optional(), branchId: z.string().optional() }))
+    .input(dateRangeSchema.extend({
+      search: z.string().optional(),
+      productIds: z.array(z.string()).optional(),
+      branchId: z.string().optional(),
+      groupByProduct: z.boolean().default(true),
+      groupByStore: z.boolean().default(true),
+    }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -867,6 +889,20 @@ export const ownBrandRouter = router({
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
       if (brandIds.length === 0) return [];
+
+      const gp = input.groupByProduct !== false;
+      const gs = input.groupByStore !== false;
+
+      const selectProduct = gp
+        ? `p.name AS producto, p.int_sku::text AS sku,`
+        : `'(Todos los productos)' AS producto, '\u2014' AS sku,`;
+      const selectStore = gs
+        ? `b.name AS tienda, b.sap_id,`
+        : `'(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const groupByDims = [
+        ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
+        ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+      ].join(", ") || "1=1";
 
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const fromIdx = brandParams.length + 1;
@@ -889,10 +925,8 @@ export const ownBrandRouter = router({
 
       const res = await pool.query(
         `SELECT
-           p.name                                        AS producto,
-           p.int_sku::text                               AS sku,
-           b.name                                        AS tienda,
-           b.sap_id,
+           ${selectProduct}
+           ${selectStore}
            SUM(sd.quantity)::numeric                     AS cantidad,
            ROUND(SUM(sd.total)::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -903,13 +937,13 @@ export const ownBrandRouter = router({
          WHERE p.id IN ${subquery}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
            ${clauses.join(" ")}
-         GROUP BY p.id, p.name, p.int_sku, b.id, b.name, b.sap_id
+         GROUP BY ${groupByDims}
          ORDER BY monto DESC
          LIMIT 10000`,
         params
       );
 
-      return res.rows as Array<{ producto: string; sku: string; tienda: string; sap_id: string; cantidad: string; monto: string; tickets: number }>;
+      return res.rows as Array<{ producto: string; sku: string; tienda: string; sap_id: string | null; cantidad: string; monto: string; tickets: number }>;
     }),
 
   // ─── LISTA DE PRODUCTOS PARA SELECTS ─────────────────────────────────────────

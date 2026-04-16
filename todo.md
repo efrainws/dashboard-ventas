@@ -1878,4 +1878,14 @@ Fecha: 1 de febrero de 2026
 - [x] Portal Proveedor: actualizar headers de tabla con indicadores de orden y onClick
 - [x] Portal Marca Propia: agregar estado sortColumn/sortDir y lógica de ordenamiento en groupedSalesRows
 - [x] Portal Marca Propia: actualizar headers de tabla con indicadores de orden y onClick
+- [x] Guardar checkpoint
+
+## Agrupación de dimensiones en backend (paginación correcta)
+- [x] Revisar router getSalesByProductBranch en supplierPortalRouter y ownBrandRouter
+- [x] Agregar parámetros groupByProduct y groupByStore al input del query
+- [x] Aplicar GROUP BY dinámico en SQL según los parámetros recibidos
+- [x] Hacer lo mismo para exportSalesByProductBranch
+- [x] Actualizar SupplierPortal: pasar showProduct/showStore al query y eliminar agrupación client-side
+- [x] Actualizar OwnBrandPortal: pasar showProduct/showStore al query y eliminar agrupación client-side
+- [x] Resetear salesPage a 0 cuando cambien los toggles
 - [ ] Guardar checkpoint

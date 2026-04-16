@@ -336,6 +336,9 @@ export default function OwnBrandPortal() {
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
+  // Resetear página al cambiar dimensiones para que la paginación sea correcta
+  const handleToggleStore = () => { setShowStore((v) => !v); setSalesPage(0); };
+  const handleToggleProduct = () => { setShowProduct((v) => !v); setSalesPage(0); };
   // Ordenamiento de la tabla de ventas
   type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "cantidad" | "monto" | "tickets";
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -425,6 +428,8 @@ export default function OwnBrandPortal() {
       to,
       productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
       branchId: salesBranchId,
+      groupByProduct: showProduct,
+      groupByStore: showStore,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
     }, { enabled: canAccessPortal && activeTab === "ventas" });
@@ -434,6 +439,8 @@ export default function OwnBrandPortal() {
     to,
     productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
     branchId: salesBranchId,
+    groupByProduct: showProduct,
+    groupByStore: showStore,
   }, { enabled: false });
 
   const handleDownloadCSV = async () => {
@@ -496,57 +503,11 @@ export default function OwnBrandPortal() {
       to,
     }, { enabled: !!detailModal?.open && !!detailModal.productId && !!detailModal.branchId });
 
-  // ── Agrupación de filas de ventas según dimensiones activas ──────────────────
-  const groupedSalesRows = useMemo(() => {
-    const rows = salesByPB?.rows ?? [];
-    if (showStore && showProduct) return rows; // Sin agrupación
-
-    type GroupKey = string;
-    const map = new Map<GroupKey, {
-      product_id: string;
-      branch_id: string;
-      producto: string;
-      sku: string;
-      tienda: string;
-      sap_id: string | null;
-      cantidad: number;
-      monto: number;
-      tickets: number;
-    }>();
-
-    for (const row of rows) {
-      const keyParts: string[] = [];
-      if (showProduct) keyParts.push(row.product_id);
-      if (showStore) keyParts.push(row.branch_id);
-      const key: GroupKey = keyParts.join("|") || "all";
-
-      if (map.has(key)) {
-        const existing = map.get(key)!;
-        existing.cantidad += parseFloat(row.cantidad as unknown as string);
-        existing.monto += parseFloat(row.monto as unknown as string);
-        existing.tickets += Number(row.tickets);
-      } else {
-        map.set(key, {
-          product_id: showProduct ? row.product_id : "",
-          branch_id: showStore ? row.branch_id : "",
-          producto: showProduct ? row.producto : "(Todos los artículos)",
-          sku: showProduct ? row.sku : "—",
-          tienda: showStore ? row.tienda : "(Todas las tiendas)",
-          sap_id: showStore ? row.sap_id : null,
-          cantidad: parseFloat(row.cantidad as unknown as string),
-          monto: parseFloat(row.monto as unknown as string),
-          tickets: Number(row.tickets),
-        });
-      }
-    }
-
-    return Array.from(map.values());
-  }, [salesByPB?.rows, showStore, showProduct]);
-
-  // ── Ordenamiento de filas ──────────────────────────────────────────────────────
+  // ── Ordenamiento de filas (agrupación ya viene del backend) ─────────────────
   const sortedSalesRows = useMemo(() => {
-    if (!sortCol) return groupedSalesRows;
-    return [...groupedSalesRows].sort((a, b) => {
+    const rows = salesByPB?.rows ?? [];
+    if (!sortCol) return rows;
+    return [...rows].sort((a, b) => {
       let va: string | number;
       let vb: string | number;
       if (sortCol === "cantidad" || sortCol === "monto" || sortCol === "tickets") {
@@ -563,7 +524,7 @@ export default function OwnBrandPortal() {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [groupedSalesRows, sortCol, sortDir]);
+  }, [salesByPB?.rows, sortCol, sortDir]);
 
   const CHART_COLORS = [
     "#008064", "#1A6894", "#5BB6B7", "#C49705", "#BC2C46", "#E5BAC1",
@@ -1185,7 +1146,7 @@ export default function OwnBrandPortal() {
                 <span className="text-xs text-muted-foreground mr-1">Mostrar:</span>
                 <button
                   type="button"
-                  onClick={() => setShowProduct((v) => !v)}
+                  onClick={handleToggleProduct}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
                     showProduct
                       ? "bg-[#232523] text-white border-[#232523]"
@@ -1198,7 +1159,7 @@ export default function OwnBrandPortal() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowStore((v) => !v)}
+                  onClick={handleToggleStore}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
                     showStore
                       ? "bg-[#232523] text-white border-[#232523]"
