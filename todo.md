@@ -1914,3 +1914,9 @@ Fecha: 1 de febrero de 2026
 - [x] Ajustar badge Autocompletado: fondo Cobalto Light (#E8F1F7), texto Cobalto Dark (#124A6B), borde Cobalto Light
 - [x] Ajustar indicador de diferencia: usar tokens FF correctos
 - [x] Guardar checkpoint
+
+## Sección por Canal — Análisis General
+- [x] Revisar datos disponibles por canal en el backend (filteredMetrics, salesByChannel)
+- [x] Crear componente ChannelBreakdown con gráfico de pie y tabla de métricas
+- [x] Integrar ChannelBreakdown en SalesByCategory
+- [x] Guardar checkpoint

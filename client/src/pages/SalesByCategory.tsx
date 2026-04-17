@@ -17,6 +17,7 @@ import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 
 export default function SalesByCategory() {
   const { user, loading: authLoading } = useAuth();
@@ -370,6 +371,14 @@ export default function SalesByCategory() {
                 comparisonData={categoryComparisonQuery.data?.data}
               />
             </div>
+
+            {/* Análisis por Canal */}
+            <ChannelBreakdown
+              data={data}
+              numberOfDays={numberOfDays}
+              daysInMonth={daysInMonth}
+              isLoading={isLoading}
+            />
 
             {/* Información de datos */}
             <Card>
