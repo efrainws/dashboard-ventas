@@ -115,10 +115,10 @@ export function DashboardFilters({
                   <SelectValue placeholder="Todas las sucursales" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las sucursales</SelectItem>
+                  <SelectItem value="all"><span>Todas las sucursales</span></SelectItem>
                   {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.sap_id}>
-                      {branch.name} ({branch.sap_id})
+                      <span>{branch.name} ({branch.sap_id})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -134,10 +134,10 @@ export function DashboardFilters({
                 <SelectValue placeholder="Todos los departamentos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los departamentos</SelectItem>
+                <SelectItem value="all"><span>Todos los departamentos</span></SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
-                    {category.name}
+                    <span>{category.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

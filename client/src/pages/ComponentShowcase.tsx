@@ -426,9 +426,9 @@ export default function ComponentsShowcase() {
                       <SelectValue placeholder="Select a fruit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="apple">Apple</SelectItem>
-                      <SelectItem value="banana">Banana</SelectItem>
-                      <SelectItem value="orange">Orange</SelectItem>
+                      <SelectItem value="apple"><span>Apple</span></SelectItem>
+                      <SelectItem value="banana"><span>Banana</span></SelectItem>
+                      <SelectItem value="orange"><span>Orange</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -635,9 +635,9 @@ export default function ComponentsShowcase() {
                               <SelectItem
                                 key={month}
                                 value={month.toString().padStart(2, "0")}
-                              >
+                              ><span>
                                 {month.toString().padStart(2, "0")}
-                              </SelectItem>
+                              </span></SelectItem>
                             )
                           )}
                         </SelectContent>
@@ -659,9 +659,9 @@ export default function ComponentsShowcase() {
                             { length: 10 },
                             (_, i) => new Date().getFullYear() - 5 + i
                           ).map(year => (
-                            <SelectItem key={year} value={year.toString()}>
+                            <SelectItem key={year} value={year.toString()}><span>
                               {year}
-                            </SelectItem>
+                            </span></SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

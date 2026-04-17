@@ -273,7 +273,7 @@ export default function HourlyAnalysis() {
                         <SelectValue placeholder="Todas las sucursales" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todas las sucursales</SelectItem>
+                        <SelectItem value="all"><span>Todas las sucursales</span></SelectItem>
                         {metrics.branches
                           .sort((a, b) => {
                             const sapIdA = parseInt(a.sap_id.replace(/\D/g, ''), 10) || 0;
@@ -281,9 +281,9 @@ export default function HourlyAnalysis() {
                             return sapIdA - sapIdB;
                           })
                           .map((branch) => (
-                            <SelectItem key={branch.id} value={branch.sap_id}>
+                            <SelectItem key={branch.id} value={branch.sap_id}><span>
                               {branch.name} ({branch.sap_id})
-                            </SelectItem>
+                            </span></SelectItem>
                           ))}
                       </SelectContent>
                     </Select>

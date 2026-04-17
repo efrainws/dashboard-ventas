@@ -1925,3 +1925,8 @@ Fecha: 1 de febrero de 2026
 - [x] Auditar todos los componentes de tablas del sitio
 - [x] Aplicar font-family Sailec a celdas numéricas en todas las tablas
 - [x] Guardar checkpoint
+
+## Bug: NotFoundError removeChild en filtro de sucursales (CST)
+- [x] Revisar DashboardFilters y el Select de sucursales para identificar causa del error DOM
+- [x] Aplicar corrección (key estable, wrapper span en texto de Select.Item)
+- [x] Guardar checkpoint

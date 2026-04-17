@@ -806,7 +806,7 @@ export default function OwnBrandPortal() {
                         />
                       </div>
                     </div>
-                    <SelectItem value="all">Todos los artículos</SelectItem>
+                    <SelectItem value="all"><span>Todos los artículos</span></SelectItem>
                     {(brandProducts ?? []).filter((p) => {
                       if (!catalogProductSearch.trim()) return true;
                       const q = catalogProductSearch.toLowerCase();
@@ -916,7 +916,7 @@ export default function OwnBrandPortal() {
                         />
                       </div>
                     </div>
-                    <SelectItem value="all">Todos los artículos</SelectItem>
+                    <SelectItem value="all"><span>Todos los artículos</span></SelectItem>
                     {(brandProducts ?? []).filter((p) => {
                       if (!stockProductSearch.trim()) return true;
                       const q = stockProductSearch.toLowerCase();
@@ -942,7 +942,7 @@ export default function OwnBrandPortal() {
                   <SelectValue placeholder="Todas las tiendas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las tiendas</SelectItem>
+                  <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                   {branchesForStock?.map((b) => (
                     <SelectItem key={b.id} value={b.id}>{b.name}{b.sap_id ? ` (${b.sap_id})` : ""}</SelectItem>
                   ))}
@@ -1134,7 +1134,7 @@ export default function OwnBrandPortal() {
                     <SelectValue placeholder="Todas las tiendas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                     {branchesForSales.map((b) => (
                       <SelectItem key={b.id} value={b.id}>{b.name}{b.sap_id ? ` (${b.sap_id})` : ""}</SelectItem>
                     ))}

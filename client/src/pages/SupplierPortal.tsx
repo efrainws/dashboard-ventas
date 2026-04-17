@@ -983,7 +983,7 @@ export default function SupplierPortal() {
                         />
                       </div>
                     </div>
-                    <SelectItem value="all">Todos los productos</SelectItem>
+                    <SelectItem value="all"><span>Todos los productos</span></SelectItem>
                     {(supplierProducts ?? []).filter((p) => {
                       if (!catalogProductSearch.trim()) return true;
                       const q = catalogProductSearch.toLowerCase();
@@ -1134,7 +1134,7 @@ export default function SupplierPortal() {
                         />
                       </div>
                     </div>
-                    <SelectItem value="all">Todos los productos</SelectItem>
+                    <SelectItem value="all"><span>Todos los productos</span></SelectItem>
                     {(supplierProducts ?? []).filter((p) => {
                       if (!stockProductSearch.trim()) return true;
                       const q = stockProductSearch.toLowerCase();
@@ -1167,11 +1167,11 @@ export default function SupplierPortal() {
                   <SelectValue placeholder="Todas las tiendas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las tiendas</SelectItem>
+                  <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                   {branchesForStock?.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
+                    <SelectItem key={b.id} value={b.id}><span>
                       {b.name}{b.sap_id ? ` (${b.sap_id})` : ""}
-                    </SelectItem>
+                    </span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1466,7 +1466,7 @@ export default function SupplierPortal() {
                     <SelectValue placeholder="Todas las tiendas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                     {branchesForSales.map((b) => (
                       <SelectItem key={b.id} value={b.id}>{b.name}{b.sap_id ? ` (${b.sap_id})` : ""}</SelectItem>
                     ))}

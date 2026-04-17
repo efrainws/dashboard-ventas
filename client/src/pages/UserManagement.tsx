@@ -619,9 +619,9 @@ export default function UserManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableRoles.map((role) => (
-                      <SelectItem key={role} value={role}>
+                      <SelectItem key={role} value={role}><span>
                         {ROLE_LABELS[role]}
-                      </SelectItem>
+                      </span></SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -643,9 +643,9 @@ export default function UserManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {branchesData?.branches.map((branch) => (
-                        <SelectItem key={branch.sap_id} value={branch.sap_id}>
+                        <SelectItem key={branch.sap_id} value={branch.sap_id}><span>
                           {branch.name} — {branch.sap_id}
-                        </SelectItem>
+                        </span></SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -691,9 +691,9 @@ export default function UserManagement() {
                         </div>
                       ) : (
                         suppliersData?.suppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
+                          <SelectItem key={supplier.id} value={supplier.id}><span>
                             {supplier.ruc} — {supplier.name}
-                          </SelectItem>
+                          </span></SelectItem>
                         ))
                       )}
                     </SelectContent>

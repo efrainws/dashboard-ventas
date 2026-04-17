@@ -281,11 +281,11 @@ export default function IdentifiedTransactions() {
                       <SelectValue placeholder="Todas las tiendas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas las tiendas</SelectItem>
+                      <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                       {availableStores.map((s) => (
-                        <SelectItem key={s.sap_id} value={s.sap_id}>
+                        <SelectItem key={s.sap_id} value={s.sap_id}><span>
                           {s.nombre} ({s.sap_id})
-                        </SelectItem>
+                        </span></SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

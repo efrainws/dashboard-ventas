@@ -927,13 +927,13 @@ export default function SupplierMonitor() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pending_activation">Pendiente de activación</SelectItem>
-              <SelectItem value="trial_active">Trial activo</SelectItem>
-              <SelectItem value="trial_expired">Trial vencido</SelectItem>
-              <SelectItem value="access_requested">Solicitud pendiente</SelectItem>
-              <SelectItem value="subscribed_active">Suscrito activo</SelectItem>
-              <SelectItem value="suspended">Suspendido</SelectItem>
+              <SelectItem value="all"><span>Todos</span></SelectItem>
+              <SelectItem value="pending_activation"><span>Pendiente de activación</span></SelectItem>
+              <SelectItem value="trial_active"><span>Trial activo</span></SelectItem>
+              <SelectItem value="trial_expired"><span>Trial vencido</span></SelectItem>
+              <SelectItem value="access_requested"><span>Solicitud pendiente</span></SelectItem>
+              <SelectItem value="subscribed_active"><span>Suscrito activo</span></SelectItem>
+              <SelectItem value="suspended"><span>Suspendido</span></SelectItem>
             </SelectContent>
           </Select>
         </div>

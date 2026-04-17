@@ -195,11 +195,11 @@ export default function DiscrepancyTickets() {
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los estados</SelectItem>
-              <SelectItem value="open">Abiertos</SelectItem>
-              <SelectItem value="in_review">En Revisión</SelectItem>
-              <SelectItem value="resolved">Resueltos</SelectItem>
-              <SelectItem value="closed">Cerrados</SelectItem>
+              <SelectItem value="all"><span>Todos los estados</span></SelectItem>
+              <SelectItem value="open"><span>Abiertos</span></SelectItem>
+              <SelectItem value="in_review"><span>En Revisión</span></SelectItem>
+              <SelectItem value="resolved"><span>Resueltos</span></SelectItem>
+              <SelectItem value="closed"><span>Cerrados</span></SelectItem>
             </SelectContent>
           </Select>
 
@@ -208,10 +208,10 @@ export default function DiscrepancyTickets() {
               <SelectValue placeholder="Módulo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los módulos</SelectItem>
-              <SelectItem value="sales-by-category">Análisis General</SelectItem>
-              <SelectItem value="hourly-analysis">Análisis por Horas</SelectItem>
-              <SelectItem value="sales-vs-target">Ventas vs Meta</SelectItem>
+              <SelectItem value="all"><span>Todos los módulos</span></SelectItem>
+              <SelectItem value="sales-by-category"><span>Análisis General</span></SelectItem>
+              <SelectItem value="hourly-analysis"><span>Análisis por Horas</span></SelectItem>
+              <SelectItem value="sales-vs-target"><span>Ventas vs Meta</span></SelectItem>
             </SelectContent>
           </Select>
             </div>
@@ -434,10 +434,10 @@ export default function DiscrepancyTickets() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="open">Abierto</SelectItem>
-                          <SelectItem value="in_review">En Revisión</SelectItem>
-                          <SelectItem value="resolved">Resuelto</SelectItem>
-                          <SelectItem value="closed">Cerrado</SelectItem>
+                          <SelectItem value="open"><span>Abierto</span></SelectItem>
+                          <SelectItem value="in_review"><span>En Revisión</span></SelectItem>
+                          <SelectItem value="resolved"><span>Resuelto</span></SelectItem>
+                          <SelectItem value="closed"><span>Cerrado</span></SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -483,11 +483,11 @@ export function TargetEditModal({
                       <SelectValue placeholder="Todas las tiendas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas las tiendas</SelectItem>
+                      <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                       {availableStores.map((store) => (
-                        <SelectItem key={store.id} value={store.id}>
+                        <SelectItem key={store.id} value={store.id}><span>
                           {store.name} ({store.sapId})
-                        </SelectItem>
+                        </span></SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -500,11 +500,11 @@ export function TargetEditModal({
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all"><span>Todos</span></SelectItem>
                       {availablePeriods.map((period) => (
-                        <SelectItem key={period} value={period}>
+                        <SelectItem key={period} value={period}><span>
                           {period}
-                        </SelectItem>
+                        </span></SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -613,9 +613,9 @@ export function TargetEditModal({
                                 </SelectTrigger>
                                 <SelectContent>
                                   {availableStores.map((store) => (
-                                    <SelectItem key={store.id} value={store.id}>
+                                    <SelectItem key={store.id} value={store.id}><span>
                                       {store.name} ({store.sapId})
-                                    </SelectItem>
+                                    </span></SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

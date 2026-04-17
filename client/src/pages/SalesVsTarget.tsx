@@ -252,7 +252,7 @@ export default function SalesVsTarget() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
                     {availableStores.map((store) => (
                       <div
                         key={store.id}

@@ -298,10 +298,10 @@ function ConnectionFormModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="both">Ventas y Stock</SelectItem>
-                  <SelectItem value="sales">Solo Ventas</SelectItem>
-                  <SelectItem value="stock">Solo Stock</SelectItem>
-                  <SelectItem value="other">Otro</SelectItem>
+                  <SelectItem value="both"><span>Ventas y Stock</span></SelectItem>
+                  <SelectItem value="sales"><span>Solo Ventas</span></SelectItem>
+                  <SelectItem value="stock"><span>Solo Stock</span></SelectItem>
+                  <SelectItem value="other"><span>Otro</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -438,10 +438,10 @@ function ConnectionFormModal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="require">require — cifrado obligatorio</SelectItem>
-                    <SelectItem value="verify-ca">verify-ca — verificar CA</SelectItem>
-                    <SelectItem value="verify-full">verify-full — verificar CA + hostname</SelectItem>
-                    <SelectItem value="disable">disable — sin cifrado</SelectItem>
+                    <SelectItem value="require"><span>require — cifrado obligatorio</span></SelectItem>
+                    <SelectItem value="verify-ca"><span>verify-ca — verificar CA</span></SelectItem>
+                    <SelectItem value="verify-full"><span>verify-full — verificar CA + hostname</span></SelectItem>
+                    <SelectItem value="disable"><span>disable — sin cifrado</span></SelectItem>
                   </SelectContent>
                 </Select>
               </div>

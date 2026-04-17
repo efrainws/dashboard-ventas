@@ -1143,9 +1143,9 @@ export default function StyleGuide() {
                         <SelectValue placeholder="Seleccionar opción..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="a">Lorem ipsum dolor</SelectItem>
-                        <SelectItem value="b">Consectetur adipiscing</SelectItem>
-                        <SelectItem value="c">Sed do eiusmod tempor</SelectItem>
+                        <SelectItem value="a"><span>Lorem ipsum dolor</span></SelectItem>
+                        <SelectItem value="b"><span>Consectetur adipiscing</span></SelectItem>
+                        <SelectItem value="c"><span>Sed do eiusmod tempor</span></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1156,9 +1156,9 @@ export default function StyleGuide() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="a">Lorem ipsum dolor</SelectItem>
-                        <SelectItem value="b">Consectetur adipiscing</SelectItem>
-                        <SelectItem value="c">Sed do eiusmod tempor</SelectItem>
+                        <SelectItem value="a"><span>Lorem ipsum dolor</span></SelectItem>
+                        <SelectItem value="b"><span>Consectetur adipiscing</span></SelectItem>
+                        <SelectItem value="c"><span>Sed do eiusmod tempor</span></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
