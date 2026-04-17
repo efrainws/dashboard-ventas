@@ -1902,3 +1902,15 @@ Fecha: 1 de febrero de 2026
 ## Decimales en indicadores K — Ventas vs Meta
 - [x] Localizar función de formato K y cambiar a 2 decimales
 - [x] Guardar checkpoint
+
+## Auditoría de estilo — Modal de Discrepancias
+- [x] Corregir tokens FF en el modal (cobaltaLight → cobaltLight, variaciones light correctas)
+- [x] Ajustar tipografía: labels en Sailec font-medium text-sm, títulos en Italian Plate No 1 uppercase
+- [x] Ajustar inputs: borde Beige, fondo Blanco, focus en Cobalto
+- [x] Ajustar botón primario: fondo Carbón (#232523), texto Blanco, uppercase tracking
+- [x] Ajustar botón cancelar: outline con borde Beige, fondo Blanco, texto Carbón
+- [x] Ajustar header: fondo Hueso, separador Beige
+- [x] Ajustar footer: fondo Hueso, separador Beige
+- [x] Ajustar badge Autocompletado: fondo Cobalto Light (#E8F1F7), texto Cobalto Dark (#124A6B), borde Cobalto Light
+- [x] Ajustar indicador de diferencia: usar tokens FF correctos
+- [x] Guardar checkpoint
