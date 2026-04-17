@@ -1041,7 +1041,7 @@ export default function SupplierPortal() {
                                   </p>
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground font-mono">
+                              <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">
                                 {p.int_sku}
                               </TableCell>
                               <TableCell className="text-right font-medium">
@@ -1245,11 +1245,11 @@ export default function SupplierPortal() {
                               <TableCell className="font-medium text-sm max-w-[200px]">
                                 <p className="truncate">{s.producto}</p>
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground font-mono">
+                              <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">
                                 {s.int_sku}
                               </TableCell>
                               <TableCell className="text-sm">{s.tienda}</TableCell>
-                              <TableCell className="text-xs font-mono text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
+                              <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
                               <TableCell className="text-right font-medium">
                                 {s.stock_actual === 0
                                   ? <span className="text-muted-foreground">0</span>
@@ -1350,7 +1350,7 @@ export default function SupplierPortal() {
                           ))
                         : receptionsData?.rows.map((r, i) => (
                             <TableRow key={i}>
-                              <TableCell className="text-xs font-mono font-medium">
+                              <TableCell className="text-xs tabular-nums tracking-tight font-medium">
                                 {r.oc}
                               </TableCell>
                               <TableCell className="text-sm">
@@ -1594,7 +1594,7 @@ export default function SupplierPortal() {
                               </TableCell>
                             )}
                             {showProduct && (
-                              <TableCell className="text-xs text-muted-foreground font-mono">{row.sku}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">{row.sku}</TableCell>
                             )}
                             {showStore && (
                               <TableCell className="text-sm">
@@ -1605,7 +1605,7 @@ export default function SupplierPortal() {
                               </TableCell>
                             )}
                             {showStore && (
-                              <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
+                              <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
                             )}
                             <TableCell className="text-right tabular-nums">{fmt(row.cantidad)}</TableCell>
                             <TableCell className="text-right tabular-nums" style={{ color: "#008064" }}>

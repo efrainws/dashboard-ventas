@@ -851,7 +851,7 @@ export default function OwnBrandPortal() {
                               <TableCell className="font-medium text-sm max-w-[200px]">
                                 <p className="truncate">{p.name}</p>
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground font-mono">{p.int_sku}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">{p.int_sku}</TableCell>
                               <TableCell className="text-xs text-muted-foreground max-w-[200px]">
                                 <p className="truncate">{p.description ?? "—"}</p>
                               </TableCell>
@@ -987,9 +987,9 @@ export default function OwnBrandPortal() {
                         : stockData?.rows.map((s, i) => (
                             <TableRow key={i} className={s.stock_actual === 0 ? "opacity-60" : ""}>
                               <TableCell className="font-medium text-sm max-w-[200px]"><p className="truncate">{s.producto}</p></TableCell>
-                              <TableCell className="text-xs text-muted-foreground font-mono">{s.int_sku}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">{s.int_sku}</TableCell>
                               <TableCell className="text-sm">{s.tienda}</TableCell>
-                              <TableCell className="text-xs font-mono text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
+                              <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
                               <TableCell className="text-right font-medium">
                                 {s.stock_actual === 0 ? <span className="text-muted-foreground">0</span> : fmt(s.stock_actual)}
                               </TableCell>
@@ -1058,7 +1058,7 @@ export default function OwnBrandPortal() {
                           ))
                         : receptionsData?.rows.map((r, i) => (
                             <TableRow key={i}>
-                              <TableCell className="text-xs font-mono font-medium">{r.oc}</TableCell>
+                              <TableCell className="text-xs tabular-nums tracking-tight font-medium">{r.oc}</TableCell>
                               <TableCell className="text-sm">{r.fecha ? format(new Date(r.fecha), "dd/MM/yyyy") : "—"}</TableCell>
                               <TableCell className="text-sm">{r.tienda}</TableCell>
                               <TableCell className="text-sm max-w-[180px]">
@@ -1250,7 +1250,7 @@ export default function OwnBrandPortal() {
                                 </TableCell>
                               )}
                               {showProduct && (
-                                <TableCell className="text-xs font-mono text-muted-foreground">{row.sku}</TableCell>
+                                <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{row.sku}</TableCell>
                               )}
                               {showStore && (
                                 <TableCell className="text-sm">
@@ -1261,7 +1261,7 @@ export default function OwnBrandPortal() {
                                 </TableCell>
                               )}
                               {showStore && (
-                                <TableCell className="text-xs font-mono text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
+                                <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
                               )}
                               <TableCell className="text-right tabular-nums text-sm">{fmt(row.cantidad)}</TableCell>
                               <TableCell className="text-right tabular-nums text-sm font-medium" style={{ color: "#008064" }}>{fmtCurrency(row.monto)}</TableCell>

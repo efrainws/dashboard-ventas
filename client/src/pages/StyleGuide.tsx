@@ -958,7 +958,7 @@ export default function StyleGuide() {
                       <TableBody>
                         {TABLE_ROWS.map((row) => (
                           <TableRow key={row.sku} className="border-border/50 hover:bg-muted/40 transition-colors">
-                            <TableCell className="pl-4 font-mono text-xs text-muted-foreground">{row.sku}</TableCell>
+                            <TableCell className="pl-4 tabular-nums tracking-tight text-xs text-muted-foreground">{row.sku}</TableCell>
                             <TableCell className="text-sm max-w-[200px] truncate">{row.producto}</TableCell>
                             <TableCell className="text-sm">
                               <div className="flex items-center gap-1.5">

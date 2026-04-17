@@ -264,6 +264,10 @@
   h4, h5, h6 {
     @apply font-sans font-bold tracking-tight;
   }
+  /* Todas las celdas de tabla usan Sailec para consistencia tipográfica */
+  td, th {
+    font-family: var(--font-sans);
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),

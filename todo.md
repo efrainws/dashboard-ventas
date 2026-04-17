@@ -1920,3 +1920,8 @@ Fecha: 1 de febrero de 2026
 - [x] Crear componente ChannelBreakdown con gráfico de pie y tabla de métricas
 - [x] Integrar ChannelBreakdown en SalesByCategory
 - [x] Guardar checkpoint
+
+## Tipografía Sailec en números de tablas
+- [x] Auditar todos los componentes de tablas del sitio
+- [x] Aplicar font-family Sailec a celdas numéricas en todas las tablas
+- [x] Guardar checkpoint
