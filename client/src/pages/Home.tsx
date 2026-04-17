@@ -43,46 +43,48 @@ export default function Home() {
   const { effectiveTheme } = useTheme();
 
   // Colores de la paleta Flora & Fauna
+  // bgColor = color sólido corporativo como fondo del ícono
+  // color = variación light del mismo color para las líneas del ícono
   const salesModules = [
     {
       title: "Análisis General",
       description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
       icon: BarChart3,
       href: "/sales",
-      color: "text-[#1A6894]", // Cobalto
-      bgColor: "bg-[#1A6894]/10",
+      color: "text-[#6B9AB5]", // Cobalto Light
+      bgColor: "bg-[#1A6894]", // Cobalto
     },
     {
       title: "Análisis por Horas",
       description: "Explora patrones de ventas por hora del día y optimiza la operación",
       icon: Clock,
       href: "/hourly",
-      color: "text-[#C49705]", // Mostaza
-      bgColor: "bg-[#C49705]/10",
+      color: "text-[#D9BC5C]", // Mostaza Light
+      bgColor: "bg-[#C49705]", // Mostaza
     },
     {
       title: "Ventas vs Meta",
       description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores visuales",
       icon: Target,
       href: "/sales-vs-target",
-      color: "text-[#008064]", // Esmeralda
-      bgColor: "bg-[#008064]/10",
+      color: "text-[#4DA896]", // Esmeralda Light
+      bgColor: "bg-[#008064]", // Esmeralda
     },
     {
       title: "Transacciones Identificadas",
       description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
       icon: UserCheck,
       href: "/identified-transactions",
-      color: "text-[#BC2C46]", // Granate
-      bgColor: "bg-[#BC2C46]/10",
+      color: "text-[#D87A8E]", // Granate Light
+      bgColor: "bg-[#BC2C46]", // Granate
     },
     {
       title: "Top 50 Productos",
       description: "Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas",
       icon: Trophy,
       href: "/top-products",
-      color: "text-[#7B3F9E]", // Púrpura
-      bgColor: "bg-[#7B3F9E]/10",
+      color: "text-[#9DD3D4]", // Celeste Light
+      bgColor: "bg-[#5BB6B7]", // Celeste
     },
   ];
 

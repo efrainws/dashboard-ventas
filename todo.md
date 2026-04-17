@@ -1888,4 +1888,9 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar SupplierPortal: pasar showProduct/showStore al query y eliminar agrupación client-side
 - [x] Actualizar OwnBrandPortal: pasar showProduct/showStore al query y eliminar agrupación client-side
 - [x] Resetear salesPage a 0 cuando cambien los toggles
+- [x] Guardar checkpoint
+
+## Iconos página principal con paleta corporativa FF
+- [x] Aplicar color sólido FF como fondo y variación light como color de línea/icono en cada módulo
+- [x] Reemplazar el color púrpura (#7B3F9E) de Top 50 Productos por un color de la paleta FF
 - [ ] Guardar checkpoint
