@@ -1930,3 +1930,8 @@ Fecha: 1 de febrero de 2026
 - [x] Revisar DashboardFilters y el Select de sucursales para identificar causa del error DOM
 - [x] Aplicar corrección (key estable, wrapper span en texto de Select.Item)
 - [x] Guardar checkpoint
+
+## Restricción fecha máxima = hoy en filtros
+- [x] Auditar todos los componentes con filtros de fecha
+- [x] Aplicar maxDate/disabled en DatePicker, DateRangePicker y Calendar
+- [x] Guardar checkpoint

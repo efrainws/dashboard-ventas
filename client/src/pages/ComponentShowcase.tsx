@@ -494,6 +494,7 @@ export default function ComponentsShowcase() {
                           mode="single"
                           selected={datePickerDate}
                           onSelect={setDatePickerDate}
+                          toDate={new Date()}
                         />
                         <div className="border-t pt-3 space-y-2">
                           <Label className="flex items-center gap-2">
@@ -1179,6 +1180,7 @@ export default function ComponentsShowcase() {
                   selected={date}
                   onSelect={setDate}
                   className="rounded-md border"
+                  toDate={new Date()}
                 />
               </CardContent>
             </Card>
