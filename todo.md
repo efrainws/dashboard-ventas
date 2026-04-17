@@ -1898,3 +1898,7 @@ Fecha: 1 de febrero de 2026
 ## Líneas de iconos en Beige (#EAE8E2)
 - [x] Cambiar color de líneas de todos los iconos de módulos en Home.tsx a Beige (#EAE8E2)
 - [x] Guardar checkpoint
+
+## Decimales en indicadores K — Ventas vs Meta
+- [x] Localizar función de formato K y cambiar a 2 decimales
+- [x] Guardar checkpoint
