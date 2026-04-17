@@ -1893,4 +1893,8 @@ Fecha: 1 de febrero de 2026
 ## Iconos página principal con paleta corporativa FF
 - [x] Aplicar color sólido FF como fondo y variación light como color de línea/icono en cada módulo
 - [x] Reemplazar el color púrpura (#7B3F9E) de Top 50 Productos por un color de la paleta FF
-- [ ] Guardar checkpoint
+- [x] Guardar checkpoint
+
+## Líneas de iconos en Beige (#EAE8E2)
+- [x] Cambiar color de líneas de todos los iconos de módulos en Home.tsx a Beige (#EAE8E2)
+- [x] Guardar checkpoint

@@ -51,7 +51,7 @@ export default function Home() {
       description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
       icon: BarChart3,
       href: "/sales",
-      color: "text-[#6B9AB5]", // Cobalto Light
+      color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#1A6894]", // Cobalto
     },
     {
@@ -59,7 +59,7 @@ export default function Home() {
       description: "Explora patrones de ventas por hora del día y optimiza la operación",
       icon: Clock,
       href: "/hourly",
-      color: "text-[#D9BC5C]", // Mostaza Light
+      color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#C49705]", // Mostaza
     },
     {
@@ -67,7 +67,7 @@ export default function Home() {
       description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores visuales",
       icon: Target,
       href: "/sales-vs-target",
-      color: "text-[#4DA896]", // Esmeralda Light
+      color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#008064]", // Esmeralda
     },
     {
@@ -75,7 +75,7 @@ export default function Home() {
       description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
       icon: UserCheck,
       href: "/identified-transactions",
-      color: "text-[#D87A8E]", // Granate Light
+      color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#BC2C46]", // Granate
     },
     {
@@ -83,7 +83,7 @@ export default function Home() {
       description: "Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas",
       icon: Trophy,
       href: "/top-products",
-      color: "text-[#9DD3D4]", // Celeste Light
+      color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#5BB6B7]", // Celeste
     },
   ];
