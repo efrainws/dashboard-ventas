@@ -1935,3 +1935,11 @@ Fecha: 1 de febrero de 2026
 - [x] Auditar todos los componentes con filtros de fecha
 - [x] Aplicar maxDate/disabled en DatePicker, DateRangePicker y Calendar
 - [x] Guardar checkpoint
+
+## Fix: Restricción fecha máxima en TODOS los filtros
+- [x] Auditar DashboardFilters: Select de año, mes, monthYear
+- [x] Auditar HourlyAnalysis: Select de año, mes, monthYear
+- [x] Auditar SalesVsTarget: Calendar range
+- [x] Auditar portales Proveedor y Marca Propia: Input type=date
+- [x] Agregar max={today} a todos los Input type=date (SupplierPortal x4, OwnBrandPortal x4, StyleGuide x1)
+- [x] Guardar checkpoint

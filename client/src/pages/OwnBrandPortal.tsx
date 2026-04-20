@@ -642,11 +642,11 @@ export default function OwnBrandPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Desde</label>
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-36 text-sm h-8" />
+                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Hasta</label>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-36 text-sm h-8" />
+                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <Button variant="outline" size="sm" onClick={() => { setFrom(defaultFrom()); setTo(defaultTo()); }}>
                 Este mes
@@ -1111,11 +1111,11 @@ export default function OwnBrandPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Desde</label>
-                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" />
+                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Hasta</label>
-                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" />
+                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               {/* Selector múltiple de artículos Marca Propia */}
               <div className="flex-1 min-w-[240px] max-w-sm">

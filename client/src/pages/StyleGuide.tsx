@@ -1118,7 +1118,9 @@ export default function StyleGuide() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="demo-date">Fecha</Label>
-                    <Input id="demo-date" type="date" defaultValue="2026-04-08" />
+                    <Input id="demo-date" type="date" defaultValue="2026-04-08"
+                  max={new Date().toISOString().split('T')[0]}
+                />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="demo-number">Número</Label>
