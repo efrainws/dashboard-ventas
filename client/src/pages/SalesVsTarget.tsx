@@ -217,7 +217,7 @@ export default function SalesVsTarget() {
                     onSelect={setDateRange}
                     numberOfMonths={2}
                     locale={es}
-                    toDate={new Date()}
+                    disabled={{ after: new Date() }}
                   />
                 </PopoverContent>
               </Popover>
