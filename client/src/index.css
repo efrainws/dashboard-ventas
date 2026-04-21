@@ -361,7 +361,7 @@
 
   .ff-table thead tr th {
     font-family: var(--font-heading);
-    font-size: 0.75rem;            /* text-xs */
+    font-size: 0.875rem;           /* text-sm = 14px */
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
