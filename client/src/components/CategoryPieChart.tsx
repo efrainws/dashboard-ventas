@@ -121,7 +121,7 @@ export function CategoryPieChart({ data, comparisonData, title, description }: C
   return (
     <Card className="overflow-hidden" style={{ border: "1px solid #EAE8E2" }}>
       <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid #EAE8E2", background: "#F5F4F1" }}>
-        <CardTitle className="ff-card-title flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <PieChartIcon className="h-5 w-5" />
           {title || "Distribución por Categoría"}
         </CardTitle>

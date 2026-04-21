@@ -198,7 +198,7 @@ export function ChannelBreakdown({
         className="pb-3 rounded-t-lg"
         style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.hueso }}
       >
-        <CardTitle className="ff-card-title flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           Análisis por Canal de Venta
         </CardTitle>
         <CardDescription style={{ fontFamily: "'Sailec', sans-serif", color: FF.humo }}>

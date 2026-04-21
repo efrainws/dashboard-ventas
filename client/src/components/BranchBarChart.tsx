@@ -174,7 +174,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
   return (
     <Card className="overflow-hidden" style={{ border: "1px solid #EAE8E2" }}>
       <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid #EAE8E2", background: "#F5F4F1" }}>
-        <CardTitle className="ff-card-title flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           {title || "Comparación por Sucursal"}
         </CardTitle>

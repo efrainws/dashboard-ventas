@@ -966,6 +966,18 @@ export default function StyleGuide() {
                 ))}
               </div>
 
+              {/* Regla de CardTitle */}
+              <Card style={{ borderColor: "#EAE8E2" }}>
+                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                  <CardTitle>Comportamiento por Defecto del CardTitle</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Todos los <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">CardTitle</code> del sitio aplican automáticamente <strong>Italian Plate No 1</strong>, <strong>uppercase</strong> y <strong>tracking-wide</strong> sin necesidad de clases adicionales.</p>
+                  <p className="font-mono text-xs bg-muted px-2 py-1.5 rounded">{'<CardTitle>Mi Título</CardTitle>'}</p>
+                  <p className="text-xs">Para sobrescribir el tamaño usa <code className="font-mono bg-muted px-1 rounded">text-sm</code>, <code className="font-mono bg-muted px-1 rounded">text-lg</code>, etc. El resto de estilos se hereda del componente base.</p>
+                </CardContent>
+              </Card>
+
               {/* Card estándar */}
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
