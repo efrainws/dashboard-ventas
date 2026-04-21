@@ -172,13 +172,13 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="overflow-hidden" style={{ border: "1px solid #EAE8E2" }}>
+      <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid #EAE8E2", background: "#F5F4F1" }}>
+        <CardTitle className="flex items-center gap-2 text-base uppercase tracking-wide" style={{ fontFamily: "'Italian Plate No 1', serif", color: "#232523" }}>
           <BarChart3 className="h-5 w-5" />
           {title || "Comparación por Sucursal"}
         </CardTitle>
-        <CardDescription>
+        <CardDescription style={{ fontFamily: "'Sailec', sans-serif", color: "#919291" }}>
           {description || "Ventas totales por sucursal ordenadas de mayor a menor"}
         </CardDescription>
       </CardHeader>

@@ -266,7 +266,7 @@ export function ChannelBreakdown({
 
             {/* Headers */}
             <div
-              className="grid text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-t-md"
+              className="grid text-sm font-bold uppercase tracking-widest px-3 py-2 rounded-t-md"
               style={{
                 gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
                 background: FF.hueso,
