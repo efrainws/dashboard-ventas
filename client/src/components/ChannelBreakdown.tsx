@@ -193,10 +193,10 @@ export function ChannelBreakdown({
   }
 
   return (
-    <Card style={{ border: `1px solid ${FF.beige}`, background: FF.blanco }}>
+    <Card className="overflow-hidden" style={{ border: `1px solid ${FF.beige}`, background: FF.blanco }}>
       <CardHeader
-        className="pb-3"
-        style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.hueso, borderRadius: "inherit" }}
+        className="pb-3 rounded-t-lg"
+        style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.hueso }}
       >
         <CardTitle
           className="text-base uppercase tracking-wide"
