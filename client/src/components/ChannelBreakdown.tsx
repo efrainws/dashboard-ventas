@@ -214,7 +214,7 @@ export function ChannelBreakdown({
           {/* ── Gráfico de pie ── */}
           <div>
             <p
-              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              className="text-sm font-semibold uppercase tracking-widest mb-4"
               style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
             >
               Participación en Ventas
@@ -258,7 +258,7 @@ export function ChannelBreakdown({
           {/* ── Tabla de métricas ── */}
           <div>
             <p
-              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              className="text-sm font-semibold uppercase tracking-widest mb-4"
               style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
             >
               Métricas Detalladas
