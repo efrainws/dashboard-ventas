@@ -508,6 +508,77 @@ export default function StyleGuide() {
                 </div>
               </div>
 
+              {/* Canales de Venta */}
+              <div>
+                <h4 className="text-sm font-semibold mb-4">Canales de Venta</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    {
+                      canal: "Presencial",
+                      color: "#1A6894",
+                      light: "#E8F1F7",
+                      border: "#B8D3E4",
+                      variable: "--ff-canal-presencial",
+                      desc: "Canal físico en tienda",
+                    },
+                    {
+                      canal: "eCommerce",
+                      color: "#C49705",
+                      light: "#FDF4D0",
+                      border: "#E8D080",
+                      variable: "--ff-canal-ecommerce",
+                      desc: "Canal de venta online",
+                    },
+                    {
+                      canal: "Rappi",
+                      color: "#008064",
+                      light: "#D9F0EB",
+                      border: "#A0D4C8",
+                      variable: "--ff-canal-rappi",
+                      desc: "Canal de delivery",
+                    },
+                  ].map((c) => (
+                    <div
+                      key={c.canal}
+                      className="rounded-lg border overflow-hidden"
+                      style={{ borderColor: c.border }}
+                    >
+                      {/* Franja de color principal */}
+                      <div className="h-10" style={{ backgroundColor: c.color }} />
+                      {/* Badge de ejemplo */}
+                      <div
+                        className="flex items-center gap-2 px-3 py-2 border-b"
+                        style={{ backgroundColor: c.light, borderColor: c.border }}
+                      >
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                          style={{ backgroundColor: c.light, color: c.color, border: `1px solid ${c.border}` }}
+                        >
+                          {c.canal}
+                        </span>
+                        <span className="text-xs" style={{ color: c.color }}>badge</span>
+                      </div>
+                      {/* Info */}
+                      <div className="p-3 space-y-1">
+                        <p className="text-xs font-semibold">{c.canal}</p>
+                        <p className="text-[11px] text-muted-foreground">{c.desc}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground mt-1">{c.variable}</p>
+                        <div className="flex gap-2 mt-2">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: c.color }} />
+                            <span className="text-[10px] font-mono">{c.color}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-sm border" style={{ backgroundColor: c.light, borderColor: c.border }} />
+                            <span className="text-[10px] font-mono">{c.light}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Semáforo de cumplimiento */}
               <div>
                 <h4 className="text-sm font-semibold mb-4">Semáforo de Cumplimiento (Progress Colors)</h4>

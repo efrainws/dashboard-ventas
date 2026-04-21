@@ -135,6 +135,17 @@
   --ff-granate-light: #D87A8E;    /* Mezclado con Beige */
   --ff-granate-dark: #842032;     /* Mezclado con Carbon */
 
+  /* Canales de Venta */
+  --ff-canal-presencial:        #1A6894;   /* Cobalto — canal físico */
+  --ff-canal-presencial-light:  #E8F1F7;   /* Fondo badge Presencial */
+  --ff-canal-presencial-border: #B8D3E4;   /* Borde badge Presencial */
+  --ff-canal-ecommerce:         #C49705;   /* Mostaza — canal online */
+  --ff-canal-ecommerce-light:   #FDF4D0;   /* Fondo badge eCommerce */
+  --ff-canal-ecommerce-border:  #E8D080;   /* Borde badge eCommerce */
+  --ff-canal-rappi:             #008064;   /* Esmeralda — canal delivery */
+  --ff-canal-rappi-light:       #D9F0EB;   /* Fondo badge Rappi */
+  --ff-canal-rappi-border:      #A0D4C8;   /* Borde badge Rappi */
+
   /* Fuentes */
   --font-heading: 'Italian Plate No 1', sans-serif;
   --font-sans: 'Sailec', system-ui, -apple-system, sans-serif;
