@@ -324,6 +324,34 @@
     font-family: var(--font-heading);
   }
 
+  /* ── Labels de sección interna (dentro de cards) ──────────────────────
+     Uso: <p className="ff-section-label">Participación en Ventas</p>
+     Equivale a: text-sm font-semibold uppercase tracking-widest
+                 color: var(--ff-humo)  font: Italian Plate No 1
+  */
+  .ff-section-label {
+    font-family: var(--font-heading);
+    font-size: 0.875rem;       /* 14px = text-sm */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;     /* tracking-widest */
+    color: var(--ff-humo);
+  }
+
+  /* ── Títulos de card/header (CardTitle con fondo Hueso) ───────────────
+     Uso: <CardTitle className="ff-card-title">Análisis por Canal</CardTitle>
+     Equivale a: text-base uppercase tracking-wide
+                 color: var(--ff-carbon)  font: Italian Plate No 1
+  */
+  .ff-card-title {
+    font-family: var(--font-heading);
+    font-size: 1rem;           /* 16px = text-base */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;    /* tracking-wide */
+    color: var(--ff-carbon);
+  }
+
   @media (min-width: 640px) {
     .container {
       padding-left: 1.5rem; /* 24px - tablet padding */

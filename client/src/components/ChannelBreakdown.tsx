@@ -198,10 +198,7 @@ export function ChannelBreakdown({
         className="pb-3 rounded-t-lg"
         style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.hueso }}
       >
-        <CardTitle
-          className="text-base uppercase tracking-wide"
-          style={{ fontFamily: "'Italian Plate No 1', serif", color: FF.carbon }}
-        >
+        <CardTitle className="ff-card-title flex items-center gap-2">
           Análisis por Canal de Venta
         </CardTitle>
         <CardDescription style={{ fontFamily: "'Sailec', sans-serif", color: FF.humo }}>
@@ -213,10 +210,7 @@ export function ChannelBreakdown({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* ── Gráfico de pie ── */}
           <div>
-            <p
-              className="text-sm font-semibold uppercase tracking-widest mb-4"
-              style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
-            >
+            <p className="ff-section-label mb-4">
               Participación en Ventas
             </p>
             <ResponsiveContainer width="100%" height={280}>
@@ -257,21 +251,16 @@ export function ChannelBreakdown({
 
           {/* ── Tabla de métricas ── */}
           <div>
-            <p
-              className="text-sm font-semibold uppercase tracking-widest mb-4"
-              style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
-            >
+            <p className="ff-section-label mb-4">
               Métricas Detalladas
             </p>
 
             {/* Headers */}
             <div
-              className="grid text-sm font-bold uppercase tracking-widest px-3 py-2 rounded-t-md"
+              className="ff-section-label grid px-3 py-2 rounded-t-md"
               style={{
                 gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
                 background: FF.hueso,
-                color: FF.humo,
-                fontFamily: "'Italian Plate No 1', serif",
                 borderBottom: `1px solid ${FF.beige}`,
                 border: `1px solid ${FF.beige}`,
               }}
@@ -336,10 +325,7 @@ export function ChannelBreakdown({
               className="mt-3 rounded-lg p-3"
               style={{ background: FF.hueso, border: `1px solid ${FF.beige}` }}
             >
-              <p
-                className="text-sm font-bold uppercase tracking-widest mb-2"
-                style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
-              >
+              <p className="ff-section-label mb-2">
                 Proyección Mensual ({daysInMonth} días)
               </p>
               <div className="space-y-1.5">
