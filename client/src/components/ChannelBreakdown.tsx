@@ -337,7 +337,7 @@ export function ChannelBreakdown({
               style={{ background: FF.hueso, border: `1px solid ${FF.beige}` }}
             >
               <p
-                className="text-[10px] font-bold uppercase tracking-widest mb-2"
+                className="text-sm font-bold uppercase tracking-widest mb-2"
                 style={{ color: FF.humo, fontFamily: "'Italian Plate No 1', serif" }}
               >
                 Proyección Mensual ({daysInMonth} días)
