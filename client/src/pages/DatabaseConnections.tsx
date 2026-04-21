@@ -653,14 +653,13 @@ export default function DatabaseConnections() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="ff-table">
                 <thead>
-                  <tr style={{ background: FF.hueso, borderBottom: `1px solid ${FF.beige}` }}>
+                  <tr>
                     {["Nombre", "Host", "Base de Datos", "Propósito", "Estado", "Último Test", "Acciones"].map((h, i) => (
                       <th
                         key={h}
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${i === 6 ? "text-right" : ""}`}
-                        style={{ color: FF.carbon, fontFamily: "'Italian Plate No 1', serif" }}
+                        className={i === 6 ? "text-right" : ""}
                       >
                         {h}
                       </th>
@@ -669,15 +668,9 @@ export default function DatabaseConnections() {
                 </thead>
                 <tbody>
                   {connections.map((conn, idx) => (
-                    <tr
-                      key={conn.id}
-                      style={{
-                        borderBottom: `1px solid ${FF.beige}`,
-                        background: idx % 2 === 0 ? FF.blanco : FF.hueso,
-                      }}
-                    >
+                    <tr key={conn.id}>
                       {/* Nombre */}
-                      <td className="px-4 py-3">
+                      <td>
                         <div className="flex items-center gap-2">
                           <Database className="h-4 w-4 shrink-0" style={{ color: FF.esmeralda }} />
                           <div>
@@ -692,7 +685,7 @@ export default function DatabaseConnections() {
                       </td>
 
                       {/* Host */}
-                      <td className="px-4 py-3">
+                      <td>
                         <span className="font-mono text-xs" style={{ color: FF.carbon }}>
                           {conn.host}
                           <span style={{ color: FF.humo }}>:{conn.port}</span>
@@ -703,13 +696,13 @@ export default function DatabaseConnections() {
                       </td>
 
                       {/* Base de datos */}
-                      <td className="px-4 py-3">
+                      <td>
                         <span className="font-mono text-xs" style={{ color: FF.carbon }}>{conn.database}</span>
                         <p className="text-xs mt-0.5" style={{ color: FF.humo }}>{conn.username}</p>
                       </td>
 
                       {/* Propósito */}
-                      <td className="px-4 py-3">
+                      <td>
                         {(() => {
                           const c = purposeColor(conn.purpose);
                           return (
@@ -724,7 +717,7 @@ export default function DatabaseConnections() {
                       </td>
 
                       {/* Estado activo */}
-                      <td className="px-4 py-3">
+                      <td>
                         {conn.isActive ? (
                           <span
                             className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -745,7 +738,7 @@ export default function DatabaseConnections() {
                       </td>
 
                       {/* Último test */}
-                      <td className="px-4 py-3">
+                      <td>
                         <TestStatusBadge status={conn.lastTestStatus} message={conn.lastTestMessage} />
                         {conn.lastTestedAt && (
                           <p className="text-[10px] mt-0.5" style={{ color: FF.humo }}>
@@ -760,7 +753,7 @@ export default function DatabaseConnections() {
                       </td>
 
                       {/* Acciones */}
-                      <td className="px-4 py-3">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {/* Test */}
                           <Tooltip>

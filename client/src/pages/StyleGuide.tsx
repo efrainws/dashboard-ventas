@@ -1015,10 +1015,33 @@ export default function StyleGuide() {
           {/* ══ TABLAS ════════════════════════════════════════════════════ */}
           <Section id="tabla" title="Tablas">
             <div className="space-y-6">
-              <Card className="border-border/50">
-                <CardHeader className="pb-2">
+
+              {/* Regla de .ff-table */}
+              <Card style={{ borderColor: "#EAE8E2" }}>
+                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                  <CardTitle>Estilo Canónico — .ff-table</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Todas las tablas del sitio deben usar la clase <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">.ff-table</code>. El componente <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{"<Table>"}</code> de shadcn/ui ya la aplica automáticamente.</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li><strong>thead:</strong> fondo Hueso (#F5F4F1), texto Humo, Italian Plate No 1 uppercase, borde Beige</li>
+                    <li><strong>tbody tr:</strong> fondo blanco, separadas por borde Beige (#EAE8E2), hover Hueso</li>
+                    <li><strong>tfoot:</strong> fondo Hueso, texto Carbón en negrita</li>
+                    <li><strong>Celdas numéricas (th, td):</strong> alineadas a la derecha con tabular-nums automático</li>
+                  </ul>
+                  <pre className="font-mono text-xs bg-muted px-3 py-2 rounded overflow-x-auto">{`<table className="ff-table">
+  <thead><tr><th>Canal</th><th>Ventas</th></tr></thead>
+  <tbody><tr><td>Presencial</td><td>S/ 227,043</td></tr></tbody>
+  <tfoot><tr><td>Total</td><td>S/ 252,757</td></tr></tfoot>
+</table>`}</pre>
+                </CardContent>
+              </Card>
+
+              {/* Demo de la tabla */}
+              <Card style={{ borderColor: "#EAE8E2" }}>
+                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Tabla de Datos — Ventas por Artículo</CardTitle>
+                    <CardTitle>Tabla de Datos — Ventas por Artículo</CardTitle>
                     <div className="flex gap-2">
                       <Badge variant="secondary">142 filas</Badge>
                       <Button variant="outline" size="sm" className="h-7 text-xs">Exportar</Button>
@@ -1027,51 +1050,52 @@ export default function StyleGuide() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border/50 hover:bg-transparent">
-                          <TableHead className="pl-4 text-xs font-semibold">SKU</TableHead>
-                          <TableHead className="text-xs font-semibold">Producto</TableHead>
-                          <TableHead className="text-xs font-semibold">Tienda</TableHead>
-                          <TableHead className="text-right text-xs font-semibold">Cantidad</TableHead>
-                          <TableHead className="text-right text-xs font-semibold">Monto</TableHead>
-                          <TableHead className="text-center text-xs font-semibold">Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <table className="ff-table">
+                      <thead>
+                        <tr>
+                          <th className="text-left">SKU</th>
+                          <th className="text-left">Producto</th>
+                          <th className="text-left">Tienda</th>
+                          <th>Cantidad</th>
+                          <th>Monto</th>
+                          <th className="text-center">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {TABLE_ROWS.map((row) => (
-                          <TableRow key={row.sku} className="border-border/50 hover:bg-muted/40 transition-colors">
-                            <TableCell className="pl-4 tabular-nums tracking-tight text-xs text-muted-foreground">{row.sku}</TableCell>
-                            <TableCell className="text-sm max-w-[200px] truncate">{row.producto}</TableCell>
-                            <TableCell className="text-sm">
+                          <tr key={row.sku}>
+                            <td className="font-mono text-xs text-muted-foreground text-left">{row.sku}</td>
+                            <td className="text-left max-w-[200px] truncate">{row.producto}</td>
+                            <td className="text-left">
                               <div className="flex items-center gap-1.5">
                                 <Store className="h-3 w-3 text-muted-foreground" />
                                 {row.tienda}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums text-sm">{row.cantidad.toLocaleString("es-PE")}</TableCell>
-                            <TableCell className="text-right tabular-nums text-sm font-medium" style={{ color: "#008064" }}>{row.monto}</TableCell>
-                            <TableCell className="text-center">
+                            </td>
+                            <td>{row.cantidad.toLocaleString("es-PE")}</td>
+                            <td style={{ color: "#008064" }}>{row.monto}</td>
+                            <td className="text-center">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                                 row.estado === "activo"
-                                  ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-                                  : "text-rose-700 bg-rose-50 dark:bg-rose-950/30"
+                                  ? "text-emerald-700 bg-emerald-50"
+                                  : "text-rose-700 bg-rose-50"
                               }`}>
                                 {row.estado === "activo" ? <CheckCircle2 className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
                                 {row.estado}
                               </span>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         ))}
-                        {/* Fila de totales */}
-                        <TableRow className="border-t-2 border-border font-semibold bg-muted/30">
-                          <TableCell className="pl-4 text-sm" colSpan={3}>Total General</TableCell>
-                          <TableCell className="text-right tabular-nums text-sm">806</TableCell>
-                          <TableCell className="text-right tabular-nums text-sm" style={{ color: "#008064" }}>S/ 105,420.50</TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3}>Total General</td>
+                          <td>806</td>
+                          <td style={{ color: "#008064" }}>S/ 105,420.50</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 </CardContent>
               </Card>

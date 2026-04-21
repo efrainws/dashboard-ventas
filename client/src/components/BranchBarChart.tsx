@@ -231,29 +231,29 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
             </ResponsiveContainer>
 
             {/* Tabla de resumen */}
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
+            <div>
+              <table className="ff-table">
+                <thead>
                   <tr>
-                    <th className="text-left p-2 font-medium">Sucursal</th>
-                    <th className="text-right p-2 font-medium">Ventas</th>
-                    <th className="text-right p-2 font-medium">Transacciones</th>
-                    <th className="text-right p-2 font-medium">Ticket Promedio</th>
-                    <th className="text-right p-2 font-medium">Venta Prom. Diaria</th>
-                    <th className="text-right p-2 font-medium">Proyección Mensual</th>
+                    <th>Sucursal</th>
+                    <th>Ventas</th>
+                    <th>Transacciones</th>
+                    <th>Ticket Promedio</th>
+                    <th>Venta Prom. Diaria</th>
+                    <th>Proyección Mensual</th>
                   </tr>
                 </thead>
                 <tbody>
                   {branchData.map((item, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="p-2 flex items-center gap-2">
+                    <tr key={index}>
+                      <td className="flex items-center gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         />
                         {item.displayName}
                       </td>
-                      <td className="text-right p-2">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatCurrency(item.sales)}
                           {comparisonData && (() => {
@@ -272,7 +272,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                           })()}
                         </div>
                       </td>
-                      <td className="text-right p-2">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatNumber(item.tickets)}
                           {comparisonData && (() => {
@@ -291,7 +291,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                           })()}
                         </div>
                       </td>
-                      <td className="text-right p-2">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatCurrency(item.avgTicket)}
                           {comparisonData && (() => {
@@ -310,7 +310,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                           })()}
                         </div>
                       </td>
-                      <td className="text-right p-2">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatCurrency(item.avgSalesPerDay)}
                           {comparisonData && (() => {
@@ -330,21 +330,21 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                         </div>
                       </td>
                       {/* Proyección mensual = promedio diario × días del mes */}
-                      <td className="text-right p-2" style={{ color: '#232523' }}>
+                      <td>
                         {formatCurrency(item.avgSalesPerDay * resolvedDaysInMonth)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="border-t bg-muted font-semibold">
+                <tfoot>
                   <tr>
-                    <td className="p-2">Total</td>
-                    <td className="text-right p-2">
+                    <td>Total</td>
+                    <td>
                       {formatCurrency(
                         branchData.reduce((sum, item) => sum + item.sales, 0)
                       )}
                     </td>
-                    <td className="text-right p-2">
+                    <td>
                       {/* Contar tickets únicos globales */}
                       {formatNumber(
                         (() => {
@@ -358,7 +358,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                         })()
                       )}
                     </td>
-                    <td className="text-right p-2">
+                    <td>
                       {formatCurrency(
                         (() => {
                           const totalSales = branchData.reduce((sum, item) => sum + item.sales, 0);
@@ -372,7 +372,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                         })()
                       )}
                     </td>
-                    <td className="text-right p-2">
+                    <td>
                       {formatCurrency(
                         branchData.length > 0
                           ? branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount
@@ -380,7 +380,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                       )}
                     </td>
                     {/* Total proyección mensual */}
-                    <td className="text-right p-2" style={{ color: '#232523' }}>
+                    <td>
                       {formatCurrency(
                         branchData.length > 0
                           ? (branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount) * resolvedDaysInMonth

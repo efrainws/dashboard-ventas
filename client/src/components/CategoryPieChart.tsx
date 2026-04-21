@@ -169,26 +169,26 @@ export function CategoryPieChart({ data, comparisonData, title, description }: C
             </ResponsiveContainer>
 
             {/* Tabla de resumen */}
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
+            <div>
+              <table className="ff-table">
+                <thead>
                   <tr>
-                    <th className="text-left p-2 font-medium">Categoría</th>
-                    <th className="text-right p-2 font-medium">Ventas</th>
-                    <th className="text-right p-2 font-medium">%</th>
+                    <th>Categoría</th>
+                    <th>Ventas</th>
+                    <th>%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {categoryData.map((item, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="p-2 flex items-center gap-2">
+                    <tr key={index}>
+                      <td className="flex items-center gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         />
                         {item.name}
                       </td>
-                      <td className="text-right p-2">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatCurrency(item.value)}
                           {comparisonData && (() => {
@@ -207,7 +207,7 @@ export function CategoryPieChart({ data, comparisonData, title, description }: C
                           })()}
                         </div>
                       </td>
-                      <td className="text-right p-2 font-medium">
+                      <td>
                         <div className="flex items-center justify-end gap-1">
                           {formatPercentage(item.value)}
                           {comparisonData && (() => {
@@ -235,11 +235,11 @@ export function CategoryPieChart({ data, comparisonData, title, description }: C
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="border-t bg-muted font-semibold">
+                <tfoot>
                   <tr>
-                    <td className="p-2">Total</td>
-                    <td className="text-right p-2">{formatCurrency(total)}</td>
-                    <td className="text-right p-2">100%</td>
+                    <td>Total</td>
+                    <td>{formatCurrency(total)}</td>
+                    <td>100%</td>
                   </tr>
                 </tfoot>
               </table>

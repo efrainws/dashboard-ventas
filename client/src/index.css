@@ -338,6 +338,76 @@
     color: var(--ff-humo);
   }
 
+  /* ── Tabla canónica FF ──────────────────────────────────────────────────
+     Uso: <table className="ff-table"> ... </table>
+     Estructura esperada:
+       <thead>  → fondo Hueso, borde Beige, texto Humo en Italian Plate uppercase
+       <tbody>  → filas blancas separadas por borde Beige
+       <tfoot>  → fondo Hueso, texto Carbón en negrita
+     Notas:
+       - Usar tabular-nums en celdas numéricas con className "num"
+       - Usar text-right en celdas de valores con className "num"
+  */
+  .ff-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;           /* text-sm */
+    border: 1px solid var(--ff-beige);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .ff-table thead tr th {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;            /* text-xs */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ff-humo);
+    background: var(--ff-hueso);
+    padding: 0.5rem 0.75rem;       /* px-3 py-2 */
+    border-bottom: 1px solid var(--ff-beige);
+    white-space: nowrap;
+  }
+
+  .ff-table thead tr th:not(:first-child) {
+    text-align: right;
+  }
+
+  .ff-table tbody tr {
+    background: #ffffff;
+  }
+
+  .ff-table tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--ff-beige);
+  }
+
+  .ff-table tbody tr td {
+    padding: 0.625rem 0.75rem;     /* px-3 py-2.5 */
+    color: var(--ff-carbon);
+    vertical-align: middle;
+  }
+
+  .ff-table tbody tr td:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ff-table tfoot tr td {
+    padding: 0.625rem 0.75rem;
+    background: var(--ff-hueso);
+    border-top: 1px solid var(--ff-beige);
+    font-weight: 700;
+    color: var(--ff-carbon);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ff-table tfoot tr td:not(:first-child) {
+    text-align: right;
+  }
+
   /* ── Títulos de card/header (CardTitle con fondo Hueso) ───────────────
      Uso: <CardTitle className="ff-card-title">Análisis por Canal</CardTitle>
      Equivale a: text-base uppercase tracking-wide
