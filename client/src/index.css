@@ -441,6 +441,18 @@
     text-align: right;
   }
 
+  /* ── Margen superior automático para tablas dentro de CardContent ─────
+     Cualquier tabla (.ff-table, Table shadcn, o <table> nativa) que sea
+     el primer elemento visible dentro de un CardContent recibe mt-4
+     automáticamente. No es necesario agregar mt-4 manualmente.
+  */
+  [data-slot="card-content"] > .ff-table,
+  [data-slot="card-content"] > table,
+  [data-slot="card-content"] > .overflow-x-auto,
+  [data-slot="card-content"] > [data-slot="table-wrapper"] {
+    margin-top: 1rem; /* mt-4 = 16px */
+  }
+
   /* ── Títulos de card/header (CardTitle con fondo Hueso) ───────────────
      Uso: <CardTitle className="ff-card-title">Análisis por Canal</CardTitle>
      Equivale a: text-base uppercase tracking-wide

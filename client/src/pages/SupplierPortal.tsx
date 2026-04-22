@@ -1013,7 +1013,7 @@ export default function SupplierPortal() {
 
             <Card className="border-border/50">
               <CardContent className="px-6 pb-6">
-                <div className="overflow-x-auto mt-4">
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1220,7 +1220,7 @@ export default function SupplierPortal() {
 
             <Card className="border-border/50">
               <CardContent className="px-6 pb-6">
-                <div className="overflow-x-auto mt-4">
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1328,7 +1328,7 @@ export default function SupplierPortal() {
 
             <Card className="border-border/50">
               <CardContent className="px-6 pb-6">
-                <div className="overflow-x-auto mt-4">
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
