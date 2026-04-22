@@ -9,33 +9,31 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-// ── Design tokens Flora & Fauna ───────────────────────────────────────────────
-const FF = {
-  carbon:       "#232523",
-  humo:         "#919291",
-  beige:        "#EAE8E2",
-  hueso:        "#F5F4F1",
-  blanco:       "#FFFFFF",
-  cobalto:      "#1A6894",
-  mostaza:      "#C49705",
-  esmeralda:    "#008064",
-  granate:      "#BC2C46",
-  cobaltLight:  "#E8F1F7",
-  mostazaLight: "#FDF6E3",
-  esmeraldaLight:"#E6F4F1",
+// ── Colores por canal — usando variables CSS ──────────────────────────────────
+// Los colores de canal están definidos en index.css como --ff-canal-*
+const CHANNEL_CSS_COLOR: Record<string, string> = {
+  "Presencial": "var(--ff-canal-presencial)",
+  "eCommerce":  "var(--ff-canal-ecommerce)",
+  "Rappi":      "var(--ff-canal-rappi)",
 };
 
-// Colores por canal — paleta FF
-const CHANNEL_COLORS: Record<string, string> = {
-  "Presencial": FF.cobalto,
-  "eCommerce":  FF.mostaza,
-  "Rappi":      FF.esmeralda,
+const CHANNEL_CSS_LIGHT: Record<string, string> = {
+  "Presencial": "var(--ff-canal-presencial-light)",
+  "eCommerce":  "var(--ff-canal-ecommerce-light)",
+  "Rappi":      "var(--ff-canal-rappi-light)",
 };
 
-const CHANNEL_LIGHT: Record<string, string> = {
-  "Presencial": FF.cobaltLight,
-  "eCommerce":  FF.mostazaLight,
-  "Rappi":      FF.esmeraldaLight,
+const CHANNEL_CSS_BORDER: Record<string, string> = {
+  "Presencial": "var(--ff-canal-presencial-border)",
+  "eCommerce":  "var(--ff-canal-ecommerce-border)",
+  "Rappi":      "var(--ff-canal-rappi-border)",
+};
+
+// Colores resueltos para Recharts (que no soporta var() CSS)
+const CHANNEL_RECHARTS: Record<string, string> = {
+  "Presencial": "#1A6894",
+  "eCommerce":  "#C49705",
+  "Rappi":      "#008064",
 };
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -73,10 +71,9 @@ const CustomTooltip = ({ active, payload }: any) => {
     <div
       className="rounded-lg px-3 py-2 text-sm shadow-md"
       style={{
-        background: FF.blanco,
-        border: `1px solid ${FF.beige}`,
-        fontFamily: "'Sailec', sans-serif",
-        color: FF.carbon,
+        background: "var(--card)",
+        border: "1px solid var(--ff-table-border)",
+        color: "var(--ff-carbon)",
       }}
     >
       <p className="font-semibold" style={{ color: entry.payload.fill }}>
@@ -84,7 +81,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       </p>
       <p>
         {formatCurrency(entry.value)}{" "}
-        <span style={{ color: FF.humo }}>
+        <span style={{ color: "var(--ff-humo)" }}>
           ({entry.payload.pct.toFixed(1)}%)
         </span>
       </p>
@@ -105,10 +102,10 @@ const renderCustomLabel = ({
     <text
       x={x}
       y={y}
-      fill={FF.blanco}
+      fill="#ffffff"
       textAnchor="middle"
       dominantBaseline="central"
-      style={{ fontFamily: "'Sailec', sans-serif", fontSize: 12, fontWeight: 600 }}
+      style={{ fontSize: 12, fontWeight: 600 }}
     >
       {pct.toFixed(1)}%
     </text>
@@ -161,18 +158,20 @@ export function ChannelBreakdown({
         name: s.channel,
         value: s.sales,
         pct: s.pct,
-        fill: CHANNEL_COLORS[s.channel] ?? FF.granate,
+        fill: CHANNEL_RECHARTS[s.channel] ?? "#BC2C46",
       })),
     [channelStats]
   );
 
   if (isLoading) {
     return (
-      <Card style={{ border: `1px solid ${FF.beige}` }}>
+      <Card style={{ border: "1px solid var(--ff-card-header-border)" }}>
         <CardContent className="py-12 flex items-center justify-center">
-          <div className="h-6 w-6 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: FF.cobalto, borderTopColor: "transparent" }} />
-          <span className="ml-2 text-sm" style={{ color: FF.humo, fontFamily: "'Sailec', sans-serif" }}>
+          <div
+            className="h-6 w-6 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: "var(--ff-canal-presencial)", borderTopColor: "transparent" }}
+          />
+          <span className="ml-2 text-sm text-muted-foreground">
             Calculando métricas por canal...
           </span>
         </CardContent>
@@ -182,9 +181,9 @@ export function ChannelBreakdown({
 
   if (channelStats.length === 0) {
     return (
-      <Card style={{ border: `1px solid ${FF.beige}` }}>
+      <Card style={{ border: "1px solid var(--ff-card-header-border)" }}>
         <CardContent className="py-8 text-center">
-          <p className="text-sm" style={{ color: FF.humo, fontFamily: "'Sailec', sans-serif" }}>
+          <p className="text-sm text-muted-foreground">
             No hay datos disponibles para el período seleccionado.
           </p>
         </CardContent>
@@ -226,7 +225,7 @@ export function ChannelBreakdown({
                   label={renderCustomLabel}
                 >
                   {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} stroke={FF.blanco} strokeWidth={2} />
+                    <Cell key={i} fill={entry.fill} stroke="var(--card)" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
@@ -234,13 +233,7 @@ export function ChannelBreakdown({
                   iconType="circle"
                   iconSize={8}
                   formatter={(value) => (
-                    <span
-                      style={{
-                        fontFamily: "'Sailec', sans-serif",
-                        fontSize: 13,
-                        color: FF.carbon,
-                      }}
-                    >
+                    <span style={{ fontSize: 13 }}>
                       {value}
                     </span>
                   )}
@@ -255,95 +248,70 @@ export function ChannelBreakdown({
               Métricas Detalladas
             </p>
 
-            {/* Headers */}
-            <div
-              className="ff-section-label grid px-3 py-2 rounded-t-md"
-              style={{
-                gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-                background: FF.hueso,
-                borderBottom: `1px solid ${FF.beige}`,
-                border: `1px solid ${FF.beige}`,
-              }}
-            >
-              <span>Canal</span>
-              <span className="text-right">Ventas</span>
-              <span className="text-right">Transac.</span>
-              <span className="text-right">Tkt. Prom.</span>
-              <span className="text-right">Prom. Día</span>
-            </div>
-
-            {/* Filas */}
-            <div style={{ border: `1px solid ${FF.beige}`, borderTop: "none", borderRadius: "0 0 8px 8px", overflow: "hidden" }}>
-              {channelStats.map((row, i) => {
-                const color = CHANNEL_COLORS[row.channel] ?? FF.granate;
-                const lightColor = CHANNEL_LIGHT[row.channel] ?? "#F5F4F1";
-                return (
-                  <div
-                    key={row.channel}
-                    className="grid px-3 py-2.5 text-sm"
-                    style={{
-                      gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-                      borderBottom: i < channelStats.length - 1 ? `1px solid ${FF.beige}` : "none",
-                      background: FF.blanco,
-                      fontFamily: "'Sailec', sans-serif",
-                    }}
-                  >
-                    {/* Canal badge */}
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{
-                          background: lightColor,
-                          color: color,
-                          border: `1px solid ${color}33`,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {row.channel}
-                      </span>
-                    </span>
-
-                    <span className="text-right font-medium tabular-nums" style={{ color: FF.carbon }}>
-                      {formatCurrency(row.sales)}
-                    </span>
-                    <span className="text-right tabular-nums" style={{ color: FF.carbon }}>
-                      {formatNumber(row.transactions)}
-                    </span>
-                    <span className="text-right tabular-nums" style={{ color: FF.carbon }}>
-                      {formatCurrency(row.avgTicket)}
-                    </span>
-                    <span className="text-right tabular-nums" style={{ color: FF.carbon }}>
-                      {formatCurrency(row.avgDaily)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Tabla canónica ff-table */}
+            <table className="ff-table">
+              <thead>
+                <tr>
+                  <th>Canal</th>
+                  <th>Ventas</th>
+                  <th>Transac.</th>
+                  <th>Tkt. Prom.</th>
+                  <th>Prom. Día</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channelStats.map((row) => {
+                  const color = CHANNEL_CSS_COLOR[row.channel] ?? "var(--ff-granate)";
+                  const lightColor = CHANNEL_CSS_LIGHT[row.channel] ?? "var(--ff-hueso)";
+                  const borderColor = CHANNEL_CSS_BORDER[row.channel] ?? "var(--ff-beige)";
+                  return (
+                    <tr key={row.channel}>
+                      <td>
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+                          style={{
+                            background: lightColor,
+                            color: color,
+                            border: `1px solid ${borderColor}`,
+                          }}
+                        >
+                          {row.channel}
+                        </span>
+                      </td>
+                      <td>{formatCurrency(row.sales)}</td>
+                      <td>{formatNumber(row.transactions)}</td>
+                      <td>{formatCurrency(row.avgTicket)}</td>
+                      <td>{formatCurrency(row.avgDaily)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
             {/* Fila de proyección mensual */}
             <div
               className="mt-3 rounded-lg p-3"
-              style={{ background: FF.hueso, border: `1px solid ${FF.beige}` }}
+              style={{
+                background: "var(--ff-table-head-bg)",
+                border: "1px solid var(--ff-table-border)",
+              }}
             >
               <p className="ff-section-label mb-2">
                 Proyección Mensual ({daysInMonth} días)
               </p>
               <div className="space-y-1.5">
                 {channelStats.map((row) => {
-                  const color = CHANNEL_COLORS[row.channel] ?? FF.granate;
+                  const color = CHANNEL_RECHARTS[row.channel] ?? "#BC2C46";
                   const totalProjection = channelStats.reduce((s, r) => s + r.projection, 0);
                   const barPct = totalProjection > 0 ? (row.projection / totalProjection) * 100 : 0;
                   return (
                     <div key={row.channel} className="flex items-center gap-2">
-                      <span
-                        className="text-xs w-20 flex-shrink-0"
-                        style={{ color: FF.humo, fontFamily: "'Sailec', sans-serif" }}
-                      >
+                      <span className="text-xs w-20 flex-shrink-0 text-muted-foreground">
                         {row.channel}
                       </span>
                       <div
                         className="flex-1 rounded-full overflow-hidden"
-                        style={{ height: 6, background: FF.beige }}
+                        style={{ height: 6, background: "var(--ff-table-border)" }}
                       >
                         <div
                           className="h-full rounded-full transition-all duration-500"
@@ -352,7 +320,7 @@ export function ChannelBreakdown({
                       </div>
                       <span
                         className="text-xs font-medium tabular-nums w-28 text-right flex-shrink-0"
-                        style={{ color: FF.carbon, fontFamily: "'Sailec', sans-serif" }}
+                        style={{ color: "var(--ff-table-cell-color)" }}
                       >
                         {formatCurrency(row.projection)}
                       </span>
