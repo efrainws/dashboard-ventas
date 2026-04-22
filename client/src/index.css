@@ -377,7 +377,7 @@
   }
 
   .ff-table tbody tr {
-    background: #ffffff;
+    background: var(--card);
   }
 
   .ff-table tbody tr:not(:last-child) td {
@@ -406,6 +406,39 @@
 
   .ff-table tfoot tr td:not(:first-child) {
     text-align: right;
+  }
+
+  /* ── .ff-table — Dark Mode ──────────────────────────────────────────── */
+  .dark .ff-table {
+    border-color: oklch(from var(--ff-humo) l c h / 0.25);
+  }
+
+  .dark .ff-table thead tr th {
+    background: #2a2a2a;
+    color: oklch(from var(--ff-beige) l c h / 0.7);
+    border-bottom-color: oklch(from var(--ff-humo) l c h / 0.25);
+  }
+
+  .dark .ff-table tbody tr {
+    background: #242424;
+  }
+
+  .dark .ff-table tbody tr:hover {
+    background: #2a2a2a;
+  }
+
+  .dark .ff-table tbody tr:not(:last-child) td {
+    border-bottom-color: oklch(from var(--ff-humo) l c h / 0.2);
+  }
+
+  .dark .ff-table tbody tr td {
+    color: oklch(from var(--ff-beige) l c h);
+  }
+
+  .dark .ff-table tfoot tr td {
+    background: #2a2a2a;
+    border-top-color: oklch(from var(--ff-humo) l c h / 0.25);
+    color: oklch(from var(--ff-beige) l c h);
   }
 
   /* ── Títulos de card/header (CardTitle con fondo Hueso) ───────────────
