@@ -224,7 +224,7 @@ function BrandsManager() {
             Marcas configuradas ({configuredBrands?.length ?? 0})
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-6 pb-6">
           {brandsLoading ? (
             <div className="p-4 space-y-2">
               {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -706,7 +706,7 @@ export default function OwnBrandPortal() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold">Top 10 Artículos por Ventas</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="px-6 pb-6">
                   {topLoading ? (
                     <div className="p-4 space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
                   ) : (
@@ -828,7 +828,7 @@ export default function OwnBrandPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -965,7 +965,7 @@ export default function OwnBrandPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1037,7 +1037,7 @@ export default function OwnBrandPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1190,7 +1190,7 @@ export default function OwnBrandPortal() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>

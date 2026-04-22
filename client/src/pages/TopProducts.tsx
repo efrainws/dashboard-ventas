@@ -765,7 +765,7 @@ export default function TopProducts() {
                           {data.byQuantity.length} productos ordenados por unidades vendidas
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-0">
+                      <CardContent className="px-6 pb-6">
                         <RankingTable rows={data.byQuantity} mode="qty" />
                       </CardContent>
                     </Card>
@@ -812,7 +812,7 @@ export default function TopProducts() {
                           {data.byAmount.length} productos ordenados por monto de ventas
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-0">
+                      <CardContent className="px-6 pb-6">
                         <RankingTable rows={data.byAmount} mode="amount" />
                       </CardContent>
                     </Card>
