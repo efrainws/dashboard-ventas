@@ -967,8 +967,8 @@ export default function StyleGuide() {
               </div>
 
               {/* Regla de CardTitle */}
-              <Card style={{ borderColor: "#EAE8E2" }}>
-                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+              <Card style={{ borderColor: "var(--ff-card-header-border)" }}>
+                <CardHeader style={{ background: "var(--ff-card-header-bg)", borderBottom: "1px solid var(--ff-card-header-border)" }}>
                   <CardTitle>Comportamiento por Defecto del CardTitle</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground space-y-2">
@@ -1017,8 +1017,8 @@ export default function StyleGuide() {
             <div className="space-y-6">
 
               {/* Regla de .ff-table */}
-              <Card style={{ borderColor: "#EAE8E2" }}>
-                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+              <Card style={{ borderColor: "var(--ff-card-header-border)" }}>
+                <CardHeader style={{ background: "var(--ff-card-header-bg)", borderBottom: "1px solid var(--ff-card-header-border)" }}>
                   <CardTitle>Estilo Canónico — .ff-table</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground space-y-2">
@@ -1038,8 +1038,8 @@ export default function StyleGuide() {
               </Card>
 
               {/* Demo de la tabla */}
-              <Card style={{ borderColor: "#EAE8E2" }}>
-                <CardHeader style={{ background: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+              <Card style={{ borderColor: "var(--ff-card-header-border)" }}>
+                <CardHeader style={{ background: "var(--ff-card-header-bg)", borderBottom: "1px solid var(--ff-card-header-border)" }}>
                   <div className="flex items-center justify-between">
                     <CardTitle>Tabla de Datos — Ventas por Artículo</CardTitle>
                     <div className="flex gap-2">

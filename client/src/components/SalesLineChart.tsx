@@ -113,15 +113,15 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
   };
 
   return (
-    <Card className="overflow-hidden" style={{ border: "1px solid #EAE8E2" }}>
-      <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid #EAE8E2", background: "#F5F4F1" }}>
+    <Card className="overflow-hidden" style={{ border: "1px solid var(--ff-card-header-border)" }}>
+      <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid var(--ff-card-header-border)", background: "var(--ff-card-header-bg)" }}>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               {title || "Progresión de Ventas"}
             </CardTitle>
-            <CardDescription style={{ fontFamily: "'Sailec', sans-serif", color: "#919291" }}>
+            <CardDescription>
               {description || `Ventas agregadas por ${viewMode === "day" ? "día" : "mes"}`}
             </CardDescription>
           </div>

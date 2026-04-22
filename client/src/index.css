@@ -149,6 +149,23 @@
   /* Fuentes */
   --font-heading: 'Italian Plate No 1', sans-serif;
   --font-sans: 'Sailec', system-ui, -apple-system, sans-serif;
+
+  /* CardHeader con fondo Hueso */
+  --ff-card-header-bg:      var(--ff-hueso);
+  --ff-card-header-border:  var(--ff-beige);
+
+  /* Tabla canónica — variables semánticas */
+  --ff-table-border:        var(--ff-beige);
+  --ff-table-head-bg:       var(--ff-hueso);
+  --ff-table-head-color:    var(--ff-humo);
+  --ff-table-head-border:   var(--ff-beige);
+  --ff-table-row-bg:        var(--card);
+  --ff-table-row-hover-bg:  var(--ff-hueso);
+  --ff-table-row-border:    var(--ff-beige);
+  --ff-table-cell-color:    var(--ff-carbon);
+  --ff-table-foot-bg:       var(--ff-hueso);
+  --ff-table-foot-border:   var(--ff-beige);
+  --ff-table-foot-color:    var(--ff-carbon);
 }
 
 /* =========================
@@ -257,6 +274,23 @@
   --sidebar-accent-foreground: oklch(from var(--ff-beige) l c h);
   --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
   --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
+
+  /* CardHeader con fondo Hueso — dark mode */
+  --ff-card-header-bg:      #2a2a2a;
+  --ff-card-header-border:  oklch(from var(--ff-humo) l c h / 0.25);
+
+  /* Tabla canónica — dark mode */
+  --ff-table-border:        oklch(from var(--ff-humo) l c h / 0.25);
+  --ff-table-head-bg:       #2a2a2a;
+  --ff-table-head-color:    oklch(from var(--ff-beige) l c h / 0.7);
+  --ff-table-head-border:   oklch(from var(--ff-humo) l c h / 0.25);
+  --ff-table-row-bg:        #242424;
+  --ff-table-row-hover-bg:  #2a2a2a;
+  --ff-table-row-border:    oklch(from var(--ff-humo) l c h / 0.2);
+  --ff-table-cell-color:    oklch(from var(--ff-beige) l c h);
+  --ff-table-foot-bg:       #2a2a2a;
+  --ff-table-foot-border:   oklch(from var(--ff-humo) l c h / 0.25);
+  --ff-table-foot-color:    oklch(from var(--ff-beige) l c h);
 }
 
 @layer base {
@@ -340,35 +374,30 @@
 
   /* ── Tabla canónica FF ──────────────────────────────────────────────────
      Uso: <table className="ff-table"> ... </table>
-     Estructura esperada:
-       <thead>  → fondo Hueso, borde Beige, texto Humo en Italian Plate uppercase
-       <tbody>  → filas blancas separadas por borde Beige
-       <tfoot>  → fondo Hueso, texto Carbón en negrita
-     Notas:
-       - Usar tabular-nums en celdas numéricas con className "num"
-       - Usar text-right en celdas de valores con className "num"
+     Todos los colores vienen de variables CSS semánticas definidas en :root y .dark.
+     No usar colores hardcodeados en los componentes — solo agregar la clase.
   */
   .ff-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     font-family: var(--font-sans);
-    font-size: 0.875rem;           /* text-sm */
-    border: 1px solid var(--ff-beige);
+    font-size: 0.875rem;           /* text-sm = 14px */
+    border: 1px solid var(--ff-table-border);
     border-radius: 8px;
     overflow: hidden;
   }
 
   .ff-table thead tr th {
     font-family: var(--font-heading);
-    font-size: 0.875rem;           /* text-sm = 14px */
+    font-size: 0.875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--ff-humo);
-    background: var(--ff-hueso);
-    padding: 0.5rem 0.75rem;       /* px-3 py-2 */
-    border-bottom: 1px solid var(--ff-beige);
+    color: var(--ff-table-head-color);
+    background: var(--ff-table-head-bg);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--ff-table-head-border);
     white-space: nowrap;
   }
 
@@ -377,16 +406,20 @@
   }
 
   .ff-table tbody tr {
-    background: var(--card);
+    background: var(--ff-table-row-bg);
+  }
+
+  .ff-table tbody tr:hover {
+    background: var(--ff-table-row-hover-bg);
   }
 
   .ff-table tbody tr:not(:last-child) td {
-    border-bottom: 1px solid var(--ff-beige);
+    border-bottom: 1px solid var(--ff-table-row-border);
   }
 
   .ff-table tbody tr td {
-    padding: 0.625rem 0.75rem;     /* px-3 py-2.5 */
-    color: var(--ff-carbon);
+    padding: 0.625rem 0.75rem;
+    color: var(--ff-table-cell-color);
     vertical-align: middle;
   }
 
@@ -397,48 +430,15 @@
 
   .ff-table tfoot tr td {
     padding: 0.625rem 0.75rem;
-    background: var(--ff-hueso);
-    border-top: 1px solid var(--ff-beige);
+    background: var(--ff-table-foot-bg);
+    border-top: 1px solid var(--ff-table-foot-border);
     font-weight: 700;
-    color: var(--ff-carbon);
+    color: var(--ff-table-foot-color);
     font-variant-numeric: tabular-nums;
   }
 
   .ff-table tfoot tr td:not(:first-child) {
     text-align: right;
-  }
-
-  /* ── .ff-table — Dark Mode ──────────────────────────────────────────── */
-  .dark .ff-table {
-    border-color: oklch(from var(--ff-humo) l c h / 0.25);
-  }
-
-  .dark .ff-table thead tr th {
-    background: #2a2a2a;
-    color: oklch(from var(--ff-beige) l c h / 0.7);
-    border-bottom-color: oklch(from var(--ff-humo) l c h / 0.25);
-  }
-
-  .dark .ff-table tbody tr {
-    background: #242424;
-  }
-
-  .dark .ff-table tbody tr:hover {
-    background: #2a2a2a;
-  }
-
-  .dark .ff-table tbody tr:not(:last-child) td {
-    border-bottom-color: oklch(from var(--ff-humo) l c h / 0.2);
-  }
-
-  .dark .ff-table tbody tr td {
-    color: oklch(from var(--ff-beige) l c h);
-  }
-
-  .dark .ff-table tfoot tr td {
-    background: #2a2a2a;
-    border-top-color: oklch(from var(--ff-humo) l c h / 0.25);
-    color: oklch(from var(--ff-beige) l c h);
   }
 
   /* ── Títulos de card/header (CardTitle con fondo Hueso) ───────────────

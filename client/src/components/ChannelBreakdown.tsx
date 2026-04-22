@@ -193,15 +193,15 @@ export function ChannelBreakdown({
   }
 
   return (
-    <Card className="overflow-hidden" style={{ border: `1px solid ${FF.beige}`, background: FF.blanco }}>
+    <Card className="overflow-hidden" style={{ border: "1px solid var(--ff-card-header-border)" }}>
       <CardHeader
         className="pb-3 rounded-t-lg"
-        style={{ borderBottom: `1px solid ${FF.beige}`, background: FF.hueso }}
+        style={{ borderBottom: "1px solid var(--ff-card-header-border)", background: "var(--ff-card-header-bg)" }}
       >
         <CardTitle className="flex items-center gap-2">
           Análisis por Canal de Venta
         </CardTitle>
-        <CardDescription style={{ fontFamily: "'Sailec', sans-serif", color: FF.humo }}>
+        <CardDescription>
           Distribución de ventas, transacciones y métricas clave según el canal de venta
         </CardDescription>
       </CardHeader>
