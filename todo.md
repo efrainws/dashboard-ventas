@@ -1956,3 +1956,13 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar ActivateAccount.tsx: mostrar email en lugar de username
 - [x] Actualizar UserManagement.tsx: eliminar campo username del formulario, email requerido, tabla muestra email
 - [x] Actualizar SupplierMonitor.tsx: eliminar campo username, email requerido para proveedores
+
+## Actualización Style Guide v2.0
+- [x] Agregar sección Autenticación (email+contraseña, flujo de activación, tabla activation_tokens)
+- [x] Agregar sección Roles & Permisos (matriz de 7 roles, guards de ruta)
+- [x] Agregar sección Navegación (estructura del menú, logos por tema, mapa de rutas completo)
+- [x] Agregar sección Componentes Reutilizables (catálogo de 17 componentes con demos)
+- [x] Agregar sección Flujos de Usuario (creación de usuarios, ciclo de vida de proveedores, redirecciones)
+- [x] Agregar sección Base de Datos (tablas MySQL, conexiones PostgreSQL externas)
+- [x] Actualizar versión a v2.0 en header y pie de página
+- [x] Actualizar índice de navegación lateral con las nuevas secciones
