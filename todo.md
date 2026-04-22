@@ -1966,3 +1966,12 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar sección Base de Datos (tablas MySQL, conexiones PostgreSQL externas)
 - [x] Actualizar versión a v2.0 en header y pie de página
 - [x] Actualizar índice de navegación lateral con las nuevas secciones
+
+## Limpieza StyleGuide — Eliminar secciones semi-sensibles
+- [x] Eliminar sección Autenticación del StyleGuide
+- [x] Eliminar sección Roles & Permisos del StyleGuide
+- [x] Eliminar sección Navegación del StyleGuide
+- [x] Eliminar sección Componentes Reutilizables del StyleGuide
+- [x] Eliminar sección Flujos de Usuario del StyleGuide
+- [x] Eliminar sección Base de Datos del StyleGuide
+- [x] Actualizar índice de navegación lateral (eliminar 6 entradas)
