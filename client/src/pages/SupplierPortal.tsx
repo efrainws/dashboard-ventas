@@ -846,9 +846,9 @@ export default function SupplierPortal() {
                     Top 10 Productos por Ventas
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="px-6 pb-6">
                   {topLoading ? (
-                    <div className="p-4 space-y-2">
+                    <div className="space-y-2">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Skeleton key={i} className="h-8 w-full" />
                       ))}
@@ -1012,7 +1012,7 @@ export default function SupplierPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1219,7 +1219,7 @@ export default function SupplierPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1327,7 +1327,7 @@ export default function SupplierPortal() {
             </div>
 
             <Card className="border-border/50">
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1536,7 +1536,7 @@ export default function SupplierPortal() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="px-6 pb-6">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
