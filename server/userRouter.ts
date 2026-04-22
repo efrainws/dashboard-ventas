@@ -229,10 +229,10 @@ export const userRouter = router({
   createUser: canManageUsersProcedure
     .input(
       z.object({
-        username: z.string().min(3, 'El nombre de usuario debe tener al menos 3 caracteres'),
         password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
         name: z.string().min(1, 'El nombre es requerido'),
-        email: z.string().email('Email inválido').optional(),
+        email: z.string().email('Email inválido'),
+        username: z.string().optional(), // Mantenido por compatibilidad, ya no requerido
         role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
         assignedStoreCode: z.string().optional(),
         assignedSupplierId: z.string().optional(),
@@ -283,15 +283,15 @@ export const userRouter = router({
           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
         }
 
-        // Verificar si el usuario ya existe
+        // Verificar si el email ya existe
         const existingUser = await db
           .select()
           .from(users)
-          .where(eq(users.username, input.username))
+          .where(eq(users.email, input.email))
           .limit(1);
 
         if (existingUser.length > 0) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'El nombre de usuario ya existe' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'El correo electrónico ya está registrado' });
         }
 
         // Hash de la contraseña
@@ -309,10 +309,9 @@ export const userRouter = router({
 
         // Crear usuario
         const insertValues: Parameters<typeof db.insert>[0] extends any ? any : never = {
-          username: input.username,
           password: hashedPassword,
           name: input.name,
-          email: input.email || null,
+          email: input.email,
           role: input.role,
           assignedStoreCode: input.role === 'store_user' ? (input.assignedStoreCode || null) : null,
           assignedSupplierId: input.role === 'supplier_user' ? (input.assignedSupplierId || null) : null,
@@ -324,16 +323,16 @@ export const userRouter = router({
 
         const userId = (newUser as any).insertId as number;
 
-        // Enviar email de activación si se solicita y hay email
+        // Enviar email de activación si se solicita
         let emailSent = false;
-        if (input.sendWelcomeEmail && input.email) {
-          const activationToken = await createActivationToken(userId, input.username);
+        if (input.sendWelcomeEmail) {
+          const activationToken = await createActivationToken(userId, input.email);
           const appUrl = 'https://dashboard.florayfauna.pe';
           const activationUrl = `${appUrl}/activate/${activationToken}`;
           emailSent = await sendActivationEmail({
             name: input.name,
             email: input.email,
-            username: input.username,
+            username: input.email,
             activationUrl,
             role: input.role,
           });
@@ -357,9 +356,9 @@ export const userRouter = router({
     .input(
       z.object({
         id: z.number(),
-        username: z.string().min(3).optional(),
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
+        username: z.string().optional(), // Mantenido por compatibilidad
         role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
         assignedStoreCode: z.string().nullable().optional(),
         assignedSupplierId: z.string().nullable().optional(),
@@ -400,15 +399,15 @@ export const userRouter = router({
           });
         }
 
-        // Verificar duplicado de username
-        if (updateData.username) {
+        // Verificar duplicado de email
+        if (updateData.email) {
           const duplicateUser = await db
             .select()
             .from(users)
-            .where(eq(users.username, updateData.username))
+            .where(eq(users.email, updateData.email))
             .limit(1);
           if (duplicateUser.length > 0 && duplicateUser[0].id !== id) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'El nombre de usuario ya existe' });
+            throw new TRPCError({ code: 'CONFLICT', message: 'El correo electrónico ya está registrado' });
           }
         }
 
@@ -489,9 +488,9 @@ export const userRouter = router({
         if (input.notifyUser && existingUser[0].email) {
           const appUrl = 'https://dashboard.florayfauna.pe';
           emailSent = await sendPasswordResetEmail({
-            name: existingUser[0].name ?? existingUser[0].username ?? 'Usuario',
+            name: existingUser[0].name ?? existingUser[0].email ?? 'Usuario',
             email: existingUser[0].email,
-            username: existingUser[0].username ?? '',
+            username: existingUser[0].email ?? '',
             newPassword: input.newPassword,
             appUrl,
             changedByAdmin: true,
@@ -564,14 +563,14 @@ export const userRouter = router({
         }
 
         // Generar nuevo token y enviar correo
-        const appUrl = 'https://dashboard.florayfauna.pe';
-        const activationToken = await createActivationToken(targetUser.id, targetUser.username ?? '');
+        const appUrl = 'https://dashboard.florayfauna.pe';        const activationToken = await createActivationToken(targetUser.id, targetUser.email ?? '');
         const activationUrl = `${appUrl}/activate/${activationToken}`;
 
         const emailSent = await sendActivationEmail({
-          name: targetUser.name ?? targetUser.username ?? 'Usuario',
+  
+          name: targetUser.name ?? targetUser.email ?? 'Usuario',
           email: targetUser.email,
-          username: targetUser.username ?? '',
+          username: targetUser.email ?? '',
           activationUrl,
           role: targetUser.role ?? 'store_user',
         });

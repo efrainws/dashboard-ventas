@@ -336,7 +336,7 @@ export default function UserManagement() {
         username: formData.username,
         password: formData.password,
         name: formData.name,
-        email: formData.email || undefined,
+        email: formData.email,
         role: formData.role,
         assignedStoreCode: formData.role === 'store_user' ? formData.assignedStoreCode : undefined,
         assignedSupplierId: formData.role === 'supplier_user' ? formData.assignedSupplierId : undefined,
@@ -448,9 +448,8 @@ export default function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border">
-                  <TableHead className="text-foreground font-semibold">Usuario</TableHead>
-                  <TableHead className="text-foreground font-semibold">Nombre</TableHead>
                   <TableHead className="text-foreground font-semibold">Email</TableHead>
+                  <TableHead className="text-foreground font-semibold">Nombre</TableHead>
                   <TableHead className="text-foreground font-semibold">Rol</TableHead>
                   <TableHead className="text-foreground font-semibold">Asignación</TableHead>
                   <TableHead className="text-foreground font-semibold">Último Acceso</TableHead>
@@ -460,9 +459,8 @@ export default function UserManagement() {
               <TableBody>
                 {usersData?.users.map((user) => (
                   <TableRow key={user.id} className="border-b border-border hover:bg-muted/40 transition-colors">
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email || '-'}</TableCell>
+                    <TableCell className="font-medium">{user.email || '-'}</TableCell>
+                    <TableCell>{user.name || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getRoleIcon(user.role as UserRole)}
@@ -548,15 +546,7 @@ export default function UserManagement() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="username">Nombre de Usuario</Label>
-                <Input
-                  id="username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
-                />
-              </div>
+
 
               {dialogMode === 'create' && (
                 <div className="grid gap-2">
@@ -588,12 +578,14 @@ export default function UserManagement() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Correo electrónico <span className="text-destructive">*</span></Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  placeholder="correo@empresa.com"
                 />
               </div>
 

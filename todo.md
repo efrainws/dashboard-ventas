@@ -1943,3 +1943,16 @@ Fecha: 1 de febrero de 2026
 - [x] Auditar portales Proveedor y Marca Propia: Input type=date
 - [x] Agregar max={today} a todos los Input type=date (SupplierPortal x4, OwnBrandPortal x4, StyleGuide x1)
 - [x] Guardar checkpoint
+
+## Cambio de Autenticación - Email en lugar de Username
+- [x] Actualizar schema.ts: username opcional (sin unique), email con restricción unique
+- [x] Actualizar schema.ts: activationTokens usa campo email en lugar de username
+- [x] Ejecutar migración de BD (rename username → email en activation_tokens)
+- [x] Agregar helper getUserByEmail en server/db.ts
+- [x] Actualizar procedimiento login en server/routers.ts para usar email
+- [x] Actualizar server/activationRouter.ts: createActivationToken usa email, respuestas devuelven email
+- [x] Actualizar server/userRouter.ts: createUser requiere email (no username), verificación de duplicados por email
+- [x] Actualizar Login.tsx: campo "Correo electrónico" en lugar de "Usuario"
+- [x] Actualizar ActivateAccount.tsx: mostrar email en lugar de username
+- [x] Actualizar UserManagement.tsx: eliminar campo username del formulario, email requerido, tabla muestra email
+- [x] Actualizar SupplierMonitor.tsx: eliminar campo username, email requerido para proveedores

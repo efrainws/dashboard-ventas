@@ -9,10 +9,9 @@ const GRAPHITE   = '#232523'; // panel izquierdo + botón
 const BONE       = '#F5F4F1'; // fondo panel derecho
 const PEBBLE     = '#EAE8E2'; // fondo inputs
 const STONE      = '#919291'; // texto secundario / labels
-const PARCHMENT  = '#EAE8E2'; // texto tienda en panel izquierdo
 
 export default function Login() {
-  const [username, setUsername]      = useState('');
+  const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError]           = useState('');
@@ -30,11 +29,11 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!username.trim() || !password.trim()) {
-      setError('Por favor ingresa usuario y contraseña.');
+    if (!email.trim() || !password.trim()) {
+      setError('Por favor ingresa tu correo y contraseña.');
       return;
     }
-    loginMutation.mutate({ username, password });
+    loginMutation.mutate({ email, password });
   };
 
   return (
@@ -86,29 +85,28 @@ export default function Login() {
             >
               INICIAR SESIÓN
             </h1>
-
           </div>
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Campo usuario */}
+            {/* Campo correo electrónico */}
             <div className="space-y-1.5">
               <Label
-                htmlFor="username"
+                htmlFor="email"
                 className="text-xs font-semibold uppercase tracking-wider"
                 style={{ color: STONE }}
               >
-                Usuario
+                Correo electrónico
               </Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="correo@empresa.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={loginMutation.isPending}
-                autoComplete="username"
+                autoComplete="email"
                 className="h-11 text-sm"
                 style={{
                   borderColor: 'rgba(145,146,145,0.314)',

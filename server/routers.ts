@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getUserByUsername, updateUserLastSignIn } from "./db";
+import { getUserByEmail, updateUserLastSignIn } from "./db";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { SignJWT } from "jose";
@@ -40,15 +40,15 @@ export const appRouter = router({
     login: publicProcedure
       .input(
         z.object({
-          username: z.string().min(1, "Usuario requerido"),
+          email: z.string().email("Email inválido"),
           password: z.string().min(1, "Contraseña requerida"),
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const { username, password } = input;
+        const { email, password } = input;
 
-        // Buscar usuario por username
-        const user = await getUserByUsername(username);
+        // Buscar usuario por email
+        const user = await getUserByEmail(email);
 
         if (!user || !user.password) {
           throw new Error("Credenciales inválidas");
@@ -68,7 +68,7 @@ export const appRouter = router({
         const secret = new TextEncoder().encode(ENV.cookieSecret);
         const token = await new SignJWT({
           userId: user.id,
-          username: user.username,
+          email: user.email,
           role: user.role,
         })
           .setProtectedHeader({ alg: "HS256" })

@@ -74,7 +74,7 @@ export default function ActivateAccount() {
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [formError, setFormError] = useState("");
   const [activated, setActivated] = useState(false);
-  const [activatedUsername, setActivatedUsername] = useState("");
+  const [activatedEmail, setActivatedEmail] = useState("");
 
   // ── T&C state (only for subscribed_active) ──
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -90,7 +90,7 @@ export default function ActivateAccount() {
   // ── Activation mutation ──
   const activateMutation = trpc.activation.activateAccount.useMutation({
     onSuccess: (data) => {
-      setActivatedUsername(data.username ?? "");
+      setActivatedEmail(data.email ?? "");
       setActivated(true);
     },
     onError: (error) => {
@@ -197,7 +197,7 @@ export default function ActivateAccount() {
           </p>
           <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm font-body">
             <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono font-semibold text-foreground">{activatedUsername}</span>
+            <span className="font-mono font-semibold text-foreground">{activatedEmail}</span>
           </div>
           <Button onClick={() => setLocation("/login")} className="mt-2">
             Iniciar sesión ahora
@@ -213,21 +213,21 @@ export default function ActivateAccount() {
       {/* Intro */}
       <div className="mb-6">
         <p className="text-sm text-muted-foreground font-body leading-relaxed">
-          Hola, <strong className="text-foreground">{tokenData.username}</strong>. Para activar tu cuenta
+          Hola, <strong className="text-foreground">{tokenData.email}</strong>. Para activar tu cuenta
           ingresa la contraseña temporal que recibiste y elige una nueva contraseña segura.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Username (read-only) */}
+        {/* Email (read-only) */}
         <div className="space-y-1.5">
           <Label className="font-body text-xs uppercase tracking-wider text-muted-foreground">
-            Nombre de usuario
+            Correo electrónico
           </Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={tokenData.username}
+              value={tokenData.email}
               readOnly
               className="pl-9 bg-muted/50 font-mono text-sm cursor-not-allowed"
             />

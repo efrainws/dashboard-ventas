@@ -18,12 +18,12 @@ export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).unique(),
-  /** Username for local authentication */
-  username: varchar("username", { length: 64 }).unique(),
+  /** Username for local authentication (optional, kept for backward compatibility) */
+  username: varchar("username", { length: 64 }),
   /** Hashed password for local authentication (bcrypt) */
   password: varchar("password", { length: 255 }),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["system_specialist", "operations_specialist", "cst_user", "commercial_specialist", "store_user", "supplier_user", "own_brand_user"]).default("cst_user").notNull(),
   /**
@@ -162,8 +162,8 @@ export const activationTokens = mysqlTable("activation_tokens", {
   token: varchar("token", { length: 128 }).notNull().unique(),
   /** The user this token belongs to */
   userId: int("user_id").notNull(),
-  /** Username for verification on the activation page */
-  username: varchar("username", { length: 64 }).notNull(),
+  /** Email for verification on the activation page */
+  email: varchar("email", { length: 320 }).notNull(),
   /** Token expiration timestamp (48 hours from creation) */
   expiresAt: timestamp("expires_at").notNull(),
   /** Whether the token has been used */

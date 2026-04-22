@@ -51,7 +51,7 @@ function expiresIn48h(): Date {
  */
 export async function createActivationToken(
   userId: number,
-  username: string
+  email: string
 ): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Base de datos no disponible");
@@ -62,7 +62,7 @@ export async function createActivationToken(
   await db.insert(activationTokens).values({
     token,
     userId,
-    username,
+    email,
     expiresAt,
     used: 0,
   });
@@ -132,7 +132,7 @@ export const activationRouter = router({
 
       return {
         valid: true,
-        username: record.username,
+        email: record.email,
         expiresAt: record.expiresAt,
         supplierStatus: userInfo?.supplierStatus ?? null,
         role: userInfo?.role ?? null,
@@ -217,12 +217,7 @@ export const activationRouter = router({
       const userRows = await db
         .select()
         .from(users)
-        .where(
-          and(
-            eq(users.id, record.userId),
-            eq(users.username, record.username)
-          )
-        )
+        .where(eq(users.id, record.userId))
         .limit(1);
 
       if (userRows.length === 0) {
@@ -322,7 +317,7 @@ export const activationRouter = router({
         try {
           await notifyOwner({
             title: "Proveedor activó su cuenta",
-            content: `El usuario ${user.name ?? user.username} (${user.email ?? ""}) activó su cuenta con suscripción activa.`,
+            content: `El usuario ${user.name ?? user.email} (${user.email ?? ""}) activó su cuenta con suscripción activa.`,
           });
         } catch (e) {
           console.error("[activationRouter] Error enviando notificación:", e);
@@ -343,7 +338,7 @@ export const activationRouter = router({
       return {
         success: true,
         message: "Cuenta activada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.",
-        username: user.username,
+        email: user.email,
       };
     }),
 
@@ -418,7 +413,7 @@ export const activationRouter = router({
       await db.insert(activationTokens).values({
         token: newToken,
         userId: user.id,
-        username: user.username ?? "",
+        email: user.email ?? "",
         expiresAt,
         used: 0,
       });
@@ -428,9 +423,9 @@ export const activationRouter = router({
       const activationUrl = `${appUrl}/activate/${newToken}`;
 
       await sendActivationEmail({
-        name: user.name ?? user.username ?? "",
+        name: user.name ?? user.email ?? "",
         email: user.email ?? "",
-        username: user.username ?? "",
+        username: user.email ?? "",
         activationUrl,
         role: user.role ?? "supplier_user",
       });

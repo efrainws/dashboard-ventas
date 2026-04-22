@@ -548,7 +548,6 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
   const [form, setForm] = useState({
     name: "",
     email: "",
-    username: "",
     password: "",
     supplierSearch: "",
     assignedSupplierId: "",
@@ -563,7 +562,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
   // Reset al abrir
   useEffect(() => {
     if (open) {
-      setForm({ name: "", email: "", username: "", password: "", supplierSearch: "", assignedSupplierId: "", supplierLabel: "", initialSupplierStatus: "pending_activation" });
+      setForm({ name: "", email: "", password: "", supplierSearch: "", assignedSupplierId: "", supplierLabel: "", initialSupplierStatus: "pending_activation" });
       setShowPassword(false);
       setSupplierResults([]);
       setShowDropdown(false);
@@ -597,18 +596,17 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
 
   const handleSubmit = () => {
     if (!form.name.trim()) return toast.error("El nombre es requerido.");
-    if (!form.username.trim() || form.username.length < 3) return toast.error("El usuario debe tener al menos 3 caracteres.");
+    if (!form.email.trim()) return toast.error("El correo electrónico es requerido.");
     if (!form.password || form.password.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres.");
     if (!form.assignedSupplierId) return toast.error("Debes seleccionar un proveedor.");
 
     createMutation.mutate({
       name: form.name.trim(),
-      email: form.email.trim() || undefined,
-      username: form.username.trim(),
+      email: form.email.trim(),
       password: form.password,
       role: "supplier_user",
       assignedSupplierId: form.assignedSupplierId,
-      sendWelcomeEmail: !!form.email.trim(),
+      sendWelcomeEmail: true,
       initialSupplierStatus: form.initialSupplierStatus,
     });
   };
@@ -649,8 +647,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
           {/* Email */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-email">
-              Correo electrónico
-              <span className="text-muted-foreground text-xs ml-1">(opcional, para envío de activación)</span>
+              Correo electrónico <span className="text-destructive">*</span>
             </Label>
             <Input
               id="sup-email"
@@ -660,16 +657,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             />
           </div>
-          {/* Username */}
-          <div className="space-y-1.5">
-            <Label htmlFor="sup-username">Usuario <span className="text-destructive">*</span></Label>
-            <Input
-              id="sup-username"
-              placeholder="Mínimo 3 caracteres"
-              value={form.username}
-              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, "") }))}
-            />
-          </div>
+
           {/* Contraseña */}
           <div className="space-y-1.5">
             <Label htmlFor="sup-password">Contraseña temporal <span className="text-destructive">*</span></Label>
@@ -775,7 +763,7 @@ function CreateSupplierUserDialog({ open, onClose, onCreated }: CreateSupplierUs
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createMutation.isPending || !form.name || !form.username || !form.password || !form.assignedSupplierId}
+            disabled={createMutation.isPending || !form.name || !form.email || !form.password || !form.assignedSupplierId}
             style={{ background: "#008064", color: "#fff" }}
           >
             {createMutation.isPending ? (
