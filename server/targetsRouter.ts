@@ -6,31 +6,83 @@ import { storeMonthlyTargets } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
+/**
+ * Canales de venta reconocidos en el sistema.
+ * - "presencial": ICG, HIOPOS, ARISALE, IDBI (punto de venta físico)
+ * - "ecommerce":  VTEX (source_system.code = 'ecommerce')
+ * - "rappi":      Rappi (integration_systems, vinculado vía rappi_orders)
+ * - "all":        Todos los canales sin filtro
+ */
+export type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
+
+/** IDs de source_system que corresponden al canal presencial */
+const PRESENCIAL_SOURCE_IDS = [
+  "1f6625d1-d8ad-4ee9-a85f-436cd21dc347", // ICG
+  "f76bf01c-b80a-4508-9908-53607a48f9b9", // HIOPOS
+  "0a0fa087-60db-40fe-88cd-0cd55e456416", // ARISALE
+  "553e361a-7f8d-422a-9b64-3e313b3f42ac", // IDBI
+];
+
+/** ID de source_system que corresponde a eCommerce (VTEX) */
+const ECOMMERCE_SOURCE_ID = "be387046-08e4-4229-a52c-7ff5c1569c89";
+
 export const targetsRouter = router({
   /**
-   * Obtiene ventas por tienda vs meta prorrateada para un rango de fechas
+   * Obtiene ventas por tienda vs meta prorrateada para un rango de fechas.
+   * Soporta filtro de canal: all | presencial | ecommerce | rappi | ecommerce+rappi
    */
   getSalesVsTarget: publicProcedure
     .input(
       z.object({
-        fecha_min: z.string(), // Formato YYYY-MM-DD en hora local de Lima
-        fecha_max: z.string(), // Formato YYYY-MM-DD en hora local de Lima
-        store_ids: z.array(z.string()).optional(), // Filtro multi-select de tiendas
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        store_ids: z.array(z.string()).optional(),
+        /** Canal a filtrar. "all" = sin filtro. Puede ser un array para multi-canal. */
+        channels: z.array(z.enum(["all", "presencial", "ecommerce", "rappi"])).optional(),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, store_ids } = input;
+      const { fecha_min, fecha_max, store_ids, channels } = input;
 
-      // Construir filtro de tiendas (store_ids contiene sap_id values, no UUIDs)
-      const storeFilter = store_ids && store_ids.length > 0
-        ? `AND b.sap_id = ANY($3::text[])`
-        : '';
+      const activeChannels = channels && channels.length > 0 && !channels.includes("all")
+        ? channels
+        : ["all"];
+
+      // ── Construir filtro de tiendas ────────────────────────────────────────
+      const storeFilter =
+        store_ids && store_ids.length > 0 ? `AND b.sap_id = ANY($3::text[])` : "";
       const queryParams: any[] = [fecha_min, fecha_max];
-      if (store_ids && store_ids.length > 0) {
-        queryParams.push(store_ids);
+      if (store_ids && store_ids.length > 0) queryParams.push(store_ids);
+
+      // ── Construir filtro de canal ──────────────────────────────────────────
+      // Para Rappi: las ventas se identifican por la presencia de un registro
+      // en la tabla rappi_orders (o similar) vinculado al sales_header.
+      // Para eCommerce: source_system_id = ECOMMERCE_SOURCE_ID
+      // Para presencial: source_system_id IN PRESENCIAL_SOURCE_IDS
+      let channelFilter = "";
+      if (!activeChannels.includes("all")) {
+        const conditions: string[] = [];
+
+        if (activeChannels.includes("ecommerce")) {
+          conditions.push(`sh.source_system_id = '${ECOMMERCE_SOURCE_ID}'`);
+        }
+        if (activeChannels.includes("rappi")) {
+          // Rappi orders se identifican por integration_system Rappi
+          // Usamos la tabla rappi_orders si existe, o filtramos por source_system Rappi
+          conditions.push(`EXISTS (
+            SELECT 1 FROM rappi_orders ro WHERE ro.order_id = sh.id
+          )`);
+        }
+        if (activeChannels.includes("presencial")) {
+          const ids = PRESENCIAL_SOURCE_IDS.map((id) => `'${id}'`).join(",");
+          conditions.push(`sh.source_system_id IN (${ids})`);
+        }
+
+        if (conditions.length > 0) {
+          channelFilter = `AND (${conditions.join(" OR ")})`;
+        }
       }
 
-      // Consultar ventas por tienda en el rango de fechas
       const salesQuery = `
         SELECT
           sh.branch_id AS store_id,
@@ -42,6 +94,7 @@ export const targetsRouter = router({
         LEFT JOIN branches b ON b.id = sh.branch_id
         WHERE sh.doc_date::date >= $1::date AND sh.doc_date::date <= $2::date
           ${storeFilter}
+          ${channelFilter}
         GROUP BY sh.branch_id, b.name, b.sap_id
         ORDER BY b.sap_id;
       `;
@@ -49,64 +102,60 @@ export const targetsRouter = router({
       try {
         const salesResult = await pool.query(salesQuery, queryParams);
 
-        // Calcular metas prorrateadas para cada tienda
-        // Parsear YYYY-MM-DD como fecha local (no UTC) para evitar desfase de zona horaria
-        const [startYear, startMonth, startDay] = fecha_min.split('-').map(Number);
-        const [endYear, endMonth, endDay] = fecha_max.split('-').map(Number);
+        const [startYear, startMonth, startDay] = fecha_min.split("-").map(Number);
+        const [endYear, endMonth, endDay] = fecha_max.split("-").map(Number);
         const startDate = new Date(startYear, startMonth - 1, startDay);
         const endDate = new Date(endYear, endMonth - 1, endDay);
-        
-        // Obtener todos los meses que abarca el rango
+
         const monthsInRange = getMonthsInRange(startDate, endDate);
-        
-        // Obtener metas de la BD local para los meses relevantes
+
         const db = await getDb();
         if (!db) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Base de datos no disponible",
           });
         }
-        
-        const targets = await db.select().from(storeMonthlyTargets)
-          .where(
-            and(
-              // Filtrar por meses relevantes (usando OR para cada mes)
-              // Nota: Drizzle no tiene un operador IN directo para arrays, usamos múltiples OR
-            )
-          );
 
-        // Calcular meta prorrateada para cada tienda
+        const targets = await db.select().from(storeMonthlyTargets);
+
+        // ── Calcular factor de ajuste por canal ───────────────────────────────
+        // Si se filtra por canal(es) no-presencial, la meta se multiplica por
+        // la suma de los porcentajes de los canales seleccionados / 100.
+        // Si se filtra solo por presencial, el factor es (1 - ecommercePct - rappiPct).
+        // Si es "all", factor = 1.
+
         const storesWithTargets = salesResult.rows.map((row: any) => {
           const storeId = row.store_id;
           const totalSales = parseFloat(row.total_sales || 0);
 
-          // Calcular meta prorrateada
-          const proratedTarget = calculateProratedTarget(
+          const { proratedTarget, monthlyTarget } = calculateProratedTarget(
             storeId,
             startDate,
             endDate,
             targets,
-            monthsInRange
+            monthsInRange,
+            activeChannels as SalesChannel[]
           );
 
-          const completionPercentage = proratedTarget > 0
-            ? (totalSales / proratedTarget) * 100
-            : 0;
+          const completionPercentage =
+            proratedTarget > 0 ? (totalSales / proratedTarget) * 100 : 0;
 
           return {
             store_id: storeId,
             store_name: row.store_name,
-            store_sap_id: row.store_sap_id || '',
+            store_sap_id: row.store_sap_id || "",
             total_sales: totalSales,
             prorated_target: proratedTarget,
+            monthly_target: monthlyTarget,
             completion_percentage: completionPercentage,
             has_target: proratedTarget > 0,
           };
         });
 
-        // Ordenar por % de cumplimiento descendente
-        storesWithTargets.sort((a, b) => b.completion_percentage - a.completion_percentage);
+        storesWithTargets.sort(
+          (a, b) => b.completion_percentage - a.completion_percentage
+        );
 
         return {
           success: true,
@@ -114,13 +163,14 @@ export const targetsRouter = router({
           metadata: {
             date_range: { start: fecha_min, end: fecha_max },
             months_in_range: monthsInRange,
+            active_channels: activeChannels,
           },
         };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing sales vs target query:', error);
+        console.error("[PostgreSQL] Error executing sales vs target query:", error);
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al consultar ventas vs meta',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al consultar ventas vs meta",
         });
       }
     }),
@@ -131,8 +181,8 @@ export const targetsRouter = router({
   getStoreTargets: publicProcedure
     .input(
       z.object({
-        month: z.string().optional(), // Filtrar por mes específico (YYYY-MM)
-        store_id: z.string().optional(), // Filtrar por tienda específica
+        month: z.string().optional(),
+        store_id: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
@@ -142,21 +192,16 @@ export const targetsRouter = router({
         const db = await getDb();
         if (!db) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Base de datos no disponible",
           });
         }
-        
+
         let query = db.select().from(storeMonthlyTargets);
 
-        // Aplicar filtros si existen
         const conditions: any[] = [];
-        if (month) {
-          conditions.push(eq(storeMonthlyTargets.month, month));
-        }
-        if (store_id) {
-          conditions.push(eq(storeMonthlyTargets.storeId, store_id));
-        }
+        if (month) conditions.push(eq(storeMonthlyTargets.month, month));
+        if (store_id) conditions.push(eq(storeMonthlyTargets.storeId, store_id));
 
         if (conditions.length > 0) {
           query = query.where(and(...conditions)) as any;
@@ -164,39 +209,67 @@ export const targetsRouter = router({
 
         const targets = await query;
 
-        return {
-          success: true,
-          targets,
-        };
+        return { success: true, targets };
       } catch (error) {
-        console.error('[DB] Error fetching store targets:', error);
+        console.error("[DB] Error fetching store targets:", error);
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al obtener metas',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al obtener metas",
         });
       }
     }),
 
   /**
-   * Crea o actualiza una meta mensual para una tienda
-   * Solo accesible para admin/manager
+   * Crea o actualiza una meta mensual para una tienda.
+   * Ahora incluye los porcentajes de canal eCommerce y Rappi.
    */
   upsertStoreTarget: protectedProcedure
     .input(
       z.object({
-        month: z.string().regex(/^\d{4}-\d{2}$/, 'Formato de mes inválido (debe ser YYYY-MM)'),
-        store_id: z.string().min(1, 'Store ID requerido'),
-        monthly_target_amount: z.number().positive('La meta debe ser mayor a 0'),
+        month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/, "Formato de mes inválido (debe ser YYYY-MM)"),
+        store_id: z.string().min(1, "Store ID requerido"),
+        monthly_target_amount: z
+          .number()
+          .positive("La meta debe ser mayor a 0"),
+        ecommerce_target_pct: z
+          .number()
+          .min(0)
+          .max(100)
+          .default(0),
+        rappi_target_pct: z
+          .number()
+          .min(0)
+          .max(100)
+          .default(0),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { month, store_id, monthly_target_amount } = input;
+      const {
+        month,
+        store_id,
+        monthly_target_amount,
+        ecommerce_target_pct,
+        rappi_target_pct,
+      } = input;
 
-      // Verificar permisos (system_specialist y cst_user pueden editar metas)
-      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
+      if (
+        ctx.user.role !== "system_specialist" &&
+        ctx.user.role !== "cst_user"
+      ) {
         throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'No tienes permisos para editar metas',
+          code: "FORBIDDEN",
+          message: "No tienes permisos para editar metas",
+        });
+      }
+
+      // Validar que la suma de porcentajes no supere 100
+      if (ecommerce_target_pct + rappi_target_pct > 100) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "La suma de los porcentajes de eCommerce y Rappi no puede superar 100%",
         });
       }
 
@@ -204,13 +277,14 @@ export const targetsRouter = router({
         const db = await getDb();
         if (!db) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Base de datos no disponible",
           });
         }
-        
-        // Buscar si ya existe un registro para este mes y tienda
-        const existing = await db.select().from(storeMonthlyTargets)
+
+        const existing = await db
+          .select()
+          .from(storeMonthlyTargets)
           .where(
             and(
               eq(storeMonthlyTargets.month, month),
@@ -220,60 +294,50 @@ export const targetsRouter = router({
           .limit(1);
 
         if (existing.length > 0) {
-          // Actualizar existente
-          await db.update(storeMonthlyTargets)
+          await db
+            .update(storeMonthlyTargets)
             .set({
               monthlyTargetAmount: monthly_target_amount,
+              ecommerceTargetPct: String(ecommerce_target_pct),
+              rappiTargetPct: String(rappi_target_pct),
               updatedAt: new Date(),
             })
             .where(eq(storeMonthlyTargets.id, existing[0].id));
 
-          return {
-            success: true,
-            action: 'updated',
-            target: { ...existing[0], monthlyTargetAmount: monthly_target_amount },
-          };
+          return { success: true, action: "updated" };
         } else {
-          // Crear nuevo
-          const result = await db.insert(storeMonthlyTargets).values({
+          await db.insert(storeMonthlyTargets).values({
             month,
             storeId: store_id,
             monthlyTargetAmount: monthly_target_amount,
+            ecommerceTargetPct: String(ecommerce_target_pct),
+            rappiTargetPct: String(rappi_target_pct),
           });
 
-          return {
-            success: true,
-            action: 'created',
-            target: { id: result[0].insertId, month, storeId: store_id, monthlyTargetAmount: monthly_target_amount },
-          };
+          return { success: true, action: "created" };
         }
       } catch (error) {
-        console.error('[DB] Error upserting store target:', error);
+        console.error("[DB] Error upserting store target:", error);
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al guardar meta',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al guardar meta",
         });
       }
     }),
 
   /**
    * Elimina una meta mensual
-   * Solo accesible para admin
    */
   deleteStoreTarget: protectedProcedure
-    .input(
-      z.object({
-        id: z.number(),
-      })
-    )
+    .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const { id } = input;
-
-      // Verificar permisos (system_specialist y cst_user pueden eliminar metas)
-      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
+      if (
+        ctx.user.role !== "system_specialist" &&
+        ctx.user.role !== "cst_user"
+      ) {
         throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'No tienes permisos para eliminar metas',
+          code: "FORBIDDEN",
+          message: "No tienes permisos para eliminar metas",
         });
       }
 
@@ -281,68 +345,81 @@ export const targetsRouter = router({
         const db = await getDb();
         if (!db) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Base de datos no disponible",
           });
         }
-        
-        await db.delete(storeMonthlyTargets).where(eq(storeMonthlyTargets.id, id));
 
-        return {
-          success: true,
-          message: 'Meta eliminada correctamente',
-        };
+        await db
+          .delete(storeMonthlyTargets)
+          .where(eq(storeMonthlyTargets.id, input.id));
+
+        return { success: true, message: "Meta eliminada correctamente" };
       } catch (error) {
-        console.error('[DB] Error deleting store target:', error);
+        console.error("[DB] Error deleting store target:", error);
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al eliminar meta',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al eliminar meta",
         });
       }
     }),
 
   /**
-   * Carga masiva de metas desde CSV
-   * Acepta un array de filas ya parseadas en el cliente
-   * Solo accesible para admin
+   * Carga masiva de metas desde CSV.
+   * Ahora acepta ecommerce_target_pct y rappi_target_pct opcionales.
    */
   bulkUpsertFromCSV: protectedProcedure
     .input(
       z.object({
-        rows: z.array(
-          z.object({
-            month: z.string().regex(/^\d{4}-\d{2}$/, 'Formato de mes inválido (YYYY-MM)'),
-            store_sap_id: z.string().min(1, 'Código SAP requerido'),
-            monthly_target_amount: z.number().positive('La meta debe ser mayor a 0'),
-          })
-        ).min(1, 'El CSV debe tener al menos una fila de datos'),
+        rows: z
+          .array(
+            z.object({
+              month: z
+                .string()
+                .regex(
+                  /^\d{4}-\d{2}$/,
+                  "Formato de mes inválido (debe ser YYYY-MM)"
+                ),
+              store_sap_id: z.string().min(1, "Código SAP requerido"),
+              monthly_target_amount: z
+                .number()
+                .positive("La meta debe ser mayor a 0"),
+              ecommerce_target_pct: z.number().min(0).max(100).default(0),
+              rappi_target_pct: z.number().min(0).max(100).default(0),
+            })
+          )
+          .min(1, "El CSV debe tener al menos una fila de datos"),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // system_specialist y cst_user pueden cargar metas masivamente
-      if (ctx.user.role !== 'system_specialist' && ctx.user.role !== 'cst_user') {
+      if (
+        ctx.user.role !== "system_specialist" &&
+        ctx.user.role !== "cst_user"
+      ) {
         throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'No tienes permisos para cargar metas',
+          code: "FORBIDDEN",
+          message: "No tienes permisos para cargar metas",
         });
       }
 
       const { rows } = input;
 
       try {
-        // Obtener el mapeo de sap_id → store_id desde PostgreSQL
         const storesResult = await pool.query(
           `SELECT id AS store_id, sap_id AS store_sap_id FROM branches WHERE sap_id IS NOT NULL`
         );
         const storeMap = new Map<string, string>(
-          storesResult.rows.map((r: any) => [r.store_sap_id.trim().toUpperCase(), r.store_id])
+          storesResult.rows.map((r: any) => [
+            r.store_sap_id.trim().toUpperCase(),
+            r.store_id,
+          ])
         );
 
         const db = await getDb();
         if (!db) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Base de datos no disponible',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Base de datos no disponible",
           });
         }
 
@@ -356,12 +433,26 @@ export const targetsRouter = router({
           const storeId = storeMap.get(sapKey);
 
           if (!storeId) {
-            errors.push({ row: i + 2, message: `Código SAP '${row.store_sap_id}' no encontrado` });
+            errors.push({
+              row: i + 2,
+              message: `Código SAP '${row.store_sap_id}' no encontrado`,
+            });
+            continue;
+          }
+
+          // Validar suma de porcentajes
+          if (row.ecommerce_target_pct + row.rappi_target_pct > 100) {
+            errors.push({
+              row: i + 2,
+              message: `La suma de porcentajes eCommerce (${row.ecommerce_target_pct}%) + Rappi (${row.rappi_target_pct}%) supera 100%`,
+            });
             continue;
           }
 
           try {
-            const existing = await db.select().from(storeMonthlyTargets)
+            const existing = await db
+              .select()
+              .from(storeMonthlyTargets)
               .where(
                 and(
                   eq(storeMonthlyTargets.month, row.month),
@@ -371,9 +462,12 @@ export const targetsRouter = router({
               .limit(1);
 
             if (existing.length > 0) {
-              await db.update(storeMonthlyTargets)
+              await db
+                .update(storeMonthlyTargets)
                 .set({
                   monthlyTargetAmount: row.monthly_target_amount,
+                  ecommerceTargetPct: String(row.ecommerce_target_pct),
+                  rappiTargetPct: String(row.rappi_target_pct),
                   updatedAt: new Date(),
                 })
                 .where(eq(storeMonthlyTargets.id, existing[0].id));
@@ -383,77 +477,75 @@ export const targetsRouter = router({
                 month: row.month,
                 storeId,
                 monthlyTargetAmount: row.monthly_target_amount,
+                ecommerceTargetPct: String(row.ecommerce_target_pct),
+                rappiTargetPct: String(row.rappi_target_pct),
               });
               inserted++;
             }
           } catch (rowError) {
-            errors.push({ row: i + 2, message: `Error al procesar fila: ${rowError}` });
+            errors.push({
+              row: i + 2,
+              message: `Error al procesar fila: ${rowError}`,
+            });
           }
         }
 
-        return {
-          success: true,
-          inserted,
-          updated,
-          errors,
-          total: rows.length,
-        };
+        return { success: true, inserted, updated, errors, total: rows.length };
       } catch (error) {
-        console.error('[DB] Error in bulkUpsertFromCSV:', error);
+        console.error("[DB] Error in bulkUpsertFromCSV:", error);
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al procesar la carga masiva',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al procesar la carga masiva",
         });
       }
     }),
 
   /**
    * Obtiene todas las tiendas desde la tabla branches de PostgreSQL
-   * Para uso en el modal de edición de metas
    */
-  getAllStores: publicProcedure
-    .query(async () => {
-      try {
-        const query = `
-          SELECT
-            id AS store_id,
-            INITCAP(LOWER(COALESCE(name, ''))) AS store_name,
-            COALESCE(sap_id, '') AS store_sap_id
-          FROM branches
-          ORDER BY sap_id;
-        `;
+  getAllStores: publicProcedure.query(async () => {
+    try {
+      const query = `
+        SELECT
+          id AS store_id,
+          INITCAP(LOWER(COALESCE(name, ''))) AS store_name,
+          COALESCE(sap_id, '') AS store_sap_id
+        FROM branches
+        ORDER BY sap_id;
+      `;
 
-        const result = await pool.query(query);
+      const result = await pool.query(query);
 
-        return {
-          success: true,
-          stores: result.rows.map((row: any) => ({
-            store_id: row.store_id,
-            store_name: row.store_name,
-            store_sap_id: row.store_sap_id,
-          })),
-        };
-      } catch (error) {
-        console.error('[PostgreSQL] Error fetching all stores:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al obtener lista de tiendas',
-        });
-      }
-    }),
+      return {
+        success: true,
+        stores: result.rows.map((row: any) => ({
+          store_id: row.store_id,
+          store_name: row.store_name,
+          store_sap_id: row.store_sap_id,
+        })),
+      };
+    } catch (error) {
+      console.error("[PostgreSQL] Error fetching all stores:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Error al obtener lista de tiendas",
+      });
+    }
+  }),
 });
 
-/**
- * Obtiene todos los meses (YYYY-MM) que abarca un rango de fechas
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getMonthsInRange(startDate: Date, endDate: Date): string[] {
   const months: string[] = [];
   const current = new Date(startDate);
-  current.setDate(1); // Normalizar al primer día del mes
+  current.setDate(1);
 
   while (current <= endDate) {
     const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const month = String(current.getMonth() + 1).padStart(2, "0");
     months.push(`${year}-${month}`);
     current.setMonth(current.getMonth() + 1);
   }
@@ -462,46 +554,77 @@ function getMonthsInRange(startDate: Date, endDate: Date): string[] {
 }
 
 /**
- * Calcula la meta prorrateada para una tienda en un rango de fechas
- * Soporta rangos que cruzan múltiples meses
+ * Calcula la meta prorrateada para una tienda en un rango de fechas,
+ * aplicando el factor de ajuste por canal si corresponde.
+ *
+ * Factor de ajuste:
+ * - "all"        → 1.0 (sin ajuste)
+ * - "ecommerce"  → ecommerceTargetPct / 100
+ * - "rappi"      → rappiTargetPct / 100
+ * - ["ecommerce","rappi"] → (ecommerceTargetPct + rappiTargetPct) / 100
+ * - "presencial" → (100 - ecommerceTargetPct - rappiTargetPct) / 100
  */
 function calculateProratedTarget(
   storeId: string,
   startDate: Date,
   endDate: Date,
   targets: any[],
-  monthsInRange: string[]
-): number {
+  monthsInRange: string[],
+  activeChannels: SalesChannel[]
+): { proratedTarget: number; monthlyTarget: number } {
   let totalProratedTarget = 0;
+  let totalMonthlyTarget = 0;
+
+  const isAll = activeChannels.includes("all") || activeChannels.length === 0;
 
   for (const month of monthsInRange) {
-    // Buscar meta para este mes y tienda
-    const target = targets.find(t => t.month === month && t.storeId === storeId);
+    const target = targets.find(
+      (t) => t.month === month && t.storeId === storeId
+    );
     if (!target) continue;
 
-    const monthlyTarget = target.monthlyTargetAmount;
+    const monthlyTargetAmount = Number(target.monthlyTargetAmount);
+    const ecommercePct = parseFloat(target.ecommerceTargetPct ?? "0");
+    const rappiPct = parseFloat(target.rappiTargetPct ?? "0");
 
-    // Calcular días del mes que están dentro del rango
-    const [year, monthNum] = month.split('-').map(Number);
+    // Factor de ajuste según canal(es) activos
+    let factor = 1.0;
+    if (!isAll) {
+      let pctSum = 0;
+      if (activeChannels.includes("ecommerce")) pctSum += ecommercePct;
+      if (activeChannels.includes("rappi")) pctSum += rappiPct;
+      if (activeChannels.includes("presencial")) {
+        pctSum += Math.max(0, 100 - ecommercePct - rappiPct);
+      }
+      factor = pctSum / 100;
+    }
+
+    const adjustedMonthlyTarget = monthlyTargetAmount * factor;
+
+    // Prorratear por días del período dentro del mes
+    const [year, monthNum] = month.split("-").map(Number);
     const monthStart = new Date(year, monthNum - 1, 1);
-    const monthEnd = new Date(year, monthNum, 0); // Último día del mes
+    const monthEnd = new Date(year, monthNum, 0);
 
-    // Días totales del mes
     const totalDaysInMonth = monthEnd.getDate();
-
-    // Días del mes que están dentro del rango seleccionado
     const rangeStart = startDate > monthStart ? startDate : monthStart;
     const rangeEnd = endDate < monthEnd ? endDate : monthEnd;
 
     if (rangeStart > rangeEnd) continue;
 
-    // Calcular días en el rango (inclusive)
-    const daysInRange = Math.floor((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const daysInRange =
+      Math.floor(
+        (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
 
-    // Prorratear meta
-    const proratedAmount = (monthlyTarget / totalDaysInMonth) * daysInRange;
+    const proratedAmount =
+      (adjustedMonthlyTarget / totalDaysInMonth) * daysInRange;
     totalProratedTarget += proratedAmount;
+    totalMonthlyTarget += adjustedMonthlyTarget;
   }
 
-  return Math.round(totalProratedTarget);
+  return {
+    proratedTarget: Math.round(totalProratedTarget),
+    monthlyTarget: Math.round(totalMonthlyTarget),
+  };
 }

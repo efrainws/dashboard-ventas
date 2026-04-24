@@ -1975,3 +1975,13 @@ Fecha: 1 de febrero de 2026
 - [x] Eliminar sección Flujos de Usuario del StyleGuide
 - [x] Eliminar sección Base de Datos del StyleGuide
 - [x] Actualizar índice de navegación lateral (eliminar 6 entradas)
+
+## Distribución de Metas por Canal — Ventas vs Meta
+- [x] Agregar campos ecommerce_target_pct y rappi_target_pct en schema storeMonthlyTargets
+- [x] Ejecutar migración BD (drizzle/0014_sudden_eternals.sql)
+- [x] Actualizar targetsRouter.ts: getSalesVsTarget acepta filtro de canal, factor de ajuste por porcentaje
+- [x] Actualizar TargetEditModal.tsx: campos % eCommerce y % Rappi, columna % Presencial calculada, validación suma ≤ 100
+- [x] Actualizar plantilla CSV: columnas pct_ecommerce y pct_rappi, validación de columnas faltantes
+- [x] Agregar filtro de canal en SalesVsTarget.tsx (Presencial / eCommerce / Rappi / Todos)
+- [x] Actualizar StoreTargetCard.tsx: badge de canal activo, prop activeChannelLabel
+- [x] 0 errores TypeScript

@@ -1,0 +1,2 @@
+ALTER TABLE `store_monthly_targets` ADD `ecommerce_target_pct` decimal(5,2) DEFAULT '0' NOT NULL;--> statement-breakpoint
+ALTER TABLE `store_monthly_targets` ADD `rappi_target_pct` decimal(5,2) DEFAULT '0' NOT NULL;

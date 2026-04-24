@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Pencil } from "lucide-react";
+import { Pencil, Store, ShoppingCart, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface StoreTargetCardProps {
   storeName: string;
@@ -16,6 +17,8 @@ interface StoreTargetCardProps {
   daysInMonth: number;
   /** Meta mensual completa (sin prorratear), para comparar con la proyección */
   monthlyTarget?: number;
+  /** Etiqueta del canal activo para mostrar en la tarjeta (undefined = todos los canales) */
+  activeChannelLabel?: string;
 }
 
 /** Devuelve el color de cumplimiento según el porcentaje */
@@ -26,6 +29,18 @@ function getComplianceColor(pct: number | null): string {
   if (pct >= 75)  return "#C49705";  // Mostaza
   return "#BC2C46";                   // Granate
 }
+
+const CHANNEL_ICON: Record<string, React.ReactNode> = {
+  "Presencial":  <Store className="h-3 w-3" />,
+  "eCommerce":   <ShoppingCart className="h-3 w-3" />,
+  "Rappi":       <Bike className="h-3 w-3" />,
+};
+
+const CHANNEL_COLOR: Record<string, string> = {
+  "Presencial":  "bg-[#1A6894]/10 text-[#1A6894] border-[#1A6894]/30",
+  "eCommerce":   "bg-[#008064]/10 text-[#008064] border-[#008064]/30",
+  "Rappi":       "bg-[#FF6900]/10 text-[#FF6900] border-[#FF6900]/30",
+};
 
 export function StoreTargetCard({
   storeName,
@@ -38,6 +53,7 @@ export function StoreTargetCard({
   daysElapsed,
   daysInMonth,
   monthlyTarget,
+  activeChannelLabel,
 }: StoreTargetCardProps) {
   // ── Cálculos derivados ───────────────────────────────────────────────────
   const dailyAverage = daysElapsed > 0 ? totalSales / daysElapsed : 0;
@@ -93,14 +109,29 @@ export function StoreTargetCard({
 
       <CardContent className="pt-5 pb-5 px-5 space-y-3.5">
 
-        {/* ── Línea 1: Nombre de tienda ────────────────────────────────── */}
-        {/* #232523 en light mode, #EAE8E2 en dark mode */}
-        <p
-          className="font-bold uppercase leading-tight tracking-wide pr-8 font-heading text-[#232523] dark:text-[#EAE8E2]"
-          style={{ fontSize: "20px" }}
-        >
-          {storeName}
-        </p>
+        {/* ── Línea 1: Nombre de tienda + badge de canal ───────────────── */}
+        <div className="pr-8">
+          <p
+            className="font-bold uppercase leading-tight tracking-wide font-heading text-[#232523] dark:text-[#EAE8E2]"
+            style={{ fontSize: "20px" }}
+          >
+            {storeName}
+          </p>
+          {activeChannelLabel && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {activeChannelLabel.split(" + ").map((label) => (
+                <Badge
+                  key={label}
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 h-4 font-normal ${CHANNEL_COLOR[label] ?? "bg-muted text-muted-foreground"}`}
+                >
+                  {CHANNEL_ICON[label] && <span className="mr-0.5">{CHANNEL_ICON[label]}</span>}
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── Línea 2: Barra de cumplimiento ───────────────────────────── */}
         {hasTarget ? (

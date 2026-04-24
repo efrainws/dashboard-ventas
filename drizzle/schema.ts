@@ -91,6 +91,18 @@ export const storeMonthlyTargets = mysqlTable("store_monthly_targets", {
   storeId: varchar("store_id", { length: 64 }).notNull(),
   /** Monthly sales target amount */
   monthlyTargetAmount: int("monthly_target_amount").notNull(),
+  /**
+   * Porcentaje de la venta total que corresponde al canal eCommerce (VTEX).
+   * Valor entre 0 y 100. Obligatorio cuando se usan filtros de canal.
+   * Ejemplo: 4 significa que el 4% de la meta total es la meta de eCommerce.
+   */
+  ecommerceTargetPct: decimal("ecommerce_target_pct", { precision: 5, scale: 2 }).default("0").notNull(),
+  /**
+   * Porcentaje de la venta total que corresponde al canal Rappi.
+   * Valor entre 0 y 100. Obligatorio cuando se usan filtros de canal.
+   * Ejemplo: 3 significa que el 3% de la meta total es la meta de Rappi.
+   */
+  rappiTargetPct: decimal("rappi_target_pct", { precision: 5, scale: 2 }).default("0").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

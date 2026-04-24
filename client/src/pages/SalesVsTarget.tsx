@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Plus, Lock, X } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Lock, X, Store, ShoppingCart, Bike } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -25,9 +25,18 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 
 type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
+
+const CHANNEL_OPTIONS: { value: SalesChannel; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: "all", label: "Todos los canales", icon: null, color: "bg-muted text-muted-foreground" },
+  { value: "presencial", label: "Presencial", icon: <Store className="h-3.5 w-3.5" />, color: "bg-[#1A6894]/10 text-[#1A6894] border-[#1A6894]/30" },
+  { value: "ecommerce", label: "eCommerce", icon: <ShoppingCart className="h-3.5 w-3.5" />, color: "bg-[#008064]/10 text-[#008064] border-[#008064]/30" },
+  { value: "rappi", label: "Rappi", icon: <Bike className="h-3.5 w-3.5" />, color: "bg-[#FF6900]/10 text-[#FF6900] border-[#FF6900]/30" },
+];
 
 export default function SalesVsTarget() {
   const { user, loading: authLoading } = useAuth();
@@ -36,7 +45,7 @@ export default function SalesVsTarget() {
   const isStoreUser = userRole === 'store_user';
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  // Filtros
+  // ─── Filtros ─────────────────────────────────────────────────────────────────
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -44,8 +53,13 @@ export default function SalesVsTarget() {
     return { from: firstDayOfMonth, to: yesterday };
   });
 
-  // Para store_user: el filtro de tiendas queda fijo en su tienda asignada
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
+
+  /**
+   * Canales activos. "all" = sin filtro de canal.
+   * Puede ser un solo canal o múltiples (ecommerce + rappi a la vez).
+   */
+  const [selectedChannels, setSelectedChannels] = useState<SalesChannel[]>(["all"]);
 
   // Inicializar filtro de tienda para store_user
   useEffect(() => {
@@ -74,11 +88,18 @@ export default function SalesVsTarget() {
     return selectedStores;
   }, [isStoreUser, assignedStoreCode, selectedStores]);
 
+  // Canales efectivos para la query (nunca vacío)
+  const effectiveChannels = useMemo<SalesChannel[]>(() => {
+    if (selectedChannels.length === 0 || selectedChannels.includes("all")) return ["all"];
+    return selectedChannels;
+  }, [selectedChannels]);
+
   const { data, isLoading, refetch } = trpc.targets.getSalesVsTarget.useQuery(
     {
       fecha_min: dateRange?.from ? toLocalDateStr(dateRange.from) : toLocalDateStr(new Date()),
       fecha_max: dateRange?.to ? toLocalDateStr(dateRange.to) : toLocalDateStr(new Date()),
       store_ids: effectiveStoreFilter.length > 0 ? effectiveStoreFilter : undefined,
+      channels: effectiveChannels,
     },
     {
       enabled: !!dateRange?.from && !!dateRange?.to,
@@ -109,6 +130,25 @@ export default function SalesVsTarget() {
     return { daysElapsed: elapsed, daysInMonth: totalDays };
   }, [dateRange]);
 
+  // ─── Handlers de canal ────────────────────────────────────────────────────────
+  const handleChannelToggle = (channel: SalesChannel) => {
+    if (channel === "all") {
+      setSelectedChannels(["all"]);
+      return;
+    }
+    setSelectedChannels((prev) => {
+      // Quitar "all" si había
+      const withoutAll = prev.filter((c) => c !== "all");
+      if (withoutAll.includes(channel)) {
+        // Desmarcar canal
+        const next = withoutAll.filter((c) => c !== channel);
+        return next.length === 0 ? ["all"] : next;
+      } else {
+        return [...withoutAll, channel];
+      }
+    });
+  };
+
   const handleEditStore = (storeId: string, storeName: string) => {
     setEditingStore({ id: storeId, name: storeName });
     setEditModalOpen(true);
@@ -126,7 +166,16 @@ export default function SalesVsTarget() {
     if (!isStoreUser) {
       setSelectedStores([]);
     }
+    setSelectedChannels(["all"]);
   };
+
+  // Etiqueta del canal activo para mostrar en las tarjetas
+  const activeChannelLabel = useMemo(() => {
+    if (effectiveChannels.includes("all")) return undefined;
+    return effectiveChannels
+      .map((c) => CHANNEL_OPTIONS.find((o) => o.value === c)?.label ?? c)
+      .join(" + ");
+  }, [effectiveChannels]);
 
   if (authLoading) {
     return (
@@ -173,7 +222,7 @@ export default function SalesVsTarget() {
                   Filtros
                 </CardTitle>
                 <CardDescription>
-                  Selecciona un rango de fechas y/o tienda para explorar los datos
+                  Selecciona un rango de fechas, tienda y canal de venta
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={handleClearFilters}>
@@ -183,108 +232,169 @@ export default function SalesVsTarget() {
             </div>
           </CardHeader>
           <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Rango de Fechas */}
-            <div className="space-y-2">
-              <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Rango de Fechas</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "dd MMM yyyy", { locale: es })} -{" "}
-                          {format(dateRange.to, "dd MMM yyyy", { locale: es })}
-                        </>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Rango de Fechas */}
+              <div className="space-y-2">
+                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Rango de Fechas</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd MMM yyyy", { locale: es })} -{" "}
+                            {format(dateRange.to, "dd MMM yyyy", { locale: es })}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd MMM yyyy", { locale: es })
+                        )
                       ) : (
-                        format(dateRange.from, "dd MMM yyyy", { locale: es })
-                      )
-                    ) : (
-                      <span>Seleccionar rango</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                    locale={es}
-                    disabled={{ after: new Date() }}
-                  />
-                </PopoverContent>
-              </Popover>
+                        <span>Seleccionar rango</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                      locale={es}
+                      disabled={{ after: new Date() }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Filtro de Tiendas — bloqueado para store_user */}
+              <div className="space-y-2">
+                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>
+                  Tiendas
+                  {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
+                </Label>
+                {isStoreUser ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    <span>{availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedStores.length === 0 ? "all" : "custom"}
+                    onValueChange={(value) => {
+                      if (value === "all") {
+                        setSelectedStores([]);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {selectedStores.length === 0
+                          ? "Todas las tiendas"
+                          : `${selectedStores.length} tienda(s) seleccionada(s)`}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
+                      {availableStores.map((store) => (
+                        <div
+                          key={store.id}
+                          className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedStores((prev) =>
+                              prev.includes(store.id)
+                                ? prev.filter((id) => id !== store.id)
+                                : [...prev, store.id]
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedStores.includes(store.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedStores((prev) => [...prev, store.id]);
+                              } else {
+                                setSelectedStores((prev) => prev.filter((id) => id !== store.id));
+                              }
+                            }}
+                          />
+                          <Label className="cursor-pointer">{store.name}</Label>
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Filtro de Canal */}
+              <div className="space-y-2">
+                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Canal de Venta</Label>
+                <div className="flex flex-wrap gap-2">
+                  {CHANNEL_OPTIONS.map((opt) => {
+                    const isActive =
+                      opt.value === "all"
+                        ? effectiveChannels.includes("all")
+                        : selectedChannels.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleChannelToggle(opt.value)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          isActive
+                            ? opt.color + " border-current"
+                            : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
+                        }`}
+                        style={{ fontFamily: 'Sailec, sans-serif' }}
+                      >
+                        {opt.icon}
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Nota informativa sobre el canal presencial */}
+                {selectedChannels.includes("presencial") && !selectedChannels.includes("all") && (
+                  <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                    La meta del canal Presencial se calcula como: 100% − % eCommerce − % Rappi definidos en la configuración de metas.
+                  </p>
+                )}
+                {/* Nota cuando se combinan eCommerce + Rappi */}
+                {selectedChannels.includes("ecommerce") && selectedChannels.includes("rappi") && (
+                  <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                    La meta combinada usa la suma de los porcentajes eCommerce + Rappi.
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Filtro de Tiendas — bloqueado para store_user */}
-            <div className="space-y-2">
-              <Label style={{ fontFamily: 'Sailec, sans-serif' }}>
-                Tiendas
-                {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
-              </Label>
-              {isStoreUser ? (
-                /* store_user: solo ve su tienda, no puede cambiarla */
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5 shrink-0" />
-                  <span>{availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}</span>
-                </div>
-              ) : (
-                /* system_specialist y cst_user: selector completo */
-                <Select
-                  value={selectedStores.length === 0 ? "all" : "custom"}
-                  onValueChange={(value) => {
-                    if (value === "all") {
-                      setSelectedStores([]);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue>
-                      {selectedStores.length === 0
-                        ? "Todas las tiendas"
-                        : `${selectedStores.length} tienda(s) seleccionada(s)`}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
-                    {availableStores.map((store) => (
-                      <div
-                        key={store.id}
-                        className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSelectedStores((prev) =>
-                            prev.includes(store.id)
-                              ? prev.filter((id) => id !== store.id)
-                              : [...prev, store.id]
-                          );
-                        }}
-                      >
-                        <Checkbox
-                          checked={selectedStores.includes(store.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedStores((prev) => [...prev, store.id]);
-                            } else {
-                              setSelectedStores((prev) => prev.filter((id) => id !== store.id));
-                            }
-                          }}
-                        />
-                        <Label className="cursor-pointer">{store.name}</Label>
-                      </div>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
+            {/* Indicador de canal activo */}
+            {!effectiveChannels.includes("all") && (
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                  Mostrando metas ajustadas para:
+                </span>
+                {effectiveChannels.map((ch) => {
+                  const opt = CHANNEL_OPTIONS.find((o) => o.value === ch);
+                  return (
+                    <Badge
+                      key={ch}
+                      variant="outline"
+                      className={`text-xs ${opt?.color ?? ""}`}
+                    >
+                      {opt?.icon && <span className="mr-1">{opt.icon}</span>}
+                      {opt?.label ?? ch}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -308,14 +418,15 @@ export default function SalesVsTarget() {
                 onEditClick={() => handleEditStore(store.store_id, store.store_name)}
                 daysElapsed={daysElapsed}
                 daysInMonth={daysInMonth}
-                monthlyTarget={store.has_target ? store.prorated_target * (daysInMonth / Math.max(daysElapsed, 1)) : undefined}
+                monthlyTarget={store.monthly_target}
+                activeChannelLabel={activeChannelLabel}
               />
             ))}
           </div>
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
-              No hay datos disponibles para el rango de fechas seleccionado
+              No hay datos disponibles para el rango de fechas y canal seleccionados
             </p>
           </div>
         )}
@@ -331,12 +442,10 @@ export default function SalesVsTarget() {
 
       {/* Floating button to report discrepancies */}
       {(() => {
-        // Determinar tienda y monto para el contexto del reporte
         const singleStoreId = effectiveStoreFilter.length === 1 ? effectiveStoreFilter[0] : undefined;
         const singleStore = singleStoreId
           ? data?.stores?.find((s) => (s.store_sap_id || s.store_id) === singleStoreId)
           : undefined;
-        // Si hay más de una tienda, sumar todas las ventas del período
         const totalSalesAmount = data?.stores
           ? Math.round(data.stores.reduce((sum, s) => sum + s.total_sales, 0))
           : undefined;
