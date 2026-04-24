@@ -50,8 +50,8 @@ export function NavigationMenu() {
   // Logo según tema: LogoReducidoclaro para tema oscuro, LogoReducido para tema claro
   const logoSrc =
     effectiveTheme === "dark"
-      ? "https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/LogoReducidoclaro_3a860eb9.svg"
-      : "https://d2xsxph8kpxj0f.cloudfront.net/310519663237488769/FtG2QpkuSgf93KimkBm45D/LogoReducido_67124a4f.svg";
+      ? "/LogoReducidoclaro.svg"
+      : "/LogoReducido.svg";
 
   const isActive = (path: string) => location === path;
   const isSalesActive =
