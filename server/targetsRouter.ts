@@ -8,38 +8,16 @@ import { TRPCError } from "@trpc/server";
 
 /**
  * Canales de venta reconocidos en el sistema.
- * Los IDs provienen de la tabla `source_system` (presencial y ecommerce)
- * y de `integration_systems` (Rappi).
  *
- * - "presencial": ICG, HIOPOS, ARISALE, IDBI  → tabla source_system
- * - "ecommerce":  VTEX (code = 'ecommerce')    → tabla source_system
- * - "rappi":      Rappi                         → tabla integration_systems
+ * El canal se determina por el valor de `methods_payment.payment_type_name`
+ * vinculado al `sales_header` a través de `methods_payment.header_id`.
+ *
+ * - "rappi":      payment_type_name = 'RAPPI'
+ * - "ecommerce":  payment_type_name = 'ECOMMERCE'
+ * - "presencial": payment_type_name NOT IN ('RAPPI', 'ECOMMERCE')
  * - "all":        Todos los canales sin filtro
  */
 export type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
-
-/**
- * IDs de source_system (tabla `source_system`) que corresponden al canal presencial.
- * ICG, HIOPOS, ARISALE, IDBI.
- */
-const PRESENCIAL_SOURCE_IDS = [
-  "1f6625d1-d8ad-4ee9-a85f-436cd21dc347", // ICG
-  "f76bf01c-b80a-4508-9908-53607a48f9b9", // HIOPOS
-  "0a0fa087-60db-40fe-88cd-0cd55e456416", // ARISALE
-  "553e361a-7f8d-422a-9b64-3e313b3f42ac", // IDBI
-];
-
-/**
- * ID de source_system (tabla `source_system`) que corresponde a eCommerce (VTEX).
- * code = 'ecommerce'
- */
-const ECOMMERCE_SOURCE_ID = "be387046-08e4-4229-a52c-7ff5c1569c89";
-
-/**
- * ID de integration_systems que corresponde a Rappi.
- * Las ventas de Rappi usan este ID en sales_header.source_system_id.
- */
-const RAPPI_SOURCE_ID = "10c2ee6b-696f-41cc-9c02-ad0d72c36d0b";
 
 export const targetsRouter = router({
   /**
@@ -68,27 +46,42 @@ export const targetsRouter = router({
         store_ids && store_ids.length > 0 ? `AND b.sap_id = ANY($3::text[])` : "";
       const queryParams: any[] = [fecha_min, fecha_max];
       if (store_ids && store_ids.length > 0) queryParams.push(store_ids);
-
-      // ── Construir filtro de canal ──────────────────────────────────────────
-      // Para Rappi: las ventas se identifican por la presencia de un registro
-      // en la tabla rappi_orders (o similar) vinculado al sales_header.
-      // Para eCommerce: source_system_id = ECOMMERCE_SOURCE_ID
-      // Para presencial: source_system_id IN PRESENCIAL_SOURCE_IDS
+      // ── Construir filtro de canal ──────────────────────────────────────────────
+      // El canal se determina por methods_payment.payment_type_name:
+      //   'RAPPI'     → canal Rappi
+      //   'ECOMMERCE' → canal eCommerce
+      //   cualquier otro valor → canal Presencial
+      //
+      // La consulta agrega un JOIN a methods_payment cuando se filtra por canal.
+      // Para evitar duplicar totales (una venta puede tener múltiples métodos de pago),
+      // usamos EXISTS en lugar de JOIN directo.
+      let channelJoin = "";
       let channelFilter = "";
+
       if (!activeChannels.includes("all")) {
         const conditions: string[] = [];
 
-        if (activeChannels.includes("ecommerce")) {
-          conditions.push(`sh.source_system_id = '${ECOMMERCE_SOURCE_ID}'`);
-        }
         if (activeChannels.includes("rappi")) {
-          // Rappi: las ventas tienen source_system_id = RAPPI_SOURCE_ID
-          // (ID de la tabla integration_systems, no de source_system)
-          conditions.push(`sh.source_system_id = '${RAPPI_SOURCE_ID}'`);
+          conditions.push(`EXISTS (
+            SELECT 1 FROM methods_payment mp_ch
+            WHERE mp_ch.header_id = sh.id
+              AND mp_ch.payment_type_name = 'RAPPI'
+          )`);
+        }
+        if (activeChannels.includes("ecommerce")) {
+          conditions.push(`EXISTS (
+            SELECT 1 FROM methods_payment mp_ch
+            WHERE mp_ch.header_id = sh.id
+              AND mp_ch.payment_type_name = 'ECOMMERCE'
+          )`);
         }
         if (activeChannels.includes("presencial")) {
-          const ids = PRESENCIAL_SOURCE_IDS.map((id) => `'${id}'`).join(",");
-          conditions.push(`sh.source_system_id IN (${ids})`);
+          // Presencial = NO tiene ningún método de pago de canal digital
+          conditions.push(`NOT EXISTS (
+            SELECT 1 FROM methods_payment mp_ch
+            WHERE mp_ch.header_id = sh.id
+              AND mp_ch.payment_type_name IN ('RAPPI', 'ECOMMERCE')
+          )`);
         }
 
         if (conditions.length > 0) {
