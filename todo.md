@@ -1985,3 +1985,7 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar filtro de canal en SalesVsTarget.tsx (Presencial / eCommerce / Rappi / Todos)
 - [x] Actualizar StoreTargetCard.tsx: badge de canal activo, prop activeChannelLabel
 - [x] 0 errores TypeScript
+
+## Favicon Dinámico por Tema
+- [x] Subir LogoReducido.svg (tema claro) y LogoReducidoclaro.svg (tema oscuro) como assets estáticos
+- [x] Configurar favicon dinámico en index.html con media query prefers-color-scheme
