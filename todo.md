@@ -1989,3 +1989,5 @@ Fecha: 1 de febrero de 2026
 ## Favicon Dinámico por Tema
 - [x] Subir LogoReducido.svg (tema claro) y LogoReducidoclaro.svg (tema oscuro) como assets estáticos
 - [x] Configurar favicon dinámico en index.html con media query prefers-color-scheme
+- [x] Generar apple-touch-icon.png 180x180 desde LogoReducido.svg y agregar en index.html
+- [x] Actualizar logo en NavigationMenu para usar los nuevos SVG del CDN (dinámico por tema)
