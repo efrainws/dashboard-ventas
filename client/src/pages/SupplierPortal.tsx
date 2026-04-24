@@ -679,7 +679,7 @@ export default function SupplierPortal() {
             {/* Filtro de fechas */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground whitespace-nowrap">Desde</label>
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
                 <Input
                   type="date"
                   value={from}
@@ -689,7 +689,7 @@ export default function SupplierPortal() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground whitespace-nowrap">Hasta</label>
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
                 <Input
                   type="date"
                   value={to}
@@ -1441,11 +1441,11 @@ export default function SupplierPortal() {
             {/* Filtros */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground whitespace-nowrap">Desde</label>
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
                 <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground whitespace-nowrap">Hasta</label>
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
                 <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               {/* Selector múltiple de productos del proveedor */}

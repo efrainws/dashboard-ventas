@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
 type Channel = typeof ALL_CHANNELS[number];
 
 export interface DashboardFiltersProps {
-  // Rango de fechas
+  // Rango de fechas (se mantiene la interfaz DateRange para compatibilidad con páginas existentes)
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
 
@@ -69,6 +69,23 @@ export function DashboardFilters({
     ? branches.find(b => b.sap_id === selectedBranch)?.name ?? selectedBranch
     : null;
 
+  // Handlers para los dos DatePicker independientes
+  const handleFromChange = (from: Date | undefined) => {
+    onDateRangeChange({ from, to: dateRange?.to });
+  };
+
+  const handleToChange = (to: Date | undefined) => {
+    onDateRangeChange({ from: dateRange?.from, to });
+  };
+
+  // Columnas del grid: 2 para fechas + sucursal + categoría + canal (opcional)
+  const colCount = showChannelFilter ? 5 : 4;
+  const gridClass = `grid gap-4 ${
+    colCount === 5
+      ? "md:grid-cols-5"
+      : "md:grid-cols-4"
+  }`;
+
   return (
     <Card>
       <CardHeader>
@@ -78,7 +95,7 @@ export function DashboardFilters({
               Filtros
             </CardTitle>
             <CardDescription>
-              Selecciona rangos de fechas, sucursales y departamentos para explorar los datos
+              Selecciona el período, sucursal y departamento para explorar los datos
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={onClearFilters}>
@@ -88,13 +105,27 @@ export function DashboardFilters({
         </div>
       </CardHeader>
       <CardContent>
-        <div className={`grid gap-6 ${showChannelFilter ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-          {/* Rango de Fechas */}
+        <div className={gridClass}>
+          {/* Fecha Inicio */}
           <div className="space-y-2">
-            <Label>Rango de Fechas</Label>
-            <DatePickerWithRange
-              date={dateRange}
-              onDateChange={onDateRangeChange}
+            <Label>Fecha Inicio</Label>
+            <DatePicker
+              date={dateRange?.from}
+              onDateChange={handleFromChange}
+              placeholder="Fecha inicio"
+              maxDate={dateRange?.to ?? new Date()}
+            />
+          </div>
+
+          {/* Fecha Fin */}
+          <div className="space-y-2">
+            <Label>Fecha Fin</Label>
+            <DatePicker
+              date={dateRange?.to}
+              onDateChange={handleToChange}
+              placeholder="Fecha fin"
+              minDate={dateRange?.from}
+              maxDate={new Date()}
             />
           </div>
 

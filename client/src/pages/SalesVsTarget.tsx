@@ -4,15 +4,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Plus, Lock, X, Store, ShoppingCart, Bike } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Loader2, Plus, Lock, X, Store, ShoppingCart, Bike } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { StoreTargetCard } from "@/components/StoreTargetCard";
 import { TargetEditModal } from "@/components/TargetEditModal";
@@ -232,44 +225,28 @@ export default function SalesVsTarget() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Rango de Fechas */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Fecha Inicio */}
               <div className="space-y-2">
-                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Rango de Fechas</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange?.from ? (
-                        dateRange.to ? (
-                          <>
-                            {format(dateRange.from, "dd MMM yyyy", { locale: es })} -{" "}
-                            {format(dateRange.to, "dd MMM yyyy", { locale: es })}
-                          </>
-                        ) : (
-                          format(dateRange.from, "dd MMM yyyy", { locale: es })
-                        )
-                      ) : (
-                        <span>Seleccionar rango</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={2}
-                      locale={es}
-                      disabled={{ after: new Date() }}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Fecha Inicio</Label>
+                <DatePicker
+                  date={dateRange?.from}
+                  onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                  placeholder="Fecha inicio"
+                  maxDate={dateRange?.to ?? new Date()}
+                />
+              </div>
+
+              {/* Fecha Fin */}
+              <div className="space-y-2">
+                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Fecha Fin</Label>
+                <DatePicker
+                  date={dateRange?.to}
+                  onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                  placeholder="Fecha fin"
+                  minDate={dateRange?.from}
+                  maxDate={new Date()}
+                />
               </div>
 
               {/* Filtro de Tiendas — bloqueado para store_user */}

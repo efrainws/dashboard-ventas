@@ -1991,3 +1991,8 @@ Fecha: 1 de febrero de 2026
 - [x] Configurar favicon dinámico en index.html con media query prefers-color-scheme
 - [x] Generar apple-touch-icon.png 180x180 desde LogoReducido.svg y agregar en index.html
 - [x] Actualizar logo en NavigationMenu para usar los nuevos SVG del CDN (dinámico por tema)
+
+## Separación de filtros de fecha
+- [x] Reemplazar DatePickerWithRange por dos DatePicker independientes en DashboardFilters
+- [x] Actualizar SalesVsTarget con dos DatePicker independientes
+- [x] Actualizar labels Fecha inicio/Fecha fin en OwnBrandPortal y SupplierPortal
