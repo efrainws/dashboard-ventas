@@ -47,11 +47,8 @@ export function NavigationMenu() {
     refetchInterval: 60_000,
   });
 
-  // Logo según tema: LogoReducidoclaro para tema oscuro, LogoReducido para tema claro
-  const logoSrc =
-    effectiveTheme === "dark"
-      ? "/LogoReducidoclaro.svg"
-      : "/LogoReducido.svg";
+  // Logo según tema: Logoclarochico para tema oscuro, Logonegro para tema claro
+  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
 
   const isActive = (path: string) => location === path;
   const isSalesActive =
