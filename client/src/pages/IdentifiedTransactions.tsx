@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Loader2,
   Users,
@@ -257,11 +257,28 @@ export default function IdentifiedTransactions() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Rango de Fechas */}
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* Fecha Inicio */}
               <div className="space-y-2">
-                <Label>Rango de Fechas</Label>
-                <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
+                <Label>Fecha Inicio</Label>
+                <DatePicker
+                  date={dateRange?.from}
+                  onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                  placeholder="Fecha inicio"
+                  maxDate={dateRange?.to ?? new Date()}
+                />
+              </div>
+
+              {/* Fecha Fin */}
+              <div className="space-y-2">
+                <Label>Fecha Fin</Label>
+                <DatePicker
+                  date={dateRange?.to}
+                  onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                  placeholder="Fecha fin"
+                  minDate={dateRange?.from}
+                  maxDate={new Date()}
+                />
               </div>
 
               {/* Tienda — bloqueado para store_user */}

@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { DateRange } from "react-day-picker";
 
 export default function HourlyAnalysis() {
@@ -246,13 +246,27 @@ export default function HourlyAnalysis() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* DateRangePicker unificado */}
+              <div className="grid gap-4 md:grid-cols-4">
+                {/* Fecha Inicio */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Rango de Fechas</label>
-                  <DatePickerWithRange
-                    date={dateRange}
-                    onDateChange={setDateRange}
+                  <label className="text-sm font-medium">Fecha Inicio</label>
+                  <DatePicker
+                    date={dateRange?.from}
+                    onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                    placeholder="Fecha inicio"
+                    maxDate={dateRange?.to ?? new Date()}
+                  />
+                </div>
+
+                {/* Fecha Fin */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Fecha Fin</label>
+                  <DatePicker
+                    date={dateRange?.to}
+                    onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                    placeholder="Fecha fin"
+                    minDate={dateRange?.from}
+                    maxDate={new Date()}
                   />
                 </div>
 

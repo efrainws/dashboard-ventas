@@ -1996,3 +1996,7 @@ Fecha: 1 de febrero de 2026
 - [x] Reemplazar DatePickerWithRange por dos DatePicker independientes en DashboardFilters
 - [x] Actualizar SalesVsTarget con dos DatePicker independientes
 - [x] Actualizar labels Fecha inicio/Fecha fin en OwnBrandPortal y SupplierPortal
+
+## Separación de filtros de fecha — HourlyAnalysis e IdentifiedTransactions
+- [x] Actualizar HourlyAnalysis con dos DatePicker independientes (Fecha inicio / Fecha fin)
+- [x] Actualizar IdentifiedTransactions con dos DatePicker independientes (Fecha inicio / Fecha fin)
