@@ -485,10 +485,13 @@ function CategoriesManager() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {summary.map(cat => (
-            <button
+            <div
               key={cat.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              className={`rounded-xl p-4 text-left border-2 transition-all ${
+              onKeyDown={e => e.key === "Enter" && setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+              className={`rounded-xl p-4 text-left border-2 transition-all cursor-pointer ${
                 selectedCategory === cat.id ? "border-opacity-100 shadow-md" : "border-transparent"
               }`}
               style={{
@@ -501,13 +504,16 @@ function CategoriesManager() {
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ background: cat.color ?? "#008064" }}
                 />
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={e => { e.stopPropagation(); if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); }}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); } }}
+                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
                   title="Eliminar categoría"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </span>
               </div>
               <p className="text-sm font-semibold leading-tight" style={{ color: cat.color ?? "#008064" }}>{cat.name}</p>
               {cat.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{cat.description}</p>}
@@ -515,7 +521,7 @@ function CategoriesManager() {
                 {cat.productCount}
               </p>
               <p className="text-xs text-muted-foreground">producto{cat.productCount !== 1 ? "s" : ""}</p>
-            </button>
+            </div>
           ))}
         </div>
       )}
