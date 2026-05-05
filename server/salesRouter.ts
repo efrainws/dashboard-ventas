@@ -1079,4 +1079,76 @@ export const salesRouter = router({
         throw new Error('Error al consultar transacciones identificadas');
       }
     }),
+
+  /**
+   * Devuelve datos agregados por día de semana × hora para el mapa de calor
+   * Eje Y: día de semana (0=Domingo … 6=Sábado, en zona horaria Lima UTC-5)
+   * Eje X: hora del día (0-23, en zona horaria Lima UTC-5)
+   */
+  getHeatmapData: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_id: z.string().optional(),
+        metric: z.enum(['amount', 'transactions']).default('amount'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, metric } = input;
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      // Convertir timestamp a hora local Lima (UTC-5) antes de extraer día y hora
+      const metricExpr = metric === 'amount'
+        ? 'SUM(sd.total)'
+        : 'COUNT(DISTINCT sh.id)';
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sd.total AS line_total,
+            -- Convertir a hora local Lima (UTC-5)
+            (sh.doc_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') AS local_ts
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
+          WHERE sh.doc_date IS NOT NULL
+            AND sh.doc_date::date >= '${fechaMinDate}'::date
+            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          EXTRACT(DOW FROM local_ts)::int   AS day_of_week,
+          EXTRACT(HOUR FROM local_ts)::int  AS hour_of_day,
+          ${metricExpr.replace('sd.total', 'line_total').replace('sh.id', 'sale_id')} AS value
+        FROM base
+        GROUP BY day_of_week, hour_of_day
+        ORDER BY day_of_week, hour_of_day;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        return {
+          success: true,
+          data: result.rows as Array<{ day_of_week: number; hour_of_day: number; value: string }>,
+          metadata: { fecha_min: fechaMinDate, fecha_max: fechaMaxDate, metric },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing heatmap query:', error);
+        throw new Error('Error al consultar datos del mapa de calor');
+      }
+    }),
 });

@@ -2000,3 +2000,8 @@ Fecha: 1 de febrero de 2026
 ## Separación de filtros de fecha — HourlyAnalysis e IdentifiedTransactions
 - [x] Actualizar HourlyAnalysis con dos DatePicker independientes (Fecha inicio / Fecha fin)
 - [x] Actualizar IdentifiedTransactions con dos DatePicker independientes (Fecha inicio / Fecha fin)
+
+## Mapa de Calor en Análisis por Horas
+- [x] Actualizar hourlyRouter para devolver datos agrupados por día de semana y hora
+- [x] Crear componente HeatmapChart (día semana × hora, toggle monto/transacciones)
+- [x] Agregar sección de mapa de calor en HourlyAnalysis.tsx

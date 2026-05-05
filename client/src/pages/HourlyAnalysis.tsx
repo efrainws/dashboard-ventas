@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { DateRange } from "react-day-picker";
+import { HeatmapChart } from "@/components/HeatmapChart";
 
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
@@ -431,6 +432,13 @@ export default function HourlyAnalysis() {
 
             {/* Gráfico de línea: Ventas y Transacciones por Hora */}
             <HourlyLineChart data={filteredData} />
+
+            {/* Mapa de calor: Actividad por Día de Semana × Hora */}
+            <HeatmapChart
+              fechaMin={filters.fecha_min || ''}
+              fechaMax={filters.fecha_max || ''}
+              branchId={selectedBranch !== 'all' ? selectedBranch : undefined}
+            />
           </>
         )}
 
