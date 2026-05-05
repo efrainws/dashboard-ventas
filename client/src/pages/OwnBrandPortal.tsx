@@ -36,6 +36,8 @@ import {
   Bar,
   LineChart,
   Line,
+  PieChart,
+  Pie,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -656,6 +658,8 @@ export default function OwnBrandPortal() {
   const [productSearch, setProductSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingStock, setIsExportingStock] = useState(false);
+  // Filtro de categoría interna (compartido entre Dashboard, Ventas, Catálogo y Stock)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
@@ -690,16 +694,16 @@ export default function OwnBrandPortal() {
 
   // Queries
   const { data: summary, isLoading: summaryLoading } =
-    trpc.ownBrand.getSalesSummary.useQuery({ from, to }, { enabled: canAccessPortal });
+    trpc.ownBrand.getSalesSummary.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
 
   const { data: dailySales, isLoading: dailyLoading } =
-    trpc.ownBrand.getDailySales.useQuery({ from, to }, { enabled: canAccessPortal });
+    trpc.ownBrand.getDailySales.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
 
   const { data: topProducts, isLoading: topLoading } =
-    trpc.ownBrand.getTopProducts.useQuery({ from, to, limit: 10 }, { enabled: canAccessPortal });
+    trpc.ownBrand.getTopProducts.useQuery({ from, to, limit: 10, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
 
   const { data: salesByBranch, isLoading: branchLoading } =
-    trpc.ownBrand.getSalesByBranch.useQuery({ from, to }, { enabled: canAccessPortal });
+    trpc.ownBrand.getSalesByBranch.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
 
   const { data: monthlySales, isLoading: monthlyLoading } =
     trpc.ownBrand.getMonthlySales.useQuery(undefined, { enabled: canAccessPortal });
@@ -713,10 +717,19 @@ export default function OwnBrandPortal() {
   const { data: brandProducts, isLoading: brandProductsLoading } =
     trpc.ownBrand.getProductsForBrand.useQuery(undefined, { enabled: canAccessPortal });
 
+  // Categorías internas para el selector de filtro
+  const { data: internalCategories } =
+    trpc.ownBrandCategories.listCategories.useQuery(undefined, { enabled: canAccessPortal });
+
+  // Ventas agrupadas por categoría interna (para gráfico de pie en Dashboard)
+  const { data: salesByCategory, isLoading: salesByCategoryLoading } =
+    trpc.ownBrand.getSalesByCategory.useQuery({ from, to }, { enabled: canAccessPortal && activeTab === "dashboard" });
+
   const { data: stockData, isLoading: stockLoading } =
     trpc.ownBrand.getStockByProduct.useQuery({
       productId: stockProductId,
       branchId: stockBranchId,
+      categoryId: selectedCategoryId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
     }, { enabled: canAccessPortal });
@@ -726,6 +739,7 @@ export default function OwnBrandPortal() {
       search: catalogProductId
         ? brandProducts?.find((p) => p.id === catalogProductId)?.name
         : undefined,
+      categoryId: selectedCategoryId,
       limit: PAGE_SIZE,
       offset: catalogPage * PAGE_SIZE,
     }, { enabled: canAccessPortal });
@@ -751,6 +765,7 @@ export default function OwnBrandPortal() {
       to,
       productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
       branchId: salesBranchId,
+      categoryId: selectedCategoryId,
       groupByProduct: showProduct,
       groupByStore: showStore,
       limit: PAGE_SIZE,
@@ -762,6 +777,7 @@ export default function OwnBrandPortal() {
     to,
     productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
     branchId: salesBranchId,
+    categoryId: selectedCategoryId,
     groupByProduct: showProduct,
     groupByStore: showStore,
   }, { enabled: false });
@@ -791,6 +807,7 @@ export default function OwnBrandPortal() {
   const exportStockQuery = trpc.ownBrand.exportStockByProduct.useQuery({
     productId: stockProductId,
     branchId: stockBranchId,
+    categoryId: selectedCategoryId,
   }, { enabled: false });
 
   const handleDownloadStockCSV = async () => {
@@ -852,6 +869,49 @@ export default function OwnBrandPortal() {
   const CHART_COLORS = [
     "#008064", "#1A6894", "#5BB6B7", "#C49705", "#BC2C46", "#E5BAC1",
   ];
+
+  // Datos del gráfico de pie de categorías
+  const categoryPieData = useMemo(() => {
+    if (!salesByCategory) return [];
+    return salesByCategory.map((c) => ({
+      name: c.categoryName,
+      value: parseFloat(c.totalVentas),
+      unidades: parseFloat(c.totalUnidades),
+      color: c.categoryColor,
+    }));
+  }, [salesByCategory]);
+
+  /** Selector de categoría interna reutilizable en las 4 pestañas */
+  const CategoryFilter = () => (
+    <Select
+      value={selectedCategoryId != null ? String(selectedCategoryId) : "all"}
+      onValueChange={(v) => {
+        setSelectedCategoryId(v === "all" ? undefined : Number(v));
+        setSalesPage(0);
+        setStockPage(0);
+        setCatalogPage(0);
+      }}
+    >
+      <SelectTrigger className="h-8 w-[200px] text-sm">
+        <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+        <SelectValue placeholder="Todas las categorías" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all"><span>Todas las categorías</span></SelectItem>
+        {(internalCategories ?? []).filter(c => c.isActive).map((c) => (
+          <SelectItem key={c.id} value={String(c.id)}>
+            <span className="flex items-center gap-2">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ background: c.color ?? "#008064" }}
+              />
+              {c.name}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   const monthlyChartData = useMemo(() => {
     if (!monthlySales) return [];
@@ -974,6 +1034,13 @@ export default function OwnBrandPortal() {
               <Button variant="outline" size="sm" onClick={() => { setFrom(defaultFrom()); setTo(defaultTo()); }}>
                 Este mes
               </Button>
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
+              {selectedCategoryId != null && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedCategoryId(undefined)}>
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Limpiar categoría
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1023,6 +1090,132 @@ export default function OwnBrandPortal() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Gráfico de Pie + Tabla de Ventas por Categoría Interna */}
+            {(salesByCategoryLoading || (categoryPieData && categoryPieData.length > 0)) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" style={{ color: "#008064" }} />
+                      Ventas por Categoría Interna
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {salesByCategoryLoading ? (
+                      <Skeleton className="h-52 w-full" />
+                    ) : categoryPieData.length === 0 ? (
+                      <div className="flex items-center justify-center h-52 text-muted-foreground text-sm">
+                        Sin categorías con ventas en el período
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie
+                            data={categoryPieData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={90}
+                            innerRadius={40}
+                            paddingAngle={2}
+                            label={({ name, percent }) =>
+                              percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ""
+                            }
+                            labelLine={false}
+                          >
+                            {categoryPieData.map((entry, i) => (
+                              <Cell key={i} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number, name: string) => [
+                              fmtCurrency(value),
+                              name,
+                            ]}
+                            contentStyle={{
+                              background: "var(--card)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "0.5rem",
+                            }}
+                          />
+                          <Legend
+                            formatter={(value: string) => (
+                              <span className="text-xs text-foreground">{value}</span>
+                            )}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" style={{ color: "#1A6894" }} />
+                      Resumen por Categoría
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-6 pb-6">
+                    {salesByCategoryLoading ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <Skeleton key={i} className="h-8 w-full" />
+                        ))}
+                      </div>
+                    ) : categoryPieData.length === 0 ? (
+                      <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                        Sin datos
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Categoría</TableHead>
+                              <TableHead className="text-xs text-right">Monto Ventas</TableHead>
+                              <TableHead className="text-xs text-right">Unidades</TableHead>
+                              <TableHead className="text-xs text-right">% Ventas</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(() => {
+                              const totalVentas = categoryPieData.reduce((s, c) => s + c.value, 0);
+                              return categoryPieData.map((c, i) => (
+                                <TableRow key={i}>
+                                  <TableCell className="text-xs">
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                        style={{ background: c.color }}
+                                      />
+                                      <span className="font-medium">{c.name}</span>
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right font-medium">
+                                    {fmtCurrency(c.value)}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right">
+                                    {fmt(c.unidades)}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right text-muted-foreground">
+                                    {totalVentas > 0
+                                      ? `${((c.value / totalVentas) * 100).toFixed(1)}%`
+                                      : "—"}
+                                  </TableCell>
+                                </TableRow>
+                              ));
+                            })()}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border/50">
@@ -1107,6 +1300,13 @@ export default function OwnBrandPortal() {
         {activeTab === "productos" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
+              {selectedCategoryId != null && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedCategoryId(undefined)}>
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Limpiar categoría
+                </Button>
+              )}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
                   value={catalogProductId ?? "all"}
@@ -1217,6 +1417,7 @@ export default function OwnBrandPortal() {
         {activeTab === "stock" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
                   value={stockProductId ?? "all"}
@@ -1272,8 +1473,8 @@ export default function OwnBrandPortal() {
                 </SelectContent>
               </Select>
 
-              {(stockProductId || stockBranchId) && (
-                <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={() => { setStockProductId(undefined); setStockProductSearch(""); setStockBranchId(undefined); setStockPage(0); }}>
+              {(stockProductId || stockBranchId || selectedCategoryId != null) && (
+                <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={() => { setStockProductId(undefined); setStockProductSearch(""); setStockBranchId(undefined); setStockPage(0); setSelectedCategoryId(undefined); }}>
                   Limpiar filtros
                 </Button>
               )}
@@ -1440,6 +1641,13 @@ export default function OwnBrandPortal() {
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
                 <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
+              {selectedCategoryId != null && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setSelectedCategoryId(undefined); setSalesPage(0); }}>
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Limpiar categoría
+                </Button>
+              )}
               {/* Selector múltiple de artículos Marca Propia */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <MultiProductSelect

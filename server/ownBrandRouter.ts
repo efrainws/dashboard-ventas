@@ -7,13 +7,19 @@
  * DIFERENCIA CLAVE vs supplierPortalRouter:
  * En lugar de filtrar por proveedor, se filtra por las marcas (brand_id) configuradas
  * en own_brand_brands. Cualquier own_brand_user ve todos los artículos de esas marcas.
+ *
+ * FILTRO DE CATEGORÍA INTERNA:
+ * Los procedimientos que aceptan `categoryId` consultan MySQL para obtener los UUIDs
+ * de productos asignados a esa categoría, y luego los usan como filtro adicional en
+ * las queries de PostgreSQL con `AND p.id = ANY($N::uuid[])`.
+ * Si categoryId no se proporciona, se muestran todos los productos de Marca Propia.
  */
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { getDb } from "./db";
-import { ownBrandBrands } from "../drizzle/schema";
+import { ownBrandBrands, ownBrandProductCategories } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
@@ -40,6 +46,11 @@ const dateRangeSchema = z.object({
   to: z.string().optional(),
 });
 
+/** Schema base con rango de fechas + filtro de categoría interna opcional */
+const dateRangeCategorySchema = dateRangeSchema.extend({
+  categoryId: z.number().int().positive().optional(),
+});
+
 /**
  * Obtiene los brand_ids configurados como Marca Propia desde MySQL.
  * Retorna un array de strings (UUIDs).
@@ -49,6 +60,21 @@ async function getOwnBrandIds(): Promise<string[]> {
   if (!db) return [];
   const rows = await db.select({ brandId: ownBrandBrands.brandId }).from(ownBrandBrands);
   return rows.map((r: { brandId: string }) => r.brandId);
+}
+
+/**
+ * Obtiene los IDs de artículos (UUIDs de PostgreSQL) asignados a una categoría interna.
+ * Consulta MySQL una sola vez y devuelve los UUIDs para usarlos como filtro en PostgreSQL.
+ * Retorna null si no se especifica categoryId (sin filtro de categoría).
+ */
+async function getProductIdsByCategory(categoryId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ articleId: ownBrandProductCategories.articleId })
+    .from(ownBrandProductCategories)
+    .where(eq(ownBrandProductCategories.categoryId, categoryId));
+  return rows.map((r: { articleId: string }) => r.articleId);
 }
 
 /**
@@ -65,6 +91,26 @@ function buildBrandProductsSubquery(brandIds: string[], startParamIdx: number): 
     subquery: `(SELECT id FROM public.products WHERE brand_id IN (${placeholders}))`,
     params: brandIds,
   };
+}
+
+/**
+ * Agrega la cláusula de filtro por categoría interna a los params y clauses.
+ * Si categoryProductIds es null, no agrega ningún filtro.
+ * Si categoryProductIds es un array vacío, agrega una cláusula que no devuelve resultados.
+ */
+function addCategoryFilter(
+  params: (string | number | string[])[],
+  clauses: string[],
+  categoryProductIds: string[] | null
+): void {
+  if (categoryProductIds === null) return;
+  if (categoryProductIds.length === 0) {
+    // Sin productos en la categoría → forzar resultado vacío
+    clauses.push("AND false");
+    return;
+  }
+  params.push(categoryProductIds);
+  clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
 }
 
 export const ownBrandRouter = router({
@@ -132,9 +178,10 @@ export const ownBrandRouter = router({
 
   /**
    * KPIs de ventas de los productos Marca Propia en el rango de fechas.
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getSalesSummary: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeCategorySchema)
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -145,8 +192,19 @@ export const ownBrandRouter = router({
         return { total_tickets: 0, productos_vendidos: 0, total_ventas: "0", total_unidades: "0", tiendas_activas: 0 };
       }
 
+      // Filtro de categoría interna: consulta MySQL una sola vez
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) {
+        return { total_tickets: 0, productos_vendidos: 0, total_ventas: "0", total_unidades: "0", tiendas_activas: 0 };
+      }
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-      const fromIdx = brandParams.length + 1;
+      const params: (string | number | string[])[] = [...brandParams];
+      const clauses: string[] = [];
+      addCategoryFilter(params, clauses, categoryProductIds);
+      const fromIdx = params.length + 1;
       const toIdx = fromIdx + 1;
 
       const res = await pool.query(
@@ -160,8 +218,9 @@ export const ownBrandRouter = router({
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
+           ${clauses.join(" ")}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}`,
-        [...brandParams, from, to]
+        [...params, from, to]
       );
       return res.rows[0] as {
         total_tickets: number;
@@ -174,9 +233,10 @@ export const ownBrandRouter = router({
 
   /**
    * Ventas diarias de Marca Propia (para gráfico de tendencia).
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getDailySales: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeCategorySchema)
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -185,8 +245,16 @@ export const ownBrandRouter = router({
 
       if (brandIds.length === 0) return [];
 
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-      const fromIdx = brandParams.length + 1;
+      const params: (string | number | string[])[] = [...brandParams];
+      const clauses: string[] = [];
+      addCategoryFilter(params, clauses, categoryProductIds);
+      const fromIdx = params.length + 1;
       const toIdx = fromIdx + 1;
 
       const res = await pool.query(
@@ -199,19 +267,21 @@ export const ownBrandRouter = router({
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
+           ${clauses.join(" ")}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
          GROUP BY sh.doc_date::date
          ORDER BY fecha ASC`,
-        [...brandParams, from, to]
+        [...params, from, to]
       );
       return res.rows as Array<{ fecha: string; total_ventas: string; tickets: number; unidades: string }>;
     }),
 
   /**
    * Top productos Marca Propia más vendidos.
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getTopProducts: protectedProcedure
-    .input(dateRangeSchema.extend({ limit: z.number().min(1).max(50).default(10) }))
+    .input(dateRangeCategorySchema.extend({ limit: z.number().min(1).max(50).default(10) }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -220,8 +290,16 @@ export const ownBrandRouter = router({
 
       if (brandIds.length === 0) return [];
 
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-      const fromIdx = brandParams.length + 1;
+      const params: (string | number | string[])[] = [...brandParams];
+      const clauses: string[] = [];
+      addCategoryFilter(params, clauses, categoryProductIds);
+      const fromIdx = params.length + 1;
       const toIdx = fromIdx + 1;
       const limitIdx = toIdx + 1;
 
@@ -236,20 +314,22 @@ export const ownBrandRouter = router({
          JOIN public.products p ON p.id = sd.product_id
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
+           ${clauses.join(" ")}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
          GROUP BY p.id, p.name, p.int_sku
          ORDER BY total_ventas DESC
          LIMIT $${limitIdx}`,
-        [...brandParams, from, to, input.limit]
+        [...params, from, to, input.limit]
       );
       return res.rows as Array<{ producto: string; int_sku: string; total_ventas: string; unidades_vendidas: string; tickets: number }>;
     }),
 
   /**
    * Ventas por tienda de Marca Propia.
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getSalesByBranch: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeCategorySchema)
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -258,8 +338,16 @@ export const ownBrandRouter = router({
 
       if (brandIds.length === 0) return [];
 
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-      const fromIdx = brandParams.length + 1;
+      const params: (string | number | string[])[] = [...brandParams];
+      const clauses: string[] = [];
+      addCategoryFilter(params, clauses, categoryProductIds);
+      const fromIdx = params.length + 1;
       const toIdx = fromIdx + 1;
 
       const res = await pool.query(
@@ -274,10 +362,11 @@ export const ownBrandRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          JOIN public.branches b ON b.id = sh.branch_id
          WHERE p.id IN ${subquery}
+           ${clauses.join(" ")}
            AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
          GROUP BY b.id, b.name, b.sap_id
          ORDER BY total_ventas DESC`,
-        [...brandParams, from, to]
+        [...params, from, to]
       );
       return res.rows as Array<{ tienda: string; sap_id: string; total_ventas: string; unidades: string; tickets: number }>;
     }),
@@ -309,6 +398,110 @@ export const ownBrandRouter = router({
     );
     return res.rows as Array<{ mes: string; total_ventas: string; tickets: number; unidades: string }>;
   }),
+
+  // ─── VENTAS POR CATEGORÍA INTERNA (para gráfico de pie en Dashboard) ──────────
+
+  /**
+   * Ventas agrupadas por categoría interna de Marca Propia.
+   * Devuelve [{categoryId, categoryName, categoryColor, totalVentas, totalUnidades}]
+   * para el gráfico de pie del Dashboard.
+   */
+  getSalesByCategory: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      assertAccess((ctx.user as any).role);
+      const brandIds = await getOwnBrandIds();
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+      if (brandIds.length === 0) return [];
+
+      // Obtener todas las asignaciones de categorías desde MySQL
+      const db = await getDb();
+      if (!db) return [];
+
+      // Importar las tablas necesarias para la consulta
+      const { ownBrandCategories } = await import("../drizzle/schema");
+
+      // Obtener categorías con sus productos asignados
+      const assignments = await db
+        .select({
+          articleId: ownBrandProductCategories.articleId,
+          categoryId: ownBrandProductCategories.categoryId,
+        })
+        .from(ownBrandProductCategories);
+
+      if (assignments.length === 0) return [];
+
+      // Obtener las categorías para tener nombre y color
+      const categories = await db
+        .select({
+          id: ownBrandCategories.id,
+          name: ownBrandCategories.name,
+          color: ownBrandCategories.color,
+        })
+        .from(ownBrandCategories);
+
+      const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+      // Agrupar articleIds por categoryId
+      const categoryArticles = new Map<number, string[]>();
+      for (const a of assignments) {
+        if (!categoryArticles.has(a.categoryId)) {
+          categoryArticles.set(a.categoryId, []);
+        }
+        categoryArticles.get(a.categoryId)!.push(a.articleId);
+      }
+
+      // Para cada categoría, consultar ventas en PostgreSQL
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+
+      const results: Array<{
+        categoryId: number;
+        categoryName: string;
+        categoryColor: string;
+        totalVentas: string;
+        totalUnidades: string;
+      }> = [];
+
+      for (const [catId, articleIds] of Array.from(categoryArticles.entries())) {
+        const cat = categoryMap.get(catId);
+        if (!cat) continue;
+
+        const params: (string | number | string[])[] = [...brandParams];
+        params.push(articleIds);
+        const catFilterIdx = params.length;
+        const fromIdx = catFilterIdx + 1;
+        const toIdx = fromIdx + 1;
+
+        const res = await pool.query(
+          `SELECT
+             ROUND(SUM(sd.total)::numeric, 2)  AS total_ventas,
+             ROUND(SUM(sd.quantity)::numeric, 2) AS total_unidades
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE p.id IN ${subquery}
+             AND p.id = ANY($${catFilterIdx}::uuid[])
+             AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}`,
+          [...params, from, to]
+        );
+
+        const row = res.rows[0];
+        if (row && (parseFloat(row.total_ventas) > 0 || parseFloat(row.total_unidades) > 0)) {
+          results.push({
+            categoryId: catId,
+            categoryName: cat.name,
+            categoryColor: cat.color ?? "#008064",
+            totalVentas: row.total_ventas ?? "0",
+            totalUnidades: row.total_unidades ?? "0",
+          });
+        }
+      }
+
+      // Ordenar por ventas descendente
+      return results.sort((a, b) => parseFloat(b.totalVentas) - parseFloat(a.totalVentas));
+    }),
 
   // ─── TIENDAS PARA FILTROS ─────────────────────────────────────────────────────
 
@@ -363,6 +556,7 @@ export const ownBrandRouter = router({
 
   /**
    * Stock actual de los productos Marca Propia por tienda.
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getStockByProduct: protectedProcedure
     .input(
@@ -370,6 +564,7 @@ export const ownBrandRouter = router({
         search: z.string().optional(),
         productId: z.string().optional(),
         branchId: z.string().optional(),
+        categoryId: z.number().int().positive().optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -379,6 +574,13 @@ export const ownBrandRouter = router({
       const brandIds = await getOwnBrandIds();
       if (brandIds.length === 0) return { rows: [], total: 0 };
 
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
 
       if (input.productId) {
@@ -386,9 +588,15 @@ export const ownBrandRouter = router({
         const pidIdx = brandParams.length + 1;
         const limitIdx = pidIdx + 1;
         const offsetIdx = limitIdx + 1;
-        const params: (string | number)[] = [...brandParams, input.productId, input.limit, input.offset];
+        const params: (string | number | string[])[] = [...brandParams, input.productId, input.limit, input.offset];
         const branchClause = input.branchId ? `AND b.id = $${offsetIdx + 1}` : "";
         if (input.branchId) params.push(input.branchId);
+
+        // Si hay filtro de categoría, verificar que el producto pertenezca a esa categoría
+        const catCheck = categoryProductIds !== null
+          ? `AND id = ANY($${params.length + 1}::uuid[])`
+          : "";
+        if (categoryProductIds !== null) params.push(categoryProductIds);
 
         const res = await pool.query(
           `SELECT
@@ -402,7 +610,7 @@ export const ownBrandRouter = router({
            FROM public.branches b
            CROSS JOIN (
              SELECT id, name, int_sku FROM public.products
-             WHERE id = $${pidIdx} AND id IN ${subquery}
+             WHERE id = $${pidIdx} AND id IN ${subquery} ${catCheck}
            ) p
            LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
            WHERE 1=1 ${branchClause}
@@ -411,14 +619,19 @@ export const ownBrandRouter = router({
           params
         );
 
-        const countParams: (string | number)[] = [...brandParams, input.productId];
+        const countParams: (string | number | string[])[] = [...brandParams, input.productId];
         if (input.branchId) countParams.push(input.branchId);
+        const catCheckCount = categoryProductIds !== null
+          ? `AND id = ANY($${countParams.length + 1}::uuid[])`
+          : "";
+        if (categoryProductIds !== null) countParams.push(categoryProductIds);
+
         const countRes = await pool.query(
           `SELECT COUNT(*)::int AS total
            FROM public.branches b
            CROSS JOIN (
              SELECT id FROM public.products
-             WHERE id = $${pidIdx} AND id IN ${subquery}
+             WHERE id = $${pidIdx} AND id IN ${subquery} ${catCheckCount}
            ) p
            WHERE 1=1 ${input.branchId ? `AND b.id = $${brandParams.length + 2}` : ""}`,
           countParams
@@ -431,7 +644,7 @@ export const ownBrandRouter = router({
       }
 
       // Sin producto específico: solo filas con stock > 0
-      const extraParams: (string | number)[] = [...brandParams, input.limit, input.offset];
+      const extraParams: (string | number | string[])[] = [...brandParams, input.limit, input.offset];
       const extraClauses: string[] = [];
 
       if (input.search) {
@@ -442,6 +655,7 @@ export const ownBrandRouter = router({
         extraParams.push(input.branchId);
         extraClauses.push(`AND b.id = $${extraParams.length}`);
       }
+      addCategoryFilter(extraParams, extraClauses, categoryProductIds);
 
       const limitIdx = brandParams.length + 1;
       const offsetIdx = limitIdx + 1;
@@ -466,7 +680,7 @@ export const ownBrandRouter = router({
         extraParams
       );
 
-      const countExtraParams: (string | number)[] = [...brandParams];
+      const countExtraParams: (string | number | string[])[] = [...brandParams];
       const countClauses: string[] = [];
       if (input.search) {
         countExtraParams.push(`%${input.search}%`);
@@ -476,6 +690,7 @@ export const ownBrandRouter = router({
         countExtraParams.push(input.branchId);
         countClauses.push(`AND b.id = $${countExtraParams.length}`);
       }
+      addCategoryFilter(countExtraParams, countClauses, categoryProductIds);
 
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
@@ -496,21 +711,35 @@ export const ownBrandRouter = router({
 
   /**
    * Exportación completa del stock Marca Propia (sin paginación).
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   exportStockByProduct: protectedProcedure
-    .input(z.object({ productId: z.string().optional(), branchId: z.string().optional() }))
+    .input(z.object({
+      productId: z.string().optional(),
+      branchId: z.string().optional(),
+      categoryId: z.number().int().positive().optional(),
+    }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
       if (brandIds.length === 0) return [];
 
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
+
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
 
       if (input.productId) {
         const pidIdx = brandParams.length + 1;
-        const params: (string | number)[] = [...brandParams, input.productId];
+        const params: (string | number | string[])[] = [...brandParams, input.productId];
         const branchClause = input.branchId ? `AND b.id = $${params.length + 1}` : "";
         if (input.branchId) params.push(input.branchId);
+        const catCheck = categoryProductIds !== null
+          ? `AND id = ANY($${params.length + 1}::uuid[])`
+          : "";
+        if (categoryProductIds !== null) params.push(categoryProductIds);
 
         const res = await pool.query(
           `SELECT
@@ -519,7 +748,7 @@ export const ownBrandRouter = router({
            FROM public.branches b
            CROSS JOIN (
              SELECT id, name, int_sku FROM public.products
-             WHERE id = $${pidIdx} AND id IN ${subquery}
+             WHERE id = $${pidIdx} AND id IN ${subquery} ${catCheck}
            ) p
            LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
            WHERE 1=1 ${branchClause}
@@ -529,12 +758,13 @@ export const ownBrandRouter = router({
         return res.rows as Array<{ producto: string; int_sku: string; branch_id: string; tienda: string; sap_id: string; stock_actual: number; min_stock: number | null }>;
       }
 
-      const extraParams: (string | number)[] = [...brandParams];
+      const extraParams: (string | number | string[])[] = [...brandParams];
       const extraClauses: string[] = [];
       if (input.branchId) {
         extraParams.push(input.branchId);
         extraClauses.push(`AND b.id = $${extraParams.length}`);
       }
+      addCategoryFilter(extraParams, extraClauses, categoryProductIds);
 
       const res = await pool.query(
         `SELECT
@@ -620,11 +850,13 @@ export const ownBrandRouter = router({
 
   /**
    * Catálogo de productos Marca Propia con stock total.
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getProductCatalog: protectedProcedure
     .input(
       z.object({
         search: z.string().optional(),
+        categoryId: z.number().int().positive().optional(),
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -634,15 +866,25 @@ export const ownBrandRouter = router({
       const brandIds = await getOwnBrandIds();
       if (brandIds.length === 0) return { rows: [], total: 0 };
 
-      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-      const limitIdx = brandParams.length + 1;
-      const offsetIdx = limitIdx + 1;
-      const params: (string | number)[] = [...brandParams, input.limit, input.offset];
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
 
-      const searchClause = input.search
-        ? `AND (p.name ILIKE $${params.length + 1} OR p.int_sku::text ILIKE $${params.length + 1})`
-        : "";
-      if (input.search) params.push(`%${input.search}%`);
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const params: (string | number | string[])[] = [...brandParams];
+      const whereClauses: string[] = [];
+
+      if (input.search) {
+        params.push(`%${input.search}%`);
+        whereClauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
+      }
+      addCategoryFilter(params, whereClauses, categoryProductIds);
+
+      const limitIdx = params.length + 1;
+      const offsetIdx = limitIdx + 1;
 
       const res = await pool.query(
         `SELECT
@@ -655,22 +897,26 @@ export const ownBrandRouter = router({
          FROM public.products p
          LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0
          WHERE p.id IN ${subquery}
-           ${searchClause}
+           ${whereClauses.join(" ")}
          GROUP BY p.id, p.name, p.int_sku, p.short_description
          ORDER BY p.name ASC
          LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-        params
+        [...params, input.limit, input.offset]
       );
 
-      const countParams: (string | number)[] = [...brandParams];
-      const countSearch = input.search ? `AND (p.name ILIKE $${countParams.length + 1} OR p.int_sku::text ILIKE $${countParams.length + 1})` : "";
-      if (input.search) countParams.push(`%${input.search}%`);
+      const countParams: (string | number | string[])[] = [...brandParams];
+      const countClauses: string[] = [];
+      if (input.search) {
+        countParams.push(`%${input.search}%`);
+        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
+      }
+      addCategoryFilter(countParams, countClauses, categoryProductIds);
 
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM public.products p
          WHERE p.id IN ${subquery}
-           ${countSearch}`,
+           ${countClauses.join(" ")}`,
         countParams
       );
 
@@ -684,10 +930,11 @@ export const ownBrandRouter = router({
 
   /**
    * Ventas por artículo × tienda de Marca Propia (con paginación).
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   getSalesByProductBranch: protectedProcedure
     .input(
-      dateRangeSchema.extend({
+      dateRangeCategorySchema.extend({
         search: z.string().optional(),
         productIds: z.array(z.string()).optional(),
         branchId: z.string().optional(),
@@ -704,6 +951,13 @@ export const ownBrandRouter = router({
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
       if (brandIds.length === 0) return { rows: [], total: 0, totals: { cantidad: "0", monto: "0", tickets: 0 } };
+
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) {
+        return { rows: [], total: 0, totals: { cantidad: "0", monto: "0", tickets: 0 } };
+      }
 
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
@@ -743,6 +997,7 @@ export const ownBrandRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      addCategoryFilter(params, clauses, categoryProductIds);
 
       const res = await pool.query(
         `SELECT
@@ -778,6 +1033,7 @@ export const ownBrandRouter = router({
         countParams.push(input.branchId);
         countClauses.push(`AND b.id = $${countParams.length}`);
       }
+      addCategoryFilter(countParams, countClauses, categoryProductIds);
 
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
@@ -809,6 +1065,8 @@ export const ownBrandRouter = router({
         totalsParams.push(input.branchId);
         totalsClauses.push(`AND b.id = $${totalsParams.length}`);
       }
+      addCategoryFilter(totalsParams, totalsClauses, categoryProductIds);
+
       const totalsRes = await pool.query(
         `SELECT
            SUM(sd.quantity)::numeric                     AS total_cantidad,
@@ -873,9 +1131,10 @@ export const ownBrandRouter = router({
 
   /**
    * Exportación completa de ventas por artículo × tienda (sin paginación).
+   * Acepta categoryId opcional para filtrar por categoría interna.
    */
   exportSalesByProductBranch: protectedProcedure
-    .input(dateRangeSchema.extend({
+    .input(dateRangeCategorySchema.extend({
       search: z.string().optional(),
       productIds: z.array(z.string()).optional(),
       branchId: z.string().optional(),
@@ -889,6 +1148,11 @@ export const ownBrandRouter = router({
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
       if (brandIds.length === 0) return [];
+
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
 
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
@@ -922,6 +1186,7 @@ export const ownBrandRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      addCategoryFilter(params, clauses, categoryProductIds);
 
       const res = await pool.query(
         `SELECT

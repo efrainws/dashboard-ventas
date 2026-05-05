@@ -2018,3 +2018,12 @@ Fecha: 1 de febrero de 2026
 - [x] Migrar BD y sembrar las 3 categorías iniciales (Marca Propia, El Huerto, Merch F&F)
 - [x] Crear ownBrandCategoriesRouter con CRUD completo (listCategories, listProductAssignments, assignProductCategory, removeProductAssignment, createCategory, deleteCategory, getCategorySummary)
 - [x] Crear pestaña Categorías en OwnBrandPortal con UI de asignación de productos
+
+## Filtro Categoría Interna en OwnBrandPortal
+- [x] Actualizar procedimientos del ownBrandRouter para aceptar filtro de categoryId
+- [x] Agregar selector de categoría interna en pestaña Dashboard
+- [x] Agregar selector de categoría interna en pestaña Ventas
+- [x] Agregar selector de categoría interna en pestaña Catálogo
+- [x] Agregar selector de categoría interna en pestaña Stock
+- [x] Agregar gráfico de pie de ventas por categoría interna en Dashboard
+- [x] Agregar tabla de monto y unidades por categoría interna en Dashboard
