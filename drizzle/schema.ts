@@ -283,3 +283,51 @@ export const dbConnections = mysqlTable("db_connections", {
 
 export type DbConnection = typeof dbConnections.$inferSelect;
 export type InsertDbConnection = typeof dbConnections.$inferInsert;
+
+/**
+ * Categorías internas de Marca Propia.
+ * Son independientes de las categorías declaradas en PostgreSQL.
+ * Seeds: 'Marca Propia', 'El Huerto', 'Merch F&F'.
+ */
+export const ownBrandCategories = mysqlTable("own_brand_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Nombre de la categoría interna (ej. 'Marca Propia', 'El Huerto', 'Merch F&F') */
+  name: varchar("name", { length: 128 }).notNull().unique(),
+  /** Descripción opcional de la categoría */
+  description: text("description"),
+  /** Color de acento para mostrar en la UI (hex, ej. '#008064') */
+  color: varchar("color", { length: 16 }).default("#008064"),
+  /** Si la categoría está activa */
+  isActive: int("is_active").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OwnBrandCategory = typeof ownBrandCategories.$inferSelect;
+export type InsertOwnBrandCategory = typeof ownBrandCategories.$inferInsert;
+
+/**
+ * Relación entre productos de marca propia y sus categorías internas.
+ * Un producto puede pertenecer a una sola categoría interna.
+ * El campo articleId corresponde al UUID del artículo en PostgreSQL (articles.id).
+ */
+export const ownBrandProductCategories = mysqlTable("own_brand_product_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  /** UUID del artículo en la tabla public.articles de PostgreSQL */
+  articleId: varchar("article_id", { length: 64 }).notNull().unique(),
+  /** ID de la categoría interna en own_brand_categories */
+  categoryId: int("category_id").notNull(),
+  /** Nombre del artículo (desnormalizado para consultas rápidas) */
+  articleName: varchar("article_name", { length: 255 }),
+  /** Código SAP del artículo (desnormalizado) */
+  articleCode: varchar("article_code", { length: 64 }),
+  /** ID del usuario que realizó la asignación */
+  assignedById: int("assigned_by_id").notNull(),
+  /** Nombre del usuario que realizó la asignación */
+  assignedByName: varchar("assigned_by_name", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OwnBrandProductCategory = typeof ownBrandProductCategories.$inferSelect;
+export type InsertOwnBrandProductCategory = typeof ownBrandProductCategories.$inferInsert;

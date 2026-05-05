@@ -15,6 +15,7 @@ import { activationRouter } from "./activationRouter";
 import { supplierPortalRouter } from "./supplierPortalRouter";
 import { supplierTrialRouter } from "./supplierTrialRouter";
 import { ownBrandRouter } from "./ownBrandRouter";
+import { ownBrandCategoriesRouter } from "./ownBrandCategoriesRouter";
 import { dbConnectionsRouter } from "./dbConnectionsRouter";
 
 export const appRouter = router({
@@ -28,6 +29,7 @@ export const appRouter = router({
   supplierPortal: supplierPortalRouter,
   supplierTrial: supplierTrialRouter,
   ownBrand: ownBrandRouter,
+  ownBrandCategories: ownBrandCategoriesRouter,
   dbConnections: dbConnectionsRouter,
   auth: router({
     me: publicProcedure.query(opts => {

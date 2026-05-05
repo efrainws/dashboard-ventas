@@ -2005,3 +2005,16 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar hourlyRouter para devolver datos agrupados por día de semana y hora
 - [x] Crear componente HeatmapChart (día semana × hora, toggle monto/transacciones)
 - [x] Agregar sección de mapa de calor en HourlyAnalysis.tsx
+
+## Categorías Internas de Marca Propia
+- [ ] Crear tablas ownBrandCategories y ownBrandProductCategories en drizzle/schema.ts
+- [ ] Ejecutar migración de BD (pnpm db:push)
+- [ ] Crear ownBrandCategoriesRouter.ts con procedimientos CRUD
+- [ ] Agregar pestaña "Categorías" en OwnBrandPortal con UI de asignación de productos
+- [ ] Verificar TypeScript sin errores
+
+## Categorías Internas de Marca Propia
+- [x] Crear tablas en Drizzle schema (ownBrandCategories, ownBrandProductCategories)
+- [x] Migrar BD y sembrar las 3 categorías iniciales (Marca Propia, El Huerto, Merch F&F)
+- [x] Crear ownBrandCategoriesRouter con CRUD completo (listCategories, listProductAssignments, assignProductCategory, removeProductAssignment, createCategory, deleteCategory, getCategorySummary)
+- [x] Crear pestaña Categorías en OwnBrandPortal con UI de asignación de productos
