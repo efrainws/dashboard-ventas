@@ -9,18 +9,20 @@ import { trpc } from "@/lib/trpc";
 const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0-23
 
-// Paleta de colores: de blanco/gris claro → verde esmeralda Flora & Fauna
+// Paleta de colores Flora & Fauna: Cobalto (frío) → Esmeralda → Mostaza → Granate (caliente)
 const COLOR_STOPS = [
-  { pct: 0,    color: [234, 232, 226] },  // --ff-beige
-  { pct: 0.15, color: [200, 230, 220] },  // verde muy claro
-  { pct: 0.4,  color: [77,  168, 150] },  // --ff-esmeralda-light
-  { pct: 0.7,  color: [0,   128, 100] },  // --ff-esmeralda
-  { pct: 1,    color: [0,   90,  71]  },  // --ff-esmeralda-dark
+  { pct: 0,    color: [26,  104, 148] },  // --ff-cobalto     (#1A6894)
+  { pct: 0.33, color: [0,   128, 100] },  // --ff-esmeralda   (#008064)
+  { pct: 0.66, color: [196, 151,   5] },  // --ff-mostaza     (#C49705)
+  { pct: 1,    color: [188,  44,  70] },  // --ff-granate     (#BC2C46)
 ];
 
 function interpolateColor(value: number, min: number, max: number): string {
   if (max === min) return `rgb(${COLOR_STOPS[0].color.join(",")})`;
+  // Celdas sin datos: gris neutro
+  if (value <= 0) return "var(--muted)";
   const pct = (value - min) / (max - min);
+  // Buscar el segmento correspondiente en los stops
   for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
     const lo = COLOR_STOPS[i];
     const hi = COLOR_STOPS[i + 1];
@@ -211,9 +213,8 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                     const bg = val !== null && val > 0
                       ? interpolateColor(val, minVal, maxVal)
                       : "var(--muted)";
-                    const textColor = val !== null && val > 0
-                      ? (val / maxVal > 0.6 ? "#fff" : "#1C1C1C")
-                      : "transparent";
+                    // Texto blanco siempre sobre colores de marca (todos son oscuros)
+                    const textColor = val !== null && val > 0 ? "#fff" : "transparent";
 
                     return (
                       <div
@@ -286,7 +287,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                 <div
                   className="h-3 w-32 rounded-sm"
                   style={{
-                    background: `linear-gradient(to right, rgb(${COLOR_STOPS[0].color.join(",")}), rgb(${COLOR_STOPS[2].color.join(",")}), rgb(${COLOR_STOPS[4].color.join(",")}))`,
+                    background: `linear-gradient(to right, rgb(${COLOR_STOPS[0].color.join(",")}), rgb(${COLOR_STOPS[1].color.join(",")}), rgb(${COLOR_STOPS[2].color.join(",")}), rgb(${COLOR_STOPS[3].color.join(",")}))`,
                   }}
                 />
                 <span className="text-[10px] text-muted-foreground">Mayor</span>
