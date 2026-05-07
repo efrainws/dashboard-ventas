@@ -347,8 +347,8 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                     return (
                       <div
                         key={h}
-                        className="flex-1 aspect-square rounded-[2px] mx-[1px] cursor-default transition-opacity hover:opacity-80"
-                        style={{ background: bg }}
+                        className="flex-1 rounded-[2px] mx-[1px] cursor-default transition-opacity hover:opacity-80"
+                        style={{ background: bg, height: "clamp(28px, 4vw, 48px)", minWidth: 0 }}
                         onMouseEnter={e => {
                           if (val !== null) {
                             setTooltip({
