@@ -430,15 +430,15 @@ export default function HourlyAnalysis() {
               />
             </div>
 
-            {/* Gráfico de línea: Ventas y Transacciones por Hora */}
-            <HourlyLineChart data={filteredData} />
-
             {/* Mapa de calor: Actividad por Día de Semana × Hora */}
             <HeatmapChart
               fechaMin={filters.fecha_min || ''}
               fechaMax={filters.fecha_max || ''}
               branchId={selectedBranch !== 'all' ? selectedBranch : undefined}
             />
+
+            {/* Gráfico de línea: Ventas y Transacciones por Hora */}
+            <HourlyLineChart data={filteredData} />
           </>
         )}
 
