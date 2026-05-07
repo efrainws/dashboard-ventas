@@ -242,10 +242,18 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                         }}
                         onMouseLeave={() => setTooltip(null)}
                       >
-                        {/* Valor visible solo en celdas grandes (≥ 1/24 del contenedor) */}
+                        {/* Valor visible solo en celdas con suficiente espacio */}
                         <span
-                          className="leading-none hidden xl:flex items-center justify-center h-full w-full font-medium"
-                          style={{ color: textColor, fontSize: "14px" }}
+                          className="leading-none hidden sm:flex items-center justify-center h-full w-full font-medium overflow-hidden"
+                          style={{
+                            color: textColor,
+                            fontSize: "clamp(7px, 1.1vw, 13px)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "100%",
+                            padding: "0 1px",
+                          }}
                         >
                           {val !== null && val > 0 ? formatValue(val, metric) : ""}
                         </span>
