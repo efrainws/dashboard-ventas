@@ -2027,3 +2027,7 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar selector de categoría interna en pestaña Stock
 - [x] Agregar gráfico de pie de ventas por categoría interna en Dashboard
 - [x] Agregar tabla de monto y unidades por categoría interna en Dashboard
+
+## Corrección Mapa de Calor - Análisis por Horas
+- [x] Identificar discrepancia: heatmap usaba AT TIME ZONE 'America/Lima' (UTC-5), líneas usaba getUTCHours() (UTC)
+- [x] Corregir query getHeatmapData para usar EXTRACT(HOUR FROM doc_date) en UTC, igual que HourlyLineChart

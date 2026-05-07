@@ -1081,9 +1081,12 @@ export const salesRouter = router({
     }),
 
   /**
-   * Devuelve datos agregados por día de semana × hora para el mapa de calor
-   * Eje Y: día de semana (0=Domingo … 6=Sábado, en zona horaria Lima UTC-5)
-   * Eje X: hora del día (0-23, en zona horaria Lima UTC-5)
+   * Devuelve datos agregados por día de semana × hora para el mapa de calor.
+   * Usa la misma lógica que getHourlySales + HourlyLineChart:
+   * - getHourlySales devuelve hour_ts = date_trunc('hour', doc_date) en UTC
+   * - HourlyLineChart extrae la hora con getUTCHours()
+   * Por lo tanto, el heatmap también debe extraer EXTRACT(HOUR FROM doc_date)
+   * (que es UTC) para que ambos gráficos muestren los mismos valores por hora.
    */
   getHeatmapData: publicProcedure
     .input(
@@ -1109,7 +1112,8 @@ export const salesRouter = router({
         paramIndex++;
       }
 
-      // Convertir timestamp a hora local Lima (UTC-5) antes de extraer día y hora
+      // Extraer hora y día de semana directamente en UTC (sin conversión de zona horaria)
+      // para que coincida con HourlyLineChart que usa date.getUTCHours().
       const metricExpr = metric === 'amount'
         ? 'SUM(sd.total)'
         : 'COUNT(DISTINCT sh.id)';
@@ -1119,9 +1123,7 @@ export const salesRouter = router({
           SELECT
             sh.id AS sale_id,
             sh.doc_date,
-            sd.total AS line_total,
-            -- Convertir a hora local Lima (UTC-5)
-            (sh.doc_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') AS local_ts
+            sd.total AS line_total
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
@@ -1131,8 +1133,8 @@ export const salesRouter = router({
             ${additionalFilters.join('\n            ')}
         )
         SELECT
-          EXTRACT(DOW FROM local_ts)::int   AS day_of_week,
-          EXTRACT(HOUR FROM local_ts)::int  AS hour_of_day,
+          EXTRACT(DOW FROM doc_date)::int   AS day_of_week,
+          EXTRACT(HOUR FROM doc_date)::int  AS hour_of_day,
           ${metricExpr.replace('sd.total', 'line_total').replace('sh.id', 'sale_id')} AS value
         FROM base
         GROUP BY day_of_week, hour_of_day
