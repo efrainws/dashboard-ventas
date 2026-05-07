@@ -244,8 +244,8 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                       >
                         {/* Valor visible solo en celdas grandes (≥ 1/24 del contenedor) */}
                         <span
-                          className="text-[8px] leading-none hidden xl:flex items-center justify-center h-full w-full font-medium"
-                          style={{ color: textColor }}
+                          className="leading-none hidden xl:flex items-center justify-center h-full w-full font-medium"
+                          style={{ color: textColor, fontSize: "14px" }}
                         >
                           {val !== null && val > 0 ? formatValue(val, metric) : ""}
                         </span>
