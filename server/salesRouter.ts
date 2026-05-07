@@ -1153,4 +1153,98 @@ export const salesRouter = router({
         throw new Error('Error al consultar datos del mapa de calor');
       }
     }),
+
+  /**
+   * Modo "Comparar día específico": obtiene datos de las últimas N semanas
+   * para un día de semana específico (0=Dom ... 6=Sáb, igual que EXTRACT(DOW)).
+   * Devuelve filas con: date_label (YYYY-MM-DD), hour_of_day, value.
+   * Preparado para ampliar a 8, 12 o 16 semanas cambiando weeks_back.
+   */
+  getHeatmapDayComparison: publicProcedure
+    .input(
+      z.object({
+        base_date: z.string(),                              // YYYY-MM-DD: fecha de referencia
+        day_of_week: z.number().int().min(0).max(6),       // 0=Dom ... 6=Sáb
+        weeks_back: z.number().int().min(1).max(52).default(6),
+        branch_id: z.string().optional(),
+        metric: z.enum(['amount', 'transactions']).default('amount'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { base_date, day_of_week, weeks_back, branch_id, metric } = input;
+
+      // Calcular las fechas de las últimas N ocurrencias del día seleccionado
+      // partiendo desde base_date hacia atrás, en orden cronológico ascendente
+      const baseDateObj = new Date(base_date + 'T00:00:00Z');
+      const targetDates: string[] = [];
+      const cursor = new Date(baseDateObj);
+      // Retroceder hasta encontrar el día de semana correcto
+      while (cursor.getUTCDay() !== day_of_week) {
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
+      for (let i = 0; i < weeks_back; i++) {
+        const yyyy = cursor.getUTCFullYear();
+        const mm = String(cursor.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(cursor.getUTCDate()).padStart(2, '0');
+        targetDates.unshift(`${yyyy}-${mm}-${dd}`); // orden cronológico ascendente
+        cursor.setUTCDate(cursor.getUTCDate() - 7);
+      }
+
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (branch_id && branch_id !== 'all') {
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
+        queryParams.push(branch_id);
+        paramIndex++;
+      }
+
+      // Construir cláusula IN con las fechas calculadas
+      const datePlaceholders = targetDates.map((d) => {
+        queryParams.push(d);
+        const ph = `$${paramIndex}`;
+        paramIndex++;
+        return ph;
+      }).join(', ');
+
+      const metricExpr = metric === 'amount'
+        ? 'SUM(line_total)'
+        : 'COUNT(DISTINCT sale_id)';
+
+      const query = `
+        WITH base AS (
+          SELECT
+            sh.id AS sale_id,
+            sh.doc_date,
+            sd.total AS line_total
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          LEFT JOIN branches b ON b.id = sh.branch_id
+          WHERE sh.doc_date IS NOT NULL
+            AND sh.doc_date::date IN (${datePlaceholders})
+            ${additionalFilters.join('\n            ')}
+        )
+        SELECT
+          doc_date::date::text                   AS date_label,
+          EXTRACT(HOUR FROM doc_date)::int       AS hour_of_day,
+          ${metricExpr}                          AS value
+        FROM base
+        GROUP BY date_label, hour_of_day
+        ORDER BY date_label, hour_of_day;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        return {
+          success: true,
+          data: result.rows as Array<{ date_label: string; hour_of_day: number; value: string }>,
+          target_dates: targetDates,
+          metadata: { base_date, day_of_week, weeks_back, metric },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing heatmap day comparison query:', error);
+        throw new Error('Error al consultar datos de comparación por día');
+      }
+    }),
 });

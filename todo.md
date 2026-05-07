@@ -2031,3 +2031,13 @@ Fecha: 1 de febrero de 2026
 ## Corrección Mapa de Calor - Análisis por Horas
 - [x] Identificar discrepancia: heatmap usaba AT TIME ZONE 'America/Lima' (UTC-5), líneas usaba getUTCHours() (UTC)
 - [x] Corregir query getHeatmapData para usar EXTRACT(HOUR FROM doc_date) en UTC, igual que HourlyLineChart
+
+## Modo Comparación Día Específico en HeatmapChart
+- [x] Agregar endpoint getHeatmapDayComparison en salesRouter (últimas N semanas de un día específico)
+- [x] Agregar selector de modo (Análisis semanal / Comparar día específico) en HeatmapChart
+- [x] Agregar selector de día de semana visible solo en modo comparación
+- [x] Renderizar heatmap en modo comparación con eje vertical = fechas de las últimas 6 semanas
+- [x] Tooltip enriquecido con fecha completa, día, franja horaria, valor y comparación vs promedio
+- [x] Título dinámico según el modo activo
+- [x] Texto con clamp() y sin overflow en celdas del nuevo modo
+- [x] Estructura preparada para ampliar a 8, 12 o 16 semanas
