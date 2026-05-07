@@ -7,7 +7,7 @@ import { trpc } from "@/lib/trpc";
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
 const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0-23
+const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i); // 0-23
 
 // Paleta de colores Flora & Fauna: Cobalto (frío) → Esmeralda → Mostaza → Granate (caliente)
 const COLOR_STOPS = [
@@ -83,19 +83,25 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
     return m;
   }, [data]);
 
+  // Horas activas: solo las que tienen al menos un valor > 0 en cualquier día
+  const activeHours = useMemo(() =>
+    ALL_HOURS.filter(h =>
+      matrix.some(row => (row[h] ?? 0) > 0)
+    ), [matrix]);
+
   // Min / max para escala de color (excluyendo nulls y ceros)
   const { minVal, maxVal } = useMemo(() => {
     const vals = matrix.flat().filter((v): v is number => v !== null && v > 0);
     return { minVal: Math.min(...vals, 0), maxVal: Math.max(...vals, 1) };
   }, [matrix]);
 
-  // Totales por hora (fila de totales en la parte inferior)
+  // Totales por hora (todas las horas para indexar correctamente)
   const hourTotals = useMemo(() =>
-    HOURS.map(h =>
+    ALL_HOURS.map(h =>
       matrix.reduce((sum, row) => sum + (row[h] ?? 0), 0)
     ), [matrix]);
 
-  const maxHourTotal = Math.max(...hourTotals, 1);
+  const maxHourTotal = Math.max(...activeHours.map(h => hourTotals[h]), 1);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -184,17 +190,20 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
               </div>
             )}
 
-            <div className="min-w-[640px]">
-              {/* Cabecera de horas */}
+            <div className="min-w-[400px]">
+              {/* Cabecera de horas — solo horas activas */}
               <div className="flex items-center mb-1">
                 {/* Espacio para etiqueta de día */}
                 <div className="w-10 shrink-0" />
-                {HOURS.map(h => (
+                {activeHours.map((h, idx) => (
                   <div
                     key={h}
                     className="flex-1 text-center text-[10px] text-muted-foreground leading-none"
                   >
-                    {h % 3 === 0 ? String(h).padStart(2, "0") : ""}
+                    {/* Mostrar etiqueta en la primera, la última y cada 3 posiciones */}
+                    {(idx === 0 || idx === activeHours.length - 1 || idx % 3 === 0)
+                      ? String(h).padStart(2, "0")
+                      : ""}
                   </div>
                 ))}
               </div>
@@ -207,8 +216,8 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                     {day}
                   </div>
 
-                  {/* Celdas de horas */}
-                  {HOURS.map(h => {
+                  {/* Celdas de horas activas */}
+                  {activeHours.map(h => {
                     const val = matrix[dayIdx][h];
                     const bg = val !== null && val > 0
                       ? interpolateColor(val, minVal, maxVal)
@@ -252,12 +261,12 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
                 <div className="flex-1 border-t border-border" />
               </div>
 
-              {/* Fila de totales por hora */}
+              {/* Fila de totales por hora — solo horas activas */}
               <div className="flex items-center">
                 <div className="w-10 shrink-0 text-[10px] text-muted-foreground text-right pr-2">
                   Total
                 </div>
-                {HOURS.map(h => {
+                {activeHours.map(h => {
                   const v = hourTotals[h];
                   const pct = v / maxHourTotal;
                   return (
