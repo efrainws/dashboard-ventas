@@ -309,9 +309,15 @@
   h4, h5, h6 {
     @apply font-sans font-bold tracking-tight;
   }
-  /* Todas las celdas de tabla usan Sailec para consistencia tipográfica */
-  td, th {
+  /* Cabeceras de tabla: ItalianPlateNo1 14px */
+  th {
+    font-family: var(--font-heading);
+    font-size: 14px;
+  }
+  /* Cuerpo de tabla: Sailec 9.5px */
+  td {
     font-family: var(--font-sans);
+    font-size: 9.5px;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -382,7 +388,7 @@
     border-collapse: separate;
     border-spacing: 0;
     font-family: var(--font-sans);
-    font-size: 0.875rem;           /* text-sm = 14px */
+    font-size: 9.5px;              /* Cuerpo: Sailec 9.5px */
     border: 1px solid var(--ff-table-border);
     border-radius: 8px;
     overflow: hidden;
@@ -390,7 +396,7 @@
 
   .ff-table thead tr th {
     font-family: var(--font-heading);
-    font-size: 0.875rem;
+    font-size: 14px;               /* Cabecera: ItalianPlateNo1 14px */
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;

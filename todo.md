@@ -2041,3 +2041,7 @@ Fecha: 1 de febrero de 2026
 - [x] Título dinámico según el modo activo
 - [x] Texto con clamp() y sin overflow en celdas del nuevo modo
 - [x] Estructura preparada para ampliar a 8, 12 o 16 semanas
+
+## Tipografía de Tablas
+- [x] Agregar reglas CSS globales: th → ItalianPlateNo1 14px, td → Sailec 9.5px
+- [x] Actualizar sección de tablas en la página style-guide con los nuevos estilos

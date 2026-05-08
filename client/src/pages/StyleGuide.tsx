@@ -653,18 +653,20 @@ export default function StyleGuide() {
                     </thead>
                     <tbody className="divide-y divide-border/30">
                       {[
-                        { cls: "text-4xl", size: "2.25rem", uso: "Hero / h1", ex: "Lorem" },
-                        { cls: "text-2xl", size: "1.5rem", uso: "Sección / h2", ex: "Lorem Ipsum" },
-                        { cls: "text-xl", size: "1.25rem", uso: "Subsección / h3", ex: "Dolor Sit" },
-                        { cls: "text-base", size: "1rem", uso: "Cuerpo principal", ex: "Amet consectetur" },
-                        { cls: "text-sm", size: "0.875rem", uso: "UI / Labels", ex: "Adipiscing elit sed" },
-                        { cls: "text-xs", size: "0.75rem", uso: "Metadatos / Captions", ex: "Do eiusmod tempor incididunt" },
-                        { cls: "text-[10px]", size: "0.625rem", uso: "Badges / Chips", ex: "Ut labore et dolore magna" },
+                        { cls: "text-4xl", size: "2.25rem", uso: "Hero / h1", ex: "Lorem", font: "" },
+                        { cls: "text-2xl", size: "1.5rem", uso: "Sección / h2", ex: "Lorem Ipsum", font: "" },
+                        { cls: "text-xl", size: "1.25rem", uso: "Subsección / h3", ex: "Dolor Sit", font: "" },
+                        { cls: "text-base", size: "1rem", uso: "Cuerpo principal", ex: "Amet consectetur", font: "" },
+                        { cls: "text-sm", size: "0.875rem", uso: "UI / Labels", ex: "Adipiscing elit sed", font: "" },
+                        { cls: "text-xs", size: "0.75rem", uso: "Metadatos / Captions", ex: "Do eiusmod tempor incididunt", font: "" },
+                        { cls: "text-[10px]", size: "0.625rem", uso: "Badges / Chips", ex: "Ut labore et dolore magna", font: "" },
+                        { cls: "text-[14px] font-heading", size: "14px", uso: "Cabecera de tabla (th)", ex: "CANAL VENTAS", font: "Italian Plate No 1" },
+                        { cls: "text-[9.5px]", size: "9.5px", uso: "Cuerpo de tabla (td)", ex: "Presencial S/ 227,043", font: "Sailec" },
                       ].map((r) => (
                         <tr key={r.cls}>
                           <td className="py-2 font-mono text-xs text-muted-foreground">{r.cls}</td>
                           <td className="py-2 text-xs text-muted-foreground">{r.size}</td>
-                          <td className="py-2 text-xs text-muted-foreground">{r.uso}</td>
+                          <td className="py-2 text-xs text-muted-foreground">{r.uso}{r.font ? <span className="ml-1 text-[10px] text-primary/60">({r.font})</span> : null}</td>
                           <td className={`py-2 ${r.cls}`}>{r.ex}</td>
                         </tr>
                       ))}
@@ -1024,9 +1026,9 @@ export default function StyleGuide() {
                 <CardContent className="text-sm text-muted-foreground space-y-2">
                   <p>Todas las tablas del sitio deben usar la clase <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">.ff-table</code>. El componente <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{"<Table>"}</code> de shadcn/ui ya la aplica automáticamente.</p>
                   <ul className="list-disc list-inside space-y-1 text-xs">
-                    <li><strong>thead:</strong> fondo Hueso (#F5F4F1), texto Humo, Italian Plate No 1 uppercase, borde Beige</li>
-                    <li><strong>tbody tr:</strong> fondo blanco, separadas por borde Beige (#EAE8E2), hover Hueso</li>
-                    <li><strong>tfoot:</strong> fondo Hueso, texto Carbón en negrita</li>
+                    <li><strong>thead th:</strong> Italian Plate No 1, <strong>14px</strong>, uppercase, fondo Hueso (#F5F4F1), texto Humo, borde Beige</li>
+                    <li><strong>tbody td:</strong> Sailec, <strong>9.5px</strong>, fondo blanco, separadas por borde Beige (#EAE8E2), hover Hueso</li>
+                    <li><strong>tfoot td:</strong> Sailec, <strong>9.5px</strong>, fondo Hueso, texto Carbón en negrita</li>
                     <li><strong>Celdas numéricas (th, td):</strong> alineadas a la derecha con tabular-nums automático</li>
                   </ul>
                   <pre className="font-mono text-xs bg-muted px-3 py-2 rounded overflow-x-auto">{`<table className="ff-table">
