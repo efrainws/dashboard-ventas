@@ -2045,3 +2045,14 @@ Fecha: 1 de febrero de 2026
 ## Tipografía de Tablas
 - [x] Agregar reglas CSS globales: th → ItalianPlateNo1 14px, td → Sailec 9.5px
 - [x] Actualizar sección de tablas en la página style-guide con los nuevos estilos
+
+## Toggle IGV Global
+- [x] Crear IgvContext con persistencia en sessionStorage
+- [x] Crear componente IgvToggle reutilizable
+- [x] Actualizar salesRouter: todos los procedimientos aceptan include_igv (subtotal vs total)
+- [x] Actualizar ownBrandRouter: todos los procedimientos aceptan include_igv
+- [x] Actualizar supplierPortalRouter: todos los procedimientos aceptan include_igv
+- [x] Integrar IgvToggle en SalesByCategory, TopProducts, HourlyAnalysis
+- [x] Integrar IgvToggle en OwnBrandPortal (Dashboard y Ventas)
+- [x] Integrar IgvToggle en SupplierPortal (Dashboard y Ventas)
+- [x] Preferencia persiste en sessionStorage durante toda la sesión

@@ -5,6 +5,7 @@ export interface HourlySalesFilters {
   fecha_min?: string;
   fecha_max?: string;
   branch_id?: string;
+  include_igv?: boolean;
 }
 
 /**

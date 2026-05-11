@@ -79,6 +79,8 @@ import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { format, subDays, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
+import { IgvToggle } from "@/components/IgvToggle";
+import { useIgv } from "@/contexts/IgvContext";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +167,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export default function SupplierPortal() {
   const { logout, user, loading } = useAuth();
+  const { includeIgv } = useIgv();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
@@ -237,25 +240,25 @@ export default function SupplierPortal() {
 
   const { data: summary, isLoading: summaryLoading } =
     trpc.supplierPortal.getSalesSummary.useQuery(
-      { from, to, supplierId: effectiveSupplierId },
+      { from, to, supplierId: effectiveSupplierId, include_igv: includeIgv },
       { enabled: queriesEnabled }
     );
 
   const { data: dailySales, isLoading: dailyLoading } =
     trpc.supplierPortal.getDailySales.useQuery(
-      { from, to, supplierId: effectiveSupplierId },
+      { from, to, supplierId: effectiveSupplierId, include_igv: includeIgv },
       { enabled: queriesEnabled }
     );
 
   const { data: topProducts, isLoading: topLoading } =
     trpc.supplierPortal.getTopProducts.useQuery(
-      { from, to, limit: 10, supplierId: effectiveSupplierId },
+      { from, to, limit: 10, supplierId: effectiveSupplierId, include_igv: includeIgv },
       { enabled: queriesEnabled }
     );
 
   const { data: salesByBranch, isLoading: branchLoading } =
     trpc.supplierPortal.getSalesByBranch.useQuery(
-      { from, to, supplierId: effectiveSupplierId },
+      { from, to, supplierId: effectiveSupplierId, include_igv: includeIgv },
       { enabled: queriesEnabled }
     );
 
@@ -335,6 +338,7 @@ export default function SupplierPortal() {
       groupByStore: showStore,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
+      include_igv: includeIgv,
     }, { enabled: queriesEnabled && activeTab === "ventas" });
 
   // Query lazy para exportación (se activa solo al hacer clic en Descargar)
@@ -346,6 +350,7 @@ export default function SupplierPortal() {
     branchId: salesBranchId,
     groupByProduct: showProduct,
     groupByStore: showStore,
+    include_igv: includeIgv,
   }, { enabled: false });
 
   // Función para descargar Excel de ventas
@@ -708,6 +713,7 @@ export default function SupplierPortal() {
               >
                 Este mes
               </Button>
+              <IgvToggle />
             </div>
 
             {/* KPIs */}
@@ -1507,6 +1513,7 @@ export default function SupplierPortal() {
               </div>
 
               {/* Botón de descarga Excel */}
+              <IgvToggle />
               <Button
                 variant="outline"
                 size="sm"

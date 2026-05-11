@@ -49,6 +49,7 @@ const dateRangeSchema = z.object({
 /** Schema base con rango de fechas + filtro de categoría interna opcional */
 const dateRangeCategorySchema = dateRangeSchema.extend({
   categoryId: z.number().int().positive().optional(),
+  include_igv: z.boolean().default(true),
 });
 
 /**
@@ -200,6 +201,7 @@ export const ownBrandRouter = router({
         return { total_tickets: 0, productos_vendidos: 0, total_ventas: "0", total_unidades: "0", tiendas_activas: 0 };
       }
 
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const params: (string | number | string[])[] = [...brandParams];
       const clauses: string[] = [];
@@ -211,7 +213,7 @@ export const ownBrandRouter = router({
         `SELECT
            COUNT(DISTINCT sh.id)::int                    AS total_tickets,
            COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,
            COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas
          FROM public.sales_detail sd
@@ -250,6 +252,7 @@ export const ownBrandRouter = router({
         : null;
       if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
 
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const params: (string | number | string[])[] = [...brandParams];
       const clauses: string[] = [];
@@ -260,7 +263,7 @@ export const ownBrandRouter = router({
       const res = await pool.query(
         `SELECT
            sh.doc_date::date                             AS fecha,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            COUNT(DISTINCT sh.id)::int                    AS tickets,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades
          FROM public.sales_detail sd
@@ -295,6 +298,7 @@ export const ownBrandRouter = router({
         : null;
       if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
 
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const params: (string | number | string[])[] = [...brandParams];
       const clauses: string[] = [];
@@ -307,7 +311,7 @@ export const ownBrandRouter = router({
         `SELECT
            p.name                                        AS producto,
            p.int_sku,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
@@ -343,6 +347,7 @@ export const ownBrandRouter = router({
         : null;
       if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
 
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
       const params: (string | number | string[])[] = [...brandParams];
       const clauses: string[] = [];
@@ -354,7 +359,7 @@ export const ownBrandRouter = router({
         `SELECT
            b.name                                        AS tienda,
            b.sap_id,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
@@ -407,7 +412,7 @@ export const ownBrandRouter = router({
    * para el gráfico de pie del Dashboard.
    */
   getSalesByCategory: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeSchema.extend({ include_igv: z.boolean().default(true) }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
       const brandIds = await getOwnBrandIds();
@@ -474,9 +479,10 @@ export const ownBrandRouter = router({
         const fromIdx = catFilterIdx + 1;
         const toIdx = fromIdx + 1;
 
+        const amtColCat = input.include_igv ? 'sd.total' : 'sd.subtotal';
         const res = await pool.query(
           `SELECT
-             ROUND(SUM(sd.total)::numeric, 2)  AS total_ventas,
+             ROUND(SUM(${amtColCat})::numeric, 2)  AS total_ventas,
              ROUND(SUM(sd.quantity)::numeric, 2) AS total_unidades
            FROM public.sales_detail sd
            JOIN public.products p ON p.id = sd.product_id
@@ -959,12 +965,13 @@ export const ownBrandRouter = router({
         return { rows: [], total: 0, totals: { cantidad: "0", monto: "0", tickets: 0 } };
       }
 
+       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
 
       const selectProduct = gp
         ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
-        : `NULL::uuid AS product_id, '(Todos los productos)' AS producto, '\u2014' AS sku,`;
+        : `NULL::uuid AS product_id, '(Todos los productos)' AS producto, '—' AS sku,`;
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
@@ -1004,7 +1011,7 @@ export const ownBrandRouter = router({
            ${selectProduct}
            ${selectStore}
            SUM(sd.quantity)::numeric                     AS cantidad,
-           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
@@ -1070,7 +1077,7 @@ export const ownBrandRouter = router({
       const totalsRes = await pool.query(
         `SELECT
            SUM(sd.quantity)::numeric                     AS total_cantidad,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_monto,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_monto,
            COUNT(DISTINCT sh.id)::int                    AS total_tickets
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
@@ -1154,12 +1161,13 @@ export const ownBrandRouter = router({
         : null;
       if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
 
+        const amtColExport = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
 
       const selectProduct = gp
         ? `p.name AS producto, p.int_sku::text AS sku,`
-        : `'(Todos los productos)' AS producto, '\u2014' AS sku,`;
+        : `'(Todos los productos)' AS producto, '—' AS sku,`;
       const selectStore = gs
         ? `b.name AS tienda, b.sap_id,`
         : `'(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
@@ -1193,7 +1201,7 @@ export const ownBrandRouter = router({
            ${selectProduct}
            ${selectStore}
            SUM(sd.quantity)::numeric                     AS cantidad,
-           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           ROUND(SUM(${amtColExport})::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id

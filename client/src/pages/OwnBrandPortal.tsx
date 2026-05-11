@@ -91,6 +91,8 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
+import { IgvToggle } from "@/components/IgvToggle";
+import { useIgv } from "@/contexts/IgvContext";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -641,6 +643,7 @@ function CategoriesManager() {
 
 export default function OwnBrandPortal() {
   const { logout, user, loading } = useAuth();
+  const { includeIgv } = useIgv();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
@@ -694,16 +697,16 @@ export default function OwnBrandPortal() {
 
   // Queries
   const { data: summary, isLoading: summaryLoading } =
-    trpc.ownBrand.getSalesSummary.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
+    trpc.ownBrand.getSalesSummary.useQuery({ from, to, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
 
   const { data: dailySales, isLoading: dailyLoading } =
-    trpc.ownBrand.getDailySales.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
+    trpc.ownBrand.getDailySales.useQuery({ from, to, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
 
   const { data: topProducts, isLoading: topLoading } =
-    trpc.ownBrand.getTopProducts.useQuery({ from, to, limit: 10, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
+    trpc.ownBrand.getTopProducts.useQuery({ from, to, limit: 10, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
 
   const { data: salesByBranch, isLoading: branchLoading } =
-    trpc.ownBrand.getSalesByBranch.useQuery({ from, to, categoryId: selectedCategoryId }, { enabled: canAccessPortal });
+    trpc.ownBrand.getSalesByBranch.useQuery({ from, to, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
 
   const { data: monthlySales, isLoading: monthlyLoading } =
     trpc.ownBrand.getMonthlySales.useQuery(undefined, { enabled: canAccessPortal });
@@ -723,7 +726,7 @@ export default function OwnBrandPortal() {
 
   // Ventas agrupadas por categoría interna (para gráfico de pie en Dashboard)
   const { data: salesByCategory, isLoading: salesByCategoryLoading } =
-    trpc.ownBrand.getSalesByCategory.useQuery({ from, to }, { enabled: canAccessPortal && activeTab === "dashboard" });
+    trpc.ownBrand.getSalesByCategory.useQuery({ from, to, include_igv: includeIgv }, { enabled: canAccessPortal && activeTab === "dashboard" });
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.ownBrand.getStockByProduct.useQuery({
@@ -770,6 +773,7 @@ export default function OwnBrandPortal() {
       groupByStore: showStore,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
+      include_igv: includeIgv,
     }, { enabled: canAccessPortal && activeTab === "ventas" });
 
   const exportQuery = trpc.ownBrand.exportSalesByProductBranch.useQuery({
@@ -780,6 +784,7 @@ export default function OwnBrandPortal() {
     categoryId: selectedCategoryId,
     groupByProduct: showProduct,
     groupByStore: showStore,
+    include_igv: includeIgv,
   }, { enabled: false });
 
   const handleDownloadCSV = async () => {
@@ -1041,6 +1046,7 @@ export default function OwnBrandPortal() {
                   Limpiar categoría
                 </Button>
               )}
+              <IgvToggle />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1703,6 +1709,7 @@ export default function OwnBrandPortal() {
                 </button>
               </div>
 
+              <IgvToggle />
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleDownloadCSV} disabled={isExporting || !canAccessPortal}>
                 {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                 {isExporting ? "Exportando..." : "Descargar Excel"}

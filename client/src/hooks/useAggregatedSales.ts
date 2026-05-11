@@ -6,6 +6,7 @@ export interface AggregatedSalesFilters {
   fecha_max?: string;
   branch_id?: string;
   category_id?: string;
+  include_igv?: boolean;
 }
 
 /**

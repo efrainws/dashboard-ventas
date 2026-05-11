@@ -56,6 +56,7 @@ const SUPPLIER_PRODUCTS_SUBQUERY = `
 const dateRangeSchema = z.object({
   from: z.string().optional(), // ISO date string YYYY-MM-DD
   to: z.string().optional(),
+  include_igv: z.boolean().default(true),
 });
 
 export const supplierPortalRouter = router({
@@ -111,12 +112,13 @@ export const supplierPortalRouter = router({
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
 
       const res = await pool.query(
         `SELECT
            COUNT(DISTINCT sh.id)::int                    AS total_tickets,
            COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,
            COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas
          FROM public.sales_detail sd
@@ -144,11 +146,12 @@ export const supplierPortalRouter = router({
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
 
       const res = await pool.query(
         `SELECT
            sh.doc_date::date                             AS fecha,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            COUNT(DISTINCT sh.id)::int                    AS tickets,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades
          FROM public.sales_detail sd
@@ -182,12 +185,13 @@ export const supplierPortalRouter = router({
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
 
       const res = await pool.query(
         `SELECT
            p.name                                        AS producto,
            p.int_sku,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
@@ -218,12 +222,13 @@ export const supplierPortalRouter = router({
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
 
       const res = await pool.query(
         `SELECT
            b.name                                        AS tienda,
            b.sap_id,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_ventas,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
            ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
@@ -613,13 +618,13 @@ export const supplierPortalRouter = router({
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
 
-      // Columnas SELECT dinámicas según dimensiones activas
       const selectProduct = gp
         ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
-        : `NULL::uuid AS product_id, '(Todos los productos)' AS producto, '\u2014' AS sku,`;
+        : `NULL::uuid AS product_id, '(Todos los productos)' AS producto, '—' AS sku,`;
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
@@ -655,7 +660,7 @@ export const supplierPortalRouter = router({
            ${selectProduct}
            ${selectStore}
            SUM(sd.quantity)::numeric                     AS cantidad,
-           ROUND(SUM(sd.total)::numeric, 2)              AS monto,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
@@ -718,7 +723,7 @@ export const supplierPortalRouter = router({
       const totalsRes = await pool.query(
         `SELECT
            SUM(sd.quantity)::numeric                     AS total_cantidad,
-           ROUND(SUM(sd.total)::numeric, 2)              AS total_monto,
+           ROUND(SUM(${amtCol})::numeric, 2)              AS total_monto,
            COUNT(DISTINCT sh.id)::int                    AS total_tickets
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id

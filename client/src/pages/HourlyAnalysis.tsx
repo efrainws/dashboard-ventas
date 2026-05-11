@@ -13,6 +13,8 @@ import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { IgvToggle } from "@/components/IgvToggle";
+import { useIgv } from "@/contexts/IgvContext";
 import {
   Select,
   SelectContent,
@@ -80,6 +82,8 @@ export default function HourlyAnalysis() {
   }, [selectedBranch, setGlobalBranchId]);
 
   // Construir filtros para el hook
+  const { includeIgv } = useIgv();
+
   const filters = useMemo<HourlySalesFilters>(() => {
     const result: HourlySalesFilters = {};
     
@@ -105,8 +109,10 @@ export default function HourlyAnalysis() {
       result.branch_id = selectedBranch;
     }
 
+    result.include_igv = includeIgv;
+
     return result;
-  }, [dateRange, selectedBranch]);
+  }, [dateRange, selectedBranch, includeIgv]);
 
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useHourlySales(filters);
@@ -240,10 +246,13 @@ export default function HourlyAnalysis() {
                     Selecciona rango de fechas y sucursal para explorar los datos
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                  <X className="mr-2 h-4 w-4" />
-                  Limpiar Filtros
-                </Button>
+                <div className="flex items-center gap-2">
+                  <IgvToggle />
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    <X className="mr-2 h-4 w-4" />
+                    Limpiar Filtros
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

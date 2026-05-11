@@ -15,10 +15,12 @@ export const salesRouter = router({
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(), // Filtro opcional de sucursal
         category_id: z.string().optional(), // Filtro opcional de departamento
+        include_igv: z.boolean().default(true), // true = con IGV (sd.total), false = sin IGV (sd.subtotal)
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, category_id } = input;
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -50,7 +52,7 @@ export const salesRouter = router({
             INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
             INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
             b.sap_id                               AS branch_sap_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.name AS leaf_category_name,
             p.id   AS parent_category_id,
@@ -141,10 +143,12 @@ export const salesRouter = router({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(), // Filtro opcional de sucursal
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id } = input;
+      const { fecha_min, fecha_max, branch_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -170,7 +174,7 @@ export const salesRouter = router({
             INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
             INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
             b.sap_id                               AS branch_sap_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             CASE
               WHEN EXISTS (
                 SELECT 1 FROM methods_payment mp
@@ -237,10 +241,12 @@ export const salesRouter = router({
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, category_id } = input;
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -283,7 +289,7 @@ export const salesRouter = router({
             sh.id AS sale_id,
             sh.doc_date,
             sh.branch_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
@@ -355,10 +361,12 @@ export const salesRouter = router({
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(),
         sales_channel: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, sales_channel } = input;
+      const { fecha_min, fecha_max, branch_id, sales_channel, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -397,7 +405,7 @@ export const salesRouter = router({
             sh.id AS sale_id,
             sh.doc_date,
             sh.branch_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             CASE
               WHEN EXISTS (
                 SELECT 1 FROM methods_payment mp
@@ -471,10 +479,12 @@ export const salesRouter = router({
         fecha_min: z.string(),
         fecha_max: z.string(),
         category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, category_id } = input;
+      const { fecha_min, fecha_max, category_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -510,7 +520,7 @@ export const salesRouter = router({
             sh.branch_id,
             INITCAP(LOWER(COALESCE(b.name,''))) AS branch_name,
             b.sap_id AS branch_sap_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
@@ -615,10 +625,12 @@ export const salesRouter = router({
         fecha_min: z.string(),
         fecha_max: z.string(),
         branch_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id } = input;
+      const { fecha_min, fecha_max, branch_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -652,7 +664,7 @@ export const salesRouter = router({
             sh.id AS sale_id,
             sh.doc_date,
             sh.branch_id,
-            sd.total AS line_total,
+            ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.name AS leaf_category_name,
             p.id AS parent_category_id,
@@ -752,10 +764,12 @@ export const salesRouter = router({
         fecha_max: z.string(),
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, category_id } = input;
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
@@ -797,7 +811,7 @@ export const salesRouter = router({
               g.name, p2.name, c2.name, 'Sin Categoría'
             )))                                       AS category_name,
             sd.quantity                               AS qty,
-            sd.total                                  AS amount
+            ${amtCol}                                 AS amount
           FROM public.sales_header sh
           JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
           JOIN public.products       prod ON prod.id       = sd.product_id
@@ -1095,10 +1109,12 @@ export const salesRouter = router({
         fecha_max: z.string(),
         branch_id: z.string().optional(),
         metric: z.enum(['amount', 'transactions']).default('amount'),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, metric } = input;
+      const { fecha_min, fecha_max, branch_id, metric, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
 
@@ -1115,15 +1131,15 @@ export const salesRouter = router({
       // Extraer hora y día de semana directamente en UTC (sin conversión de zona horaria)
       // para que coincida con HourlyLineChart que usa date.getUTCHours().
       const metricExpr = metric === 'amount'
-        ? 'SUM(sd.total)'
-        : 'COUNT(DISTINCT sh.id)';
+        ? 'SUM(line_total)'
+        : 'COUNT(DISTINCT sale_id)';
 
       const query = `
         WITH base AS (
           SELECT
             sh.id AS sale_id,
             sh.doc_date,
-            sd.total AS line_total
+            ${amtCol} AS line_total
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
@@ -1168,10 +1184,12 @@ export const salesRouter = router({
         weeks_back: z.number().int().min(1).max(52).default(6),
         branch_id: z.string().optional(),
         metric: z.enum(['amount', 'transactions']).default('amount'),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { base_date, day_of_week, weeks_back, branch_id, metric } = input;
+      const { base_date, day_of_week, weeks_back, branch_id, metric, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Calcular las fechas de las últimas N ocurrencias del día seleccionado
       // partiendo desde base_date hacia atrás, en orden cronológico ascendente
@@ -1217,7 +1235,7 @@ export const salesRouter = router({
           SELECT
             sh.id AS sale_id,
             sh.doc_date,
-            sd.total AS line_total
+            ${amtCol} AS line_total
           FROM sales_header sh
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id

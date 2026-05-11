@@ -18,6 +18,8 @@ import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
+import { IgvToggle } from "@/components/IgvToggle";
+import { useIgv } from "@/contexts/IgvContext";
 
 export default function SalesByCategory() {
   const { user, loading: authLoading } = useAuth();
@@ -31,6 +33,7 @@ export default function SalesByCategory() {
 
   // Usar filtros del contexto global
   const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
+  const { includeIgv } = useIgv();
   
   // Estado local para filtros - Por defecto: día de ayer
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -111,8 +114,10 @@ export default function SalesByCategory() {
       result.category_id = selectedCategory;
     }
 
+    result.include_igv = includeIgv;
+
     return result;
-  }, [dateRange, selectedBranch, selectedCategory]);
+  }, [dateRange, selectedBranch, selectedCategory, includeIgv]);
 
   // Obtener datos agregados con filtros
   const { data: rawData, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
@@ -263,20 +268,25 @@ export default function SalesByCategory() {
         </div>
 
         {/* Filtros */}
-        <DashboardFilters
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
-          branches={metrics.branches}
-          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
-          branchLocked={isStoreUser}
-          selectedCategory={selectedCategory}
-          categories={metrics.categories}
-          onCategoryChange={setSelectedCategory}
-          selectedChannels={selectedChannels}
-          onChannelsChange={setSelectedChannels}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <DashboardFilters
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              selectedBranch={selectedBranch}
+              branches={metrics.branches}
+              onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+              branchLocked={isStoreUser}
+              selectedCategory={selectedCategory}
+              categories={metrics.categories}
+              onCategoryChange={setSelectedCategory}
+              selectedChannels={selectedChannels}
+              onChannelsChange={setSelectedChannels}
+              onClearFilters={handleClearFilters}
+            />
+          </div>
+          <IgvToggle />
+        </div>
 
         {/* Estado de carga */}
         {isLoading && (

@@ -4,6 +4,8 @@ import { NavigationMenu } from "@/components/NavigationMenu";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { useFilters } from "@/contexts/FiltersContext";
+import { IgvToggle } from "@/components/IgvToggle";
+import { useIgv } from "@/contexts/IgvContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -536,6 +538,8 @@ export default function TopProducts() {
     return `${y}-${m}-${day}`;
   };
 
+  const { includeIgv } = useIgv();
+
   const queryFilters = useMemo(() => {
     const fallback = defaultDateRange;
     return {
@@ -543,8 +547,9 @@ export default function TopProducts() {
       fecha_max: dateRange?.to   ? toDateStr(dateRange.to)   : toDateStr(fallback.to!),
       ...(selectedBranch !== "all"   ? { branch_id:   selectedBranch   } : {}),
       ...(selectedCategory !== "all" ? { category_id: selectedCategory } : {}),
+      include_igv: includeIgv,
     };
-  }, [dateRange, selectedBranch, selectedCategory, defaultDateRange]);
+  }, [dateRange, selectedBranch, selectedCategory, defaultDateRange, includeIgv]);
 
   // Listas de sucursales y categorías reutilizando el hook existente
   const { metrics } = useAggregatedSales(queryFilters as AggregatedSalesFilters);
@@ -595,18 +600,23 @@ export default function TopProducts() {
         </div>
 
         {/* ── Filtros ─────────────────────────────────────────────────────── */}
-        <DashboardFilters
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
-          branches={metrics.branches}
-          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
-          branchLocked={isStoreUser}
-          selectedCategory={selectedCategory}
-          categories={metrics.categories}
-          onCategoryChange={setSelectedCategory}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <DashboardFilters
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              selectedBranch={selectedBranch}
+              branches={metrics.branches}
+              onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+              branchLocked={isStoreUser}
+              selectedCategory={selectedCategory}
+              categories={metrics.categories}
+              onCategoryChange={setSelectedCategory}
+              onClearFilters={handleClearFilters}
+            />
+          </div>
+          <IgvToggle />
+        </div>
 
         {/* ── Cargando ────────────────────────────────────────────────────── */}
         {isLoading && (

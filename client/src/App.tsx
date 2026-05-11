@@ -5,6 +5,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { FiltersProvider } from "./contexts/FiltersContext";
+import { IgvProvider } from "./contexts/IgvContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import Home from "./pages/Home";
 import SalesByCategory from "./pages/SalesByCategory";
@@ -199,11 +200,13 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system" switchable={true}>
         <FiltersProvider>
-          <TooltipProvider>
-            <Toaster />
-            <TrialPopup />
-            <Router />
-          </TooltipProvider>
+          <IgvProvider>
+            <TooltipProvider>
+              <Toaster />
+              <TrialPopup />
+              <Router />
+            </TooltipProvider>
+          </IgvProvider>
         </FiltersProvider>
       </ThemeProvider>
     </ErrorBoundary>
