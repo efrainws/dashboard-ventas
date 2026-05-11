@@ -60,6 +60,7 @@ interface HeatmapChartProps {
   fechaMin: string;
   fechaMax: string;
   branchId?: string;
+  includeIgv?: boolean;
 }
 
 type HeatmapMode = "weekly" | "day_comparison";
@@ -78,7 +79,7 @@ interface TooltipState {
 
 // ─── Componente ────────────────────────────────────────────────────────────────
 
-export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps) {
+export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }: HeatmapChartProps) {
   const [metric, setMetric]         = useState<"amount" | "transactions">("amount");
   const [mode, setMode]             = useState<HeatmapMode>("weekly");
   const [selectedDay, setSelectedDay] = useState<number>(1); // 1 = Lunes por defecto
@@ -86,13 +87,13 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
 
   const enabled = !!fechaMin && !!fechaMax;
 
-  // ── Query modo semanal ──────────────────────────────────────────────────────
+  // ── Query modo semanal ──────────────────────────────────────────────────────────────────────
   const weeklyQuery = trpc.sales.getHeatmapData.useQuery(
-    { fecha_min: fechaMin, fecha_max: fechaMax, branch_id: branchId, metric },
+    { fecha_min: fechaMin, fecha_max: fechaMax, branch_id: branchId, metric, include_igv: includeIgv },
     { enabled: enabled && mode === "weekly" }
   );
 
-  // ── Query modo comparación ──────────────────────────────────────────────────
+  // ── Query modo comparación ──────────────────────────────────────────────────────────────────
   // base_date = fechaMax (fecha más reciente del rango seleccionado)
   const compQuery = trpc.sales.getHeatmapDayComparison.useQuery(
     {
@@ -101,6 +102,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId }: HeatmapChartProps
       weeks_back: WEEKS_BACK,
       branch_id: branchId,
       metric,
+      include_igv: includeIgv,
     },
     { enabled: enabled && mode === "day_comparison" }
   );

@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, Lock, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
+import { IgvToggle } from "@/components/IgvToggle";
 
 const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
 type Channel = typeof ALL_CHANNELS[number];
@@ -42,6 +43,9 @@ export interface DashboardFiltersProps {
 
   // RLS: bloquear selector de sucursal para store_user
   branchLocked?: boolean;
+
+  // Toggle IGV dentro del panel
+  showIgvToggle?: boolean;
 }
 
 export function DashboardFilters({
@@ -57,6 +61,7 @@ export function DashboardFilters({
   onChannelsChange,
   onClearFilters,
   branchLocked = false,
+  showIgvToggle = false,
 }: DashboardFiltersProps) {
   const showChannelFilter = selectedChannels !== undefined && onChannelsChange !== undefined;
   const hasActiveFilters =
@@ -246,6 +251,11 @@ export function DashboardFilters({
             </div>
           )}
         </div>
+        {showIgvToggle && (
+          <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
+            <IgvToggle />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

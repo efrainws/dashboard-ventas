@@ -18,7 +18,6 @@ import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
-import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
 
 export default function SalesByCategory() {
@@ -268,25 +267,21 @@ export default function SalesByCategory() {
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex-1 min-w-0">
-            <DashboardFilters
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              selectedBranch={selectedBranch}
-              branches={metrics.branches}
-              onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
-              branchLocked={isStoreUser}
-              selectedCategory={selectedCategory}
-              categories={metrics.categories}
-              onCategoryChange={setSelectedCategory}
-              selectedChannels={selectedChannels}
-              onChannelsChange={setSelectedChannels}
-              onClearFilters={handleClearFilters}
-            />
-          </div>
-          <IgvToggle />
-        </div>
+        <DashboardFilters
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          selectedBranch={selectedBranch}
+          branches={metrics.branches}
+          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          branchLocked={isStoreUser}
+          selectedCategory={selectedCategory}
+          categories={metrics.categories}
+          onCategoryChange={setSelectedCategory}
+          selectedChannels={selectedChannels}
+          onChannelsChange={setSelectedChannels}
+          onClearFilters={handleClearFilters}
+          showIgvToggle
+        />
 
         {/* Estado de carga */}
         {isLoading && (

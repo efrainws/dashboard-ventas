@@ -2056,3 +2056,16 @@ Fecha: 1 de febrero de 2026
 - [x] Integrar IgvToggle en OwnBrandPortal (Dashboard y Ventas)
 - [x] Integrar IgvToggle en SupplierPortal (Dashboard y Ventas)
 - [x] Preferencia persiste en sessionStorage durante toda la sesión
+
+## Reubicación IgvToggle y Queries IGV en HourlyAnalysis
+- [ ] Mover IgvToggle dentro del panel de filtros en Análisis General (SalesByCategory)
+- [ ] Mover IgvToggle dentro del panel de filtros en Top 50 Productos
+- [ ] Actualizar queries de HourlyAnalysis que aún no soportan include_igv (comparación horaria, heatmap day comparison)
+
+## Reubicación IgvToggle y Queries IGV en HourlyAnalysis
+- [x] Agregar prop showIgvToggle a DashboardFilters para renderizar IgvToggle dentro del panel
+- [x] Mover IgvToggle dentro del panel de filtros en Análisis General (SalesByCategory)
+- [x] Mover IgvToggle dentro del panel de filtros en Top 50 Productos
+- [x] Pasar include_igv al comparisonQuery (getHourlyComparison) en HourlyAnalysis
+- [x] Agregar prop includeIgv al HeatmapChart y pasarla a getHeatmapData y getHeatmapDayComparison
+- [x] Pasar includeIgv al HeatmapChart desde HourlyAnalysis

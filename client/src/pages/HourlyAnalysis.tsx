@@ -124,6 +124,7 @@ export default function HourlyAnalysis() {
       fecha_max: filters.fecha_max || '',
       branch_id: filters.branch_id,
       sales_channel: selectedChannels.length === 1 ? selectedChannels[0] : undefined,
+      include_igv: includeIgv,
     },
     {
       enabled: !!filters.fecha_min && !!filters.fecha_max,
@@ -444,6 +445,7 @@ export default function HourlyAnalysis() {
               fechaMin={filters.fecha_min || ''}
               fechaMax={filters.fecha_max || ''}
               branchId={selectedBranch !== 'all' ? selectedBranch : undefined}
+              includeIgv={includeIgv}
             />
 
             {/* Gráfico de línea: Ventas y Transacciones por Hora */}

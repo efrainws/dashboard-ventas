@@ -4,7 +4,6 @@ import { NavigationMenu } from "@/components/NavigationMenu";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
 import { useFilters } from "@/contexts/FiltersContext";
-import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -598,27 +597,22 @@ export default function TopProducts() {
             Período: {dateRangeText}
           </p>
         </div>
+        {/* ── Filtros ───────────────────────────────────────────────────────────────────── */}
+        <DashboardFilters
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          selectedBranch={selectedBranch}
+          branches={metrics.branches}
+          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          branchLocked={isStoreUser}
+          selectedCategory={selectedCategory}
+          categories={metrics.categories}
+          onCategoryChange={setSelectedCategory}
+          onClearFilters={handleClearFilters}
+          showIgvToggle
+        />
 
-        {/* ── Filtros ─────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex-1 min-w-0">
-            <DashboardFilters
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              selectedBranch={selectedBranch}
-              branches={metrics.branches}
-              onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
-              branchLocked={isStoreUser}
-              selectedCategory={selectedCategory}
-              categories={metrics.categories}
-              onCategoryChange={setSelectedCategory}
-              onClearFilters={handleClearFilters}
-            />
-          </div>
-          <IgvToggle />
-        </div>
-
-        {/* ── Cargando ────────────────────────────────────────────────────── */}
+        {/* ── Cargando ───────────────────────────────────────────────────────────────────── */}
         {isLoading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1A6894" }} />
