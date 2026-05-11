@@ -894,7 +894,7 @@ export const salesRouter = router({
               g.name, p2.name, c2.name, 'Sin Categoría'
             )))                                       AS category_name,
             sd.quantity                               AS qty,
-            sd.total                                  AS amount
+            ${amtCol}                                 AS amount
           FROM public.sales_header sh
           JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
           JOIN public.products       prod ON prod.id       = sd.product_id
