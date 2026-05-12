@@ -1057,10 +1057,7 @@ export const supplierPortalRouter = router({
         WHERE sh.doc_date IS NOT NULL
           AND sh.doc_date::date >= $2::date
           AND sh.doc_date::date <= $3::date
-          AND p.id IN (
-            SELECT DISTINCT product_id FROM public.supplier_products
-            WHERE supplier_id = $1
-          )
+          AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
           ${productFilter}
           ${branchFilter}
         GROUP BY ${groupByClause}
