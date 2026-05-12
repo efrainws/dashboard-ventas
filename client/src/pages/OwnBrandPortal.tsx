@@ -93,6 +93,7 @@ import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
+import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -669,6 +670,8 @@ export default function OwnBrandPortal() {
   // Resetear página al cambiar dimensiones para que la paginación sea correcta
   const handleToggleStore = () => { setShowStore((v) => !v); setSalesPage(0); };
   const handleToggleProduct = () => { setShowProduct((v) => !v); setSalesPage(0); };
+  // Granularidad de la tabla de evolución temporal
+  const [evolutionGranularity, setEvolutionGranularity] = useState<Granularity>("day");
   // Ordenamiento de la tabla de ventas
   type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "cantidad" | "monto" | "tickets";
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -786,6 +789,20 @@ export default function OwnBrandPortal() {
     groupByStore: showStore,
     include_igv: includeIgv,
   }, { enabled: false });
+
+  // Query: tabla de evolución temporal de ventas
+  const { data: evolutionData, isLoading: evolutionLoading } =
+    trpc.ownBrand.getSalesEvolution.useQuery({
+      from,
+      to,
+      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
+      branchId: salesBranchId,
+      categoryId: selectedCategoryId,
+      groupByProduct: showProduct,
+      groupByStore: showStore,
+      granularity: evolutionGranularity,
+      include_igv: includeIgv,
+    }, { enabled: canAccessPortal && activeTab === "ventas" });
 
   const handleDownloadCSV = async () => {
     setIsExporting(true);
@@ -1843,9 +1860,30 @@ export default function OwnBrandPortal() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════
+        {/* Tabla de evolución temporal */}
+        {activeTab === "ventas" && (
+          <div className="space-y-3">
+            <h3
+              className="text-base font-bold uppercase tracking-wide"
+              style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+            >
+              Evolución de Ventas
+            </h3>
+            <SalesEvolutionTable
+              data={evolutionData}
+              isLoading={evolutionLoading}
+              granularity={evolutionGranularity}
+              setGranularity={setEvolutionGranularity}
+              showProduct={showProduct}
+              showStore={showStore}
+              includeIgv={includeIgv}
+            />
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════
             TAB: MARCAS (solo admin y own_brand_user)
-        ══════════════════════════════════════════════ */}
+        ════════════════════════════════════════════ */}
         {activeTab === "marcas" && canManageBrands && (
           <BrandsManager />
         )}

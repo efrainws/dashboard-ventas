@@ -1244,4 +1244,106 @@ export const ownBrandRouter = router({
     );
     return res.rows as Array<{ id: string; name: string; sku: string }>;
   }),
+
+  /**
+   * Evolución temporal de ventas por período (día/semana/mes)
+   * Agrupa por las mismas dimensiones que getSalesByProductBranch
+   * Respeta los mismos filtros: marcas propias, productos, tienda, categoría interna, IGV
+   */
+  getSalesEvolution: protectedProcedure
+    .input(
+      dateRangeCategorySchema.extend({
+        productIds: z.array(z.string()).optional(),
+        branchId: z.string().optional(),
+        groupByProduct: z.boolean().default(true),
+        groupByStore: z.boolean().default(true),
+        granularity: z.enum(['day', 'week', 'month']).default('day'),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      assertAccess((ctx.user as any).role);
+      const brandIds = await getOwnBrandIds();
+      if (brandIds.length === 0) return [];
+
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const gp = input.groupByProduct !== false;
+      const gs = input.groupByStore !== false;
+
+      const categoryProductIds = input.categoryId != null
+        ? await getProductIdsByCategory(input.categoryId)
+        : null;
+      if (categoryProductIds !== null && categoryProductIds.length === 0) return [];
+
+      const dateTrunc = input.granularity === 'day'
+        ? `sh.doc_date::date`
+        : input.granularity === 'week'
+          ? `date_trunc('week', sh.doc_date)::date`
+          : `date_trunc('month', sh.doc_date)::date`;
+
+      const selectProduct = gp
+        ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
+        : `NULL::uuid AS product_id, '(Todos)' AS producto, '—' AS sku,`;
+      const selectStore = gs
+        ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
+        : `NULL::uuid AS branch_id, '(Todas)' AS tienda, NULL AS sap_id,`;
+
+      const groupByDims = [
+        ...(gp ? ['p.id', 'p.name', 'p.int_sku'] : []),
+        ...(gs ? ['b.id', 'b.name', 'b.sap_id'] : []),
+      ];
+
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const fromIdx = brandParams.length + 1;
+      const toIdx = fromIdx + 1;
+
+      const params: (string | number | string[])[] = [...brandParams, from, to];
+      const clauses: string[] = [];
+
+      if (input.productIds && input.productIds.length > 0) {
+        params.push(input.productIds);
+        clauses.push(`AND p.id = ANY($${params.length}::uuid[])`);
+      }
+      if (input.branchId) {
+        params.push(input.branchId);
+        clauses.push(`AND b.id = $${params.length}`);
+      }
+      addCategoryFilter(params, clauses, categoryProductIds);
+
+      const groupByClause = ['period', ...groupByDims].join(', ');
+
+      const query = `
+        SELECT
+          ${dateTrunc} AS period,
+          ${selectProduct}
+          ${selectStore}
+          SUM(${amtCol}) AS amount,
+          SUM(sd.quantity) AS quantity
+        FROM public.sales_header sh
+        JOIN public.sales_detail sd ON sd.header_id = sh.id
+        JOIN public.products p ON p.id = sd.product_id
+        LEFT JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.doc_date IS NOT NULL
+          AND sh.doc_date::date >= $${fromIdx}::date
+          AND sh.doc_date::date <= $${toIdx}::date
+          AND p.id IN ${subquery}
+          ${clauses.join(' ')}
+        GROUP BY ${groupByClause}
+        ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}
+      `;
+
+      const res = await pool.query(query, params);
+      return res.rows as Array<{
+        period: string;
+        product_id: string | null;
+        producto: string;
+        sku: string;
+        branch_id: string | null;
+        tienda: string;
+        sap_id: string | null;
+        amount: string;
+        quantity: string;
+      }>;
+    }),
 });

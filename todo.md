@@ -2069,3 +2069,10 @@ Fecha: 1 de febrero de 2026
 - [x] Pasar include_igv al comparisonQuery (getHourlyComparison) en HourlyAnalysis
 - [x] Agregar prop includeIgv al HeatmapChart y pasarla a getHeatmapData y getHeatmapDayComparison
 - [x] Pasar includeIgv al HeatmapChart desde HourlyAnalysis
+
+## Tabla de Evolución Temporal en Portales
+- [ ] Agregar endpoint getSalesEvolution en supplierPortalRouter (día/semana/mes)
+- [ ] Agregar endpoint getSalesEvolution en ownBrandRouter (día/semana/mes)
+- [ ] Crear componente SalesEvolutionTable con dropdown día/semana/mes, toggle monto/cantidad, toggle columnas artículo/tienda
+- [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Proveedores
+- [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Marca Propia

@@ -978,4 +978,106 @@ export const supplierPortalRouter = router({
 
       return res.rows as Array<{ id: string; name: string; sku: string }>;
     }),
+
+  /**
+   * Evolución temporal de ventas por período (día/semana/mes)
+   * Agrupa por las mismas dimensiones que getSalesByProductBranch
+   * Respeta los mismos filtros: proveedor, productos, tienda, IGV
+   */
+  getSalesEvolution: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        supplierId: z.string().optional(),
+        productIds: z.array(z.string()).optional(),
+        branchId: z.string().optional(),
+        groupByProduct: z.boolean().default(true),
+        groupByStore: z.boolean().default(true),
+        granularity: z.enum(['day', 'week', 'month']).default('day'),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const gp = input.groupByProduct !== false;
+      const gs = input.groupByStore !== false;
+
+      // Truncar fecha según granularidad
+      const dateTrunc = input.granularity === 'day'
+        ? `sh.doc_date::date`
+        : input.granularity === 'week'
+          ? `date_trunc('week', sh.doc_date)::date`
+          : `date_trunc('month', sh.doc_date)::date`;
+
+      const selectProduct = gp
+        ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
+        : `NULL::uuid AS product_id, '(Todos)' AS producto, '—' AS sku,`;
+      const selectStore = gs
+        ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
+        : `NULL::uuid AS branch_id, '(Todas)' AS tienda, NULL AS sap_id,`;
+
+      const groupByDims = [
+        ...(gp ? ['p.id', 'p.name', 'p.int_sku'] : []),
+        ...(gs ? ['b.id', 'b.name', 'b.sap_id'] : []),
+      ];
+
+      const params: any[] = [supplierId, from, to];
+      let pIdx = 4;
+
+      const productFilter = (input.productIds && input.productIds.length > 0)
+        ? (() => {
+            const placeholders = input.productIds!.map((_, i) => `$${pIdx + i}`).join(', ');
+            params.push(...input.productIds!);
+            pIdx += input.productIds!.length;
+            return `AND p.id IN (${placeholders})`;
+          })()
+        : '';
+
+      const branchFilter = input.branchId
+        ? (() => { params.push(input.branchId); return `AND b.id = $${pIdx++}`; })()
+        : '';
+
+      const groupByClause = [
+        `period`,
+        ...groupByDims,
+      ].join(', ');
+
+      const query = `
+        SELECT
+          ${dateTrunc} AS period,
+          ${selectProduct}
+          ${selectStore}
+          SUM(${amtCol}) AS amount,
+          SUM(sd.quantity) AS quantity
+        FROM public.sales_header sh
+        JOIN public.sales_detail sd ON sd.header_id = sh.id
+        JOIN public.products p ON p.id = sd.product_id
+        LEFT JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.doc_date IS NOT NULL
+          AND sh.doc_date::date >= $2::date
+          AND sh.doc_date::date <= $3::date
+          AND p.id IN (
+            SELECT DISTINCT product_id FROM public.supplier_products
+            WHERE supplier_id = $1
+          )
+          ${productFilter}
+          ${branchFilter}
+        GROUP BY ${groupByClause}
+        ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}
+      `;
+
+      const res = await pool.query(query, params);
+      return res.rows as Array<{
+        period: string;
+        product_id: string | null;
+        producto: string;
+        sku: string;
+        branch_id: string | null;
+        tienda: string;
+        sap_id: string | null;
+        amount: string;
+        quantity: string;
+      }>;
+    }),
 });

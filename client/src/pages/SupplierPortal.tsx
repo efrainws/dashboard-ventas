@@ -81,6 +81,7 @@ import { format, subDays, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
+import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -206,6 +207,8 @@ export default function SupplierPortal() {
   };
   // Estado de exportación (stock)
   const [isExportingStock, setIsExportingStock] = useState(false);
+  // Granularidad de la tabla de evolución temporal
+  const [evolutionGranularity, setEvolutionGranularity] = useState<Granularity>("day");
   // Modal de detalle diario
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
@@ -352,6 +355,20 @@ export default function SupplierPortal() {
     groupByStore: showStore,
     include_igv: includeIgv,
   }, { enabled: false });
+
+  // Query: tabla de evolución temporal de ventas
+  const { data: evolutionData, isLoading: evolutionLoading } =
+    trpc.supplierPortal.getSalesEvolution.useQuery({
+      from,
+      to,
+      supplierId: effectiveSupplierId,
+      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
+      branchId: salesBranchId,
+      groupByProduct: showProduct,
+      groupByStore: showStore,
+      granularity: evolutionGranularity,
+      include_igv: includeIgv,
+    }, { enabled: queriesEnabled && activeTab === "ventas" });
 
   // Función para descargar Excel de ventas
   const handleDownloadCSV = async () => {
@@ -1678,6 +1695,27 @@ export default function SupplierPortal() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tabla de evolución temporal */}
+        {activeTab === "ventas" && (
+          <div className="space-y-3">
+            <h3
+              className="text-base font-bold uppercase tracking-wide"
+              style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+            >
+              Evolución de Ventas
+            </h3>
+            <SalesEvolutionTable
+              data={evolutionData}
+              isLoading={evolutionLoading}
+              granularity={evolutionGranularity}
+              setGranularity={setEvolutionGranularity}
+              showProduct={showProduct}
+              showStore={showStore}
+              includeIgv={includeIgv}
+            />
           </div>
         )}
       </div>
