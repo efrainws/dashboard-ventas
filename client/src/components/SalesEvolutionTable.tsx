@@ -30,7 +30,7 @@ const formatCurrency = (v: number) =>
 export type Granularity = "day" | "week" | "month";
 
 export interface EvolutionRow {
-  period: string;
+  period: string | Date;
   product_id: string | null;
   producto: string;
   sku: string;
@@ -54,10 +54,11 @@ interface SalesEvolutionTableProps {
 type SortDir = "asc" | "desc";
 type Metric = "amount" | "quantity";
 
-function formatPeriod(period: string, granularity: Granularity): string {
+function formatPeriod(period: string | Date, granularity: Granularity): string {
   if (!period) return "—";
-  const d = new Date(period + "T00:00:00");
-  if (isNaN(d.getTime())) return period;
+  // superjson puede deserializar la columna date de PostgreSQL como objeto Date
+  const d = period instanceof Date ? period : new Date(String(period).length === 10 ? period + "T00:00:00" : period);
+  if (isNaN(d.getTime())) return String(period);
   if (granularity === "day") {
     return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
   }
@@ -104,7 +105,10 @@ export function SalesEvolutionTable({
     const sorted = [...data].sort((a, b) => {
       let va: string | number = "";
       let vb: string | number = "";
-      if (sortCol === "period") { va = a.period; vb = b.period; }
+      if (sortCol === "period") {
+        va = a.period instanceof Date ? a.period.toISOString() : String(a.period);
+        vb = b.period instanceof Date ? b.period.toISOString() : String(b.period);
+      }
       else if (sortCol === "producto") { va = a.producto; vb = b.producto; }
       else if (sortCol === "sku") { va = a.sku; vb = b.sku; }
       else if (sortCol === "tienda") { va = a.tienda; vb = b.tienda; }
