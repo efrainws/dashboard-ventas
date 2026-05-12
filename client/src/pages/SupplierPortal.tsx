@@ -1561,8 +1561,7 @@ export default function SupplierPortal() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                <div className="overflow-x-auto">
-                  <Table>
+                <Table>
                     <TableHeader>
                       <TableRow className="border-border/50">
                         {showProduct && <SortableTableHead label="Producto" col="producto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} className="pl-4" />}
@@ -1674,7 +1673,6 @@ export default function SupplierPortal() {
                       })()}
                     </TableBody>
                   </Table>
-                </div>
               </CardContent>
             </Card>
 
