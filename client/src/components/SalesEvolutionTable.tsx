@@ -1,14 +1,8 @@
 /**
- * SalesEvolutionTable
- * Tabla de evolución temporal de ventas (día/semana/mes).
+ * SalesEvolutionTable — formato PIVOTADO
+ * Filas: combinaciones únicas de (producto × tienda) según los toggles activos.
+ * Columnas: un período por columna (día / semana / mes) + columna Total.
  * Reutilizable en SupplierPortal y OwnBrandPortal.
- *
- * Props:
- *  - data: filas devueltas por getSalesEvolution
- *  - isLoading: estado de carga
- *  - granularity / setGranularity: dropdown día/semana/mes
- *  - showProduct / showStore: visibilidad de columnas (sincronizadas con la tabla principal)
- *  - includeIgv: para mostrar la etiqueta correcta en el encabezado de monto
  */
 
 import { useState, useMemo } from "react";
@@ -21,11 +15,19 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpDown, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
-// Formateador de moneda local (S/ PEN)
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+import { TrendingUp } from "lucide-react";
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const fmtCurrency = (v: number) =>
+  new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: "PEN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(v);
+
+const fmtQty = (v: number) => v.toLocaleString("es-PE");
 
 export type Granularity = "day" | "week" | "month";
 
@@ -51,25 +53,42 @@ interface SalesEvolutionTableProps {
   includeIgv: boolean;
 }
 
-type SortDir = "asc" | "desc";
 type Metric = "amount" | "quantity";
 
-function formatPeriod(period: string | Date, granularity: Granularity): string {
-  if (!period) return "—";
-  // superjson puede deserializar la columna date de PostgreSQL como objeto Date
-  const d = period instanceof Date ? period : new Date(String(period).length === 10 ? period + "T00:00:00" : period);
-  if (isNaN(d.getTime())) return String(period);
+// ─── Period helpers ──────────────────────────────────────────────────────────
+
+/** Normaliza period (Date | string) a un string ISO "YYYY-MM-DD" para usar como key */
+function periodKey(period: string | Date): string {
+  if (period instanceof Date) {
+    return period.toISOString().slice(0, 10);
+  }
+  return String(period).slice(0, 10);
+}
+
+/** Formatea la cabecera de columna según la granularidad */
+function formatPeriodHeader(key: string, granularity: Granularity): string {
+  const d = new Date(key + "T00:00:00");
+  if (isNaN(d.getTime())) return key;
   if (granularity === "day") {
-    return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+    return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
   }
   if (granularity === "week") {
     const end = new Date(d);
     end.setDate(end.getDate() + 6);
-    return `${d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}`;
+    return `${d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}`;
   }
   // month
-  return d.toLocaleDateString("es-PE", { month: "long", year: "numeric" });
+  return d.toLocaleDateString("es-PE", { month: "short", year: "2-digit" });
 }
+
+/** Clave de fila según las dimensiones activas */
+function rowKey(row: EvolutionRow, showProduct: boolean, showStore: boolean): string {
+  const p = showProduct ? (row.product_id ?? row.producto) : "__ALL__";
+  const s = showStore ? (row.branch_id ?? row.tienda) : "__ALL__";
+  return `${p}||${s}`;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function SalesEvolutionTable({
   data,
@@ -81,57 +100,83 @@ export function SalesEvolutionTable({
   includeIgv,
 }: SalesEvolutionTableProps) {
   const [metric, setMetric] = useState<Metric>("amount");
-  const [sortCol, setSortCol] = useState<string>("period");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const handleSort = (col: string) => {
-    if (sortCol === col) {
-      setSortDir(d => d === "asc" ? "desc" : "asc");
-    } else {
-      setSortCol(col);
-      setSortDir("asc");
+  // ── Pivot ────────────────────────────────────────────────────────────────
+  const { periods, pivotRows, grandTotal } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return { periods: [] as string[], pivotRows: [] as PivotRow[], grandTotal: {} as Record<string, number> };
     }
-  };
 
-  const SortIcon = ({ col }: { col: string }) => {
-    if (sortCol !== col) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-40 inline" />;
-    return sortDir === "asc"
-      ? <ArrowUp className="ml-1 h-3 w-3 inline" />
-      : <ArrowDown className="ml-1 h-3 w-3 inline" />;
-  };
+    // 1. Recoger todos los períodos únicos ordenados
+    const periodSet = new Set<string>();
+    data.forEach(r => periodSet.add(periodKey(r.period)));
+    const periods = Array.from(periodSet).sort();
 
-  const rows = useMemo(() => {
-    if (!data) return [];
-    const sorted = [...data].sort((a, b) => {
-      let va: string | number = "";
-      let vb: string | number = "";
-      if (sortCol === "period") {
-        va = a.period instanceof Date ? a.period.toISOString() : String(a.period);
-        vb = b.period instanceof Date ? b.period.toISOString() : String(b.period);
+    // 2. Construir mapa de filas
+    type PivotRow = {
+      key: string;
+      producto: string;
+      sku: string;
+      tienda: string;
+      sap_id: string | null;
+      cells: Record<string, number>; // periodKey → valor
+    };
+
+    const rowMap = new Map<string, PivotRow>();
+
+    data.forEach(r => {
+      const rk = rowKey(r, showProduct, showStore);
+      if (!rowMap.has(rk)) {
+        rowMap.set(rk, {
+          key: rk,
+          producto: r.producto,
+          sku: r.sku,
+          tienda: r.tienda,
+          sap_id: r.sap_id,
+          cells: {},
+        });
       }
-      else if (sortCol === "producto") { va = a.producto; vb = b.producto; }
-      else if (sortCol === "sku") { va = a.sku; vb = b.sku; }
-      else if (sortCol === "tienda") { va = a.tienda; vb = b.tienda; }
-      else if (sortCol === "sap_id") { va = a.sap_id ?? ""; vb = b.sap_id ?? ""; }
-      else if (sortCol === "amount") { va = parseFloat(a.amount); vb = parseFloat(b.amount); }
-      else if (sortCol === "quantity") { va = parseFloat(a.quantity); vb = parseFloat(b.quantity); }
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
+      const entry = rowMap.get(rk)!;
+      const pk = periodKey(r.period);
+      const val = parseFloat(metric === "amount" ? r.amount : r.quantity) || 0;
+      entry.cells[pk] = (entry.cells[pk] ?? 0) + val;
     });
-    return sorted;
-  }, [data, sortCol, sortDir]);
 
-  // Totales
-  const totals = useMemo(() => {
-    if (!data) return { amount: 0, quantity: 0 };
-    return data.reduce((acc, r) => ({
-      amount: acc.amount + parseFloat(r.amount || "0"),
-      quantity: acc.quantity + parseFloat(r.quantity || "0"),
-    }), { amount: 0, quantity: 0 });
-  }, [data]);
+    // 3. Grand total por período
+    const grandTotal: Record<string, number> = {};
+    periods.forEach(p => { grandTotal[p] = 0; });
+    rowMap.forEach(row => {
+      periods.forEach(p => {
+        grandTotal[p] = (grandTotal[p] ?? 0) + (row.cells[p] ?? 0);
+      });
+    });
+
+    const pivotRows = Array.from(rowMap.values());
+    return { periods, pivotRows, grandTotal };
+  }, [data, metric, showProduct, showStore]);
+
+  type PivotRow = {
+    key: string;
+    producto: string;
+    sku: string;
+    tienda: string;
+    sap_id: string | null;
+    cells: Record<string, number>;
+  };
 
   const amountLabel = includeIgv ? "Monto (S/ c/IGV)" : "Monto (S/ s/IGV)";
+  const metricLabel = metric === "amount" ? amountLabel : "Unidades";
+
+  const fmt = (v: number) => metric === "amount" ? fmtCurrency(v) : fmtQty(v);
+
+  const rowTotal = (row: PivotRow) =>
+    periods.reduce((s, p) => s + (row.cells[p] ?? 0), 0);
+
+  const grandTotalSum = periods.reduce((s, p) => s + (grandTotal[p] ?? 0), 0);
+
+  // Columnas fijas (dimensiones)
+  const dimCols = (showProduct ? 2 : 0) + (showStore ? 2 : 0);
+  const totalCols = dimCols + periods.length + 1; // +1 = columna Total
 
   return (
     <div className="space-y-3">
@@ -169,118 +214,96 @@ export function SalesEvolutionTable({
             # Unidades
           </Button>
         </div>
+        {periods.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {periods.length} {granularity === "day" ? "días" : granularity === "week" ? "semanas" : "meses"}
+          </span>
+        )}
       </div>
 
       {/* Tabla */}
       <div className="overflow-x-auto rounded-md border">
-        <table className="ff-table w-full">
+        <table className="ff-table w-full" style={{ minWidth: `${dimCols * 120 + periods.length * 90 + 90}px` }}>
           <thead>
             <tr>
-              <th
-                className="cursor-pointer whitespace-nowrap"
-                onClick={() => handleSort("period")}
-              >
-                Período <SortIcon col="period" />
-              </th>
+              {/* Columnas de dimensión */}
               {showProduct && (
                 <>
-                  <th className="cursor-pointer" onClick={() => handleSort("producto")}>
-                    Producto <SortIcon col="producto" />
-                  </th>
-                  <th className="cursor-pointer" onClick={() => handleSort("sku")}>
-                    SKU <SortIcon col="sku" />
-                  </th>
+                  <th className="whitespace-nowrap sticky left-0 bg-background z-10">Producto</th>
+                  <th className="whitespace-nowrap">SKU</th>
                 </>
               )}
               {showStore && (
                 <>
-                  <th className="cursor-pointer" onClick={() => handleSort("tienda")}>
-                    Tienda <SortIcon col="tienda" />
-                  </th>
-                  <th className="cursor-pointer" onClick={() => handleSort("sap_id")}>
-                    Cod. SAP <SortIcon col="sap_id" />
-                  </th>
+                  <th className="whitespace-nowrap">Tienda</th>
+                  <th className="whitespace-nowrap">Cód. SAP</th>
                 </>
               )}
-              {metric === "amount" ? (
-                <th className="text-right cursor-pointer" onClick={() => handleSort("amount")}>
-                  {amountLabel} <SortIcon col="amount" />
+              {/* Una columna por período */}
+              {periods.map(p => (
+                <th key={p} className="text-right whitespace-nowrap">
+                  {formatPeriodHeader(p, granularity)}
                 </th>
-              ) : (
-                <th className="text-right cursor-pointer" onClick={() => handleSort("quantity")}>
-                  Unidades <SortIcon col="quantity" />
-                </th>
-              )}
+              ))}
+              {/* Total */}
+              <th className="text-right whitespace-nowrap font-bold">Total</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i}>
-                  <td><Skeleton className="h-4 w-24" /></td>
-                  {showProduct && <><td><Skeleton className="h-4 w-32" /></td><td><Skeleton className="h-4 w-16" /></td></>}
-                  {showStore && <><td><Skeleton className="h-4 w-28" /></td><td><Skeleton className="h-4 w-12" /></td></>}
-                  <td><Skeleton className="h-4 w-20 ml-auto" /></td>
+                  {Array.from({ length: totalCols }).map((_, j) => (
+                    <td key={j}><Skeleton className="h-4 w-full" /></td>
+                  ))}
                 </tr>
               ))
-            ) : rows.length === 0 ? (
+            ) : pivotRows.length === 0 ? (
               <tr>
-                <td
-                  colSpan={1 + (showProduct ? 2 : 0) + (showStore ? 2 : 0) + 1}
-                  className="text-center text-muted-foreground py-8"
-                >
+                <td colSpan={totalCols} className="text-center text-muted-foreground py-8">
                   Sin datos para el período seleccionado
                 </td>
               </tr>
             ) : (
-              rows.map((row, i) => (
-                <tr key={i}>
-                  <td className="whitespace-nowrap font-medium">
-                    {formatPeriod(row.period, granularity)}
-                  </td>
+              pivotRows.map(row => (
+                <tr key={row.key}>
                   {showProduct && (
                     <>
-                      <td>{row.producto}</td>
+                      <td className="whitespace-nowrap sticky left-0 bg-background z-10">{row.producto}</td>
                       <td className="font-mono text-xs">{row.sku}</td>
                     </>
                   )}
                   {showStore && (
                     <>
-                      <td>{row.tienda}</td>
+                      <td className="whitespace-nowrap">{row.tienda}</td>
                       <td className="font-mono text-xs">{row.sap_id ?? "—"}</td>
                     </>
                   )}
-                  {metric === "amount" ? (
-                    <td className="text-right tabular-nums">
-                      {formatCurrency(parseFloat(row.amount || "0"))}
+                  {periods.map(p => (
+                    <td key={p} className="text-right tabular-nums">
+                      {row.cells[p] != null ? fmt(row.cells[p]) : "—"}
                     </td>
-                  ) : (
-                    <td className="text-right tabular-nums">
-                      {parseFloat(row.quantity || "0").toLocaleString("es-PE")}
-                    </td>
-                  )}
+                  ))}
+                  <td className="text-right tabular-nums font-semibold">
+                    {fmt(rowTotal(row))}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
-          {!isLoading && rows.length > 0 && (
+          {!isLoading && pivotRows.length > 0 && (
             <tfoot>
               <tr className="font-bold bg-muted/30">
-                <td
-                  colSpan={1 + (showProduct ? 2 : 0) + (showStore ? 2 : 0)}
-                  className="text-right pr-4"
-                >
-                  Total
-                </td>
-                {metric === "amount" ? (
-                  <td className="text-right tabular-nums">
-                    {formatCurrency(totals.amount)}
-                  </td>
-                ) : (
-                  <td className="text-right tabular-nums">
-                    {totals.quantity.toLocaleString("es-PE")}
-                  </td>
+                {dimCols > 0 && (
+                  <td colSpan={dimCols} className="text-right pr-4">Total</td>
                 )}
+                {dimCols === 0 && <td className="text-right pr-4">Total</td>}
+                {periods.map(p => (
+                  <td key={p} className="text-right tabular-nums">
+                    {fmt(grandTotal[p] ?? 0)}
+                  </td>
+                ))}
+                <td className="text-right tabular-nums">{fmt(grandTotalSum)}</td>
               </tr>
             </tfoot>
           )}
