@@ -309,15 +309,15 @@
   h4, h5, h6 {
     @apply font-sans font-bold tracking-tight;
   }
-  /* Cabeceras de tabla: ItalianPlateNo1 14px */
+  /* Cabeceras de tabla: ItalianPlateNo1 14px (desktop) · 12px (móvil) */
   th {
     font-family: var(--font-heading);
     font-size: 14px;
   }
-  /* Cuerpo de tabla: Sailec 9.5px */
+  /* Cuerpo de tabla: Sailec 12px (desktop) · 9px (móvil) */
   td {
     font-family: var(--font-sans);
-    font-size: 9.5px;
+    font-size: 12px;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -388,7 +388,7 @@
     border-collapse: separate;
     border-spacing: 0;
     font-family: var(--font-sans);
-    font-size: 9.5px;              /* Cuerpo: Sailec 9.5px */
+    font-size: 12px;               /* Cuerpo: Sailec 12px */
     border: 1px solid var(--ff-table-border);
     border-radius: 8px;
     overflow: hidden;
@@ -396,7 +396,7 @@
 
   .ff-table thead tr th {
     font-family: var(--font-heading);
-    font-size: 14px;               /* Cabecera: ItalianPlateNo1 14px */
+    font-size: 14px;               /* Cabecera: ItalianPlateNo1 14px (desktop) */
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -485,6 +485,27 @@
       padding-left: 2rem; /* 32px - desktop padding */
       padding-right: 2rem;
       max-width: 1280px; /* Standard content width */
+    }
+  }
+
+  /* ── Tipografía de tablas en móvil (≤ 639px) ──────────────────────────────
+     En dispositivos móviles los tamaños se reducen:
+       - Cabecera (th):  14px → 12px  (ItalianPlateNo1)
+       - Cuerpo   (td):  12px →  9px  (Sailec)
+     La clase .ff-table sigue la misma regla.
+  */
+  @media (max-width: 639px) {
+    th {
+      font-size: 12px;
+    }
+    td {
+      font-size: 9px;
+    }
+    .ff-table {
+      font-size: 9px;            /* Cuerpo móvil: Sailec 9px */
+    }
+    .ff-table thead tr th {
+      font-size: 12px;           /* Cabecera móvil: ItalianPlateNo1 12px */
     }
   }
 }
