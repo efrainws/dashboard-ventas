@@ -18,6 +18,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Loader2,
@@ -28,6 +50,7 @@ import {
   X,
   Store,
   Lock,
+  UserCircle2,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
@@ -65,7 +88,233 @@ interface StoreRow {
   identified_percentage: number;
 }
 
-// ─── componente ─────────────────────────────────────────────────────────────
+interface ModalState {
+  open: boolean;
+  store: StoreRow | null;
+}
+
+// ─── sub-componente: modal de detalle por cajero ─────────────────────────────
+
+function CashierDetailModal({
+  open,
+  store,
+  fechaMin,
+  fechaMax,
+  onClose,
+}: {
+  open: boolean;
+  store: StoreRow | null;
+  fechaMin: string;
+  fechaMax: string;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = trpc.sales.getIdentifiedTransactionsByCashier.useQuery(
+    {
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+      branch_sap_id: store?.codigo_tienda ?? "",
+    },
+    { enabled: open && !!store?.codigo_tienda }
+  );
+
+  const rows = data?.data ?? [];
+
+  // Totales de la tabla
+  const totals = useMemo(() => {
+    const total = rows.reduce((s, r) => s + r.total_transactions, 0);
+    const identified = rows.reduce((s, r) => s + r.identified_transactions, 0);
+    const pct = total > 0 ? Math.round((identified / total) * 10000) / 100 : 0;
+    return { total, identified, pct };
+  }, [rows]);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
+          <div className="flex items-start gap-3">
+            <div
+              className="shrink-0 w-1 self-stretch rounded-full"
+              style={{ backgroundColor: store ? percentColor(store.identified_percentage) : "#1A6894" }}
+            />
+            <div className="min-w-0">
+              <DialogTitle
+                className="text-base font-bold uppercase tracking-wide leading-tight"
+                style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
+              >
+                {store?.nombre ?? "—"}
+              </DialogTitle>
+              <DialogDescription className="text-xs mt-0.5">
+                Código: {store?.codigo_tienda ?? "—"} · Período: {fechaMin} – {fechaMax}
+              </DialogDescription>
+            </div>
+            {/* KPI compacto */}
+            {store && (
+              <div className="ml-auto shrink-0 text-right">
+                <p
+                  className="text-2xl font-bold leading-none"
+                  style={{
+                    fontFamily: "Sailec, sans-serif",
+                    color: percentColor(store.identified_percentage),
+                  }}
+                >
+                  {store.identified_percentage.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">identificación</p>
+              </div>
+            )}
+          </div>
+
+          {/* Barra de progreso de la tienda */}
+          {store && (
+            <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(store.identified_percentage, 100)}%`,
+                  backgroundColor: percentColor(store.identified_percentage),
+                }}
+              />
+            </div>
+          )}
+        </DialogHeader>
+
+        {/* Cuerpo scrollable */}
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full rounded" />
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <UserCircle2 className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                No hay datos de cajeros para este período
+              </p>
+            </div>
+          ) : (
+            <TooltipProvider delayDuration={300}>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50">
+                    <TableHead className="pl-4">Cajero</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Identificadas</TableHead>
+                    <TableHead className="text-right">Sin Ident.</TableHead>
+                    <TableHead className="text-right pr-4">%</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row, idx) => (
+                    <TableRow
+                      key={row.cashier_id ?? idx}
+                      className="border-border/50 hover:bg-muted/30 transition-colors"
+                    >
+                      {/* Nombre del cajero con tooltip del num_doc */}
+                      <TableCell className="pl-4 max-w-[200px]">
+                        {row.cashier_num_doc ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-default truncate block leading-tight">
+                                {row.cashier_name}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              Doc: {row.cashier_num_doc}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="truncate block leading-tight text-muted-foreground italic">
+                            {row.cashier_name}
+                          </span>
+                        )}
+                      </TableCell>
+
+                      {/* Total */}
+                      <TableCell className="text-right tabular-nums">
+                        {formatNumber(row.total_transactions)}
+                      </TableCell>
+
+                      {/* Identificadas */}
+                      <TableCell
+                        className="text-right tabular-nums font-medium"
+                        style={{ color: percentColor(row.identified_percentage) }}
+                      >
+                        {formatNumber(row.identified_transactions)}
+                      </TableCell>
+
+                      {/* Sin identificar */}
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {formatNumber(row.total_transactions - row.identified_transactions)}
+                      </TableCell>
+
+                      {/* Porcentaje con mini-barra */}
+                      <TableCell className="text-right pr-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden hidden sm:block">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(row.identified_percentage, 100)}%`,
+                                backgroundColor: percentColor(row.identified_percentage),
+                              }}
+                            />
+                          </div>
+                          <span
+                            className="tabular-nums font-semibold text-xs"
+                            style={{ color: percentColor(row.identified_percentage) }}
+                          >
+                            {row.identified_percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                  {/* Fila de totales */}
+                  <TableRow className="border-t-2 border-border font-semibold bg-muted/20">
+                    <TableCell className="pl-4 text-sm">Total General</TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {formatNumber(totals.total)}
+                    </TableCell>
+                    <TableCell
+                      className="text-right tabular-nums text-sm"
+                      style={{ color: percentColor(totals.pct) }}
+                    >
+                      {formatNumber(totals.identified)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                      {formatNumber(totals.total - totals.identified)}
+                    </TableCell>
+                    <TableCell className="text-right pr-4">
+                      <span
+                        className="tabular-nums font-bold text-sm"
+                        style={{ color: percentColor(totals.pct) }}
+                      >
+                        {totals.pct.toFixed(1)}%
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TooltipProvider>
+          )}
+        </div>
+
+        {/* Footer con botón cerrar */}
+        <div className="px-6 py-3 border-t border-border/50 shrink-0 flex justify-end">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── componente principal ────────────────────────────────────────────────────
 
 export default function IdentifiedTransactions() {
   const { user, loading: authLoading } = useAuth();
@@ -94,6 +343,9 @@ export default function IdentifiedTransactions() {
 
   // El filtro de tienda en esta página usa sap_id (no UUID) porque el query agrupa por sap_id
   const [selectedSapId, setSelectedSapId] = useState<string>("all");
+
+  // Estado del modal
+  const [modal, setModal] = useState<ModalState>({ open: false, store: null });
 
   // Inicializar filtro de tienda para store_user
   useEffect(() => {
@@ -227,7 +479,8 @@ export default function IdentifiedTransactions() {
             TRANSACCIONES IDENTIFICADAS
           </h1>
           <p className="text-muted-foreground">
-            Porcentaje de identificación de clientes por tienda en el período seleccionado
+            Porcentaje de identificación de clientes por tienda en el período seleccionado.{" "}
+            <span className="text-xs">Haz clic en una tarjeta para ver el detalle por cajero.</span>
           </p>
           {queryData?.metadata && (
             <p className="text-xs text-muted-foreground">
@@ -429,7 +682,17 @@ export default function IdentifiedTransactions() {
                   {storeData.map((store) => (
                     <Card
                       key={store.codigo_tienda || store.nombre}
-                      className="relative overflow-hidden"
+                      className="relative overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                      onClick={() => setModal({ open: true, store })}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setModal({ open: true, store });
+                        }
+                      }}
+                      aria-label={`Ver detalle por cajero de ${store.nombre}`}
                     >
                       {/* Franja de color superior según porcentaje */}
                       <div
@@ -509,6 +772,11 @@ export default function IdentifiedTransactions() {
                             </p>
                           </div>
                         </div>
+
+                        {/* Indicador de drill-down */}
+                        <p className="text-xs text-muted-foreground/60 text-right leading-none">
+                          Ver por cajero ›
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
@@ -518,6 +786,15 @@ export default function IdentifiedTransactions() {
           </>
         )}
       </div>
+
+      {/* ── Modal de detalle por cajero ── */}
+      <CashierDetailModal
+        open={modal.open}
+        store={modal.store}
+        fechaMin={queryParams.fecha_min}
+        fechaMax={queryParams.fecha_max}
+        onClose={() => setModal({ open: false, store: null })}
+      />
 
       {/* Botón flotante de reporte de discrepancias */}
       <ReportDiscrepancyButton

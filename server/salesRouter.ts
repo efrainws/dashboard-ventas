@@ -1265,4 +1265,71 @@ export const salesRouter = router({
         throw new Error('Error al consultar datos de comparación por día');
       }
     }),
+
+  /**
+   * Detalle de transacciones identificadas por cajero para una tienda y período dados.
+   * Retorna el breakdown de total / identificadas / % por cajero,
+   * junto con el nombre y num_doc del cajero (num_doc solo para tooltip).
+   */
+  getIdentifiedTransactionsByCashier: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_sap_id: z.string(), // sap_id de la tienda
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_sap_id } = input;
+      const fechaMin = fecha_min.substring(0, 10);
+      const fechaMax = fecha_max.substring(0, 10);
+
+      const query = `
+        SELECT
+          sh.cashier_id,
+          c.name                                         AS cashier_name,
+          c.num_doc                                      AS cashier_num_doc,
+          COUNT(*)                                       AS total_transactions,
+          COUNT(*) FILTER (
+            WHERE sh.customer_id IS NOT NULL
+              AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'
+          )                                              AS identified_transactions,
+          ROUND(
+            100.0 * COUNT(*) FILTER (
+              WHERE sh.customer_id IS NOT NULL
+                AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'
+            ) / NULLIF(COUNT(*), 0),
+            2
+          )                                              AS identified_percentage
+        FROM public.sales_header sh
+        LEFT JOIN public.branches b   ON b.id  = sh.branch_id
+        LEFT JOIN public.cashier  c   ON c.id  = sh.cashier_id
+        WHERE sh.doc_date IS NOT NULL
+          AND DATE(sh.doc_date) >= $1::date
+          AND DATE(sh.doc_date) <= $2::date
+          AND b.sap_id = $3
+        GROUP BY sh.cashier_id, c.name, c.num_doc
+        ORDER BY total_transactions DESC;
+      `;
+
+      try {
+        const result = await pool.query(query, [fechaMin, fechaMax, branch_sap_id]);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            cashier_id:              row.cashier_id ?? null,
+            cashier_name:            row.cashier_name ?? 'Sin nombre',
+            cashier_num_doc:         row.cashier_num_doc ?? null,
+            total_transactions:      Number(row.total_transactions),
+            identified_transactions: Number(row.identified_transactions),
+            identified_percentage:   row.identified_percentage !== null
+              ? Number(row.identified_percentage)
+              : 0,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing cashier breakdown query:', error);
+        throw new Error('Error al consultar detalle por cajero');
+      }
+    }),
 });
