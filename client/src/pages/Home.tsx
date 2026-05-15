@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -85,6 +85,14 @@ export default function Home() {
       href: "/top-products",
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#5BB6B7]", // Celeste
+    },
+    {
+      title: "Notas de Crédito",
+      description: "Detalle de notas de crédito emitidas por tienda con breakdown por cajero",
+      icon: ReceiptText,
+      href: "/credit-notes",
+      color: "text-[#EAE8E2]", // Beige
+      bgColor: "bg-[#BC2C46]", // Granate
     },
   ];
 
