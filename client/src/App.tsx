@@ -29,6 +29,7 @@ import OwnBrandPortal from "./pages/OwnBrandPortal";
 import { TrialPopup } from "./components/TrialPopup";
 import StyleGuide from "./pages/StyleGuide";
 import DatabaseConnections from "./pages/DatabaseConnections";
+import CreditNotes from "./pages/CreditNotes";
 
 type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
 
@@ -176,6 +177,9 @@ function Router() {
       </Route>
       <Route path="/top-products">
         {() => <ProtectedRoute component={TopProducts} path="/top-products" guard="no_supplier" />}
+      </Route>
+      <Route path="/credit-notes">
+        {() => <ProtectedRoute component={CreditNotes} path="/credit-notes" guard="no_supplier" />}
       </Route>
 
       {/* Gestión de usuarios — solo system_specialist */}

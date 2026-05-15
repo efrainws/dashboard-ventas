@@ -2076,3 +2076,12 @@ Fecha: 1 de febrero de 2026
 - [ ] Crear componente SalesEvolutionTable con dropdown día/semana/mes, toggle monto/cantidad, toggle columnas artículo/tienda
 - [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Proveedores
 - [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Marca Propia
+
+## Módulo Notas de Crédito
+- [x] Agregar procedimiento tRPC getCreditNotes (resumen por tienda y día)
+- [x] Agregar procedimiento tRPC getCreditNotesByCashier (detalle por cajero)
+- [x] Crear pantalla CreditNotes.tsx basada en IdentifiedTransactions
+- [x] Registrar ruta /credit-notes en App.tsx
+- [x] Agregar enlace en NavigationMenu bajo "Ventas"
+- [x] Verificar TypeScript sin errores
+- [x] Guardar checkpoint

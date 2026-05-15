@@ -1332,4 +1332,143 @@ export const salesRouter = router({
         throw new Error('Error al consultar detalle por cajero');
       }
     }),
+
+  /**
+   * Resumen de Notas de Crédito por tienda y día.
+   * Identifica las NC usando sales_header.order_serial → pos_by_branch.serie WHERE is_nc = TRUE.
+   */
+  getCreditNotes: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_sap_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_sap_id } = input;
+      const fechaMin = fecha_min.substring(0, 10);
+      const fechaMax = fecha_max.substring(0, 10);
+
+      const additionalFilters: string[] = [];
+      const queryParams: any[] = [fechaMin, fechaMax];
+      let paramIndex = 3;
+
+      if (branch_sap_id && branch_sap_id !== 'all') {
+        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
+        queryParams.push(branch_sap_id);
+        paramIndex++;
+      }
+
+      const query = `
+        SELECT
+          DATE(sh.doc_date)   AS sale_day,
+          b.name              AS nombre,
+          b.sap_id            AS codigo_tienda,
+          COUNT(*)            AS total_nc,
+          SUM(sh.total)       AS monto_total_nc,
+          SUM(sh.subtotal)    AS monto_subtotal_nc
+        FROM public.sales_header sh
+        INNER JOIN public.pos_by_branch pbb
+          ON pbb.serie = sh.order_serial
+          AND pbb.is_nc = TRUE
+        LEFT JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.doc_date IS NOT NULL
+          AND DATE(sh.doc_date) >= $1::date
+          AND DATE(sh.doc_date) <= $2::date
+          ${additionalFilters.join('\n          ')}
+        GROUP BY
+          DATE(sh.doc_date),
+          b.name,
+          b.sap_id
+        ORDER BY
+          sale_day,
+          CAST(SUBSTRING(b.sap_id FROM '[0-9]+') AS INTEGER) NULLS LAST;
+      `;
+
+      try {
+        const result = await pool.query(query, queryParams);
+        const rows = result.rows.map((row: any) => ({
+          sale_day: row.sale_day instanceof Date
+            ? row.sale_day.toISOString().substring(0, 10)
+            : String(row.sale_day),
+          nombre:           row.nombre ?? 'Sin nombre',
+          codigo_tienda:    row.codigo_tienda ?? '',
+          total_nc:         Number(row.total_nc),
+          monto_total_nc:   row.monto_total_nc !== null ? Number(row.monto_total_nc) : 0,
+          monto_subtotal_nc: row.monto_subtotal_nc !== null ? Number(row.monto_subtotal_nc) : 0,
+        }));
+        return {
+          success: true,
+          data: rows,
+          metadata: {
+            total_rows: rows.length,
+            fecha_min: fechaMin,
+            fecha_max: fechaMax,
+            branch_sap_id: branch_sap_id || 'all',
+            generated_at: new Date().toISOString(),
+          },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing credit notes query:', error);
+        throw new Error('Error al consultar notas de crédito');
+      }
+    }),
+
+  /**
+   * Detalle de Notas de Crédito por cajero para una tienda y período dados.
+   */
+  getCreditNotesByCashier: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_sap_id: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_sap_id } = input;
+      const fechaMin = fecha_min.substring(0, 10);
+      const fechaMax = fecha_max.substring(0, 10);
+
+      const query = `
+        SELECT
+          sh.cashier_id,
+          c.name                AS cashier_name,
+          c.num_doc             AS cashier_num_doc,
+          COUNT(*)              AS total_nc,
+          SUM(sh.total)         AS monto_total_nc,
+          SUM(sh.subtotal)      AS monto_subtotal_nc
+        FROM public.sales_header sh
+        INNER JOIN public.pos_by_branch pbb
+          ON pbb.serie = sh.order_serial
+          AND pbb.is_nc = TRUE
+        LEFT JOIN public.branches b  ON b.id  = sh.branch_id
+        LEFT JOIN public.cashier  c  ON c.id  = sh.cashier_id
+        WHERE sh.doc_date IS NOT NULL
+          AND DATE(sh.doc_date) >= $1::date
+          AND DATE(sh.doc_date) <= $2::date
+          AND b.sap_id = $3
+        GROUP BY sh.cashier_id, c.name, c.num_doc
+        ORDER BY total_nc DESC;
+      `;
+
+      try {
+        const result = await pool.query(query, [fechaMin, fechaMax, branch_sap_id]);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            cashier_id:        row.cashier_id ?? null,
+            cashier_name:      row.cashier_name ?? 'Sin nombre',
+            cashier_num_doc:   row.cashier_num_doc ?? null,
+            total_nc:          Number(row.total_nc),
+            monto_total_nc:    row.monto_total_nc !== null ? Number(row.monto_total_nc) : 0,
+            monto_subtotal_nc: row.monto_subtotal_nc !== null ? Number(row.monto_subtotal_nc) : 0,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing credit notes by cashier query:', error);
+        throw new Error('Error al consultar notas de crédito por cajero');
+      }
+    }),
 });
