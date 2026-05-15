@@ -129,7 +129,7 @@ function CashierDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
           <div className="flex items-start gap-3">
