@@ -2085,3 +2085,10 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar enlace en NavigationMenu bajo "Ventas"
 - [x] Verificar TypeScript sin errores
 - [x] Guardar checkpoint
+
+## Semáforo de colores en Notas de Crédito
+- [x] Extender getCreditNotes para devolver ventas totales (cantidad y monto) por tienda
+- [x] Implementar modal de configuración de umbrales (% cantidad NC y % monto NC)
+- [x] Lógica de semáforo: verde/amarillo/rojo según umbral configurado
+- [x] Persistir umbrales en localStorage
+- [x] Verificar TypeScript y guardar checkpoint

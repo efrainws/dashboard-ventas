@@ -1361,29 +1361,57 @@ export const salesRouter = router({
       }
 
       const query = `
+        WITH nc_data AS (
+          SELECT
+            DATE(sh.doc_date)   AS sale_day,
+            b.name              AS nombre,
+            b.sap_id            AS codigo_tienda,
+            COUNT(*)            AS total_nc,
+            SUM(sh.total)       AS monto_total_nc,
+            SUM(sh.subtotal)    AS monto_subtotal_nc
+          FROM public.sales_header sh
+          INNER JOIN public.pos_by_branch pbb
+            ON pbb.serie = sh.order_serial
+            AND pbb.is_nc = TRUE
+          LEFT JOIN public.branches b ON b.id = sh.branch_id
+          WHERE sh.doc_date IS NOT NULL
+            AND DATE(sh.doc_date) >= $1::date
+            AND DATE(sh.doc_date) <= $2::date
+            ${additionalFilters.join('\n            ')}
+          GROUP BY
+            DATE(sh.doc_date),
+            b.name,
+            b.sap_id
+        ),
+        total_ventas AS (
+          SELECT
+            b2.sap_id            AS codigo_tienda,
+            COUNT(*)             AS total_txn,
+            SUM(sh2.total)       AS monto_total_ventas,
+            SUM(sh2.subtotal)    AS monto_subtotal_ventas
+          FROM public.sales_header sh2
+          LEFT JOIN public.branches b2 ON b2.id = sh2.branch_id
+          WHERE sh2.doc_date IS NOT NULL
+            AND DATE(sh2.doc_date) >= $1::date
+            AND DATE(sh2.doc_date) <= $2::date
+            ${additionalFilters.join('\n            ')}
+          GROUP BY b2.sap_id
+        )
         SELECT
-          DATE(sh.doc_date)   AS sale_day,
-          b.name              AS nombre,
-          b.sap_id            AS codigo_tienda,
-          COUNT(*)            AS total_nc,
-          SUM(sh.total)       AS monto_total_nc,
-          SUM(sh.subtotal)    AS monto_subtotal_nc
-        FROM public.sales_header sh
-        INNER JOIN public.pos_by_branch pbb
-          ON pbb.serie = sh.order_serial
-          AND pbb.is_nc = TRUE
-        LEFT JOIN public.branches b ON b.id = sh.branch_id
-        WHERE sh.doc_date IS NOT NULL
-          AND DATE(sh.doc_date) >= $1::date
-          AND DATE(sh.doc_date) <= $2::date
-          ${additionalFilters.join('\n          ')}
-        GROUP BY
-          DATE(sh.doc_date),
-          b.name,
-          b.sap_id
+          nc.sale_day,
+          nc.nombre,
+          nc.codigo_tienda,
+          nc.total_nc,
+          nc.monto_total_nc,
+          nc.monto_subtotal_nc,
+          COALESCE(tv.total_txn, 0)              AS total_txn_tienda,
+          COALESCE(tv.monto_total_ventas, 0)     AS monto_total_ventas,
+          COALESCE(tv.monto_subtotal_ventas, 0)  AS monto_subtotal_ventas
+        FROM nc_data nc
+        LEFT JOIN total_ventas tv USING (codigo_tienda)
         ORDER BY
-          sale_day,
-          CAST(SUBSTRING(b.sap_id FROM '[0-9]+') AS INTEGER) NULLS LAST;
+          nc.sale_day,
+          CAST(SUBSTRING(nc.codigo_tienda FROM '[0-9]+') AS INTEGER) NULLS LAST;
       `;
 
       try {
@@ -1392,11 +1420,14 @@ export const salesRouter = router({
           sale_day: row.sale_day instanceof Date
             ? row.sale_day.toISOString().substring(0, 10)
             : String(row.sale_day),
-          nombre:           row.nombre ?? 'Sin nombre',
-          codigo_tienda:    row.codigo_tienda ?? '',
-          total_nc:         Number(row.total_nc),
-          monto_total_nc:   row.monto_total_nc !== null ? Number(row.monto_total_nc) : 0,
-          monto_subtotal_nc: row.monto_subtotal_nc !== null ? Number(row.monto_subtotal_nc) : 0,
+          nombre:                  row.nombre ?? 'Sin nombre',
+          codigo_tienda:           row.codigo_tienda ?? '',
+          total_nc:                Number(row.total_nc),
+          monto_total_nc:          row.monto_total_nc !== null ? Number(row.monto_total_nc) : 0,
+          monto_subtotal_nc:       row.monto_subtotal_nc !== null ? Number(row.monto_subtotal_nc) : 0,
+          total_txn_tienda:        Number(row.total_txn_tienda ?? 0),
+          monto_total_ventas:      row.monto_total_ventas !== null ? Number(row.monto_total_ventas) : 0,
+          monto_subtotal_ventas:   row.monto_subtotal_ventas !== null ? Number(row.monto_subtotal_ventas) : 0,
         }));
         return {
           success: true,
