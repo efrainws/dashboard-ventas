@@ -4,10 +4,10 @@
  * Todas las queries son READ-ONLY sobre PostgreSQL.
  *
  * NOTA DE DISEÑO: La relación entre productos y proveedores se gestiona
- * principalmente a través de la tabla relacional `products_supplier`.
- * El campo `products.supplier_id` es un campo legacy que no siempre está
- * poblado. Por eso todos los queries usan un subquery de IDs de productos
- * obtenidos desde `products_supplier` para garantizar cobertura total.
+ * exclusivamente a través de la tabla relacional `product_supplier`
+ * (columnas: product_id, supplier_id, status). La columna `products.supplier_id`
+ * fue eliminada. Todos los queries filtran por `product_supplier.supplier_id`
+ * con `status = true` para obtener los productos activos del proveedor.
  */
 
 import { z } from "zod";
@@ -42,14 +42,11 @@ function getSupplierIdFromCtx(
 
 /**
  * Subquery reutilizable: IDs de productos que pertenecen a un proveedor.
- * Combina products_supplier (fuente principal) con products.supplier_id (legacy)
- * para máxima cobertura sin duplicados.
+ * Usa únicamente la tabla relacional product_supplier (products.supplier_id fue eliminado).
  */
 const SUPPLIER_PRODUCTS_SUBQUERY = `
   (
-    SELECT product_id FROM public.products_supplier WHERE supplier_id = $1
-    UNION
-    SELECT id FROM public.products WHERE supplier_id = $1
+    SELECT product_id FROM public.product_supplier WHERE supplier_id = $1 AND status = true
   )
 `;
 

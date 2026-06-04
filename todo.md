@@ -2092,3 +2092,8 @@ Fecha: 1 de febrero de 2026
 - [x] Lógica de semáforo: verde/amarillo/rojo según umbral configurado
 - [x] Persistir umbrales en localStorage
 - [x] Verificar TypeScript y guardar checkpoint
+
+## Migración products.supplier_id → product_supplier
+- [x] Actualizar supplierPortalRouter.ts: reemplazar products.supplier_id por JOIN product_supplier
+- [x] ownBrandRouter.ts no requiere cambios (filtra por brand_id, no supplier_id)
+- [x] Verificar TypeScript y guardar checkpoint
