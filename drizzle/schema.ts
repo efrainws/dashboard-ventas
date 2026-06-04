@@ -331,3 +331,22 @@ export const ownBrandProductCategories = mysqlTable("own_brand_product_categorie
 
 export type OwnBrandProductCategory = typeof ownBrandProductCategories.$inferSelect;
 export type InsertOwnBrandProductCategory = typeof ownBrandProductCategories.$inferInsert;
+
+/**
+ * Mapeo automático: brand_id de PostgreSQL → categoría interna de Marca Propia.
+ * Permite que todos los productos de una marca queden asignados automáticamente
+ * a una categoría interna sin necesidad de asignación manual por producto.
+ * Una marca puede pertenecer a una sola categoría interna.
+ */
+export const ownBrandCategoryBrands = mysqlTable("own_brand_category_brands", {
+  id: int("id").autoincrement().primaryKey(),
+  /** UUID de la marca en la tabla public.brands de PostgreSQL */
+  brandId: varchar("brand_id", { length: 64 }).notNull().unique(),
+  /** ID de la categoría interna en own_brand_categories */
+  categoryId: int("category_id").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OwnBrandCategoryBrand = typeof ownBrandCategoryBrands.$inferSelect;
+export type InsertOwnBrandCategoryBrand = typeof ownBrandCategoryBrands.$inferInsert;

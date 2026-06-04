@@ -332,6 +332,9 @@ function CategoriesManager() {
   const { data: assignments = [], isLoading: loadingAssign } = trpc.ownBrandCategories.listProductAssignments.useQuery();
   const { data: allProducts = [], isLoading: loadingProducts } = trpc.ownBrand.getProductsForBrand.useQuery();
   const { data: summary = [], isLoading: loadingSummary } = trpc.ownBrandCategories.getCategorySummary.useQuery();
+  // Mapeo automático marca → categoría
+  const { data: brandMappings = [], isLoading: loadingBrandMappings } = trpc.ownBrandCategories.listCategoryBrands.useQuery();
+  const { data: ownBrands = [], isLoading: loadingOwnBrands } = trpc.ownBrand.listBrands.useQuery();
 
   // Mutations
   const assignMut = trpc.ownBrandCategories.assignProductCategory.useMutation({
@@ -370,6 +373,20 @@ function CategoriesManager() {
     },
     onError: (e) => toast.error(e.message),
   });
+  const assignBrandMut = trpc.ownBrandCategories.assignBrandToCategory.useMutation({
+    onSuccess: () => {
+      utils.ownBrandCategories.listCategoryBrands.invalidate();
+      toast.success("Marca asignada a la categoría.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const removeBrandMut = trpc.ownBrandCategories.removeBrandFromCategory.useMutation({
+    onSuccess: () => {
+      utils.ownBrandCategories.listCategoryBrands.invalidate();
+      toast.success("Asignación de marca eliminada.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // Estado local
   const [productSearch, setProductSearch] = useState("");
@@ -385,6 +402,13 @@ function CategoriesManager() {
     for (const a of assignments) m[a.articleId] = a.categoryId;
     return m;
   }, [assignments]);
+
+  // Mapa brandId -> categoryId para lookup rápido
+  const brandMappingMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const b of brandMappings) m[b.brandId] = b.categoryId;
+    return m;
+  }, [brandMappings]);
 
   // Productos filtrados por búsqueda
   const filteredProducts = useMemo(() => {
@@ -634,13 +658,93 @@ function CategoriesManager() {
               </tbody>
             </table>
           </div>
+         </CardContent>
+      </Card>
+
+      {/* Mapeo automático: Marca → Categoría */}
+      <Card className="border border-border/60">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide">Mapeo Automático: Marca → Categoría</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Asigna cada marca a una categoría interna. Todos los productos de esa marca quedarán clasificados automáticamente sin necesidad de asignación manual.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {(loadingBrandMappings || loadingOwnBrands) ? (
+            <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando marcas...
+            </div>
+          ) : ownBrands.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">No hay marcas configuradas en el portal.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Marca</TableHead>
+                    <TableHead>Categoría asignada</TableHead>
+                    <TableHead className="text-right">Acción</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ownBrands.map(brand => {
+                    const assignedCatId = brandMappingMap[brand.id];
+                    const assignedCat = categories.find(c => c.id === assignedCatId);
+                    return (
+                      <TableRow key={brand.id}>
+                        <TableCell className="font-medium">{brand.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {categories.map(cat => (
+                              <button
+                                key={cat.id}
+                                title={`Asignar a ${cat.name}`}
+                                disabled={assignBrandMut.isPending}
+                                onClick={() => assignBrandMut.mutate({ brandId: brand.id, categoryId: cat.id })}
+                                className="px-2 py-0.5 rounded-full text-xs font-medium border transition-all"
+                                style={{
+                                  background: assignedCatId === cat.id ? (cat.color ?? "#008064") : "transparent",
+                                  borderColor: cat.color ?? "#008064",
+                                  color: assignedCatId === cat.id ? "#fff" : (cat.color ?? "#008064"),
+                                }}
+                              >
+                                {cat.name}
+                              </button>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {assignedCatId ? (
+                            <button
+                              title="Quitar asignación"
+                              disabled={removeBrandMut.isPending}
+                              onClick={() => removeBrandMut.mutate({ brandId: brand.id })}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Sin asignar</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Componente principal ─────────────────────────────────────────────
 
 export default function OwnBrandPortal() {
   const { logout, user, loading } = useAuth();

@@ -2097,3 +2097,10 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar supplierPortalRouter.ts: reemplazar products.supplier_id por JOIN product_supplier
 - [x] ownBrandRouter.ts no requiere cambios (filtra por brand_id, no supplier_id)
 - [x] Verificar TypeScript y guardar checkpoint
+
+## Refactorización filtro de categorías Marca Propia (brand_id automático)
+- [x] Crear tabla own_brand_category_brands en Drizzle schema (brand_id → category_id)
+- [x] Migrar base de datos con pnpm db:push
+- [x] Refactorizar getProductIdsByCategory para consultar brand_id en PostgreSQL
+- [x] Actualizar pestaña Categorías para gestionar mapeo brand_id → category
+- [x] Verificar TypeScript y guardar checkpoint

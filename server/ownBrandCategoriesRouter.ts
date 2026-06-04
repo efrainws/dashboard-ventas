@@ -12,7 +12,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { ownBrandCategories, ownBrandProductCategories } from "../drizzle/schema";
+import { ownBrandCategories, ownBrandProductCategories, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -307,4 +307,66 @@ export const ownBrandCategoriesRouter = router({
       productCount: countMap[cat.id] ?? 0,
     }));
   }),
+
+  // ─── MAPEO AUTOMÁTICO MARCA → CATEGORÍA ─────────────────────────────────────
+
+  /**
+   * Lista todos los mapeos brand_id → category_id existentes.
+   */
+  listCategoryBrands: protectedProcedure.query(async ({ ctx }) => {
+    assertAccess((ctx.user as any).role);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "BD no disponible." });
+    return await db.select().from(ownBrandCategoryBrands);
+  }),
+
+  /**
+   * Asigna una marca (brand_id de PostgreSQL) a una categoría interna.
+   * Si la marca ya estaba asignada a otra categoría, la reasigna.
+   */
+  assignBrandToCategory: protectedProcedure
+    .input(z.object({
+      brandId: z.string().uuid(),
+      categoryId: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertAccess((ctx.user as any).role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "BD no disponible." });
+      // Verificar que la categoría existe
+      const cat = await db.select({ id: ownBrandCategories.id })
+        .from(ownBrandCategories)
+        .where(and(eq(ownBrandCategories.id, input.categoryId), eq(ownBrandCategories.isActive, 1)));
+      if (cat.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Categoría no encontrada o inactiva." });
+      }
+      // Upsert: si ya existe el brand_id, actualizar la categoría
+      const existing = await db.select({ id: ownBrandCategoryBrands.id })
+        .from(ownBrandCategoryBrands)
+        .where(eq(ownBrandCategoryBrands.brandId, input.brandId));
+      if (existing.length > 0) {
+        await db.update(ownBrandCategoryBrands)
+          .set({ categoryId: input.categoryId })
+          .where(eq(ownBrandCategoryBrands.brandId, input.brandId));
+      } else {
+        await db.insert(ownBrandCategoryBrands).values({
+          brandId: input.brandId,
+          categoryId: input.categoryId,
+        });
+      }
+      return { success: true };
+    }),
+
+  /**
+   * Elimina el mapeo de una marca a cualquier categoría.
+   */
+  removeBrandFromCategory: protectedProcedure
+    .input(z.object({ brandId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      assertAccess((ctx.user as any).role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "BD no disponible." });
+      await db.delete(ownBrandCategoryBrands).where(eq(ownBrandCategoryBrands.brandId, input.brandId));
+      return { success: true };
+    }),
 });
