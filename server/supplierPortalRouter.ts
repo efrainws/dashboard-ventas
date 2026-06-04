@@ -46,7 +46,7 @@ function getSupplierIdFromCtx(
  */
 const SUPPLIER_PRODUCTS_SUBQUERY = `
   (
-    SELECT product_id FROM public.product_supplier WHERE supplier_id = $1 AND status = true
+    SELECT product_id FROM public.products_supplier WHERE supplier_id = $1 AND status = true
   )
 `;
 
