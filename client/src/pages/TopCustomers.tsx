@@ -71,6 +71,13 @@ function MedalBadge({ pos }: { pos: number }) {
   );
 }
 
+/** Capitaliza nombre propio: lowercase + capitalize cada palabra */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/(?:^|\s|\(|\-)[a-zà-ÿ]/g, (c) => c.toUpperCase());
+}
+
 /** Barra de porcentaje */
 function PctBar({ pct }: { pct: number }) {
   const color = pct >= 10 ? "#BC2C46" : pct >= 5 ? "#C49705" : "#008064";
@@ -411,8 +418,8 @@ export default function TopCustomers() {
                                 <MedalBadge pos={c.rn} />
                               </TableCell>
                               <TableCell className="py-1.5 px-2 text-xs max-w-[140px]">
-                                <span className="block truncate font-medium" title={c.customer_name}>
-                                  {c.customer_name}
+                                <span className="block truncate font-medium" title={toTitleCase(c.customer_name)}>
+                                  {toTitleCase(c.customer_name)}
                                 </span>
                               </TableCell>
                               <TableCell
@@ -478,6 +485,7 @@ export default function TopCustomers() {
                         <TableHead className="w-8 text-xs">#</TableHead>
                         <TableHead className="text-xs">Cliente</TableHead>
                         <TableHead className="text-xs text-right">Monto Total</TableHead>
+                        <TableHead className="text-xs text-right">% Participación</TableHead>
                         <TableHead className="text-xs text-right">Transacciones</TableHead>
                         <TableHead className="text-xs text-right">Monto Prom./Mes</TableHead>
                         <TableHead className="text-xs text-right">Txn Prom./Mes</TableHead>
@@ -491,8 +499,8 @@ export default function TopCustomers() {
                             <MedalBadge pos={i + 1} />
                           </TableCell>
                           <TableCell className="text-sm font-medium max-w-[200px]">
-                            <span className="block truncate" title={r.customer_name}>
-                              {r.customer_name}
+                            <span className="block truncate" title={toTitleCase(r.customer_name)}>
+                              {toTitleCase(r.customer_name)}
                             </span>
                           </TableCell>
                           <TableCell
@@ -500,6 +508,18 @@ export default function TopCustomers() {
                             style={{ color: "#008064" }}
                           >
                             S/ {fmtCurrency(r.monto_total)}
+                          </TableCell>
+                          <TableCell className="text-sm text-right tabular-nums">
+                            {(() => {
+                              const totalGeneral = generalRows.reduce((s, x) => s + x.monto_total, 0);
+                              const pct = totalGeneral > 0 ? (r.monto_total / totalGeneral) * 100 : 0;
+                              const color = pct >= 10 ? "#BC2C46" : pct >= 5 ? "#C49705" : "#008064";
+                              return (
+                                <span className="font-medium" style={{ color }}>
+                                  {pct.toFixed(1)}%
+                                </span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-sm text-right tabular-nums text-muted-foreground">
                             {fmtNumber(r.total_transacciones)}
