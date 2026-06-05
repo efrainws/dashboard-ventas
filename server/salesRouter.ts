@@ -1661,8 +1661,8 @@ export const salesRouter = router({
         )
         SELECT
           cd.*,
-          ROUND(cd.monto_total        / dr.num_months, 2) AS monto_promedio_mes,
-          ROUND(cd.total_transacciones / dr.num_months, 2) AS txn_promedio_mes
+          ROUND((cd.monto_total::numeric)        / dr.num_months::numeric, 2) AS monto_promedio_mes,
+          ROUND((cd.total_transacciones::numeric) / dr.num_months::numeric, 2) AS txn_promedio_mes
         FROM customer_data cd
         CROSS JOIN date_range dr
         ORDER BY cd.monto_total DESC
