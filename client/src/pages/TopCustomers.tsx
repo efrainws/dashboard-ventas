@@ -38,6 +38,16 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from "lucide-react";
+
+const ALL_CHANNELS = ['Presencial', 'eCommerce', 'Rappi'] as const;
+type Channel = typeof ALL_CHANNELS[number];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -135,6 +145,8 @@ export default function TopCustomers() {
   const [topN, setTopN] = useState<number>(10);
   const [includeIgv, setIncludeIgv] = useState(true);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [selectedSapId, setSelectedSapId] = useState<string>("all");
+  const [selectedChannels, setSelectedChannels] = useState<Channel[]>([...ALL_CHANNELS]);
 
   const fechaMin = toLocalDate(from);
   const fechaMax = toLocalDate(to);
@@ -142,18 +154,58 @@ export default function TopCustomers() {
   // Límite de tarjetas: máximo 20 en modo cards
   const effectiveTopN = viewMode === "cards" ? Math.min(topN, 20) : topN;
 
+  // Canal único para el backend (si todos seleccionados → 'all', si uno → ese canal)
+  const effectiveChannel = useMemo(() => {
+    if (selectedChannels.length === ALL_CHANNELS.length || selectedChannels.length === 0) return 'all';
+    if (selectedChannels.length === 1) return selectedChannels[0];
+    return 'all'; // multi-select: filtramos en frontend
+  }, [selectedChannels]);
+
   // ── Queries ──
   const { data: byBranchData, isLoading: loadingCards } =
     trpc.sales.getTopCustomersByBranch.useQuery(
-      { fecha_min: fechaMin, fecha_max: fechaMax, top_n: effectiveTopN, include_igv: includeIgv },
+      {
+        fecha_min: fechaMin,
+        fecha_max: fechaMax,
+        top_n: effectiveTopN,
+        include_igv: includeIgv,
+        branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
+        sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
+      },
       { enabled: viewMode === "cards" }
     );
 
   const { data: generalData, isLoading: loadingGeneral } =
     trpc.sales.getTopCustomersGeneral.useQuery(
-      { fecha_min: fechaMin, fecha_max: fechaMax, top_n: topN, include_igv: includeIgv },
+      {
+        fecha_min: fechaMin,
+        fecha_max: fechaMax,
+        top_n: topN,
+        include_igv: includeIgv,
+        branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
+        sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
+      },
       { enabled: viewMode === "table" }
     );
+
+  // ── Lista de tiendas disponibles (extraída de los datos de tarjetas) ──
+  const availableStores = useMemo(() => {
+    const rows = byBranchData?.data ?? [];
+    const seen = new Set<string>();
+    const stores: { sap_id: string; nombre: string }[] = [];
+    for (const r of rows) {
+      if (r.codigo_tienda && !seen.has(r.codigo_tienda)) {
+        seen.add(r.codigo_tienda);
+        stores.push({ sap_id: r.codigo_tienda, nombre: r.nombre_tienda });
+      }
+    }
+    stores.sort((a, b) => {
+      const na = parseInt(a.sap_id.replace(/\D/g, '') || '9999');
+      const nb = parseInt(b.sap_id.replace(/\D/g, '') || '9999');
+      return na - nb;
+    });
+    return stores;
+  }, [byBranchData]);
 
   // ── Agrupar filas por tienda para las tarjetas ──
   const storeCards = useMemo(() => {
@@ -233,6 +285,90 @@ export default function TopCustomers() {
                   minDate={from}
                   maxDate={today}
                 />
+              </div>
+
+              {/* Tienda */}
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Tienda</Label>
+                <Select value={selectedSapId} onValueChange={setSelectedSapId}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Todas las tiendas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las tiendas</SelectItem>
+                    {availableStores.map((s) => (
+                      <SelectItem key={s.sap_id} value={s.sap_id}>
+                        {s.nombre} ({s.sap_id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Canal */}
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Canal</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-40 justify-between font-normal h-9 px-3">
+                      <span className="truncate text-sm">
+                        {selectedChannels.length === 0
+                          ? "Sin canales"
+                          : selectedChannels.length === ALL_CHANNELS.length
+                          ? "Todos los canales"
+                          : selectedChannels.join(", ")}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {selectedChannels.length > 0 && selectedChannels.length < ALL_CHANNELS.length && (
+                          <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                            {selectedChannels.length}
+                          </Badge>
+                        )}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-2" align="start">
+                    <div className="space-y-1">
+                      <div
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                        onClick={() => setSelectedChannels([...ALL_CHANNELS])}
+                      >
+                        <Checkbox
+                          checked={selectedChannels.length === ALL_CHANNELS.length}
+                          onCheckedChange={() => setSelectedChannels([...ALL_CHANNELS])}
+                        />
+                        <span className="text-sm">Todos los canales</span>
+                      </div>
+                      <div className="border-t my-1" />
+                      {ALL_CHANNELS.map((ch) => (
+                        <div
+                          key={ch}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+                          onClick={() => {
+                            setSelectedChannels(
+                              selectedChannels.includes(ch)
+                                ? selectedChannels.filter((c) => c !== ch)
+                                : [...selectedChannels, ch]
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedChannels.includes(ch)}
+                            onCheckedChange={() => {
+                              setSelectedChannels(
+                                selectedChannels.includes(ch)
+                                  ? selectedChannels.filter((c) => c !== ch)
+                                  : [...selectedChannels, ch]
+                              );
+                            }}
+                          />
+                          <span className="text-sm">{ch}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Top N */}

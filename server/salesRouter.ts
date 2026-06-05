@@ -1512,15 +1512,16 @@ export const salesRouter = router({
   getTopCustomersByBranch: publicProcedure
     .input(
       z.object({
-        fecha_min:    z.string(),
-        fecha_max:    z.string(),
-        top_n:        z.number().int().min(1).max(100).default(10),
-        include_igv:  z.boolean().default(true),
+        fecha_min:     z.string(),
+        fecha_max:     z.string(),
+        top_n:         z.number().int().min(1).max(100).default(10),
+        include_igv:   z.boolean().default(true),
         branch_sap_id: z.string().optional(),
+        sales_channel: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id } = input;
+      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id, sales_channel } = input;
       const fechaMin  = fecha_min.substring(0, 10);
       const fechaMax  = fecha_max.substring(0, 10);
       const amtCol    = include_igv ? 'sh.total' : 'sh.subtotal';
@@ -1528,6 +1529,23 @@ export const salesRouter = router({
 
       const branchFilter = branch_sap_id && branch_sap_id !== 'all'
         ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
+        : '';
+
+      // Canal: Presencial / eCommerce / Rappi
+      const channelCaseExpr = `
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM methods_payment mp
+            WHERE mp.header_id = sh.id
+              AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+          ) THEN 'Rappi'
+          WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+            THEN 'eCommerce'
+          ELSE 'Presencial'
+        END`;
+
+      const channelFilter = sales_channel && sales_channel !== 'all'
+        ? `AND (${channelCaseExpr}) = '${sales_channel.replace(/'/g, "''")}'`
         : '';
 
       const query = `
@@ -1543,6 +1561,7 @@ export const salesRouter = router({
             AND DATE(sh.doc_date) >= '${fechaMin}'::date
             AND DATE(sh.doc_date) <= '${fechaMax}'::date
             ${branchFilter}
+            ${channelFilter}
           GROUP BY b.sap_id, b.name
         ),
         customer_branch AS (
@@ -1562,6 +1581,7 @@ export const salesRouter = router({
             AND sh.customer_id IS NOT NULL
             AND sh.customer_id <> '${GENERIC_CUSTOMER}'
             ${branchFilter}
+            ${channelFilter}
           GROUP BY b.sap_id, b.name, sh.customer_id, c.commercial_name
         ),
         ranked AS (
@@ -1601,7 +1621,7 @@ export const salesRouter = router({
             pct_tienda:     row.pct_tienda !== null ? Number(row.pct_tienda) : 0,
             rn:             Number(row.rn),
           })),
-          metadata: { fecha_min: fechaMin, fecha_max: fechaMax, top_n, generated_at: new Date().toISOString() },
+          metadata: { fecha_min: fechaMin, fecha_max: fechaMax, top_n, sales_channel: sales_channel ?? 'all', generated_at: new Date().toISOString() },
         };
       } catch (error) {
         console.error('[PostgreSQL] Error en getTopCustomersByBranch:', error);
@@ -1616,15 +1636,16 @@ export const salesRouter = router({
   getTopCustomersGeneral: publicProcedure
     .input(
       z.object({
-        fecha_min:    z.string(),
-        fecha_max:    z.string(),
-        top_n:        z.number().int().min(1).max(100).default(10),
-        include_igv:  z.boolean().default(true),
+        fecha_min:     z.string(),
+        fecha_max:     z.string(),
+        top_n:         z.number().int().min(1).max(100).default(10),
+        include_igv:   z.boolean().default(true),
         branch_sap_id: z.string().optional(),
+        sales_channel: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id } = input;
+      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id, sales_channel } = input;
       const fechaMin  = fecha_min.substring(0, 10);
       const fechaMax  = fecha_max.substring(0, 10);
       const amtCol    = include_igv ? 'sh.total' : 'sh.subtotal';
@@ -1632,6 +1653,22 @@ export const salesRouter = router({
 
       const branchFilter = branch_sap_id && branch_sap_id !== 'all'
         ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
+        : '';
+
+      const channelCaseExprG = `
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM methods_payment mp
+            WHERE mp.header_id = sh.id
+              AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+          ) THEN 'Rappi'
+          WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+            THEN 'eCommerce'
+          ELSE 'Presencial'
+        END`;
+
+      const channelFilterG = sales_channel && sales_channel !== 'all'
+        ? `AND (${channelCaseExprG}) = '${sales_channel.replace(/'/g, "''")}'`
         : '';
 
       // Calcular número de meses en el rango para promedios
@@ -1657,6 +1694,7 @@ export const salesRouter = router({
             AND sh.customer_id IS NOT NULL
             AND sh.customer_id <> '${GENERIC_CUSTOMER}'
             ${branchFilter}
+            ${channelFilterG}
           GROUP BY sh.customer_id, c.commercial_name
         )
         SELECT
