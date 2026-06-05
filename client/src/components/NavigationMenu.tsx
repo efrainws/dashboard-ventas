@@ -58,7 +58,8 @@ export function NavigationMenu() {
     location.startsWith("/sales-vs-target") ||
     location.startsWith("/identified-transactions") ||
     location.startsWith("/credit-notes") ||
-    location.startsWith("/top-products");
+    location.startsWith("/top-products") ||
+    location.startsWith("/top-customers");
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -152,6 +153,12 @@ export function NavigationMenu() {
                   <Link href="/top-products" className="flex items-center w-full cursor-pointer">
                     <Trophy className="mr-2 h-4 w-4" />
                     <span>Top 50 Productos</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/top-customers" className="flex items-center w-full cursor-pointer">
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Top Clientes</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -404,6 +411,18 @@ export function NavigationMenu() {
                   >
                     <Trophy className="h-4 w-4 shrink-0" />
                     <span>Top 50 Productos</span>
+                  </Link>
+                  <Link
+                    href="/top-customers"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/top-customers")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span>Top Clientes</span>
                   </Link>
                 </div>
               )}

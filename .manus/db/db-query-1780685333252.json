@@ -1,0 +1,9 @@
+{
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND (table_name ILIKE '%person%' OR table_name ILIKE '%member%' OR table_name ILIKE '%contact%' OR table_name ILIKE '%buyer%') ORDER BY table_name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user AXRjAW8Rcq3XeDm.199f13a4d859 --database FtG2QpkuSgf93KimkBm45D --execute SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND (table_name ILIKE '%person%' OR table_name ILIKE '%member%' OR table_name ILIKE '%contact%' OR table_name ILIKE '%buyer%') ORDER BY table_name;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 262
+}

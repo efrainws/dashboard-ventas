@@ -2104,3 +2104,13 @@ Fecha: 1 de febrero de 2026
 - [x] Refactorizar getProductIdsByCategory para consultar brand_id en PostgreSQL
 - [x] Actualizar pestaña Categorías para gestionar mapeo brand_id → category
 - [x] Verificar TypeScript y guardar checkpoint
+
+## Módulo Top Clientes
+- [x] Agregar procedimiento tRPC getTopCustomersByBranch (top X clientes por tienda con % del total)
+- [x] Agregar procedimiento tRPC getTopCustomersGeneral (tabla general con métricas por cliente)
+- [x] Crear pantalla TopCustomers.tsx con vista de tarjetas y vista de tabla general
+- [x] Dropdown de configuración Top X (10, 20, 50, 100); máximo 20 en modo tarjetas
+- [x] Registrar ruta /top-customers en App.tsx
+- [x] Agregar enlace en NavigationMenu bajo "Ventas"
+- [x] Agregar tarjeta de acceso en Home.tsx
+- [x] Verificar TypeScript y guardar checkpoint

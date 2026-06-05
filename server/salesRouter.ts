@@ -1502,4 +1502,191 @@ export const salesRouter = router({
         throw new Error('Error al consultar notas de crédito por cajero');
       }
     }),
+
+  /**
+   * Top X clientes por tienda en un período dado.
+   * Devuelve, para cada tienda, los N clientes con mayor monto de compra,
+   * junto con el porcentaje que representan sobre el total de ventas de la tienda.
+   * UUID excluido: 8572af00-5600-46ff-958c-9f4ff701a4a2 (cliente genérico / sin identificar)
+   */
+  getTopCustomersByBranch: publicProcedure
+    .input(
+      z.object({
+        fecha_min:    z.string(),
+        fecha_max:    z.string(),
+        top_n:        z.number().int().min(1).max(100).default(10),
+        include_igv:  z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id } = input;
+      const fechaMin  = fecha_min.substring(0, 10);
+      const fechaMax  = fecha_max.substring(0, 10);
+      const amtCol    = include_igv ? 'sh.total' : 'sh.subtotal';
+      const GENERIC_CUSTOMER = '8572af00-5600-46ff-958c-9f4ff701a4a2';
+
+      const branchFilter = branch_sap_id && branch_sap_id !== 'all'
+        ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
+        : '';
+
+      const query = `
+        WITH branch_totals AS (
+          SELECT
+            b.sap_id            AS codigo_tienda,
+            b.name              AS nombre_tienda,
+            SUM(${amtCol})      AS total_tienda,
+            COUNT(*)            AS txn_tienda
+          FROM public.sales_header sh
+          LEFT JOIN public.branches b ON b.id = sh.branch_id
+          WHERE sh.doc_date IS NOT NULL
+            AND DATE(sh.doc_date) >= '${fechaMin}'::date
+            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            ${branchFilter}
+          GROUP BY b.sap_id, b.name
+        ),
+        customer_branch AS (
+          SELECT
+            b.sap_id            AS codigo_tienda,
+            b.name              AS nombre_tienda,
+            sh.customer_id,
+            c.commercial_name   AS customer_name,
+            SUM(${amtCol})      AS monto,
+            COUNT(*)            AS transacciones
+          FROM public.sales_header sh
+          LEFT JOIN public.branches  b ON b.id = sh.branch_id
+          LEFT JOIN public.customers c ON c.id = sh.customer_id
+          WHERE sh.doc_date IS NOT NULL
+            AND DATE(sh.doc_date) >= '${fechaMin}'::date
+            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            AND sh.customer_id IS NOT NULL
+            AND sh.customer_id <> '${GENERIC_CUSTOMER}'
+            ${branchFilter}
+          GROUP BY b.sap_id, b.name, sh.customer_id, c.commercial_name
+        ),
+        ranked AS (
+          SELECT
+            cb.*,
+            bt.total_tienda,
+            bt.txn_tienda,
+            ROUND(100.0 * cb.monto / NULLIF(bt.total_tienda, 0), 2) AS pct_tienda,
+            ROW_NUMBER() OVER (
+              PARTITION BY cb.codigo_tienda
+              ORDER BY cb.monto DESC
+            ) AS rn
+          FROM customer_branch cb
+          LEFT JOIN branch_totals bt USING (codigo_tienda)
+        )
+        SELECT *
+        FROM ranked
+        WHERE rn <= ${top_n}
+        ORDER BY
+          CAST(SUBSTRING(codigo_tienda FROM '[0-9]+') AS INTEGER) NULLS LAST,
+          rn;
+      `;
+
+      try {
+        const result = await pool.query(query);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            codigo_tienda:  row.codigo_tienda ?? '',
+            nombre_tienda:  row.nombre_tienda ?? 'Sin nombre',
+            customer_id:    row.customer_id ?? null,
+            customer_name:  row.customer_name ?? 'Sin nombre',
+            monto:          row.monto !== null ? Number(row.monto) : 0,
+            transacciones:  Number(row.transacciones),
+            total_tienda:   row.total_tienda !== null ? Number(row.total_tienda) : 0,
+            txn_tienda:     Number(row.txn_tienda ?? 0),
+            pct_tienda:     row.pct_tienda !== null ? Number(row.pct_tienda) : 0,
+            rn:             Number(row.rn),
+          })),
+          metadata: { fecha_min: fechaMin, fecha_max: fechaMax, top_n, generated_at: new Date().toISOString() },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getTopCustomersByBranch:', error);
+        throw new Error('Error al consultar top clientes por tienda');
+      }
+    }),
+
+  /**
+   * Tabla general de clientes: métricas agregadas de todo el período.
+   * Incluye monto total, transacciones, promedios mensuales y lista de tiendas.
+   */
+  getTopCustomersGeneral: publicProcedure
+    .input(
+      z.object({
+        fecha_min:    z.string(),
+        fecha_max:    z.string(),
+        top_n:        z.number().int().min(1).max(100).default(10),
+        include_igv:  z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, top_n, include_igv, branch_sap_id } = input;
+      const fechaMin  = fecha_min.substring(0, 10);
+      const fechaMax  = fecha_max.substring(0, 10);
+      const amtCol    = include_igv ? 'sh.total' : 'sh.subtotal';
+      const GENERIC_CUSTOMER = '8572af00-5600-46ff-958c-9f4ff701a4a2';
+
+      const branchFilter = branch_sap_id && branch_sap_id !== 'all'
+        ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
+        : '';
+
+      // Calcular número de meses en el rango para promedios
+      const query = `
+        WITH date_range AS (
+          SELECT
+            DATE_PART('year', AGE('${fechaMax}'::date, '${fechaMin}'::date)) * 12
+            + DATE_PART('month', AGE('${fechaMax}'::date, '${fechaMin}'::date)) + 1 AS num_months
+        ),
+        customer_data AS (
+          SELECT
+            sh.customer_id,
+            c.commercial_name                     AS customer_name,
+            SUM(${amtCol})                        AS monto_total,
+            COUNT(*)                              AS total_transacciones,
+            ARRAY_AGG(DISTINCT b.name ORDER BY b.name) AS tiendas
+          FROM public.sales_header sh
+          LEFT JOIN public.branches  b ON b.id = sh.branch_id
+          LEFT JOIN public.customers c ON c.id = sh.customer_id
+          WHERE sh.doc_date IS NOT NULL
+            AND DATE(sh.doc_date) >= '${fechaMin}'::date
+            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            AND sh.customer_id IS NOT NULL
+            AND sh.customer_id <> '${GENERIC_CUSTOMER}'
+            ${branchFilter}
+          GROUP BY sh.customer_id, c.commercial_name
+        )
+        SELECT
+          cd.*,
+          ROUND(cd.monto_total        / dr.num_months, 2) AS monto_promedio_mes,
+          ROUND(cd.total_transacciones / dr.num_months, 2) AS txn_promedio_mes
+        FROM customer_data cd
+        CROSS JOIN date_range dr
+        ORDER BY cd.monto_total DESC
+        LIMIT ${top_n};
+      `;
+
+      try {
+        const result = await pool.query(query);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            customer_id:          row.customer_id ?? null,
+            customer_name:        row.customer_name ?? 'Sin nombre',
+            monto_total:          row.monto_total !== null ? Number(row.monto_total) : 0,
+            total_transacciones:  Number(row.total_transacciones),
+            monto_promedio_mes:   row.monto_promedio_mes !== null ? Number(row.monto_promedio_mes) : 0,
+            txn_promedio_mes:     row.txn_promedio_mes !== null ? Number(row.txn_promedio_mes) : 0,
+            tiendas:              Array.isArray(row.tiendas) ? row.tiendas.filter(Boolean) : [],
+          })),
+          metadata: { fecha_min: fechaMin, fecha_max: fechaMax, top_n, generated_at: new Date().toISOString() },
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getTopCustomersGeneral:', error);
+        throw new Error('Error al consultar tabla general de clientes');
+      }
+    }),
 });

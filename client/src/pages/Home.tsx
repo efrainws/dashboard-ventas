@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -93,6 +93,14 @@ export default function Home() {
       href: "/credit-notes",
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#BC2C46]", // Granate
+    },
+    {
+      title: "Top Clientes",
+      description: "Ranking de los mejores clientes por monto de compra por tienda y período",
+      icon: Users,
+      href: "/top-customers",
+      color: "text-[#EAE8E2]", // Beige
+      bgColor: "bg-[#C49705]", // Mostaza
     },
   ];
 
