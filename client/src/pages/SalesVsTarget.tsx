@@ -16,10 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { StoreMultiSelect } from "@/components/StoreMultiSelect";
 
 type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
 type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
@@ -266,58 +266,13 @@ export default function SalesVsTarget() {
                   Tiendas
                   {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
                 </Label>
-                {isStoreUser ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
-                    <Lock className="h-3.5 w-3.5 shrink-0" />
-                    <span>{availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}</span>
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedStores.length === 0 ? "all" : "custom"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedStores([]);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue>
-                        {selectedStores.length === 0
-                          ? "Todas las tiendas"
-                          : `${selectedStores.length} tienda(s) seleccionada(s)`}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all"><span>Todas las tiendas</span></SelectItem>
-                      {availableStores.map((store) => (
-                        <div
-                          key={store.id}
-                          className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setSelectedStores((prev) =>
-                              prev.includes(store.id)
-                                ? prev.filter((id) => id !== store.id)
-                                : [...prev, store.id]
-                            );
-                          }}
-                        >
-                          <Checkbox
-                            checked={selectedStores.includes(store.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedStores((prev) => [...prev, store.id]);
-                              } else {
-                                setSelectedStores((prev) => prev.filter((id) => id !== store.id));
-                              }
-                            }}
-                          />
-                          <Label className="cursor-pointer">{store.name}</Label>
-                        </div>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                <StoreMultiSelect
+                  stores={availableStores}
+                  selectedIds={selectedStores}
+                  onChange={setSelectedStores}
+                  locked={isStoreUser}
+                  lockedLabel={availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}
+                />
               </div>
 
               {/* Filtro de Canal */}
