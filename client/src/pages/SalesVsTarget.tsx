@@ -108,6 +108,17 @@ export default function SalesVsTarget() {
   // system_specialist y cst_user pueden editar metas
   const canEdit = userRole === 'system_specialist' || userRole === 'cst_user';
 
+  // ─── Totales agregados (respeta todos los filtros activos) ──────────────────
+  const totals = useMemo(() => {
+    if (!data?.stores || data.stores.length === 0) return null;
+    const totalSales = data.stores.reduce((sum, s) => sum + s.total_sales, 0);
+    const proratedTarget = data.stores.reduce((sum, s) => sum + s.prorated_target, 0);
+    const monthlyTarget = data.stores.reduce((sum, s) => sum + (s.monthly_target ?? 0), 0);
+    const completionPercentage = proratedTarget > 0 ? (totalSales / proratedTarget) * 100 : 0;
+    const hasTarget = data.stores.some((s) => s.has_target);
+    return { totalSales, proratedTarget, monthlyTarget, completionPercentage, hasTarget };
+  }, [data]);
+
   // Calcular días transcurridos en el período y días totales del mes
   const { daysElapsed, daysInMonth } = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) {
@@ -374,6 +385,27 @@ export default function SalesVsTarget() {
             )}
           </CardContent>
         </Card>
+
+        {/* Tarjeta de Totales */}
+        {!isLoading && totals && (
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+              Total Consolidado
+            </h2>
+            <StoreTargetCard
+              storeName="Todas las Tiendas"
+              totalSales={totals.totalSales}
+              proratedTarget={totals.proratedTarget}
+              completionPercentage={totals.completionPercentage}
+              hasTarget={totals.hasTarget}
+              canEdit={false}
+              daysElapsed={daysElapsed}
+              daysInMonth={daysInMonth}
+              monthlyTarget={totals.monthlyTarget}
+              activeChannelLabel={activeChannelLabel}
+            />
+          </div>
+        )}
 
         {/* Grid de Tarjetas */}
         {isLoading ? (
