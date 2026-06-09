@@ -2114,3 +2114,11 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar enlace en NavigationMenu bajo "Ventas"
 - [x] Agregar tarjeta de acceso en Home.tsx
 - [x] Verificar TypeScript y guardar checkpoint
+
+## Modal de transacciones del cliente en Top Clientes
+- [ ] Agregar procedimiento tRPC getCustomerTransactions (transacciones del cliente en el período)
+- [ ] Agregar procedimiento tRPC getTransactionDetail (artículos de una transacción)
+- [ ] Implementar modal de transacciones (doc_date, tienda, monto IGV) en TopCustomers.tsx
+- [ ] Implementar sub-modal de detalle de transacción (artículos, cantidad, monto por línea)
+- [ ] Hacer clic en cliente en tarjetas y tabla general abra el modal
+- [ ] Verificar TypeScript y guardar checkpoint

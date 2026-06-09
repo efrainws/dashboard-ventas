@@ -1727,4 +1727,130 @@ export const salesRouter = router({
         throw new Error('Error al consultar tabla general de clientes');
       }
     }),
+
+  /**
+   * Transacciones de un cliente específico en el período filtrado.
+   * Devuelve: número de comprobante (order_serial), fecha (doc_date), tienda, monto con IGV.
+   */
+  getCustomerTransactions: publicProcedure
+    .input(
+      z.object({
+        customer_id:   z.string(),
+        fecha_min:     z.string(),
+        fecha_max:     z.string(),
+        include_igv:   z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
+        sales_channel: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { customer_id, fecha_min, fecha_max, include_igv, branch_sap_id, sales_channel } = input;
+      const fechaMin = fecha_min.substring(0, 10);
+      const fechaMax = fecha_max.substring(0, 10);
+      const amtCol  = include_igv ? 'sh.total' : 'sh.subtotal';
+
+      const branchFilter = branch_sap_id && branch_sap_id !== 'all'
+        ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
+        : '';
+
+      const channelCaseExpr = `
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM methods_payment mp
+            WHERE mp.header_id = sh.id
+              AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+          ) THEN 'Rappi'
+          WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
+            THEN 'eCommerce'
+          ELSE 'Presencial'
+        END`;
+
+      const channelFilter = sales_channel && sales_channel !== 'all'
+        ? `AND (${channelCaseExpr}) = '${sales_channel.replace(/'/g, "''")}'`
+        : '';
+
+      const query = `
+        SELECT
+          sh.id                              AS header_id,
+          sh.order_serial                    AS comprobante,
+          sh.doc_date                        AS fecha,
+          b.name                             AS tienda_nombre,
+          b.sap_id                           AS tienda_sap_id,
+          ${amtCol}                          AS monto_total
+        FROM public.sales_header sh
+        JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.customer_id = '${customer_id.replace(/'/g, "''")}'
+          AND sh.doc_date IS NOT NULL
+          AND DATE(sh.doc_date) >= '${fechaMin}'::date
+          AND DATE(sh.doc_date) <= '${fechaMax}'::date
+          ${branchFilter}
+          ${channelFilter}
+        ORDER BY sh.doc_date DESC
+        LIMIT 500;
+      `;
+
+      try {
+        const result = await pool.query(query);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            header_id:     row.header_id,
+            comprobante:   row.comprobante ?? '—',
+            fecha:         row.fecha,
+            tienda_nombre: row.tienda_nombre ?? '—',
+            tienda_sap_id: row.tienda_sap_id ?? '—',
+            monto_total:   row.monto_total !== null ? Number(row.monto_total) : 0,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getCustomerTransactions:', error);
+        throw new Error('Error al consultar transacciones del cliente');
+      }
+    }),
+
+  /**
+   * Detalle de artículos de una transacción específica.
+   * Devuelve: nombre del artículo, SKU, cantidad, monto total por línea.
+   */
+  getTransactionDetail: publicProcedure
+    .input(
+      z.object({
+        header_id:   z.string(),
+        include_igv: z.boolean().default(true),
+      })
+    )
+    .query(async ({ input }) => {
+      const { header_id, include_igv } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
+
+      const query = `
+        SELECT
+          p.name                    AS producto_nombre,
+          p.sku                     AS sku,
+          sd.quantity               AS cantidad,
+          sd.price                  AS precio_unitario,
+          ${amtCol}                 AS monto_linea
+        FROM public.sales_detail sd
+        LEFT JOIN public.products p ON p.id = sd.product_id
+        WHERE sd.header_id = '${header_id.replace(/'/g, "''")}'
+        ORDER BY sd.quantity DESC, ${amtCol} DESC;
+      `;
+
+      try {
+        const result = await pool.query(query);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            producto_nombre:  row.producto_nombre ?? 'Producto desconocido',
+            sku:              row.sku ?? '—',
+            cantidad:         row.cantidad !== null ? Number(row.cantidad) : 0,
+            precio_unitario:  row.precio_unitario !== null ? Number(row.precio_unitario) : 0,
+            monto_linea:      row.monto_linea !== null ? Number(row.monto_linea) : 0,
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getTransactionDetail:', error);
+        throw new Error('Error al consultar detalle de transacción');
+      }
+    }),
 });
