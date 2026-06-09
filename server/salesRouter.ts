@@ -1822,18 +1822,19 @@ export const salesRouter = router({
     .query(async ({ input }) => {
       const { header_id, include_igv } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
+      const priceCol = include_igv ? 'sd.price_tax' : 'sd.price_no_tax';
 
       const query = `
         SELECT
-          p.name                    AS producto_nombre,
+          COALESCE(p.name, sd.descripcion, 'Producto desconocido') AS producto_nombre,
           p.sku                     AS sku,
           sd.quantity               AS cantidad,
-          sd.price                  AS precio_unitario,
+          ${priceCol}               AS precio_unitario,
           ${amtCol}                 AS monto_linea
         FROM public.sales_detail sd
         LEFT JOIN public.products p ON p.id = sd.product_id
         WHERE sd.header_id = '${header_id.replace(/'/g, "''")}'
-        ORDER BY sd.quantity DESC, ${amtCol} DESC;
+        ORDER BY ${amtCol} DESC NULLS LAST;
       `;
 
       try {
