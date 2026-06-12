@@ -52,21 +52,57 @@ const dateRangeCategorySchema = dateRangeSchema.extend({
   include_igv: z.boolean().default(true),
 });
 
+// ─── CACHÉ EN MEMORIA ────────────────────────────────────────────────────────
+// Evita múltiples queries MySQL en paralelo (batch tRPC) que pueden saturar el pool.
+// TTL de 30 segundos: suficiente para que un batch de queries use el mismo resultado.
+
+const _ownBrandIdsCache: { ids: string[] | null; ts: number } = { ids: null, ts: 0 };
+const _categoryBrandIdsCache = new Map<number, { ids: string[]; ts: number }>();
+const CACHE_TTL_MS = 30_000;
+
+// Promise en vuelo para evitar thundering herd (múltiples queries simultáneas)
+let _ownBrandIdsFlight: Promise<string[]> | null = null;
+const _categoryBrandIdsFlight = new Map<number, Promise<string[]>>();
+
 /**
  * Obtiene los brand_ids configurados como Marca Propia desde MySQL.
- * Retorna un array de strings (UUIDs).
+ * Usa caché en memoria con TTL de 30s para evitar múltiples queries paralelas.
  */
 async function getOwnBrandIds(): Promise<string[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.select({ brandId: ownBrandBrands.brandId }).from(ownBrandBrands);
-  return rows.map((r: { brandId: string }) => r.brandId);
+  const now = Date.now();
+  if (_ownBrandIdsCache.ids !== null && now - _ownBrandIdsCache.ts < CACHE_TTL_MS) {
+    return _ownBrandIdsCache.ids;
+  }
+  // Si ya hay una query en vuelo, reutilizarla
+  if (_ownBrandIdsFlight) return _ownBrandIdsFlight;
+  _ownBrandIdsFlight = (async () => {
+    try {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.select({ brandId: ownBrandBrands.brandId }).from(ownBrandBrands);
+      const ids = rows.map((r: { brandId: string }) => r.brandId);
+      _ownBrandIdsCache.ids = ids;
+      _ownBrandIdsCache.ts = Date.now();
+      return ids;
+    } finally {
+      _ownBrandIdsFlight = null;
+    }
+  })();
+  return _ownBrandIdsFlight;
+}
+
+/**
+ * Invalida el caché de brand_ids (llamar después de agregar/eliminar marcas).
+ */
+export function invalidateOwnBrandIdsCache() {
+  _ownBrandIdsCache.ids = null;
+  _ownBrandIdsCache.ts = 0;
+  _categoryBrandIdsCache.clear();
 }
 
 /**
  * Obtiene los brand_ids de PostgreSQL asignados a una categoría interna desde MySQL.
- * Luego usa esos brand_ids para filtrar productos directamente en PostgreSQL por p.brand_id.
- * Este enfoque es automático: no requiere asignación manual por producto.
+ * Usa caché en memoria con TTL de 30s para evitar múltiples queries paralelas.
  * Retorna null si no se especifica categoryId (sin filtro de categoría).
  *
  * Estrategia de filtrado en las queries:
@@ -74,13 +110,29 @@ async function getOwnBrandIds(): Promise<string[]> {
  *   - Si no hay brand_ids asignados a la categoría: se fuerza resultado vacío.
  */
 async function getBrandIdsByCategory(categoryId: number): Promise<string[]> {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db
-    .select({ brandId: ownBrandCategoryBrands.brandId })
-    .from(ownBrandCategoryBrands)
-    .where(eq(ownBrandCategoryBrands.categoryId, categoryId));
-  return rows.map((r: { brandId: string }) => r.brandId);
+  const now = Date.now();
+  const cached = _categoryBrandIdsCache.get(categoryId);
+  if (cached && now - cached.ts < CACHE_TTL_MS) return cached.ids;
+  // Si ya hay una query en vuelo para esta categoría, reutilizarla
+  const flight = _categoryBrandIdsFlight.get(categoryId);
+  if (flight) return flight;
+  const promise = (async () => {
+    try {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select({ brandId: ownBrandCategoryBrands.brandId })
+        .from(ownBrandCategoryBrands)
+        .where(eq(ownBrandCategoryBrands.categoryId, categoryId));
+      const ids = rows.map((r: { brandId: string }) => r.brandId);
+      _categoryBrandIdsCache.set(categoryId, { ids, ts: Date.now() });
+      return ids;
+    } finally {
+      _categoryBrandIdsFlight.delete(categoryId);
+    }
+  })();
+  _categoryBrandIdsFlight.set(categoryId, promise);
+  return promise;
 }
 
 /**
@@ -165,6 +217,7 @@ export const ownBrandRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       await db.insert(ownBrandBrands).ignore().values({ brandId: input.brandId });
+      invalidateOwnBrandIdsCache();
       return { ok: true };
     }),
 
@@ -178,6 +231,7 @@ export const ownBrandRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       await db.delete(ownBrandBrands).where(eq(ownBrandBrands.brandId, input.brandId));
+      invalidateOwnBrandIdsCache();
       return { ok: true };
     }),
 

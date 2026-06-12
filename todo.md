@@ -2122,3 +2122,10 @@ Fecha: 1 de febrero de 2026
 - [ ] Implementar sub-modal de detalle de transacción (artículos, cantidad, monto por línea)
 - [ ] Hacer clic en cliente en tarjetas y tabla general abra el modal
 - [ ] Verificar TypeScript y guardar checkpoint
+
+## Corrección: Filtro de categorías en Portal Marca Propia
+- [x] Diagnosticar error TRPCClientError: Failed to fetch al aplicar filtros de categoría
+- [x] Agregar caché en memoria con TTL 30s para getOwnBrandIds (evita ~18 queries MySQL en paralelo)
+- [x] Agregar caché en memoria con TTL 30s + thundering herd protection para getBrandIdsByCategory
+- [x] Exportar invalidateOwnBrandIdsCache y llamarla en addBrand/removeBrand/assignBrandToCategory/removeBrandFromCategory
+- [x] Poblar tabla own_brand_category_brands: FLORA & FAUNA → Marca Propia, FLORA & FAUNA EL HUERTO → El Huerto

@@ -15,6 +15,7 @@ import { getDb } from "./db";
 import { ownBrandCategories, ownBrandProductCategories, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq, and, inArray } from "drizzle-orm";
+import { invalidateOwnBrandIdsCache } from "./ownBrandRouter";
 
 // Roles que pueden acceder al Portal Marca Propia
 const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
@@ -354,6 +355,7 @@ export const ownBrandCategoriesRouter = router({
           categoryId: input.categoryId,
         });
       }
+      invalidateOwnBrandIdsCache();
       return { success: true };
     }),
 
@@ -367,6 +369,7 @@ export const ownBrandCategoriesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "BD no disponible." });
       await db.delete(ownBrandCategoryBrands).where(eq(ownBrandCategoryBrands.brandId, input.brandId));
+      invalidateOwnBrandIdsCache();
       return { success: true };
     }),
 });
