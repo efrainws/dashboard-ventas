@@ -71,6 +71,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { AlertBanner } from "@/components/AlertBanner";
 import { useState } from "react";
 
 // ─── Datos de ejemplo (Lorem Ipsum / aleatorios) ─────────────────────────────
@@ -1371,12 +1372,11 @@ export default function StyleGuide() {
                   Copia el siguiente bloque en el archivo <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono">client/src/index.css</code> de tu nuevo proyecto Manus para aplicar el sistema de diseño completo de Flora &amp; Fauna.
                 </p>
                 <CodeBlock code={CSS_EXPORT} />
-                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/50 p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
-                  <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Requisitos previos</p>
+                <AlertBanner variant="warning" title="Requisitos previos">
                   <p>1. Copia los archivos de fuentes desde <code className="font-mono">/public/fonts/</code> del proyecto original al nuevo proyecto.</p>
                   <p>2. Instala Tailwind CSS 4 y configura el <code className="font-mono">@theme inline</code> con las referencias a las variables CSS.</p>
                   <p>3. Asegúrate de que el <code className="font-mono">ThemeProvider</code> use <code className="font-mono">defaultTheme="system"</code> para respetar la preferencia del usuario.</p>
-                </div>
+                </AlertBanner>
               </CardContent>
             </Card>
           </Section>

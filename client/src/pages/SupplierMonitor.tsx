@@ -68,6 +68,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { AlertBanner } from "@/components/AlertBanner";
 
 type SupplierStatus = "pending_activation" | "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
@@ -447,13 +448,10 @@ function TermsManagerDialog({ open, onClose }: { open: boolean; onClose: () => v
                 </div>
 
                 {mode === "create" && (
-                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                      <strong>Al crear esta versión quedará activa automáticamente.</strong>{" "}
-                      La versión anterior será desactivada. Los proveedores que aún no han aceptado verán esta nueva versión.
-                    </p>
-                  </div>
+                  <AlertBanner variant="warning">
+                    <strong>Al crear esta versión quedará activa automáticamente.</strong>{" "}
+                    La versión anterior será desactivada. Los proveedores que aún no han aceptado verán esta nueva versión.
+                  </AlertBanner>
                 )}
               </div>
 
@@ -872,8 +870,11 @@ export default function SupplierMonitor() {
           </div>
           <div className="flex items-center gap-3">
             {pendingCount > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700">
-                <AlertTriangle className="h-4 w-4" />
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border"
+                style={{ backgroundColor: "#C4970510", borderColor: "#C4970540", color: "#C49705" }}
+              >
+                <AlertTriangle className="h-4 w-4" style={{ color: "#C49705" }} />
                 {pendingCount} solicitud{pendingCount > 1 ? "es" : ""} pendiente{pendingCount > 1 ? "s" : ""}
               </div>
             )}
