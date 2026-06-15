@@ -8,12 +8,18 @@
  * (columnas: product_id, supplier_id, status). La columna `products.supplier_id`
  * fue eliminada. Todos los queries filtran por `product_supplier.supplier_id`
  * con `status = true` para obtener los productos activos del proveedor.
+ *
+ * OPTIMIZACIONES:
+ * - Caché en memoria para queries estáticas/semi-estáticas (TTL configurable).
+ * - getSalesByProductBranch: 3 queries → 1 CTE (datos + count + totales en un solo round-trip).
+ * - getProductCatalog sin búsqueda: cacheado con TTL_STATIC.
  */
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { TRPCError } from "@trpc/server";
+import { cached, invalidateByPrefix, TTL } from "./queryCache";
 
 // Roles que pueden acceder al portal de proveedores
 const ALLOWED_ROLES = ["supplier_user", "system_specialist", "commercial_specialist"];
@@ -65,13 +71,16 @@ export const supplierPortalRouter = router({
     if (!ADMIN_ROLES.includes((ctx.user as any).role)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Solo para especialistas de sistemas o comerciales." });
     }
-    const res = await pool.query(
-      `SELECT id, ruc, name
-       FROM public.suppliers
-       ORDER BY name ASC
-       LIMIT 500`
-    );
-    return res.rows as Array<{ id: string; ruc: string; name: string }>;
+    // Caché global de lista de proveedores (5 min)
+    return cached("supplier:listAll", TTL.STATIC, async () => {
+      const res = await pool.query(
+        `SELECT id, ruc, name
+         FROM public.suppliers
+         ORDER BY name ASC
+         LIMIT 500`
+      );
+      return res.rows as Array<{ id: string; ruc: string; name: string }>;
+    });
   }),
 
   /**
@@ -81,23 +90,26 @@ export const supplierPortalRouter = router({
     .input(z.object({ supplierId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
     const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
-    const res = await pool.query(
-      `SELECT id, ruc, name, description, sap_id, status
-       FROM public.suppliers
-       WHERE id = $1`,
-      [supplierId]
-    );
-    if (!res.rows[0]) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Proveedor no encontrado." });
-    }
-    return res.rows[0] as {
-      id: string;
-      ruc: string;
-      name: string;
-      description: string | null;
-      sap_id: string;
-      status: boolean | null;
-    };
+    // Caché por proveedor (5 min — datos casi estáticos)
+    return cached(`supplier:info:${supplierId}`, TTL.STATIC, async () => {
+      const res = await pool.query(
+        `SELECT id, ruc, name, description, sap_id, status
+         FROM public.suppliers
+         WHERE id = $1`,
+        [supplierId]
+      );
+      if (!res.rows[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Proveedor no encontrado." });
+      }
+      return res.rows[0] as {
+        id: string;
+        ruc: string;
+        name: string;
+        description: string | null;
+        sap_id: string;
+        status: boolean | null;
+      };
+    });
   }),
 
   /**
@@ -110,28 +122,31 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const igvKey = input.include_igv ? 'igv' : 'noigv';
 
-      const res = await pool.query(
-        `SELECT
-           COUNT(DISTINCT sh.id)::int                    AS total_tickets,
-           COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
-           ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,
-           COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3`,
-        [supplierId, from, to]
-      );
-      return res.rows[0] as {
-        total_tickets: number;
-        productos_vendidos: number;
-        total_ventas: string;
-        total_unidades: string;
-        tiendas_activas: number;
-      };
+      return cached(`supplier:summary:${supplierId}:${from}:${to}:${igvKey}`, TTL.DYNAMIC, async () => {
+        const res = await pool.query(
+          `SELECT
+             COUNT(DISTINCT sh.id)::int                    AS total_tickets,
+             COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
+             ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,
+             COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date::date BETWEEN $2 AND $3`,
+          [supplierId, from, to]
+        );
+        return res.rows[0] as {
+          total_tickets: number;
+          productos_vendidos: number;
+          total_ventas: string;
+          total_unidades: string;
+          tiendas_activas: number;
+        };
+      });
     }),
 
   /**
@@ -144,28 +159,31 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const igvKey = input.include_igv ? 'igv' : 'noigv';
 
-      const res = await pool.query(
-        `SELECT
-           sh.doc_date::date                             AS fecha,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
-           COUNT(DISTINCT sh.id)::int                    AS tickets,
-           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
-         GROUP BY sh.doc_date::date
-         ORDER BY fecha ASC`,
-        [supplierId, from, to]
-      );
-      return res.rows as Array<{
-        fecha: string;
-        total_ventas: string;
-        tickets: number;
-        unidades: string;
-      }>;
+      return cached(`supplier:daily:${supplierId}:${from}:${to}:${igvKey}`, TTL.DYNAMIC, async () => {
+        const res = await pool.query(
+          `SELECT
+             sh.doc_date::date                             AS fecha,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
+             COUNT(DISTINCT sh.id)::int                    AS tickets,
+             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date::date BETWEEN $2 AND $3
+           GROUP BY sh.doc_date::date
+           ORDER BY fecha ASC`,
+          [supplierId, from, to]
+        );
+        return res.rows as Array<{
+          fecha: string;
+          total_ventas: string;
+          tickets: number;
+          unidades: string;
+        }>;
+      });
     }),
 
   /**
@@ -183,31 +201,34 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const igvKey = input.include_igv ? 'igv' : 'noigv';
 
-      const res = await pool.query(
-        `SELECT
-           p.name                                        AS producto,
-           p.int_sku,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
-           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
-           COUNT(DISTINCT sh.id)::int                    AS tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
-         GROUP BY p.id, p.name, p.int_sku
-         ORDER BY total_ventas DESC
-         LIMIT $4`,
-        [supplierId, from, to, input.limit]
-      );
-      return res.rows as Array<{
-        producto: string;
-        int_sku: string;
-        total_ventas: string;
-        unidades_vendidas: string;
-        tickets: number;
-      }>;
+      return cached(`supplier:topProducts:${supplierId}:${from}:${to}:${igvKey}:${input.limit}`, TTL.DYNAMIC, async () => {
+        const res = await pool.query(
+          `SELECT
+             p.name                                        AS producto,
+             p.int_sku,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
+             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,
+             COUNT(DISTINCT sh.id)::int                    AS tickets
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date::date BETWEEN $2 AND $3
+           GROUP BY p.id, p.name, p.int_sku
+           ORDER BY total_ventas DESC
+           LIMIT $4`,
+          [supplierId, from, to, input.limit]
+        );
+        return res.rows as Array<{
+          producto: string;
+          int_sku: string;
+          total_ventas: string;
+          unidades_vendidas: string;
+          tickets: number;
+        }>;
+      });
     }),
 
   /**
@@ -220,73 +241,81 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const igvKey = input.include_igv ? 'igv' : 'noigv';
 
-      const res = await pool.query(
-        `SELECT
-           b.name                                        AS tienda,
-           b.sap_id,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
-           ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,
-           COUNT(DISTINCT sh.id)::int                    AS tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
-         GROUP BY b.id, b.name, b.sap_id
-         ORDER BY total_ventas DESC`,
-        [supplierId, from, to]
-      );
-      return res.rows as Array<{
-        tienda: string;
-        sap_id: string;
-        total_ventas: string;
-        unidades: string;
-        tickets: number;
-      }>;
+      return cached(`supplier:byBranch:${supplierId}:${from}:${to}:${igvKey}`, TTL.DYNAMIC, async () => {
+        const res = await pool.query(
+          `SELECT
+             b.name                                        AS tienda,
+             b.sap_id,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
+             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,
+             COUNT(DISTINCT sh.id)::int                    AS tickets
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           JOIN public.branches b ON b.id = sh.branch_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date::date BETWEEN $2 AND $3
+           GROUP BY b.id, b.name, b.sap_id
+           ORDER BY total_ventas DESC`,
+          [supplierId, from, to]
+        );
+        return res.rows as Array<{
+          tienda: string;
+          sap_id: string;
+          total_ventas: string;
+          unidades: string;
+          tickets: number;
+        }>;
+      });
     }),
 
   /**
    * Tiendas que tienen stock de productos del proveedor (para el selector de filtro)
+   * Cacheado con TTL_STATIC: el stock cambia poco y esta query es costosa.
    */
   getBranchesForStock: protectedProcedure
     .input(z.object({ supplierId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
     const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
-    const res = await pool.query(
-      `SELECT DISTINCT b.id, b.name, b.sap_id
-       FROM public.stocks st
-       JOIN public.products p ON p.id = st.product_id
-       JOIN public.branches b ON b.id = st.branch_id
-       WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-         AND st.stock > 0
-       ORDER BY b.sap_id ASC`,
-      [supplierId]
-    );
-    return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    return cached(`supplier:branchesStock:${supplierId}`, TTL.STATIC, async () => {
+      const res = await pool.query(
+        `SELECT DISTINCT b.id, b.name, b.sap_id
+         FROM public.stocks st
+         JOIN public.products p ON p.id = st.product_id
+         JOIN public.branches b ON b.id = st.branch_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND st.stock > 0
+         ORDER BY b.sap_id ASC`,
+        [supplierId]
+      );
+      return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    });
   }),
 
   /**
    * Tiendas que tienen ventas del proveedor en cualquier fecha (para el selector de filtro en pestaña Ventas).
-   * Ordenadas por sap_id ASC.
+   * Cacheado con TTL_STATIC: la lista de tiendas con ventas históricas cambia muy poco.
    */
   getBranchesForSales: protectedProcedure
     .input(z.object({ supplierId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
-      const res = await pool.query(
-        `SELECT DISTINCT b.id, b.name, b.sap_id
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-         ORDER BY b.sap_id ASC
-         LIMIT 500`,
-        [supplierId]
-      );
-      return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+      return cached(`supplier:branchesSales:${supplierId}`, TTL.STATIC, async () => {
+        const res = await pool.query(
+          `SELECT DISTINCT b.id, b.name, b.sap_id
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           JOIN public.branches b ON b.id = sh.branch_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           ORDER BY b.sap_id ASC
+           LIMIT 500`,
+          [supplierId]
+        );
+        return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+      });
     }),
 
   /**
@@ -306,14 +335,12 @@ export const supplierPortalRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
-
       // Cuando se filtra por un producto específico, usamos CROSS JOIN con todas las tiendas
       // para mostrar stock=0 en las tiendas sin inventario.
       if (input.productId) {
         const params: (string | number)[] = [supplierId, input.productId, input.limit, input.offset];
         const branchClause = input.branchId ? `AND b.id = $5` : "";
         if (input.branchId) params.push(input.branchId);
-
         const res = await pool.query(
           `SELECT
              p.name                                        AS producto,
@@ -334,7 +361,6 @@ export const supplierPortalRouter = router({
            LIMIT $3 OFFSET $4`,
           params
         );
-
         const countParams: (string | number)[] = [supplierId, input.productId];
         if (input.branchId) countParams.push(input.branchId);
         const countRes = await pool.query(
@@ -347,7 +373,6 @@ export const supplierPortalRouter = router({
            WHERE 1=1 ${input.branchId ? `AND b.id = $3` : ""}`,
           countParams
         );
-
         return {
           rows: res.rows as Array<{
             producto: string;
@@ -361,11 +386,9 @@ export const supplierPortalRouter = router({
           total: countRes.rows[0].total as number,
         };
       }
-
       // Sin filtro de producto específico: comportamiento original (solo filas con stock > 0)
       const extraClauses: string[] = [];
       const params: (string | number)[] = [supplierId, input.limit, input.offset];
-
       if (input.search) {
         params.push(`%${input.search}%`);
         extraClauses.push(`AND (p.name ILIKE $${params.length} OR p.int_sku::text ILIKE $${params.length})`);
@@ -374,9 +397,7 @@ export const supplierPortalRouter = router({
         params.push(input.branchId);
         extraClauses.push(`AND b.id = $${params.length}`);
       }
-
       const whereExtra = extraClauses.join(" ");
-
       const res = await pool.query(
         `SELECT
            p.name                                        AS producto,
@@ -396,8 +417,7 @@ export const supplierPortalRouter = router({
          LIMIT $2 OFFSET $3`,
         params
       );
-
-      // Total para paginación (mismos filtros, sin LIMIT/OFFSET)
+      // Total para paginación — usar CTE para evitar doble scan
       const countParams: (string | number)[] = [supplierId];
       const countClauses: string[] = [];
       if (input.search) {
@@ -408,7 +428,6 @@ export const supplierPortalRouter = router({
         countParams.push(input.branchId);
         countClauses.push(`AND b.id = $${countParams.length}`);
       }
-
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM public.stocks st
@@ -419,7 +438,6 @@ export const supplierPortalRouter = router({
            ${countClauses.join(" ")}`,
         countParams
       );
-
       return {
         rows: res.rows as Array<{
           producto: string;
@@ -435,7 +453,7 @@ export const supplierPortalRouter = router({
     }),
 
   /**
-   * Recepciones (órdenes de compra) del proveedor
+   * Recepciones de mercadería del proveedor.
    */
   getReceptions: protectedProcedure
     .input(
@@ -472,7 +490,6 @@ export const supplierPortalRouter = router({
          LIMIT $4 OFFSET $5`,
         [supplierId, from, to, input.limit, input.offset]
       );
-
       const countRes = await pool.query(
         `SELECT COUNT(*)::int AS total
          FROM public.receptions r
@@ -481,7 +498,6 @@ export const supplierPortalRouter = router({
            AND r.date::date BETWEEN $2 AND $3`,
         [supplierId, from, to]
       );
-
       return {
         rows: res.rows as Array<{
           oc: string;
@@ -499,39 +515,42 @@ export const supplierPortalRouter = router({
     }),
 
   /**
-   * Ventas por mes (últimos 6 meses) para gráfico de barras
+   * Ventas por mes (últimos 6 meses) para gráfico de barras.
+   * Cacheado con TTL_SEMI_STATIC: cambia diariamente.
    */
   getMonthlySales: protectedProcedure
     .input(z.object({ supplierId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
     const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
-    const res = await pool.query(
-      `SELECT
-         TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
-         ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
-         COUNT(DISTINCT sh.id)::int                     AS tickets,
-         ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades
-       FROM public.sales_detail sd
-       JOIN public.products p ON p.id = sd.product_id
-       JOIN public.sales_header sh ON sh.id = sd.header_id
-       WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-         AND sh.doc_date >= NOW() - INTERVAL '6 months'
-       GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
-       ORDER BY mes ASC`,
-      [supplierId]
-    );
-    return res.rows as Array<{
-      mes: string;
-      total_ventas: string;
-      tickets: number;
-      unidades: string;
-    }>;
+    return cached(`supplier:monthly:${supplierId}`, TTL.SEMI_STATIC, async () => {
+      const res = await pool.query(
+        `SELECT
+           TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
+           ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
+           COUNT(DISTINCT sh.id)::int                     AS tickets,
+           ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           AND sh.doc_date >= NOW() - INTERVAL '6 months'
+         GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
+         ORDER BY mes ASC`,
+        [supplierId]
+      );
+      return res.rows as Array<{
+        mes: string;
+        total_ventas: string;
+        tickets: number;
+        unidades: string;
+      }>;
+    });
   }),
 
   /**
    * Catálogo de productos del proveedor con stock total.
-   * Se carga automáticamente al entrar a la tab Catálogo.
-   * El buscador filtra solo dentro de los productos del proveedor.
+   * Sin búsqueda: cacheado con TTL_STATIC.
+   * Con búsqueda: sin caché (resultado dinámico).
    */
   getProductCatalog: protectedProcedure
     .input(
@@ -545,58 +564,66 @@ export const supplierPortalRouter = router({
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
 
-      // Construir cláusula de búsqueda solo si hay texto
-      const searchClause = input.search
-        ? `AND (p.name ILIKE $4 OR p.int_sku::text ILIKE $4)`
-        : "";
-      const params: (string | number)[] = [supplierId, input.limit, input.offset];
-      if (input.search) params.push(`%${input.search}%`);
+      const runQuery = async () => {
+        const searchClause = input.search
+          ? `AND (p.name ILIKE $4 OR p.int_sku::text ILIKE $4)`
+          : "";
+        const params: (string | number)[] = [supplierId, input.limit, input.offset];
+        if (input.search) params.push(`%${input.search}%`);
 
-      const res = await pool.query(
-        `SELECT
-           p.id,
-           p.name,
-           p.int_sku,
-           p.short_description                           AS description,
-           COALESCE(SUM(st.stock), 0)::int              AS stock_total,
-           COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock
-         FROM public.products p
-         LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           ${searchClause}
-         GROUP BY p.id, p.name, p.int_sku, p.short_description
-         ORDER BY p.name ASC
-         LIMIT $2 OFFSET $3`,
-        params
-      );
+        // Usar CTE para evitar doble scan al contar
+        const res = await pool.query(
+          `WITH filtered AS (
+             SELECT
+               p.id,
+               p.name,
+               p.int_sku,
+               p.short_description AS description
+             FROM public.products p
+             WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+               ${searchClause}
+           )
+           SELECT
+             f.id,
+             f.name,
+             f.int_sku,
+             f.description,
+             COALESCE(SUM(st.stock), 0)::int              AS stock_total,
+             COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock,
+             COUNT(*) OVER()::int                          AS _total
+           FROM filtered f
+           LEFT JOIN public.stocks st ON st.product_id = f.id AND st.stock > 0
+           GROUP BY f.id, f.name, f.int_sku, f.description
+           ORDER BY f.name ASC
+           LIMIT $2 OFFSET $3`,
+          params
+        );
 
-      const countParams: (string | number)[] = [supplierId];
-      if (input.search) countParams.push(`%${input.search}%`);
-      const countRes = await pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM public.products p
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           ${input.search ? "AND (p.name ILIKE $2 OR p.int_sku::text ILIKE $2)" : ""}`,
-        countParams
-      );
-
-      return {
-        rows: res.rows as Array<{
-          id: string;
-          name: string;
-          int_sku: string;
-          description: string | null;
-          stock_total: number;
-          tiendas_con_stock: number;
-        }>,
-        total: countRes.rows[0].total as number,
+        const total = res.rows[0]?._total ?? 0;
+        const rows = res.rows.map(({ _total, ...r }) => r);
+        return {
+          rows: rows as Array<{
+            id: string;
+            name: string;
+            int_sku: string;
+            description: string | null;
+            stock_total: number;
+            tiendas_con_stock: number;
+          }>,
+          total: total as number,
+        };
       };
+
+      // Sin búsqueda: cachear primera página (la más frecuente)
+      if (!input.search && input.offset === 0) {
+        return cached(`supplier:catalog:${supplierId}:${input.limit}`, TTL.STATIC, runQuery);
+      }
+      return runQuery();
     }),
 
   /**
    * Ventas por artículo × tienda en un rango de fechas.
-   * Retorna una fila por cada combinación (producto, sucursal) con cantidad y monto.
-   * Soporta paginación y búsqueda por nombre de producto o SKU.
+   * OPTIMIZADO: 3 queries → 1 CTE (datos + count + totales en un solo round-trip).
    */
   getSalesByProductBranch: protectedProcedure
     .input(
@@ -629,7 +656,6 @@ export const supplierPortalRouter = router({
         ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
         ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
       ].join(", ") || "1=1";
-      // Para el COUNT necesitamos al menos una columna de agrupación
       const countGroupBy = [
         ...(gp ? ["p.id"] : []),
         ...(gs ? ["b.id"] : []),
@@ -652,88 +678,54 @@ export const supplierPortalRouter = router({
 
       const whereExtra = clauses.join(" ");
 
+      // CTE única: datos + count + totales en un solo round-trip a PostgreSQL
       const res = await pool.query(
-        `SELECT
-           ${selectProduct}
-           ${selectStore}
-           SUM(sd.quantity)::numeric                     AS cantidad,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
-           COUNT(DISTINCT sh.id)::int                    AS tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
-           ${whereExtra}
-         GROUP BY ${groupByDims}
-         ORDER BY monto DESC
-         LIMIT $4 OFFSET $5`,
-        params
-      );
-
-      // Count total rows (same filters, no LIMIT)
-      const countParams: (string | number | string[])[] = [supplierId, from, to];
-      const countClauses: string[] = [];
-      if (input.productIds && input.productIds.length > 0) {
-        countParams.push(input.productIds);
-        countClauses.push(`AND p.id = ANY($${countParams.length}::uuid[])`);
-      } else if (input.search) {
-        countParams.push(`%${input.search}%`);
-        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
-      }
-      if (input.branchId) {
-        countParams.push(input.branchId);
-        countClauses.push(`AND b.id = $${countParams.length}`);
-      }
-
-      const countRes = await pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM (
-           SELECT ${countGroupBy === "1" ? "1" : countGroupBy.split(", ").map((c) => c).join(", ")}
+        `WITH base AS (
+           SELECT
+             ${selectProduct}
+             ${selectStore}
+             SUM(sd.quantity)::numeric                     AS cantidad,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
+             COUNT(DISTINCT sh.id)::int                    AS tickets
            FROM public.sales_detail sd
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
              AND sh.doc_date::date BETWEEN $2 AND $3
-             ${countClauses.join(" ")}
-           GROUP BY ${countGroupBy}
-         ) sub`,
-        countParams
+             ${whereExtra}
+           GROUP BY ${groupByDims}
+         ),
+         totals AS (
+           SELECT
+             COUNT(*)::int                                 AS total_rows,
+             SUM(cantidad)::numeric                        AS total_cantidad,
+             ROUND(SUM(monto)::numeric, 2)                 AS total_monto,
+             SUM(tickets)::int                             AS total_tickets
+           FROM base
+         )
+         SELECT
+           b.*,
+           t.total_rows,
+           t.total_cantidad,
+           t.total_monto,
+           t.total_tickets
+         FROM (SELECT * FROM base ORDER BY monto DESC LIMIT $4 OFFSET $5) b
+         CROSS JOIN totals t`,
+        params
       );
 
-      // Totales globales (todos los registros filtrados, sin paginación)
-      const totalsParams: (string | number | string[])[] = [supplierId, from, to];
-      const totalsClauses: string[] = [];
-      if (input.productIds && input.productIds.length > 0) {
-        totalsParams.push(input.productIds);
-        totalsClauses.push(`AND p.id = ANY($${totalsParams.length}::uuid[])`);
-      } else if (input.search) {
-        totalsParams.push(`%${input.search}%`);
-        totalsClauses.push(`AND (p.name ILIKE $${totalsParams.length} OR p.int_sku::text ILIKE $${totalsParams.length})`);
-      }
-      if (input.branchId) {
-        totalsParams.push(input.branchId);
-        totalsClauses.push(`AND b.id = $${totalsParams.length}`);
-      }
-      const totalsRes = await pool.query(
-        `SELECT
-           SUM(sd.quantity)::numeric                     AS total_cantidad,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_monto,
-           COUNT(DISTINCT sh.id)::int                    AS total_tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
-           ${totalsClauses.join(" ")}`,
-        totalsParams
-      );
+      const firstRow = res.rows[0];
+      const total = firstRow?.total_rows ?? 0;
+      const totals = {
+        cantidad: firstRow?.total_cantidad ?? "0",
+        monto: firstRow?.total_monto ?? "0",
+        tickets: firstRow?.total_tickets ?? 0,
+      };
+      const rows = res.rows.map(({ total_rows, total_cantidad, total_monto, total_tickets, ...r }) => r);
 
       return {
-        rows: res.rows as Array<{
+        rows: rows as Array<{
           product_id: string;
           producto: string;
           sku: string;
@@ -744,12 +736,8 @@ export const supplierPortalRouter = router({
           monto: string;
           tickets: number;
         }>,
-        total: countRes.rows[0].total as number,
-        totals: {
-          cantidad: totalsRes.rows[0].total_cantidad as string,
-          monto: totalsRes.rows[0].total_monto as string,
-          tickets: totalsRes.rows[0].total_tickets as number,
-        },
+        total: total as number,
+        totals,
       };
     }),
 
@@ -954,26 +942,26 @@ export const supplierPortalRouter = router({
 
   /**
    * Lista todos los productos del proveedor (id, nombre, sku) para el Select desplegable.
-   * Ordenados alfabéticamente por nombre.
+   * Cacheado con TTL_STATIC: el catálogo de productos cambia muy poco.
    */
   getProductsForSupplier: protectedProcedure
     .input(z.object({ supplierId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const supplierId = getSupplierIdFromCtx(ctx as any, input?.supplierId);
-
-      const res = await pool.query(
-        `SELECT DISTINCT
-           p.id,
-           p.name,
-           p.int_sku::text AS sku
-         FROM public.products p
-         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-         ORDER BY p.name ASC
-         LIMIT 2000`,
-        [supplierId]
-      );
-
-      return res.rows as Array<{ id: string; name: string; sku: string }>;
+      return cached(`supplier:products:${supplierId}`, TTL.STATIC, async () => {
+        const res = await pool.query(
+          `SELECT DISTINCT
+             p.id,
+             p.name,
+             p.int_sku::text AS sku
+           FROM public.products p
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+           ORDER BY p.name ASC
+           LIMIT 2000`,
+          [supplierId]
+        );
+        return res.rows as Array<{ id: string; name: string; sku: string }>;
+      });
     }),
 
   /**

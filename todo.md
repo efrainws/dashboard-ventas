@@ -2129,3 +2129,24 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar caché en memoria con TTL 30s + thundering herd protection para getBrandIdsByCategory
 - [x] Exportar invalidateOwnBrandIdsCache y llamarla en addBrand/removeBrand/assignBrandToCategory/removeBrandFromCategory
 - [x] Poblar tabla own_brand_category_brands: FLORA & FAUNA → Marca Propia, FLORA & FAUNA EL HUERTO → El Huerto
+
+## Optimización de Queries y Cachés - Portal Proveedores y Marca Propia
+- [ ] Crear server/queryCache.ts: módulo de caché centralizado con TTL, thundering herd protection y métricas
+- [ ] Optimizar server/postgres.ts: aumentar pool max, agregar statement_timeout y query_timeout
+- [ ] Optimizar supplierPortalRouter: cachear getProductsForSupplier, getBranchesForStock, getBranchesForSales, getMonthlySales, getMySupplier
+- [ ] Optimizar supplierPortalRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
+- [ ] Optimizar supplierPortalRouter: cachear getProductCatalog (sin búsqueda)
+- [ ] Optimizar ownBrandRouter: cachear getProductsForBrand, getBranchesForStock, getBranchesForSales, getMonthlySales
+- [ ] Optimizar ownBrandRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
+- [ ] Optimizar ownBrandRouter: cachear getProductCatalog (sin búsqueda)
+- [ ] Verificar TypeScript y guardar checkpoint
+
+## Optimización de rendimiento de portales (2026-06-15)
+- [x] Crear módulo de caché centralizado server/queryCache.ts con TTL configurable y thundering herd protection
+- [x] Optimizar pool de PostgreSQL: max 30 conexiones, statement_timeout 30s, connection timeout 15s
+- [x] supplierPortalRouter: cachear listAll, info, summary, daily, topProducts, byBranch, branchesStock, branchesSales, monthly, catalog, products con TTL apropiado
+- [x] supplierPortalRouter: consolidar 3 queries de getSalesByProductBranch en 1 CTE (datos + count + totales)
+- [x] ownBrandRouter: importar módulo de caché centralizado
+- [x] ownBrandRouter: cachear listAllBrands (TTL.STATIC), getMonthlySales (TTL.SEMI_STATIC), getBranchesForStock (TTL.STATIC), getBranchesForSales (TTL.STATIC), getProductsForBrand (TTL.STATIC)
+- [x] ownBrandRouter: consolidar 3 queries de getSalesByProductBranch en 1 CTE (datos + count + totales)
+- [x] ownBrandRouter: invalidar caché centralizado al agregar/eliminar marcas

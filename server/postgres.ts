@@ -10,17 +10,19 @@ const pool = new Pool({
   database: process.env.PG_DATABASE,
   // Configuración SSL requerida por RDS
   ssl: {
-    rejectUnauthorized: false, // Necesario para RDS sin certificado personalizado
+    rejectUnauthorized: false,
   },
-  // Configuración para manejar grandes volúmenes de datos
-  max: 20, // Máximo de conexiones en el pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  // Pool ampliado para soportar múltiples queries paralelas de los portales
+  max: 30,                          // Máximo de conexiones simultáneas (era 20)
+  min: 2,                           // Conexiones mínimas precalentadas
+  idleTimeoutMillis: 60_000,        // Liberar conexiones inactivas tras 60s
+  connectionTimeoutMillis: 15_000,  // Timeout para adquirir conexión del pool
 });
 
-// Verificar conexión al iniciar
-pool.on('connect', () => {
-  console.log('[PostgreSQL] Connected to production database');
+// Aplicar statement_timeout al conectar para evitar queries colgadas
+pool.on('connect', (client) => {
+  // 30 segundos máximo por query — protege contra full-scans accidentales
+  client.query('SET statement_timeout = 30000').catch(() => {});
 });
 
 pool.on('error', (err) => {

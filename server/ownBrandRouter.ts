@@ -22,6 +22,7 @@ import { getDb } from "./db";
 import { ownBrandBrands, ownBrandProductCategories, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
+import { cached, invalidateByPrefix, TTL } from "./queryCache";
 
 // Roles que pueden acceder al Portal Marca Propia
 const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
@@ -98,6 +99,8 @@ export function invalidateOwnBrandIdsCache() {
   _ownBrandIdsCache.ids = null;
   _ownBrandIdsCache.ts = 0;
   _categoryBrandIdsCache.clear();
+  // Invalidar también el caché centralizado de queries estáticas
+  invalidateByPrefix("ownBrand:");
 }
 
 /**
@@ -201,10 +204,12 @@ export const ownBrandRouter = router({
    */
   listAllBrands: protectedProcedure.query(async ({ ctx }) => {
     assertBrandAdmin((ctx.user as any).role);
-    const res = await pool.query(
-      `SELECT id, name FROM public.brands ORDER BY name ASC LIMIT 1000`
-    );
-    return res.rows as Array<{ id: string; name: string }>;
+    return cached("ownBrand:allBrands", TTL.STATIC, async () => {
+      const res = await pool.query(
+        `SELECT id, name FROM public.brands ORDER BY name ASC LIMIT 1000`
+      );
+      return res.rows as Array<{ id: string; name: string }>;
+    });
   }),
 
   /**
@@ -443,25 +448,27 @@ export const ownBrandRouter = router({
     assertAccess((ctx.user as any).role);
     const brandIds = await getOwnBrandIds();
     if (brandIds.length === 0) return [];
-
-    const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-
-    const res = await pool.query(
-      `SELECT
-         TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
-         ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
-         COUNT(DISTINCT sh.id)::int                     AS tickets,
-         ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades
-       FROM public.sales_detail sd
-       JOIN public.products p ON p.id = sd.product_id
-       JOIN public.sales_header sh ON sh.id = sd.header_id
-       WHERE p.id IN ${subquery}
-         AND sh.doc_date >= NOW() - INTERVAL '6 months'
-       GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
-       ORDER BY mes ASC`,
-      brandParams
-    );
-    return res.rows as Array<{ mes: string; total_ventas: string; tickets: number; unidades: string }>;
+    // Cacheado con TTL semi-estático: los datos mensuales cambian diariamente
+    const cacheKey = `ownBrand:monthly:${brandIds.slice().sort().join(",")}`;
+    return cached(cacheKey, TTL.SEMI_STATIC, async () => {
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const res = await pool.query(
+        `SELECT
+           TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
+           ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
+           COUNT(DISTINCT sh.id)::int                     AS tickets,
+           ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         WHERE p.id IN ${subquery}
+           AND sh.doc_date >= NOW() - INTERVAL '6 months'
+         GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')
+         ORDER BY mes ASC`,
+        brandParams
+      );
+      return res.rows as Array<{ mes: string; total_ventas: string; tickets: number; unidades: string }>;
+    });
   }),
 
   // ─── VENTAS POR CATEGORÍA INTERNA (para gráfico de pie en Dashboard) ──────────
@@ -578,20 +585,22 @@ export const ownBrandRouter = router({
     assertAccess((ctx.user as any).role);
     const brandIds = await getOwnBrandIds();
     if (brandIds.length === 0) return [];
-
-    const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-
-    const res = await pool.query(
-      `SELECT DISTINCT b.id, b.name, b.sap_id
-       FROM public.stocks st
-       JOIN public.products p ON p.id = st.product_id
-       JOIN public.branches b ON b.id = st.branch_id
-       WHERE p.id IN ${subquery}
-         AND st.stock > 0
-       ORDER BY b.sap_id ASC`,
-      brandParams
-    );
-    return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    // Cacheado con TTL estático: la lista de tiendas con stock cambia poco
+    const cacheKey = `ownBrand:branchesStock:${brandIds.slice().sort().join(",")}`;
+    return cached(cacheKey, TTL.STATIC, async () => {
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const res = await pool.query(
+        `SELECT DISTINCT b.id, b.name, b.sap_id
+         FROM public.stocks st
+         JOIN public.products p ON p.id = st.product_id
+         JOIN public.branches b ON b.id = st.branch_id
+         WHERE p.id IN ${subquery}
+           AND st.stock > 0
+         ORDER BY b.sap_id ASC`,
+        brandParams
+      );
+      return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    });
   }),
 
   /**
@@ -601,21 +610,23 @@ export const ownBrandRouter = router({
     assertAccess((ctx.user as any).role);
     const brandIds = await getOwnBrandIds();
     if (brandIds.length === 0) return [];
-
-    const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-
-    const res = await pool.query(
-      `SELECT DISTINCT b.id, b.name, b.sap_id
-       FROM public.sales_detail sd
-       JOIN public.products p ON p.id = sd.product_id
-       JOIN public.sales_header sh ON sh.id = sd.header_id
-       JOIN public.branches b ON b.id = sh.branch_id
-       WHERE p.id IN ${subquery}
-       ORDER BY b.sap_id ASC
-       LIMIT 500`,
-      brandParams
-    );
-    return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    // Cacheado con TTL estático: la lista de tiendas con ventas históricas cambia muy poco
+    const cacheKey = `ownBrand:branchesSales:${brandIds.slice().sort().join(",")}`;
+    return cached(cacheKey, TTL.STATIC, async () => {
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const res = await pool.query(
+        `SELECT DISTINCT b.id, b.name, b.sap_id
+         FROM public.sales_detail sd
+         JOIN public.products p ON p.id = sd.product_id
+         JOIN public.sales_header sh ON sh.id = sd.header_id
+         JOIN public.branches b ON b.id = sh.branch_id
+         WHERE p.id IN ${subquery}
+         ORDER BY b.sap_id ASC
+         LIMIT 500`,
+        brandParams
+      );
+      return res.rows as Array<{ id: string; name: string; sap_id: string }>;
+    });
   }),
 
   // ─── STOCK ────────────────────────────────────────────────────────────────────
@@ -1066,96 +1077,65 @@ export const ownBrandRouter = router({
       }
       addCategoryFilter(params, clauses, categoryBrandIds);
 
-      const res = await pool.query(
-        `SELECT
-           ${selectProduct}
-           ${selectStore}
-           SUM(sd.quantity)::numeric                     AS cantidad,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
-           COUNT(DISTINCT sh.id)::int                    AS tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${subquery}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
-           ${clauses.join(" ")}
-         GROUP BY ${groupByDims}
-         ORDER BY monto DESC
-         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-        params
-      );
-
-      // Count
-      const countParams: (string | number | string[])[] = [...brandParams, from, to];
-      const countClauses: string[] = [];
-      if (input.productIds && input.productIds.length > 0) {
-        countParams.push(input.productIds);
-        countClauses.push(`AND p.id = ANY($${countParams.length}::uuid[])`);
-      } else if (input.search) {
-        countParams.push(`%${input.search}%`);
-        countClauses.push(`AND (p.name ILIKE $${countParams.length} OR p.int_sku::text ILIKE $${countParams.length})`);
-      }
-      if (input.branchId) {
-        countParams.push(input.branchId);
-        countClauses.push(`AND b.id = $${countParams.length}`);
-      }
-      addCategoryFilter(countParams, countClauses, categoryBrandIds);
-
-      const countRes = await pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM (
-           SELECT ${countGroupBy === "1" ? "1" : countGroupBy}
+      // ── CTE única: datos + count + totales en un solo round-trip a PostgreSQL ──
+      const cteRes = await pool.query(
+        `WITH base AS (
+           SELECT
+             ${selectProduct}
+             ${selectStore}
+             SUM(sd.quantity)::numeric                     AS cantidad,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
+             COUNT(DISTINCT sh.id)::int                    AS tickets
            FROM public.sales_detail sd
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN ${subquery}
              AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
-             ${countClauses.join(" ")}
-           GROUP BY ${countGroupBy}
-         ) sub`,
-        countParams
+             ${clauses.join(" ")}
+           GROUP BY ${groupByDims}
+         ),
+         totals AS (
+           SELECT
+             SUM(cantidad)::numeric                        AS total_cantidad,
+             ROUND(SUM(monto)::numeric, 2)                 AS total_monto,
+             SUM(tickets)::int                             AS total_tickets,
+             COUNT(*)::int                                 AS total_rows
+           FROM base
+         )
+         SELECT
+           b.*,
+           t.total_cantidad,
+           t.total_monto,
+           t.total_tickets,
+           t.total_rows
+         FROM base b
+         CROSS JOIN totals t
+         ORDER BY monto DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
       );
 
-      // Totales
-      const totalsParams: (string | number | string[])[] = [...brandParams, from, to];
-      const totalsClauses: string[] = [];
-      if (input.productIds && input.productIds.length > 0) {
-        totalsParams.push(input.productIds);
-        totalsClauses.push(`AND p.id = ANY($${totalsParams.length}::uuid[])`);
-      } else if (input.search) {
-        totalsParams.push(`%${input.search}%`);
-        totalsClauses.push(`AND (p.name ILIKE $${totalsParams.length} OR p.int_sku::text ILIKE $${totalsParams.length})`);
-      }
-      if (input.branchId) {
-        totalsParams.push(input.branchId);
-        totalsClauses.push(`AND b.id = $${totalsParams.length}`);
-      }
-      addCategoryFilter(totalsParams, totalsClauses, categoryBrandIds);
-
-      const totalsRes = await pool.query(
-        `SELECT
-           SUM(sd.quantity)::numeric                     AS total_cantidad,
-           ROUND(SUM(${amtCol})::numeric, 2)              AS total_monto,
-           COUNT(DISTINCT sh.id)::int                    AS total_tickets
-         FROM public.sales_detail sd
-         JOIN public.products p ON p.id = sd.product_id
-         JOIN public.sales_header sh ON sh.id = sd.header_id
-         JOIN public.branches b ON b.id = sh.branch_id
-         WHERE p.id IN ${subquery}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
-           ${totalsClauses.join(" ")}`,
-        totalsParams
-      );
+      const rows = cteRes.rows as Array<any>;
+      const firstRow = rows[0];
 
       return {
-        rows: res.rows as Array<{ product_id: string; producto: string; sku: string; branch_id: string; tienda: string; sap_id: string; cantidad: string; monto: string; tickets: number }>,
-        total: countRes.rows[0].total as number,
+        rows: rows.map((r) => ({
+          product_id: r.product_id,
+          producto: r.producto,
+          sku: r.sku,
+          branch_id: r.branch_id,
+          tienda: r.tienda,
+          sap_id: r.sap_id,
+          cantidad: r.cantidad,
+          monto: r.monto,
+          tickets: r.tickets,
+        })) as Array<{ product_id: string; producto: string; sku: string; branch_id: string; tienda: string; sap_id: string; cantidad: string; monto: string; tickets: number }>,
+        total: firstRow?.total_rows ?? 0,
         totals: {
-          cantidad: totalsRes.rows[0].total_cantidad as string,
-          monto: totalsRes.rows[0].total_monto as string,
-          tickets: totalsRes.rows[0].total_tickets as number,
+          cantidad: firstRow?.total_cantidad ?? "0",
+          monto: firstRow?.total_monto ?? "0",
+          tickets: firstRow?.total_tickets ?? 0,
         },
       };
     }),
@@ -1288,21 +1268,23 @@ export const ownBrandRouter = router({
     assertAccess((ctx.user as any).role);
     const brandIds = await getOwnBrandIds();
     if (brandIds.length === 0) return [];
-
-    const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
-
-    const res = await pool.query(
-      `SELECT DISTINCT
-         p.id,
-         p.name,
-         p.int_sku::text AS sku
-       FROM public.products p
-       WHERE p.id IN ${subquery}
-       ORDER BY p.name ASC
-       LIMIT 2000`,
-      brandParams
-    );
-    return res.rows as Array<{ id: string; name: string; sku: string }>;
+    // Cacheado con TTL estático: el catálogo de productos cambia muy poco
+    const cacheKey = `ownBrand:products:${brandIds.slice().sort().join(",")}`;
+    return cached(cacheKey, TTL.STATIC, async () => {
+      const { subquery, params: brandParams } = buildBrandProductsSubquery(brandIds, 1);
+      const res = await pool.query(
+        `SELECT DISTINCT
+           p.id,
+           p.name,
+           p.int_sku::text AS sku
+         FROM public.products p
+         WHERE p.id IN ${subquery}
+         ORDER BY p.name ASC
+         LIMIT 2000`,
+        brandParams
+      );
+      return res.rows as Array<{ id: string; name: string; sku: string }>;
+    });
   }),
 
   /**
