@@ -286,7 +286,7 @@ export const ownBrandRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
            ${clauses.join(" ")}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}`,
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')`,
         [...params, from, to]
       );
       return res.rows[0] as {
@@ -336,7 +336,7 @@ export const ownBrandRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
            ${clauses.join(" ")}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
          GROUP BY sh.doc_date::date
          ORDER BY fecha ASC`,
         [...params, from, to]
@@ -384,7 +384,7 @@ export const ownBrandRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          WHERE p.id IN ${subquery}
            ${clauses.join(" ")}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
          GROUP BY p.id, p.name, p.int_sku
          ORDER BY total_ventas DESC
          LIMIT $${limitIdx}`,
@@ -433,7 +433,7 @@ export const ownBrandRouter = router({
          JOIN public.branches b ON b.id = sh.branch_id
          WHERE p.id IN ${subquery}
            ${clauses.join(" ")}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
          GROUP BY b.id, b.name, b.sap_id
          ORDER BY total_ventas DESC`,
         [...params, from, to]
@@ -556,7 +556,7 @@ export const ownBrandRouter = router({
            JOIN public.sales_header sh ON sh.id = sd.header_id
            WHERE p.id IN ${subquery}
              AND p.id = ANY($${catFilterIdx}::uuid[])
-             AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}`,
+             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')`,
           [...params, from, to]
         );
 
@@ -1091,7 +1091,7 @@ export const ownBrandRouter = router({
            JOIN public.sales_header sh ON sh.id = sd.header_id
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN ${subquery}
-             AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
              ${clauses.join(" ")}
            GROUP BY ${groupByDims}
          ),
@@ -1168,7 +1168,7 @@ export const ownBrandRouter = router({
          WHERE p.id IN ${subquery}
            AND sd.product_id = $${pidIdx}
            AND sh.branch_id = $${bidIdx}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
          GROUP BY sh.doc_date::date
          ORDER BY fecha ASC`,
         [...brandParams, input.productId, input.branchId, input.from, input.to]
@@ -1248,7 +1248,7 @@ export const ownBrandRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          JOIN public.branches b ON b.id = sh.branch_id
          WHERE p.id IN ${subquery}
-           AND sh.doc_date::date BETWEEN $${fromIdx} AND $${toIdx}
+           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
            ${clauses.join(" ")}
          GROUP BY ${groupByDims}
          ORDER BY monto DESC
@@ -1367,8 +1367,7 @@ export const ownBrandRouter = router({
         JOIN public.products p ON p.id = sd.product_id
         LEFT JOIN public.branches b ON b.id = sh.branch_id
         WHERE sh.doc_date IS NOT NULL
-          AND sh.doc_date::date >= $${fromIdx}::date
-          AND sh.doc_date::date <= $${toIdx}::date
+          AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
           AND p.id IN ${subquery}
           ${clauses.join(' ')}
         GROUP BY ${groupByClause}

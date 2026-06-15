@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { scheduleTrialAlertJob } from "../trialAlertJob";
+import { initPool } from "../postgres";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -67,6 +68,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Iniciar job de alertas de trial (corre cada 24h)
     scheduleTrialAlertJob();
+    // Inicializar pool de PostgreSQL con warm-up y keep-alive del caché
+    initPool().catch(console.error);
   });
 }
 

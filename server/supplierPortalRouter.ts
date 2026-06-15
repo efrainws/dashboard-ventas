@@ -136,7 +136,7 @@ export const supplierPortalRouter = router({
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-             AND sh.doc_date::date BETWEEN $2 AND $3`,
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')`,
           [supplierId, from, to]
         );
         return res.rows[0] as {
@@ -172,7 +172,7 @@ export const supplierPortalRouter = router({
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-             AND sh.doc_date::date BETWEEN $2 AND $3
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
            GROUP BY sh.doc_date::date
            ORDER BY fecha ASC`,
           [supplierId, from, to]
@@ -215,7 +215,7 @@ export const supplierPortalRouter = router({
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-             AND sh.doc_date::date BETWEEN $2 AND $3
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
            GROUP BY p.id, p.name, p.int_sku
            ORDER BY total_ventas DESC
            LIMIT $4`,
@@ -256,7 +256,7 @@ export const supplierPortalRouter = router({
            JOIN public.sales_header sh ON sh.id = sd.header_id
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-             AND sh.doc_date::date BETWEEN $2 AND $3
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
            GROUP BY b.id, b.name, b.sap_id
            ORDER BY total_ventas DESC`,
           [supplierId, from, to]
@@ -692,7 +692,7 @@ export const supplierPortalRouter = router({
            JOIN public.sales_header sh ON sh.id = sd.header_id
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-             AND sh.doc_date::date BETWEEN $2 AND $3
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
              ${whereExtra}
            GROUP BY ${groupByDims}
          ),
@@ -770,7 +770,7 @@ export const supplierPortalRouter = router({
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
            AND sd.product_id = $2
            AND sh.branch_id = $3
-           AND sh.doc_date::date BETWEEN $4 AND $5
+           AND sh.doc_date >= $4::date AND sh.doc_date < ($5::date + INTERVAL '1 day')
          GROUP BY sh.doc_date::date
          ORDER BY fecha ASC`,
         [supplierId, input.productId, input.branchId, input.from, input.to]
@@ -844,7 +844,7 @@ export const supplierPortalRouter = router({
          JOIN public.sales_header sh ON sh.id = sd.header_id
          JOIN public.branches b ON b.id = sh.branch_id
          WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
-           AND sh.doc_date::date BETWEEN $2 AND $3
+           AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
            ${clauses.join(" ")}
          GROUP BY ${groupByDims}
          ORDER BY monto DESC
@@ -1040,8 +1040,7 @@ export const supplierPortalRouter = router({
         JOIN public.products p ON p.id = sd.product_id
         LEFT JOIN public.branches b ON b.id = sh.branch_id
         WHERE sh.doc_date IS NOT NULL
-          AND sh.doc_date::date >= $2::date
-          AND sh.doc_date::date <= $3::date
+          AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
           AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
           ${productFilter}
           ${branchFilter}

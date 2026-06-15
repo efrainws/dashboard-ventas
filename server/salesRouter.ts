@@ -101,8 +101,7 @@ export const salesRouter = router({
           -- Incluir array de sale_ids únicos para conteo correcto en frontend
           array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
-        WHERE doc_date::date >= '${fechaMinDate}'::date
-          AND doc_date::date <= '${fechaMaxDate}'::date
+        WHERE doc_date >= '${fechaMinDate}'::date AND doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
           ${additionalFilters.join('\n          ')}
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
@@ -204,8 +203,7 @@ export const salesRouter = router({
           SUM(line_total) AS sales_amount,
           COUNT(DISTINCT sale_id) AS tickets_count
         FROM base
-        WHERE doc_date::date >= '${fechaMinDate}'::date
-          AND doc_date::date <= '${fechaMaxDate}'::date
+        WHERE doc_date >= '${fechaMinDate}'::date AND doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
           ${additionalFilters.join('\n          ')}
         GROUP BY
           hour_ts, branch_id, branch_sap_id,
@@ -298,9 +296,9 @@ export const salesRouter = router({
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
             CASE
-              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
+              WHEN sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
-              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
+              WHEN sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -314,8 +312,8 @@ export const salesRouter = router({
           LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
-              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
+              (sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR (sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day'))
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -423,9 +421,9 @@ export const salesRouter = router({
               ELSE 'Presencial'
             END AS sales_channel,
             CASE
-              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
+              WHEN sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
-              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
+              WHEN sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -434,8 +432,8 @@ export const salesRouter = router({
           LEFT JOIN branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
-              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
+              (sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR (sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day'))
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -531,9 +529,9 @@ export const salesRouter = router({
             c.parent_category_id,
             p.parent_category_id AS grandparent_category_id,
             CASE
-              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
+              WHEN sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
-              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
+              WHEN sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -547,8 +545,8 @@ export const salesRouter = router({
           LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
-              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
+              (sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR (sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day'))
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -667,9 +665,9 @@ export const salesRouter = router({
             g.id AS grandparent_category_id,
             g.name AS grandparent_category_name,
             CASE
-              WHEN sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date
+              WHEN sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
-              WHEN sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date
+              WHEN sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
               ELSE NULL
             END AS period
@@ -684,8 +682,8 @@ export const salesRouter = router({
           LEFT JOIN categories g ON g.id = p.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
-              (sh.doc_date::date >= '${fechaMinDate}'::date AND sh.doc_date::date <= '${fechaMaxDate}'::date)
-              OR (sh.doc_date::date >= '${prevStartStr}'::date AND sh.doc_date::date <= '${prevEndStr}'::date)
+              (sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR (sh.doc_date >= '{prevStartStr}'::date AND sh.doc_date < ('{prevEndStr}'::date + INTERVAL '1 day'))
             )
             ${additionalFilters.join('\n            ')}
         )
@@ -814,8 +812,7 @@ export const salesRouter = router({
           LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
           LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
           WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date::date >= '${fechaMinDate}'::date
-            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            AND sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
             ${branchClause}
             ${categoryClause}
         ),
@@ -897,8 +894,7 @@ export const salesRouter = router({
           LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
           LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
           WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date::date >= '${fechaMinDate}'::date
-            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            AND sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
             ${branchClause}
             ${categoryClause}
         ),
@@ -1039,8 +1035,7 @@ export const salesRouter = router({
         FROM public.sales_header sh
         LEFT JOIN public.branches b ON b.id = sh.branch_id
         WHERE sh.doc_date IS NOT NULL
-          AND DATE(sh.doc_date) >= '${fechaMinDate}'::date
-          AND DATE(sh.doc_date) <= '${fechaMaxDate}'::date
+          AND sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
           ${additionalFilters.join('\n          ')}
         GROUP BY
           DATE(sh.doc_date),
@@ -1135,8 +1130,7 @@ export const salesRouter = router({
           JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date::date >= '${fechaMinDate}'::date
-            AND sh.doc_date::date <= '${fechaMaxDate}'::date
+            AND sh.doc_date >= '{fechaMinDate}'::date AND sh.doc_date < ('{fechaMaxDate}'::date + INTERVAL '1 day')
             ${additionalFilters.join('\n            ')}
         )
         SELECT
@@ -1296,8 +1290,7 @@ export const salesRouter = router({
         LEFT JOIN public.branches b   ON b.id  = sh.branch_id
         LEFT JOIN public.cashier  c   ON c.id  = sh.cashier_id
         WHERE sh.doc_date IS NOT NULL
-          AND DATE(sh.doc_date) >= $1::date
-          AND DATE(sh.doc_date) <= $2::date
+          AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')
           AND b.sap_id = $3
         GROUP BY sh.cashier_id, c.name, c.num_doc
         ORDER BY total_transactions DESC;
@@ -1366,8 +1359,7 @@ export const salesRouter = router({
             AND pbb.is_nc = TRUE
           LEFT JOIN public.branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
-            AND DATE(sh.doc_date) >= $1::date
-            AND DATE(sh.doc_date) <= $2::date
+            AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')
             ${additionalFilters.join('\n            ')}
           GROUP BY
             DATE(sh.doc_date),
@@ -1468,8 +1460,7 @@ export const salesRouter = router({
         LEFT JOIN public.branches b  ON b.id  = sh.branch_id
         LEFT JOIN public.cashier  c  ON c.id  = sh.cashier_id
         WHERE sh.doc_date IS NOT NULL
-          AND DATE(sh.doc_date) >= $1::date
-          AND DATE(sh.doc_date) <= $2::date
+          AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')
           AND b.sap_id = $3
         GROUP BY sh.cashier_id, c.name, c.num_doc
         ORDER BY total_nc DESC;
@@ -1549,8 +1540,7 @@ export const salesRouter = router({
           FROM public.sales_header sh
           LEFT JOIN public.branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
-            AND DATE(sh.doc_date) >= '${fechaMin}'::date
-            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            AND sh.doc_date >= '{fechaMin}'::date AND sh.doc_date < ('{fechaMax}'::date + INTERVAL '1 day')
             ${branchFilter}
             ${channelFilter}
           GROUP BY b.sap_id, b.name
@@ -1567,8 +1557,7 @@ export const salesRouter = router({
           LEFT JOIN public.branches  b ON b.id = sh.branch_id
           LEFT JOIN public.customers c ON c.id = sh.customer_id
           WHERE sh.doc_date IS NOT NULL
-            AND DATE(sh.doc_date) >= '${fechaMin}'::date
-            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            AND sh.doc_date >= '{fechaMin}'::date AND sh.doc_date < ('{fechaMax}'::date + INTERVAL '1 day')
             AND sh.customer_id IS NOT NULL
             AND sh.customer_id <> '${GENERIC_CUSTOMER}'
             ${branchFilter}
@@ -1680,8 +1669,7 @@ export const salesRouter = router({
           LEFT JOIN public.branches  b ON b.id = sh.branch_id
           LEFT JOIN public.customers c ON c.id = sh.customer_id
           WHERE sh.doc_date IS NOT NULL
-            AND DATE(sh.doc_date) >= '${fechaMin}'::date
-            AND DATE(sh.doc_date) <= '${fechaMax}'::date
+            AND sh.doc_date >= '{fechaMin}'::date AND sh.doc_date < ('{fechaMax}'::date + INTERVAL '1 day')
             AND sh.customer_id IS NOT NULL
             AND sh.customer_id <> '${GENERIC_CUSTOMER}'
             ${branchFilter}
@@ -1772,8 +1760,7 @@ export const salesRouter = router({
         JOIN public.branches b ON b.id = sh.branch_id
         WHERE sh.customer_id = '${customer_id.replace(/'/g, "''")}'
           AND sh.doc_date IS NOT NULL
-          AND DATE(sh.doc_date) >= '${fechaMin}'::date
-          AND DATE(sh.doc_date) <= '${fechaMax}'::date
+          AND sh.doc_date >= '{fechaMin}'::date AND sh.doc_date < ('{fechaMax}'::date + INTERVAL '1 day')
           ${branchFilter}
           ${channelFilter}
         ORDER BY sh.doc_date DESC
