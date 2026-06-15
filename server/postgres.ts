@@ -32,55 +32,75 @@ pool.on('error', (err) => {
 /**
  * Warm-up del caché de PostgreSQL (RDS).
  *
- * El problema: sales_header (291 MB) + sales_detail (1186 MB) no están en el buffer cache
- * de PostgreSQL cuando el servidor lleva tiempo inactivo. La primera query que toca estas
- * tablas debe leer ~11,000 páginas desde disco EBS, lo que tarda 14-42 segundos.
+ * El problema: sales_header (291 MB) + sales_detail (1186 MB) + products no están en el
+ * buffer cache de PostgreSQL cuando el servidor lleva tiempo inactivo. La primera query que
+ * toca estas tablas debe leer páginas desde disco EBS, lo que tarda 14-60 segundos.
  *
- * Solución: ejecutar queries ligeras periódicamente para mantener las páginas más recientes
- * en el buffer cache de RDS. Esto reduce el cold start de 14-42s a <1s.
+ * Solución: ejecutar queries específicas periódicamente para mantener las páginas más
+ * recientes en el buffer cache de RDS.
  *
  * Estrategia:
- * - Al iniciar: warm-up completo de los últimos 7 días (carga datos recientes en caché)
- * - Cada 4 minutos: keep-alive de los últimos 2 días (mantiene datos calientes)
+ * - Al iniciar: warm-up completo — products + 6 meses de sales_header + 14 días de sales_detail
+ * - Cada 3 minutos: keep-alive de los últimos 3 días con JOIN products (mantiene datos calientes)
  */
 async function warmupCache(label: string): Promise<void> {
   const client = await pool.connect();
   try {
     const today = new Date();
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
+    const fourteenDaysAgo = new Date(today);
+    fourteenDaysAgo.setDate(today.getDate() - 14);
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(today.getDate() - 3);
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
 
     const dateStr = (d: Date) => d.toISOString().substring(0, 10);
 
     if (label === 'startup') {
-      // Warm-up completo: cargar los últimos 7 días en caché
-      // Esto toca sales_header + sales_detail + branches para el rango más consultado
+      // Paso 1: Cargar products + brands en caché (tabla pequeña, carga rápida)
+      // Crítico para portal de marca propia: filtra por brand_id
       await client.query(`
-        SELECT
-          sh.id,
-          sh.doc_date,
-          sh.branch_id,
-          sh.total,
-          sh.subtotal,
-          sd.product_id,
-          sd.total AS line_total
+        SELECT p.id, p.name, p.sku, p.brand_id, b.name AS brand_name
+        FROM products p
+        LEFT JOIN brands b ON b.id = p.brand_id
+      `);
+
+      // Paso 2: Cargar sales_header de los últimos 6 meses (para getMonthlySales)
+      await client.query(`
+        SELECT id, doc_date, branch_id, total, subtotal
+        FROM sales_header
+        WHERE doc_date >= $1::date
+      `, [dateStr(sixMonthsAgo)]);
+
+      // Paso 3: Cargar sales_detail de los últimos 14 días con JOIN a products
+      // Toca idx_sales_detail_header_id + idx_sales_detail_product_id + index_products_on_brand_id
+      await client.query(`
+        SELECT sd.id, sd.header_id, sd.product_id, sd.total, sd.subtotal, sd.quantity,
+               p.brand_id
         FROM sales_header sh
         JOIN sales_detail sd ON sd.header_id = sh.id
+        JOIN products p ON p.id = sd.product_id
         WHERE sh.doc_date >= $1::date
           AND sh.doc_date < ($2::date + INTERVAL '1 day')
-        LIMIT 100000
-      `, [dateStr(sevenDaysAgo), dateStr(today)]);
+        LIMIT 200000
+      `, [dateStr(fourteenDaysAgo), dateStr(today)]);
 
-      console.log('[PostgreSQL] Cache warm-up completado — últimos 7 días cargados en memoria');
+      // Paso 4: Cargar branches y categories
+      await client.query(`SELECT id, name, sap_id FROM branches`);
+      await client.query(`SELECT id, name, parent_category_id FROM categories LIMIT 5000`);
+
+      console.log('[PostgreSQL] Cache warm-up completado — 6 meses de sales_header + 14 días de sales_detail + products cargados en memoria');
     } else {
-      // Keep-alive: mantener los últimos 2 días calientes
+      // Keep-alive: mantener los últimos 3 días calientes con JOIN que toca sales_detail + products
       await client.query(`
-        SELECT COUNT(*) FROM sales_header sh
+        SELECT sh.id, sh.doc_date, sd.product_id, p.brand_id
+        FROM sales_header sh
+        JOIN sales_detail sd ON sd.header_id = sh.id
+        JOIN products p ON p.id = sd.product_id
         WHERE sh.doc_date >= $1::date
           AND sh.doc_date < ($2::date + INTERVAL '1 day')
-      `, [dateStr(twoDaysAgo), dateStr(today)]);
+        LIMIT 50000
+      `, [dateStr(threeDaysAgo), dateStr(today)]);
     }
   } catch (err) {
     // No lanzar error — el warm-up es best-effort
@@ -100,11 +120,11 @@ export async function initPool(): Promise<void> {
     warmupCache('startup').catch(() => {});
   }, 2_000);
 
-  // Keep-alive cada 4 minutos — mantiene datos recientes en el buffer cache de RDS
-  // RDS expulsa páginas del caché si no hay actividad por ~5 minutos
+  // Keep-alive cada 3 minutos — mantiene datos recientes en el buffer cache de RDS
+  // El keep-alive ahora incluye JOIN con products para mantener el índice brand_id caliente
   setInterval(() => {
     warmupCache('keepalive').catch(() => {});
-  }, 4 * 60 * 1_000);
+  }, 3 * 60 * 1_000);
 }
 
 export { pool };
