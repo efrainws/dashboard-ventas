@@ -1,6 +1,7 @@
 import { publicProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { z } from "zod";
+import { cached, TTL } from "./queryCache";
 
 export const salesRouter = router({
   /**
@@ -111,21 +112,24 @@ export const salesRouter = router({
         ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER), category_abuelo_name;
       `;
 
+      const igvKey = include_igv ? 'igv' : 'noigv';
+      const cacheKey = `sales:aggregated:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
-        const result = await pool.query(query, queryParams);
-        
-        return {
-          success: true,
-          data: result.rows,
-          metadata: {
-            total_rows: result.rows.length,
-            fecha_min,
-            fecha_max,
-            branch_id: branch_id || 'all',
-            category_id: category_id || 'all',
-            generated_at: new Date().toISOString(),
-          },
-        };
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await pool.query(query, queryParams);
+          return {
+            success: true,
+            data: result.rows,
+            metadata: {
+              total_rows: result.rows.length,
+              fecha_min,
+              fecha_max,
+              branch_id: branch_id || 'all',
+              category_id: category_id || 'all',
+              generated_at: new Date().toISOString(),
+            },
+          };
+        });
       } catch (error) {
         console.error('[PostgreSQL] Error executing aggregated sales query:', error);
         throw new Error('Error al consultar ventas agregadas');
@@ -324,27 +328,29 @@ export const salesRouter = router({
         GROUP BY period;
       `;
 
+      const igvKey = include_igv ? 'igv' : 'noigv';
+      const cacheKey = `sales:comparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
-        const result = await pool.query(query, queryParams);
-        
-        const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
-        const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
-
-        return {
-          success: true,
-          current: {
-            total_sales: parseFloat(currentMetrics.total_sales || 0),
-            total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
-          },
-          previous: {
-            total_sales: parseFloat(previousMetrics.total_sales || 0),
-            total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
-          },
-          metadata: {
-            current_period: { start: fechaMinDate, end: fechaMaxDate },
-            previous_period: { start: prevStartStr, end: prevEndStr },
-          },
-        };
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await pool.query(query, queryParams);
+          const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
+          const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
+          return {
+            success: true,
+            current: {
+              total_sales: parseFloat(currentMetrics.total_sales || 0),
+              total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
+            },
+            previous: {
+              total_sales: parseFloat(previousMetrics.total_sales || 0),
+              total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
+            },
+            metadata: {
+              current_period: { start: fechaMinDate, end: fechaMaxDate },
+              previous_period: { start: prevStartStr, end: prevEndStr },
+            },
+          };
+        });
       } catch (error) {
         console.error('[PostgreSQL] Error executing comparison query:', error);
         throw new Error('Error al consultar comparación de períodos');
@@ -560,56 +566,45 @@ export const salesRouter = router({
         ORDER BY branch_sap_id;
       `;
 
+      const igvKey = include_igv ? 'igv' : 'noigv';
+      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${category_id ?? 'all'}:${igvKey}`;
       try {
-        const result = await pool.query(query, queryParams);
-        
-        // Agrupar por sucursal
-        const branchMap = new Map<string, any>();
-        
-        result.rows.forEach(row => {
-          const branchId = row.branch_id;
-          if (!branchMap.has(branchId)) {
-            branchMap.set(branchId, {
-              branch_id: branchId,
-              branch_name: row.branch_name,
-              branch_sap_id: row.branch_sap_id,
-              current: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
-              previous: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
-            });
-          }
-          
-          const branch = branchMap.get(branchId);
-          const totalSales = parseFloat(row.total_sales || 0);
-          const totalTickets = parseInt(row.total_tickets || 0, 10);
-          const totalDays = parseInt(row.total_days || 1, 10);
-          const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
-          const avgSalesPerDay = totalDays > 0 ? totalSales / totalDays : 0;
-          
-          if (row.period === 'current') {
-            branch.current = {
-              total_sales: totalSales,
-              total_tickets: totalTickets,
-              avg_ticket: avgTicket,
-              avg_sales_per_day: avgSalesPerDay,
-            };
-          } else if (row.period === 'previous') {
-            branch.previous = {
-              total_sales: totalSales,
-              total_tickets: totalTickets,
-              avg_ticket: avgTicket,
-              avg_sales_per_day: avgSalesPerDay,
-            };
-          }
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await pool.query(query, queryParams);
+          // Agrupar por sucursal
+          const branchMap = new Map<string, any>();
+          result.rows.forEach(row => {
+            const branchId = row.branch_id;
+            if (!branchMap.has(branchId)) {
+              branchMap.set(branchId, {
+                branch_id: branchId,
+                branch_name: row.branch_name,
+                branch_sap_id: row.branch_sap_id,
+                current: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
+                previous: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
+              });
+            }
+            const branch = branchMap.get(branchId);
+            const totalSales = parseFloat(row.total_sales || 0);
+            const totalTickets = parseInt(row.total_tickets || 0, 10);
+            const totalDays = parseInt(row.total_days || 1, 10);
+            const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
+            const avgSalesPerDay = totalDays > 0 ? totalSales / totalDays : 0;
+            if (row.period === 'current') {
+              branch.current = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
+            } else if (row.period === 'previous') {
+              branch.previous = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
+            }
+          });
+          return {
+            success: true,
+            data: Array.from(branchMap.values()),
+            metadata: {
+              current_period: { start: fechaMinDate, end: fechaMaxDate },
+              previous_period: { start: prevStartStr, end: prevEndStr },
+            },
+          };
         });
-
-        return {
-          success: true,
-          data: Array.from(branchMap.values()),
-          metadata: {
-            current_period: { start: fechaMinDate, end: fechaMaxDate },
-            previous_period: { start: prevStartStr, end: prevEndStr },
-          },
-        };
       } catch (error) {
         console.error('[PostgreSQL] Error executing branch comparison query:', error);
         throw new Error('Error al consultar comparación por sucursal');
@@ -710,43 +705,39 @@ export const salesRouter = router({
         ORDER BY category_name;
       `;
 
+      const igvKey = include_igv ? 'igv' : 'noigv';
+      const cacheKey = `sales:categoryComparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${igvKey}`;
       try {
-        const result = await pool.query(query, queryParams);
-        
-        // Agrupar por categoría
-        const categoryMap = new Map<string, any>();
-        
-        result.rows.forEach(row => {
-          const categoryId = row.category_id;
-          if (!categoryMap.has(categoryId)) {
-            categoryMap.set(categoryId, {
-              category_id: categoryId,
-              category_name: row.category_name,
-              current: { total_sales: 0 },
-              previous: { total_sales: 0 },
-            });
-          }
-          
-          const category = categoryMap.get(categoryId);
-          if (row.period === 'current') {
-            category.current = {
-              total_sales: parseFloat(row.total_sales || 0),
-            };
-          } else if (row.period === 'previous') {
-            category.previous = {
-              total_sales: parseFloat(row.total_sales || 0),
-            };
-          }
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await pool.query(query, queryParams);
+          // Agrupar por categoría
+          const categoryMap = new Map<string, any>();
+          result.rows.forEach(row => {
+            const categoryId = row.category_id;
+            if (!categoryMap.has(categoryId)) {
+              categoryMap.set(categoryId, {
+                category_id: categoryId,
+                category_name: row.category_name,
+                current: { total_sales: 0 },
+                previous: { total_sales: 0 },
+              });
+            }
+            const category = categoryMap.get(categoryId);
+            if (row.period === 'current') {
+              category.current = { total_sales: parseFloat(row.total_sales || 0) };
+            } else if (row.period === 'previous') {
+              category.previous = { total_sales: parseFloat(row.total_sales || 0) };
+            }
+          });
+          return {
+            success: true,
+            data: Array.from(categoryMap.values()),
+            metadata: {
+              current_period: { start: fechaMinDate, end: fechaMaxDate },
+              previous_period: { start: prevStartStr, end: prevEndStr },
+            },
+          };
         });
-
-        return {
-          success: true,
-          data: Array.from(categoryMap.values()),
-          metadata: {
-            current_period: { start: fechaMinDate, end: fechaMaxDate },
-            previous_period: { start: prevStartStr, end: prevEndStr },
-          },
-        };
       } catch (error) {
         console.error('[PostgreSQL] Error executing category comparison query:', error);
         throw new Error('Error al consultar comparación por categoría');

@@ -13,7 +13,7 @@ const pool = new Pool({
     rejectUnauthorized: false,
   },
   // Pool ampliado para soportar múltiples queries paralelas de los portales
-  max: 30,                          // Máximo de conexiones simultáneas (era 20)
+  max: 30,                          // Máximo de conexiones simultáneas
   min: 2,                           // Conexiones mínimas precalentadas
   idleTimeoutMillis: 60_000,        // Liberar conexiones inactivas tras 60s
   connectionTimeoutMillis: 15_000,  // Timeout para adquirir conexión del pool
@@ -21,8 +21,9 @@ const pool = new Pool({
 
 // Aplicar statement_timeout al conectar para evitar queries colgadas
 pool.on('connect', (client) => {
-  // 30 segundos máximo por query — protege contra full-scans accidentales
-  client.query('SET statement_timeout = 30000').catch(() => {});
+  // 120 segundos — las queries de comparación de períodos en /sales son complejas
+  // y pueden tardar más de 30s con grandes volúmenes de datos
+  client.query('SET statement_timeout = 120000').catch(() => {});
 });
 
 pool.on('error', (err) => {
