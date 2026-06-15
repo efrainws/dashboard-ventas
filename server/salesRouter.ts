@@ -44,22 +44,19 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO (usa índice en doc_date),
+      // luego hacer JOIN con sales_detail solo para las filas del rango.
+      // Esto evita el full scan de 4M filas de sales_detail.
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
             sh.branch_id,
+            sh.source_system_id,
             INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
             INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
             b.sap_id                               AS branch_sap_id,
-            ${amtCol} AS line_total,
-            cp.category_id AS leaf_category_id,
-            c.name AS leaf_category_name,
-            p.id   AS parent_category_id,
-            p.name AS parent_category_name,
-            g.id   AS grandparent_category_id,
-            g.name AS grandparent_category_name,
             CASE
               WHEN EXISTS (
                 SELECT 1 FROM methods_payment mp
@@ -71,15 +68,35 @@ export const salesRouter = router({
               ELSE 'Presencial'
             END AS sales_channel
           FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
+          WHERE sh.doc_date >= '${fechaMinDate}'::date
+            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
+            AND sh.doc_date IS NOT NULL
+        ),
+        base AS (
+          SELECT
+            fh.id AS sale_id,
+            fh.doc_date,
+            fh.branch_id,
+            fh.branch_name,
+            fh.branch_address,
+            fh.branch_sap_id,
+            fh.sales_channel,
+            ${amtCol} AS line_total,
+            cp.category_id AS leaf_category_id,
+            c.name AS leaf_category_name,
+            p.id   AS parent_category_id,
+            p.name AS parent_category_name,
+            g.id   AS grandparent_category_id,
+            g.name AS grandparent_category_name
+          FROM filtered_headers fh
+          JOIN sales_detail sd ON sd.header_id = fh.id
           LEFT JOIN categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
           LEFT JOIN categories c ON c.id = cp.category_id
           LEFT JOIN categories p ON p.id = c.parent_category_id
           LEFT JOIN categories g ON g.id = p.parent_category_id
-          WHERE sh.doc_date IS NOT NULL
         )
         SELECT
           doc_date::date AS doc_date,
@@ -98,10 +115,9 @@ export const salesRouter = router({
           ))) AS category_abuelo_name,
           SUM(line_total) AS sales_amount,
           COUNT(DISTINCT sale_id) AS tickets_count,
-          -- Incluir array de sale_ids únicos para conteo correcto en frontend
           array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
-        WHERE doc_date >= '${fechaMinDate}'::date AND doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
+        WHERE 1=1
           ${additionalFilters.join('\n          ')}
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
@@ -168,16 +184,17 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
             sh.branch_id,
+            sh.source_system_id,
             INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
             INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
             b.sap_id                               AS branch_sap_id,
-            ${amtCol} AS line_total,
             CASE
               WHEN EXISTS (
                 SELECT 1 FROM methods_payment mp
@@ -189,27 +206,29 @@ export const salesRouter = router({
               ELSE 'Presencial'
             END AS sales_channel
           FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
+          WHERE sh.doc_date >= '${fechaMinDate}'::date
+            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
+            AND sh.doc_date IS NOT NULL
         )
         SELECT
-          date_trunc('hour', doc_date) AS hour_ts,
-          branch_id,
-          branch_sap_id,
-          branch_name,
-          branch_address,
-          sales_channel,
-          SUM(line_total) AS sales_amount,
-          COUNT(DISTINCT sale_id) AS tickets_count
-        FROM base
-        WHERE doc_date >= '${fechaMinDate}'::date AND doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
+          date_trunc('hour', fh.doc_date) AS hour_ts,
+          fh.branch_id,
+          fh.branch_sap_id,
+          fh.branch_name,
+          fh.branch_address,
+          fh.sales_channel,
+          SUM(${amtCol}) AS sales_amount,
+          COUNT(DISTINCT fh.id) AS tickets_count
+        FROM filtered_headers fh
+        JOIN sales_detail sd ON sd.header_id = fh.id
+        WHERE 1=1
           ${additionalFilters.join('\n          ')}
         GROUP BY
-          hour_ts, branch_id, branch_sap_id,
-          branch_name, branch_address,
-          sales_channel
-        ORDER BY hour_ts, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER);
+          hour_ts, fh.branch_id, fh.branch_sap_id,
+          fh.branch_name, fh.branch_address,
+          fh.sales_channel
+        ORDER BY hour_ts, CAST(SUBSTRING(fh.branch_sap_id FROM '[0-9]+') AS INTEGER);
       `;
 
       try {
@@ -285,45 +304,40 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
             sh.branch_id,
-            ${amtCol} AS line_total,
-            cp.category_id AS leaf_category_id,
-            c.parent_category_id,
-            p.parent_category_id AS grandparent_category_id,
             CASE
               WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
               WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
-              ELSE NULL
             END AS period
           FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          LEFT JOIN categories_products cp
-            ON cp.product_id = sd.product_id
-           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories c ON c.id = cp.category_id
-          LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
               (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
               OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
             )
-            ${additionalFilters.join('\n            ')}
+        ),
+        agg_detail AS (
+          SELECT sd.header_id, SUM(${amtCol}) AS line_total
+          FROM sales_detail sd
+          INNER JOIN filtered_headers fh ON fh.id = sd.header_id
+          GROUP BY sd.header_id
         )
         SELECT
-          period,
-          SUM(line_total) AS total_sales,
-          COUNT(DISTINCT sale_id) AS total_tickets
-        FROM base
-        WHERE period IS NOT NULL
-        GROUP BY period;
+          fh.period,
+          SUM(ad.line_total) AS total_sales,
+          COUNT(DISTINCT fh.id) AS total_tickets
+        FROM filtered_headers fh
+        JOIN agg_detail ad ON ad.header_id = fh.id
+        WHERE fh.period IS NOT NULL
+        GROUP BY fh.period;
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
@@ -516,52 +530,48 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego pre-agregar sales_detail
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
             sh.branch_id,
             INITCAP(LOWER(COALESCE(b.name,''))) AS branch_name,
             b.sap_id AS branch_sap_id,
-            ${amtCol} AS line_total,
-            cp.category_id AS leaf_category_id,
-            c.parent_category_id,
-            p.parent_category_id AS grandparent_category_id,
             CASE
               WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
               WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
                 THEN 'previous'
-              ELSE NULL
             END AS period
           FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
-          LEFT JOIN categories_products cp
-            ON cp.product_id = sd.product_id
-           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories c ON c.id = cp.category_id
-          LEFT JOIN categories p ON p.id = c.parent_category_id
           WHERE sh.doc_date IS NOT NULL
             AND (
               (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
               OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
             )
-            ${additionalFilters.join('\n            ')}
+        ),
+        agg_detail AS (
+          SELECT sd.header_id, SUM(${amtCol}) AS line_total
+          FROM sales_detail sd
+          INNER JOIN filtered_headers fh ON fh.id = sd.header_id
+          GROUP BY sd.header_id
         )
         SELECT
-          period,
-          branch_id,
-          branch_name,
-          branch_sap_id,
-          SUM(line_total) AS total_sales,
-          COUNT(DISTINCT sale_id) AS total_tickets,
-          COUNT(DISTINCT DATE(doc_date)) AS total_days
-        FROM base
-        WHERE period IS NOT NULL
-        GROUP BY period, branch_id, branch_name, branch_sap_id
-        ORDER BY branch_sap_id;
+          fh.period,
+          fh.branch_id,
+          fh.branch_name,
+          fh.branch_sap_id,
+          SUM(ad.line_total) AS total_sales,
+          COUNT(DISTINCT fh.id) AS total_tickets,
+          COUNT(DISTINCT DATE(fh.doc_date)) AS total_days
+        FROM filtered_headers fh
+        JOIN agg_detail ad ON ad.header_id = fh.id
+        WHERE fh.period IS NOT NULL
+        GROUP BY fh.period, fh.branch_id, fh.branch_name, fh.branch_sap_id
+        ORDER BY fh.branch_sap_id;
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
@@ -651,40 +661,47 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail y categories
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
             sh.branch_id,
+            CASE
+              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
+                THEN 'current'
+              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
+                THEN 'previous'
+            END AS period
+          FROM sales_header sh
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
+            )
+        ),
+        base AS (
+          SELECT
+            fh.id AS sale_id,
+            fh.period,
             ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.name AS leaf_category_name,
             p.id AS parent_category_id,
             p.name AS parent_category_name,
             g.id AS grandparent_category_id,
-            g.name AS grandparent_category_name,
-            CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-                THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
-                THEN 'previous'
-              ELSE NULL
-            END AS period
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
+            g.name AS grandparent_category_name
+          FROM filtered_headers fh
+          JOIN sales_detail sd ON sd.header_id = fh.id
+          LEFT JOIN branches b ON b.id = fh.branch_id
           LEFT JOIN categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
           LEFT JOIN categories c ON c.id = cp.category_id
           LEFT JOIN categories p ON p.id = c.parent_category_id
           LEFT JOIN categories g ON g.id = p.parent_category_id
-          WHERE sh.doc_date IS NOT NULL
-            AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
-              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
-            )
+          WHERE fh.period IS NOT NULL
             ${additionalFilters.join('\n            ')}
         )
         SELECT
@@ -698,7 +715,6 @@ export const salesRouter = router({
           ))) AS category_name,
           SUM(line_total) AS total_sales
         FROM base
-        WHERE period IS NOT NULL
         GROUP BY period, category_id, category_name
         ORDER BY category_name;
       `;
