@@ -560,9 +560,10 @@ export const ownBrandRouter = router({
         const toIdx = fromIdx + 1;
         params.push(from, to);
 
+        const caseExpr = `CASE ${caseLines.join(' ')} END`;
         const res = await pool.query(
           `SELECT
-             CASE ${caseLines.join(' ')} END AS category_id,
+             ${caseExpr} AS category_id,
              ROUND(SUM(${amtColCat})::numeric, 2) AS total_ventas,
              ROUND(SUM(sd.quantity)::numeric, 2)  AS total_unidades
            FROM public.sales_detail sd
@@ -570,8 +571,8 @@ export const ownBrandRouter = router({
            JOIN public.sales_header sh ON sh.id = sd.header_id
            WHERE p.brand_id = ANY($${globalBrandParam}::uuid[])
              AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
-           GROUP BY category_id
-           HAVING category_id IS NOT NULL AND SUM(${amtColCat}) > 0`,
+           GROUP BY ${caseExpr}
+           HAVING ${caseExpr} IS NOT NULL AND SUM(${amtColCat}) > 0`,
           params
         );
 
