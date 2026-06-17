@@ -1227,22 +1227,40 @@ export const salesRouter = router({
         return ph;
       }).join(', ');
 
+      // OPTIMIZACIÓN: agregar rango de timestamp para que PostgreSQL use el índice en doc_date
+      // El rango cubre desde la fecha más antigua hasta la más reciente de targetDates
+      // Luego el IN filtra las fechas exactas (días de semana específicos)
+      const minDate = targetDates[0];                    // fecha más antigua (orden cronológico)
+      const maxDate = targetDates[targetDates.length - 1]; // fecha más reciente
+
       const metricExpr = metric === 'amount'
         ? 'SUM(line_total)'
         : 'COUNT(DISTINCT sale_id)';
 
+      // OPTIMIZACIÓN: filtrar sales_header por rango de fechas PRIMERO (usa índice),
+      // luego filtrar por fechas exactas con IN (días de semana específicos)
       const query = `
-        WITH base AS (
+        WITH filtered_headers AS (
           SELECT
-            sh.id AS sale_id,
+            sh.id,
             sh.doc_date,
-            ${amtCol} AS line_total
+            sh.branch_id,
+            b.sap_id AS branch_sap_id
           FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
           LEFT JOIN branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
+            AND sh.doc_date >= '${minDate}'::date
+            AND sh.doc_date < ('${maxDate}'::date + INTERVAL '1 day')
             AND sh.doc_date::date IN (${datePlaceholders})
             ${additionalFilters.join('\n            ')}
+        ),
+        base AS (
+          SELECT
+            fh.id AS sale_id,
+            fh.doc_date,
+            ${amtCol} AS line_total
+          FROM filtered_headers fh
+          JOIN sales_detail sd ON sd.header_id = fh.id
         )
         SELECT
           doc_date::date::text                   AS date_label,
