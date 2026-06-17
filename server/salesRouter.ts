@@ -1,5 +1,5 @@
 import { publicProcedure, router } from "./_core/trpc";
-import { pool } from "./postgres";
+import { pool, queryWithRetry } from "./postgres";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
 
@@ -131,7 +131,7 @@ export const salesRouter = router({
       const cacheKey = `sales:aggregated:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
-          const result = await pool.query(query, queryParams);
+          const result = await queryWithRetry(query, queryParams);
           return {
             success: true,
             data: result.rows,
@@ -232,7 +232,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
         
         return {
           success: true,
@@ -344,7 +344,7 @@ export const salesRouter = router({
       const cacheKey = `sales:comparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
-          const result = await pool.query(query, queryParams);
+          const result = await queryWithRetry(query, queryParams);
           const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
           const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
           return {
@@ -462,7 +462,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
         
         const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
         const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
@@ -578,7 +578,7 @@ export const salesRouter = router({
       const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${category_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
-          const result = await pool.query(query, queryParams);
+          const result = await queryWithRetry(query, queryParams);
           // Agrupar por sucursal
           const branchMap = new Map<string, any>();
           result.rows.forEach(row => {
@@ -723,7 +723,7 @@ export const salesRouter = router({
       const cacheKey = `sales:categoryComparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
-          const result = await pool.query(query, queryParams);
+          const result = await queryWithRetry(query, queryParams);
           // Agrupar por categoría
           const categoryMap = new Map<string, any>();
           result.rows.forEach(row => {
@@ -1063,7 +1063,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
 
         // Convertir bigint a number para serialización JSON
         const rows = result.rows.map((row: any) => ({
@@ -1159,7 +1159,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
         return {
           success: true,
           data: result.rows as Array<{ day_of_week: number; hour_of_day: number; value: string }>,
@@ -1272,7 +1272,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
         return {
           success: true,
           data: result.rows as Array<{ date_label: string; hour_of_day: number; value: string }>,
@@ -1331,7 +1331,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, [fechaMin, fechaMax, branch_sap_id]);
+        const result = await queryWithRetry(query, [fechaMin, fechaMax, branch_sap_id]);
         return {
           success: true,
           data: result.rows.map((row: any) => ({
@@ -1432,7 +1432,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, queryParams);
+        const result = await queryWithRetry(query, queryParams);
         const rows = result.rows.map((row: any) => ({
           sale_day: row.sale_day instanceof Date
             ? row.sale_day.toISOString().substring(0, 10)
@@ -1501,7 +1501,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query, [fechaMin, fechaMax, branch_sap_id]);
+        const result = await queryWithRetry(query, [fechaMin, fechaMax, branch_sap_id]);
         return {
           success: true,
           data: result.rows.map((row: any) => ({
@@ -1620,7 +1620,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query);
+        const result = await queryWithRetry(query);
         return {
           success: true,
           data: result.rows.map((row: any) => ({
@@ -1721,7 +1721,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query);
+        const result = await queryWithRetry(query);
         return {
           success: true,
           data: result.rows.map((row: any) => ({
@@ -1802,7 +1802,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query);
+        const result = await queryWithRetry(query);
         return {
           success: true,
           data: result.rows.map((row: any) => ({
@@ -1850,7 +1850,7 @@ export const salesRouter = router({
       `;
 
       try {
-        const result = await pool.query(query);
+        const result = await queryWithRetry(query);
         return {
           success: true,
           data: result.rows.map((row: any) => ({

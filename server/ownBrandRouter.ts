@@ -17,7 +17,7 @@
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { pool } from "./postgres";
+import { pool, queryWithRetry } from "./postgres";
 import { getDb } from "./db";
 import { ownBrandBrands, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
@@ -187,7 +187,7 @@ export const ownBrandRouter = router({
     if (brandIds.length === 0) return [];
 
     const placeholders = brandIds.map((_, i) => `$${i + 1}`).join(", ");
-    const res = await pool.query(
+    const res = await queryWithRetry(
       `SELECT id, name FROM public.brands WHERE id IN (${placeholders}) ORDER BY name ASC`,
       brandIds
     );
@@ -205,7 +205,7 @@ export const ownBrandRouter = router({
   listAllBrands: protectedProcedure.query(async ({ ctx }) => {
     assertBrandAdmin((ctx.user as any).role);
     return cached("ownBrand:allBrands", TTL.STATIC, async () => {
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT id, name FROM public.brands ORDER BY name ASC LIMIT 1000`
       );
       return res.rows as Array<{ id: string; name: string }>;
@@ -276,7 +276,7 @@ export const ownBrandRouter = router({
         const fromIdx = params.length + 1;
         const toIdx = fromIdx + 1;
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              COUNT(DISTINCT sh.id)::int                    AS total_tickets,
              COUNT(DISTINCT p.id)::int                     AS productos_vendidos,
@@ -330,7 +330,7 @@ export const ownBrandRouter = router({
         const fromIdx = params.length + 1;
         const toIdx = fromIdx + 1;
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              sh.doc_date::date                             AS fecha,
              ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,
@@ -380,7 +380,7 @@ export const ownBrandRouter = router({
         const toIdx = fromIdx + 1;
         const limitIdx = toIdx + 1;
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              p.name                                        AS producto,
              p.int_sku,
@@ -431,7 +431,7 @@ export const ownBrandRouter = router({
         const fromIdx = params.length + 1;
         const toIdx = fromIdx + 1;
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              b.name                                        AS tienda,
              b.sap_id,
@@ -464,7 +464,7 @@ export const ownBrandRouter = router({
     const cacheKey = `ownBrand:monthly:${brandIds.slice().sort().join(",")}`;
     return cached(cacheKey, TTL.SEMI_STATIC, async () => {
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT
            TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,
            ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,
@@ -561,7 +561,7 @@ export const ownBrandRouter = router({
         params.push(from, to);
 
         const caseExpr = `CASE ${caseLines.join(' ')} END`;
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              ${caseExpr} AS category_id,
              ROUND(SUM(${amtColCat})::numeric, 2) AS total_ventas,
@@ -612,7 +612,7 @@ export const ownBrandRouter = router({
     const cacheKey = `ownBrand:branchesStock:${brandIds.slice().sort().join(",")}`;
     return cached(cacheKey, TTL.STATIC, async () => {
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT DISTINCT b.id, b.name, b.sap_id
          FROM public.stocks st
          JOIN public.products p ON p.id = st.product_id
@@ -637,7 +637,7 @@ export const ownBrandRouter = router({
     const cacheKey = `ownBrand:branchesSales:${brandIds.slice().sort().join(",")}`;
     return cached(cacheKey, TTL.STATIC, async () => {
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT DISTINCT b.id, b.name, b.sap_id
          FROM public.sales_detail sd
          JOIN public.products p ON p.id = sd.product_id
@@ -700,7 +700,7 @@ export const ownBrandRouter = router({
           : "";
         if (categoryBrandIds !== null) params.push(categoryBrandIds);
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              p.name                                        AS producto,
              p.int_sku,
@@ -728,7 +728,7 @@ export const ownBrandRouter = router({
           : "";
         if (categoryBrandIds !== null) countParams.push(categoryBrandIds);
 
-        const countRes = await pool.query(
+        const countRes = await queryWithRetry(
           `SELECT COUNT(*)::int AS total
            FROM public.branches b
            CROSS JOIN (
@@ -762,7 +762,7 @@ export const ownBrandRouter = router({
       const limitIdx = brandParams.length + 1;
       const offsetIdx = limitIdx + 1;
 
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT
            p.name                                        AS producto,
            p.int_sku,
@@ -794,7 +794,7 @@ export const ownBrandRouter = router({
       }
       addCategoryFilter(countExtraParams, countClauses, categoryBrandIds);
 
-      const countRes = await pool.query(
+      const countRes = await queryWithRetry(
         `SELECT COUNT(*)::int AS total
          FROM public.stocks st
          JOIN public.products p ON p.id = st.product_id
@@ -844,7 +844,7 @@ export const ownBrandRouter = router({
           : "";
         if (categoryBrandIds !== null) params.push(categoryBrandIds);
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              p.name AS producto, p.int_sku, b.id AS branch_id, b.name AS tienda,
              b.sap_id, COALESCE(st.stock, 0) AS stock_actual, st.min_stock
@@ -869,7 +869,7 @@ export const ownBrandRouter = router({
       }
       addCategoryFilter(extraParams, extraClauses, categoryBrandIds);
 
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT
            p.name AS producto, p.int_sku, b.id AS branch_id, b.name AS tienda,
            b.sap_id, st.stock AS stock_actual, st.min_stock
@@ -995,7 +995,7 @@ export const ownBrandRouter = router({
       const limitIdx = params.length + 1;
       const offsetIdx = limitIdx + 1;
 
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT
            p.id,
            p.name,
@@ -1021,7 +1021,7 @@ export const ownBrandRouter = router({
       }
       addCategoryFilter(countParams, countClauses, categoryBrandIds);
 
-      const countRes = await pool.query(
+      const countRes = await queryWithRetry(
         `SELECT COUNT(*)::int AS total
          FROM public.products p
          WHERE 1=1 ${brandClause}
@@ -1111,7 +1111,7 @@ export const ownBrandRouter = router({
       addCategoryFilter(params, clauses, categoryBrandIds);
 
       // ── CTE única: datos + count + totales en un solo round-trip a PostgreSQL ──
-      const cteRes = await pool.query(
+      const cteRes = await queryWithRetry(
         `WITH base AS (
            SELECT
              ${selectProduct}
@@ -1192,7 +1192,7 @@ export const ownBrandRouter = router({
         const fromIdx = bidIdx + 1;
         const toIdx = fromIdx + 1;
 
-        const res = await pool.query(
+        const res = await queryWithRetry(
           `SELECT
              sh.doc_date::date                             AS fecha,
              SUM(sd.quantity)::numeric                     AS cantidad,
@@ -1273,7 +1273,7 @@ export const ownBrandRouter = router({
       }
       addCategoryFilter(params, clauses, categoryBrandIds);
 
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT
            ${selectProduct}
            ${selectStore}
@@ -1309,7 +1309,7 @@ export const ownBrandRouter = router({
     const cacheKey = `ownBrand:products:${brandIds.slice().sort().join(",")}`;
     return cached(cacheKey, TTL.STATIC, async () => {
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
-      const res = await pool.query(
+      const res = await queryWithRetry(
         `SELECT DISTINCT
            p.id,
            p.name,
@@ -1414,7 +1414,7 @@ export const ownBrandRouter = router({
         ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}
       `;
 
-      const res = await pool.query(query, params);
+      const res = await queryWithRetry(query, params);
       return res.rows as Array<{
         period: string;
         product_id: string | null;

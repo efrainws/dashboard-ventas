@@ -30,6 +30,51 @@ pool.on('error', (err) => {
 });
 
 /**
+ * Ejecuta una query con reintentos automáticos ante desconexiones transitorias de RDS.
+ *
+ * RDS puede cerrar conexiones idle sin previo aviso (TCP keepalive timeout, failover, etc.).
+ * Cuando eso ocurre, `pool.query()` lanza "Connection terminated unexpectedly" o
+ * "Client was closed and is not queryable". Esta función captura esos errores y reintenta
+ * hasta `maxRetries` veces con backoff exponencial antes de propagar el error.
+ *
+ * @param sql   Texto de la query SQL
+ * @param params Parámetros posicionales
+ * @param maxRetries Número máximo de reintentos (default: 3)
+ */
+export async function queryWithRetry(
+  sql: string,
+  params: unknown[] = [],
+  maxRetries = 3
+): Promise<import('pg').QueryResult> {
+  const RETRYABLE = [
+    'connection terminated',
+    'client was closed',
+    'connection ended',
+    'econnreset',
+    'econnrefused',
+    'etimedout',
+    'socket hang up',
+    'unexpected error on idle client',
+  ];
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await pool.query(sql, params);
+    } catch (err: unknown) {
+      lastErr = err;
+      const msg = ((err as Error)?.message ?? '').toLowerCase();
+      const isRetryable = RETRYABLE.some(s => msg.includes(s));
+      if (!isRetryable || attempt === maxRetries) throw err;
+      const delay = 200 * Math.pow(2, attempt); // 200ms, 400ms, 800ms
+      console.warn(`[PostgreSQL] Query failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms — ${msg}`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Warm-up del caché de PostgreSQL (RDS).
  *
  * El problema: sales_header (291 MB) + sales_detail (1186 MB) + products no están en el
