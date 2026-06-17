@@ -326,83 +326,51 @@ function BrandsManager() {
 
 function CategoriesManager() {
   const utils = trpc.useUtils();
-  const { user } = useAuth();
 
-  // Datos
+  // Datos: solo categorías y mapeo marca→categoría
   const { data: categories = [], isLoading: loadingCats } = trpc.ownBrandCategories.listCategories.useQuery();
-  const { data: assignments = [], isLoading: loadingAssign } = trpc.ownBrandCategories.listProductAssignments.useQuery();
-  const { data: allProducts = [], isLoading: loadingProducts } = trpc.ownBrand.getProductsForBrand.useQuery();
-  const { data: summary = [], isLoading: loadingSummary } = trpc.ownBrandCategories.getCategorySummary.useQuery();
-  // Mapeo automático marca → categoría
   const { data: brandMappings = [], isLoading: loadingBrandMappings } = trpc.ownBrandCategories.listCategoryBrands.useQuery();
   const { data: ownBrands = [], isLoading: loadingOwnBrands } = trpc.ownBrand.listBrands.useQuery();
 
   // Mutations
-  const assignMut = trpc.ownBrandCategories.assignProductCategory.useMutation({
-    onSuccess: () => {
-      utils.ownBrandCategories.listProductAssignments.invalidate();
-      utils.ownBrandCategories.getCategorySummary.invalidate();
-      toast.success("Categoría asignada correctamente.");
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const removeMut = trpc.ownBrandCategories.removeProductAssignment.useMutation({
-    onSuccess: () => {
-      utils.ownBrandCategories.listProductAssignments.invalidate();
-      utils.ownBrandCategories.getCategorySummary.invalidate();
-      toast.success("Asignación eliminada.");
-    },
-    onError: (e) => toast.error(e.message),
-  });
   const createCatMut = trpc.ownBrandCategories.createCategory.useMutation({
     onSuccess: () => {
       utils.ownBrandCategories.listCategories.invalidate();
-      utils.ownBrandCategories.getCategorySummary.invalidate();
       setNewCatName("");
       setNewCatDesc("");
       setNewCatColor("#008064");
       setShowNewCatForm(false);
       toast.success("Categoría creada.");
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e: { message: string }) => toast.error(e.message),
   });
   const deleteCatMut = trpc.ownBrandCategories.deleteCategory.useMutation({
     onSuccess: () => {
       utils.ownBrandCategories.listCategories.invalidate();
-      utils.ownBrandCategories.getCategorySummary.invalidate();
       toast.success("Categoría eliminada.");
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e: { message: string }) => toast.error(e.message),
   });
   const assignBrandMut = trpc.ownBrandCategories.assignBrandToCategory.useMutation({
     onSuccess: () => {
       utils.ownBrandCategories.listCategoryBrands.invalidate();
       toast.success("Marca asignada a la categoría.");
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e: { message: string }) => toast.error(e.message),
   });
   const removeBrandMut = trpc.ownBrandCategories.removeBrandFromCategory.useMutation({
     onSuccess: () => {
       utils.ownBrandCategories.listCategoryBrands.invalidate();
       toast.success("Asignación de marca eliminada.");
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e: { message: string }) => toast.error(e.message),
   });
 
   // Estado local
-  const [productSearch, setProductSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [showNewCatForm, setShowNewCatForm] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatDesc, setNewCatDesc] = useState("");
   const [newCatColor, setNewCatColor] = useState("#008064");
-
-  // Mapa articleId -> categoryId para lookup rápido
-  const assignmentMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const a of assignments) m[a.articleId] = a.categoryId;
-    return m;
-  }, [assignments]);
 
   // Mapa brandId -> categoryId para lookup rápido
   const brandMappingMap = useMemo(() => {
@@ -410,14 +378,6 @@ function CategoriesManager() {
     for (const b of brandMappings) m[b.brandId] = b.categoryId;
     return m;
   }, [brandMappings]);
-
-  // Productos filtrados por búsqueda
-  const filteredProducts = useMemo(() => {
-    const q = productSearch.toLowerCase();
-    return allProducts.filter(p =>
-      !q || p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q)
-    );
-  }, [allProducts, productSearch]);
 
   // Colores de marca
   const BRAND_COLORS: Record<string, string> = {
@@ -429,7 +389,7 @@ function CategoriesManager() {
     "#624C02": "Tierra",
   };
 
-  const isLoading = loadingCats || loadingAssign || loadingProducts || loadingSummary;
+  const isLoading = loadingCats || loadingBrandMappings || loadingOwnBrands;
 
   return (
     <div className="space-y-6">
@@ -514,155 +474,43 @@ function CategoriesManager() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {summary.map(cat => (
-            <div
-              key={cat.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              onKeyDown={e => e.key === "Enter" && setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              className={`rounded-xl p-4 text-left border-2 transition-all cursor-pointer ${
-                selectedCategory === cat.id ? "border-opacity-100 shadow-md" : "border-transparent"
-              }`}
-              style={{
-                background: (cat.color ?? "#008064") + "18",
-                borderColor: selectedCategory === cat.id ? (cat.color ?? "#008064") : "transparent",
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ background: cat.color ?? "#008064" }}
-                />
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={e => { e.stopPropagation(); if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); }}
-                  onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); } }}
-                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                  title="Eliminar categoría"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </span>
+          {categories.map(cat => {
+            const brandCount = brandMappings.filter(b => b.categoryId === cat.id).length;
+            return (
+              <div
+                key={cat.id}
+                className="rounded-xl p-4 text-left border-2 border-transparent"
+                style={{ background: (cat.color ?? "#008064") + "18" }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: cat.color ?? "#008064" }}
+                  />
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); }}
+                    onKeyDown={e => { if (e.key === "Enter") { if (confirm(`¿Eliminar la categoría "${cat.name}"?`)) deleteCatMut.mutate({ id: cat.id }); } }}
+                    className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                    title="Eliminar categoría"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <p className="text-sm font-semibold leading-tight" style={{ color: cat.color ?? "#008064" }}>{cat.name}</p>
+                {cat.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{cat.description}</p>}
+                <p className="text-2xl font-bold mt-2" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: cat.color ?? "#008064" }}>
+                  {brandCount}
+                </p>
+                <p className="text-xs text-muted-foreground">marca{brandCount !== 1 ? "s" : ""}</p>
               </div>
-              <p className="text-sm font-semibold leading-tight" style={{ color: cat.color ?? "#008064" }}>{cat.name}</p>
-              {cat.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{cat.description}</p>}
-              <p className="text-2xl font-bold mt-2" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: cat.color ?? "#008064" }}>
-                {cat.productCount}
-              </p>
-              <p className="text-xs text-muted-foreground">producto{cat.productCount !== 1 ? "s" : ""}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Tabla de asignación de productos */}
-      <Card className="border border-border/60">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide">
-              {selectedCategory
-                ? `Productos en "${categories.find(c => c.id === selectedCategory)?.name ?? ""}"`
-                : "Todos los productos de Marca Propia"}
-            </CardTitle>
-            <div className="relative w-56">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={productSearch}
-                onChange={e => setProductSearch(e.target.value)}
-                placeholder="Buscar producto o SKU..."
-                className="pl-8 h-8 text-sm"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide px-4 py-2.5 text-muted-foreground">Producto</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide px-3 py-2.5 text-muted-foreground">SKU</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide px-3 py-2.5 text-muted-foreground">Categoría Interna</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide px-3 py-2.5 text-muted-foreground">Asignado por</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  [...Array(8)].map((_, i) => (
-                    <tr key={i} className="border-b border-border/30">
-                      <td className="px-4 py-2.5"><Skeleton className="h-4 w-40" /></td>
-                      <td className="px-3 py-2.5"><Skeleton className="h-4 w-16" /></td>
-                      <td className="px-3 py-2.5"><Skeleton className="h-6 w-24 rounded-full" /></td>
-                      <td className="px-3 py-2.5"><Skeleton className="h-4 w-20" /></td>
-                    </tr>
-                  ))
-                ) : filteredProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-10 text-muted-foreground text-sm">
-                      No se encontraron productos.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProducts
-                    .filter(p => !selectedCategory || assignmentMap[p.id] === selectedCategory)
-                    .map(p => {
-                      const assignedCatId = assignmentMap[p.id];
-                      const assignedCat = categories.find(c => c.id === assignedCatId);
-                      const assignedDetail = assignments.find(a => a.articleId === p.id);
-                      return (
-                        <tr key={p.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2.5 font-medium max-w-[220px] truncate" title={p.name}>{p.name}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground font-mono text-xs">{p.sku}</td>
-                          <td className="px-3 py-2.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {categories.map(cat => (
-                                <button
-                                  key={cat.id}
-                                  title={cat.name}
-                                  disabled={assignMut.isPending}
-                                  onClick={() => assignMut.mutate({
-                                    articleId: p.id,
-                                    articleName: p.name,
-                                    articleCode: p.sku ?? undefined,
-                                    categoryId: cat.id,
-                                  })}
-                                  className="px-2 py-0.5 rounded-full text-xs font-medium border transition-all"
-                                  style={{
-                                    background: assignedCatId === cat.id ? (cat.color ?? "#008064") : "transparent",
-                                    borderColor: cat.color ?? "#008064",
-                                    color: assignedCatId === cat.id ? "#fff" : (cat.color ?? "#008064"),
-                                  }}
-                                >
-                                  {cat.name}
-                                </button>
-                              ))}
-                              {assignedCatId && (
-                                <button
-                                  title="Quitar asignación"
-                                  disabled={removeMut.isPending}
-                                  onClick={() => removeMut.mutate({ articleId: p.id })}
-                                  className="text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                            {assignedDetail?.assignedByName ?? "-"}
-                          </td>
-                        </tr>
-                      );
-                    })
-                )}
-              </tbody>
-            </table>
-          </div>
-         </CardContent>
-      </Card>
-
-      {/* Mapeo automático: Marca → Categoría */}
+      {/* Vinculación Marca → Categoría */}
       <Card className="border border-border/60">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">

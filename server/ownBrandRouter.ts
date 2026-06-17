@@ -19,7 +19,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { getDb } from "./db";
-import { ownBrandBrands, ownBrandProductCategories, ownBrandCategoryBrands } from "../drizzle/schema";
+import { ownBrandBrands, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { cached, invalidateByPrefix, TTL } from "./queryCache";
@@ -489,6 +489,10 @@ export const ownBrandRouter = router({
    * Ventas agrupadas por categoría interna de Marca Propia.
    * Devuelve [{categoryId, categoryName, categoryColor, totalVentas, totalUnidades}]
    * para el gráfico de pie del Dashboard.
+   *
+   * Usa la vinculación MARCA → CATEGORÍA (own_brand_category_brands) en lugar de
+   * la asignación manual producto → categoría. Todos los productos de una marca
+   * quedan automáticamente en la categoría asignada a esa marca.
    */
   getSalesByCategory: protectedProcedure
     .input(dateRangeSchema.extend({ include_igv: z.boolean().default(true) }))
@@ -502,19 +506,17 @@ export const ownBrandRouter = router({
 
       const cacheKey = `ownBrand:byCategory:${brandIds.slice().sort().join(",")}:${from}:${to}:${input.include_igv}`;
       return cached(cacheKey, TTL.DYNAMIC, async () => {
-        // Obtener todas las asignaciones de categorías desde MySQL
         const db = await getDb();
         if (!db) return [];
 
-        // Importar las tablas necesarias para la consulta
-        const { ownBrandCategories } = await import("../drizzle/schema");
+        const { ownBrandCategories, ownBrandCategoryBrands: catBrandsTable } = await import("../drizzle/schema");
 
-        // Obtener categorías y asignaciones en paralelo (1 query MySQL cada una)
-        const [assignments, categories] = await Promise.all([
+        // Obtener categorías y mapeo marca→categoría en paralelo (2 queries MySQL)
+        const [brandMappings, categories] = await Promise.all([
           db.select({
-            articleId: ownBrandProductCategories.articleId,
-            categoryId: ownBrandProductCategories.categoryId,
-          }).from(ownBrandProductCategories),
+            brandId: catBrandsTable.brandId,
+            categoryId: catBrandsTable.categoryId,
+          }).from(catBrandsTable),
           db.select({
             id: ownBrandCategories.id,
             name: ownBrandCategories.name,
@@ -522,29 +524,37 @@ export const ownBrandRouter = router({
           }).from(ownBrandCategories),
         ]);
 
-        if (assignments.length === 0) return [];
+        // Solo continuar si hay marcas asignadas a alguna categoría
+        if (brandMappings.length === 0) return [];
 
         const categoryMap = new Map(categories.map(c => [c.id, c]));
 
-        // Agrupar articleIds por categoryId
-        const categoryArticles = new Map<number, string[]>();
-        for (const a of assignments) {
-          if (!categoryArticles.has(a.categoryId)) categoryArticles.set(a.categoryId, []);
-          categoryArticles.get(a.categoryId)!.push(a.articleId);
+        // Agrupar brand_ids por categoryId (solo los que están en brandIds globales)
+        const brandIdSet = new Set(brandIds);
+        const categoryBrands = new Map<number, string[]>();
+        for (const m of brandMappings) {
+          if (!brandIdSet.has(m.brandId)) continue; // solo marcas activas del portal
+          if (!categoryBrands.has(m.categoryId)) categoryBrands.set(m.categoryId, []);
+          categoryBrands.get(m.categoryId)!.push(m.brandId);
         }
 
-        // UNA sola query PostgreSQL con CASE WHEN para todas las categorías
+        if (categoryBrands.size === 0) return [];
+
+        // UNA sola query PostgreSQL con CASE WHEN por marca → categoría
         const amtColCat = input.include_igv ? 'sd.total' : 'sd.subtotal';
-        const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
-        const params: (string | number | string[])[] = [...brandParams];
+        const params: (string | number | string[])[] = [];
 
-        // Construir CASE WHEN dinámico para asignar categoryId a cada producto
+        // Construir CASE WHEN: WHEN p.brand_id = ANY($N::uuid[]) THEN catId
         const caseLines: string[] = [];
-        const catEntries = Array.from(categoryArticles.entries());
-        for (const [catId, articleIds] of catEntries) {
-          params.push(articleIds);
-          caseLines.push(`WHEN p.id = ANY($${params.length}::uuid[]) THEN ${catId}`);
+        const catEntries = Array.from(categoryBrands.entries());
+        for (const [catId, catBrandIds] of catEntries) {
+          params.push(catBrandIds);
+          caseLines.push(`WHEN p.brand_id = ANY($${params.length}::uuid[]) THEN ${catId}`);
         }
+
+        // Filtro global de marcas del portal (todos los brand_ids activos)
+        params.push(brandIds);
+        const globalBrandParam = params.length;
 
         const fromIdx = params.length + 1;
         const toIdx = fromIdx + 1;
@@ -553,16 +563,15 @@ export const ownBrandRouter = router({
         const res = await pool.query(
           `SELECT
              CASE ${caseLines.join(' ')} END AS category_id,
-             ROUND(SUM(${amtColCat})::numeric, 2)  AS total_ventas,
-             ROUND(SUM(sd.quantity)::numeric, 2) AS total_unidades
+             ROUND(SUM(${amtColCat})::numeric, 2) AS total_ventas,
+             ROUND(SUM(sd.quantity)::numeric, 2)  AS total_unidades
            FROM public.sales_detail sd
            JOIN public.products p ON p.id = sd.product_id
            JOIN public.sales_header sh ON sh.id = sd.header_id
-           WHERE 1=1 ${brandClause}
+           WHERE p.brand_id = ANY($${globalBrandParam}::uuid[])
              AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
-             AND (${catEntries.map((_, i) => `p.id = ANY($${brandParams.length + 1 + i}::uuid[])`).join(' OR ')})
            GROUP BY category_id
-           HAVING SUM(${amtColCat}) > 0`,
+           HAVING category_id IS NOT NULL AND SUM(${amtColCat}) > 0`,
           params
         );
 
