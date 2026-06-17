@@ -19,6 +19,12 @@ import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 import { useIgv } from "@/contexts/IgvContext";
+import {
+  KPIGridSkeleton,
+  SalesLineChartSkeleton,
+  BranchBarChartSkeleton,
+  CategoryPieChartSkeleton,
+} from "@/components/SalesSkeletons";
 
 export default function SalesByCategory() {
   const { user, loading: authLoading } = useAuth();
@@ -283,11 +289,13 @@ export default function SalesByCategory() {
           showIgvToggle
         />
 
-        {/* Estado de carga */}
+        {/* Estado de carga — skeletons que reflejan la forma real de cada sección */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+          <div className="space-y-6">
+            <KPIGridSkeleton count={5} />
+            <SalesLineChartSkeleton />
+            <BranchBarChartSkeleton />
+            <CategoryPieChartSkeleton />
           </div>
         )}
 
@@ -364,17 +372,25 @@ export default function SalesByCategory() {
               <SalesLineChart data={data} />
 
               {/* Gráfico de barras: Comparación por sucursal (ancho completo) */}
-              <BranchBarChart 
-                data={data} 
-                comparisonData={branchComparisonQuery.data?.data}
-                daysInMonth={daysInMonth}
-              />
+              {branchComparisonQuery.isLoading ? (
+                <BranchBarChartSkeleton />
+              ) : (
+                <BranchBarChart 
+                  data={data} 
+                  comparisonData={branchComparisonQuery.data?.data}
+                  daysInMonth={daysInMonth}
+                />
+              )}
 
               {/* Gráfico de tarta: Distribución por categoría */}
-              <CategoryPieChart 
-                data={data}
-                comparisonData={categoryComparisonQuery.data?.data}
-              />
+              {categoryComparisonQuery.isLoading ? (
+                <CategoryPieChartSkeleton />
+              ) : (
+                <CategoryPieChart 
+                  data={data}
+                  comparisonData={categoryComparisonQuery.data?.data}
+                />
+              )}
             </div>
 
             {/* Análisis por Canal */}

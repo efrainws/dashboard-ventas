@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { HeatmapSkeleton } from "@/components/SalesSkeletons";
 import { trpc } from "@/lib/trpc";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
@@ -250,12 +250,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
 
       <CardContent>
         {/* Carga */}
-        {isLoading && (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-            <span className="text-sm text-muted-foreground">Cargando mapa de calor…</span>
-          </div>
-        )}
+        {isLoading && <HeatmapSkeleton />}
 
         {/* Error */}
         {hasError && !isLoading && (

@@ -15,6 +15,7 @@ import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
+import { KPIGridSkeleton, SalesLineChartSkeleton } from "@/components/SalesSkeletons";
 import {
   Select,
   SelectContent,
@@ -453,11 +454,11 @@ export default function HourlyAnalysis() {
           </>
         )}
 
-        {/* Loading state */}
+        {/* Loading state — skeletons que reflejan la forma real de cada sección */}
         {isLoading && (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+          <div className="space-y-6">
+            <KPIGridSkeleton count={4} />
+            <SalesLineChartSkeleton />
           </div>
         )}
 
