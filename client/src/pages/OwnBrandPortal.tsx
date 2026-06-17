@@ -84,6 +84,7 @@ import {
   FolderOpen,
   Pencil,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { format, subDays, startOfMonth } from "date-fns";
@@ -1094,7 +1095,18 @@ export default function OwnBrandPortal() {
               Portal Marca Propia
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Botón para volver al portal de ventas */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = '/sales'}
+              className="gap-1.5 border-[#1A6894] text-[#1A6894] hover:bg-[#1A6894] hover:text-white transition-colors"
+              title="Volver al Portal de Ventas"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Portal de Ventas</span>
+            </Button>
             <div className="text-right hidden sm:block space-y-0.5">
               <p
                 className="text-xs text-muted-foreground leading-none tracking-wide"
