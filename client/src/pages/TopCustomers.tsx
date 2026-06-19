@@ -227,11 +227,16 @@ function TransactionDetailModal({
         ) : (
           <Table className="table-fixed w-full">
             <colgroup>
-              <col className="w-auto" />
-              <col style={{ width: "9rem" }} />
+              {/* Artículo: ocupa todo el espacio restante */}
+              <col />
+              {/* Int. SKU */}
+              <col style={{ width: "7rem" }} />
+              {/* Cantidad */}
               <col style={{ width: "6rem" }} />
-              <col style={{ width: "8rem" }} />
-              <col style={{ width: "8rem" }} />
+              {/* Precio Unit. */}
+              <col style={{ width: "9rem" }} />
+              {/* Monto Línea */}
+              <col style={{ width: "9rem" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="border-border/50">
@@ -311,7 +316,8 @@ function CustomerTransactionsModal({
 }) {
   const [selectedTxn, setSelectedTxn] = useState<SelectedTransaction | null>(null);
   // Ancho del modal: más amplio en modo detalle de artículos (5 columnas)
-  const dialogMaxW = selectedTxn ? "w-[98vw] max-w-6xl" : "w-[95vw] max-w-4xl";
+  // En modo detalle de artículos: ocupar prácticamente todo el viewport disponible
+  const dialogMaxW = selectedTxn ? "w-[min(98vw,1400px)]" : "w-[95vw] max-w-4xl";
 
   const { data, isLoading } = trpc.sales.getCustomerTransactions.useQuery(
     {
