@@ -225,7 +225,14 @@ function TransactionDetailModal({
             No se encontraron artículos para esta transacción.
           </p>
         ) : (
-          <Table>
+          <Table className="table-fixed w-full">
+            <colgroup>
+              <col className="w-auto" />
+              <col style={{ width: "9rem" }} />
+              <col style={{ width: "6rem" }} />
+              <col style={{ width: "8rem" }} />
+              <col style={{ width: "8rem" }} />
+            </colgroup>
             <TableHeader>
               <TableRow className="border-border/50">
                 <TableHead className="text-xs">Artículo</TableHead>
@@ -238,8 +245,8 @@ function TransactionDetailModal({
             <TableBody>
               {rows.map((r, i) => (
                 <TableRow key={i} className="border-border/30">
-                  <TableCell className="text-sm font-medium max-w-[280px]">
-                    <span className="block truncate" title={r.producto_nombre}>
+                  <TableCell className="text-sm font-medium">
+                    <span className="block" title={r.producto_nombre}>
                       {r.producto_nombre}
                     </span>
                   </TableCell>
@@ -303,6 +310,8 @@ function CustomerTransactionsModal({
   onClose: () => void;
 }) {
   const [selectedTxn, setSelectedTxn] = useState<SelectedTransaction | null>(null);
+  // Ancho del modal: más amplio en modo detalle de artículos (5 columnas)
+  const dialogMaxW = selectedTxn ? "w-[98vw] max-w-6xl" : "w-[95vw] max-w-4xl";
 
   const { data, isLoading } = trpc.sales.getCustomerTransactions.useQuery(
     {
@@ -320,7 +329,7 @@ function CustomerTransactionsModal({
   const totalMonto = rows.reduce((s, r) => s + r.monto_total, 0);
 
   return (
-    <DialogContent className="w-[95vw] max-w-4xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+    <DialogContent className={`${dialogMaxW} max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden transition-all duration-200`}>
       <DialogHeader className="px-6 py-4 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg" style={{ background: "#1A6894" + "20" }}>
