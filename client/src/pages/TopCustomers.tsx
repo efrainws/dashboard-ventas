@@ -315,9 +315,10 @@ function CustomerTransactionsModal({
   onClose: () => void;
 }) {
   const [selectedTxn, setSelectedTxn] = useState<SelectedTransaction | null>(null);
-  // Ancho del modal: más amplio en modo detalle de artículos (5 columnas)
-  // En modo detalle de artículos: ocupar prácticamente todo el viewport disponible
-  const dialogMaxW = selectedTxn ? "w-[min(98vw,1400px)]" : "w-[95vw] max-w-4xl";
+  // Ancho del modal: forzado con style inline para sobreescribir sm:max-w-lg del DialogContent base
+  const dialogStyle = selectedTxn
+    ? { width: "min(96vw, 1300px)", maxWidth: "min(96vw, 1300px)" }
+    : { width: "min(95vw, 896px)",  maxWidth: "min(95vw, 896px)" };
 
   const { data, isLoading } = trpc.sales.getCustomerTransactions.useQuery(
     {
@@ -335,7 +336,10 @@ function CustomerTransactionsModal({
   const totalMonto = rows.reduce((s, r) => s + r.monto_total, 0);
 
   return (
-    <DialogContent className={`${dialogMaxW} max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden transition-all duration-200`}>
+    <DialogContent
+      className="max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden transition-all duration-200"
+      style={dialogStyle}
+    >
       <DialogHeader className="px-6 py-4 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg" style={{ background: "#1A6894" + "20" }}>
