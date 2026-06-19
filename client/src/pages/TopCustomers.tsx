@@ -236,7 +236,7 @@ function TransactionDetailModal({
             <TableHeader>
               <TableRow className="border-border/50">
                 <TableHead className="text-xs">Artículo</TableHead>
-                <TableHead className="text-xs">SKU</TableHead>
+                <TableHead className="text-xs">Int. SKU</TableHead>
                 <TableHead className="text-xs text-right">Cantidad</TableHead>
                 <TableHead className="text-xs text-right">Precio Unit.</TableHead>
                 <TableHead className="text-xs text-right">Monto Línea</TableHead>

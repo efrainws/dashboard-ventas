@@ -1839,7 +1839,7 @@ export const salesRouter = router({
       const query = `
         SELECT
           COALESCE(p.name, sd.descripcion, 'Producto desconocido') AS producto_nombre,
-          p.sku                     AS sku,
+          p.int_sku                 AS sku,
           sd.quantity               AS cantidad,
           ${priceCol}               AS precio_unitario,
           ${amtCol}                 AS monto_linea
@@ -1855,7 +1855,7 @@ export const salesRouter = router({
           success: true,
           data: result.rows.map((row: any) => ({
             producto_nombre:  row.producto_nombre ?? 'Producto desconocido',
-            sku:              row.sku ?? '—',
+            sku:              row.sku ?? '—', // int_sku del producto
             cantidad:         row.cantidad !== null ? Number(row.cantidad) : 0,
             precio_unitario:  row.precio_unitario !== null ? Number(row.precio_unitario) : 0,
             monto_linea:      row.monto_linea !== null ? Number(row.monto_linea) : 0,
