@@ -184,7 +184,7 @@ function TransactionDetailModal({
   const totalMonto = rows.reduce((s, r) => s + r.monto_linea, 0);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Sub-header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 bg-muted/30">
         <button
@@ -372,7 +372,7 @@ function CustomerTransactionsModal({
       </DialogHeader>
 
       {/* Contenido: lista de transacciones o detalle de artículos */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {selectedTxn ? (
           <TransactionDetailModal
             transaction={selectedTxn}
