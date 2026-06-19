@@ -150,11 +150,24 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
     });
   }, [compMatrix]);
 
+  // ── Días activos en modo semanal (solo días con al menos un valor > 0) ────────
+  const activeWeekDays = useMemo(() => {
+    return [0, 1, 2, 3, 4, 5, 6].filter(day =>
+      ALL_HOURS.some(h => (weeklyMatrix[day][h] ?? 0) > 0)
+    );
+  }, [weeklyMatrix]);
+
   // ── Selección de matriz activa ──────────────────────────────────────────────
-  const activeMatrix   = mode === "weekly" ? weeklyMatrix : compMatrix;
-  const activeRowCount = mode === "weekly" ? 7 : compMatrix.length;
+  // En modo semanal solo incluimos las filas (días) que tienen datos
+  const activeMatrix = useMemo(() =>
+    mode === "weekly"
+      ? activeWeekDays.map(day => weeklyMatrix[day])
+      : compMatrix,
+    [mode, activeWeekDays, weeklyMatrix, compMatrix]
+  );
+  const activeRowCount = mode === "weekly" ? activeWeekDays.length : compMatrix.length;
   const activeRowLabel = (idx: number) =>
-    mode === "weekly" ? DAYS_SHORT[idx] : (compRowLabels[idx] ?? "");
+    mode === "weekly" ? DAYS_SHORT[activeWeekDays[idx]] : (compRowLabels[idx] ?? "");
 
   // ── Horas activas (columnas con al menos un valor > 0) ─────────────────────
   const activeHours = useMemo(() =>
@@ -313,13 +326,12 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
             )}
 
             <div className="min-w-[400px]">
-              {/* Cabecera de horas */}
+              {/* Cabecera de horas — etiqueta en cada columna */}
               <div className="flex items-center mb-1">
                 <div className="w-20 shrink-0" />
-                {activeHours.map((h, idx) => (
+                {activeHours.map((h) => (
                   <div key={h} className="flex-1 text-center text-[10px] text-muted-foreground leading-none">
-                    {(idx === 0 || idx === activeHours.length - 1 || idx % 3 === 0)
-                      ? String(h).padStart(2, "0") : ""}
+                    {String(h).padStart(2, "0")}
                   </div>
                 ))}
               </div>
