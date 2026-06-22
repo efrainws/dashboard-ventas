@@ -40,7 +40,7 @@ import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
 import { useIgv } from "@/contexts/IgvContext";
 import { useAggregatedSales } from "@/hooks/useAggregatedSales";
-import { Stage, Layer, Rect, Text, Group, Image as KonvaImage } from "react-konva";
+import { Stage, Layer, Rect, Text, Group, Image as KonvaImage, Transformer } from "react-konva";
 import type Konva from "konva";
 import { toast } from "sonner";
 
@@ -79,6 +79,7 @@ interface ShelfZone {
   y: number;
   width: number;
   height: number;
+  fillColor?: string; // color personalizado (sobreescribe el heatmap)
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -141,6 +142,23 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   // Diálogo de selección de góndola al hacer doble clic
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null);
   const [shelfSearch, setShelfSearch] = useState("");
+  // Transformer para redimensionar la zona seleccionada
+  const transformerRef = useRef<Konva.Transformer>(null);
+  const selectedRectRef = useRef<Konva.Rect>(null);
+
+  // Paleta de colores F&F para las zonas
+  const FF_COLORS = [
+    { label: "Cobalto",    value: "#1A6894" },
+    { label: "Esmeralda",  value: "#008064" },
+    { label: "Granate",    value: "#BC2C46" },
+    { label: "Mostaza",    value: "#C49705" },
+    { label: "Berenjena",  value: "#6B3FA0" },
+    { label: "Coral",      value: "#E05C3A" },
+    { label: "Humo",       value: "#919291" },
+    { label: "Carbón",     value: "#232523" },
+    { label: "Menta",      value: "#34d399" },
+    { label: "Cielo",      value: "#7dd3fc" },
+  ];
 
   // Queries de layout y zonas persistentes
   const { data: layoutData, isLoading: layoutLoading } = trpc.shelfLayout.listLayouts.useQuery(
@@ -211,10 +229,23 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
         y: Number(z.y),
         width: Number(z.width),
         height: Number(z.height),
+        fillColor: z.fillColor ?? undefined,
       })));
       setHasUnsavedChanges(false);
     }
   }, [zonesData]);
+
+  // Conectar Transformer al Rect de la zona seleccionada
+  useEffect(() => {
+    if (!transformerRef.current) return;
+    if (selectedZone && selectedRectRef.current) {
+      transformerRef.current.nodes([selectedRectRef.current]);
+      transformerRef.current.getLayer()?.batchDraw();
+    } else {
+      transformerRef.current.nodes([]);
+      transformerRef.current.getLayer()?.batchDraw();
+    }
+  }, [selectedZone]);
 
   // Calcular métricas por shelf para el heatmap
   const shelfMetrics = useMemo(() => {
@@ -560,8 +591,15 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
 
             {zones.map((zone) => {
               const metrics = shelfMetrics.get(zone.name);
-              const fillColor = metrics ? getHeatColor(metrics.monto) : "#e5e7eb";
+              // Si la zona tiene color personalizado, úsarlo; si no, usar el heatmap
+              const resolvedFill = zone.fillColor
+                ? zone.fillColor
+                : metrics ? getHeatColor(metrics.monto) : "#EAE8E2";
               const isSelected = selectedZone?.id === zone.id;
+              // Determinar si el fondo es oscuro para elegir color de texto
+              const isDarkFill = ["#1A6894","#008064","#BC2C46","#6B3FA0","#E05C3A","#232523","#065f46","#059669"].includes(resolvedFill);
+              const textColor = isDarkFill ? "#FFFFFF" : "#232523";
+              const subTextColor = isDarkFill ? "rgba(255,255,255,0.75)" : "#919291";
 
               return (
                 <Group
@@ -593,37 +631,57 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                   }}
                 >
                   <Rect
+                    ref={isSelected ? selectedRectRef : undefined}
                     name="zone-rect"
                     width={zone.width}
                     height={zone.height}
-                    fill={fillColor}
-                    stroke={isSelected ? "#1A6894" : "#94a3b8"}
+                    fill={resolvedFill}
+                    stroke={isSelected ? "#1A6894" : "rgba(35,37,35,0.25)"}
                     strokeWidth={isSelected ? 2.5 : 1}
                     cornerRadius={4}
-                    shadowBlur={isSelected ? 8 : 0}
-                    shadowColor="#1A6894"
-                    opacity={0.85}
+                    shadowBlur={isSelected ? 10 : 2}
+                    shadowColor={isSelected ? "#1A6894" : "rgba(0,0,0,0.15)"}
+                    shadowOpacity={isSelected ? 0.6 : 0.3}
+                    opacity={0.9}
+                    onTransformEnd={(e) => {
+                      const node = e.target as Konva.Rect;
+                      const scaleX = node.scaleX();
+                      const scaleY = node.scaleY();
+                      node.scaleX(1);
+                      node.scaleY(1);
+                      const newWidth = Math.max(40, node.width() * scaleX);
+                      const newHeight = Math.max(20, node.height() * scaleY);
+                      setZones((prev) =>
+                        prev.map((z) =>
+                          z.id === zone.id
+                            ? { ...z, x: node.x() + zone.x - zone.x, y: node.y() + zone.y - zone.y, width: newWidth, height: newHeight }
+                            : z
+                        )
+                      );
+                      setSelectedZone((prev) => prev?.id === zone.id ? { ...prev, width: newWidth, height: newHeight } : prev);
+                      setHasUnsavedChanges(true);
+                    }}
                   />
                   <Text
                     name="zone-label"
                     text={zone.name}
-                    x={4}
-                    y={4}
-                    width={zone.width - 8}
+                    x={6}
+                    y={6}
+                    width={zone.width - 12}
                     fontSize={11}
                     fontStyle="bold"
-                    fill={metrics && metrics.monto > maxMonto * 0.5 ? "#fff" : "#1e293b"}
+                    fill={textColor}
                     ellipsis
                     wrap="none"
                   />
                   {metrics && (
                     <Text
                       text={`S/ ${fmtCurrency(metrics.monto)}`}
-                      x={4}
-                      y={20}
-                      width={zone.width - 8}
+                      x={6}
+                      y={22}
+                      width={zone.width - 12}
                       fontSize={10}
-                      fill={metrics.monto > maxMonto * 0.5 ? "#d1fae5" : "#475569"}
+                      fill={subTextColor}
                       ellipsis
                       wrap="none"
                     />
@@ -631,6 +689,22 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                 </Group>
               );
             })}
+
+            {/* Transformer para redimensionar la zona seleccionada */}
+            <Transformer
+              ref={transformerRef}
+              boundBoxFunc={(oldBox, newBox) => {
+                if (newBox.width < 40 || newBox.height < 20) return oldBox;
+                return newBox;
+              }}
+              rotateEnabled={false}
+              borderStroke="#1A6894"
+              borderStrokeWidth={1.5}
+              anchorStroke="#1A6894"
+              anchorFill="#FFFFFF"
+              anchorSize={8}
+              anchorCornerRadius={2}
+            />
 
             {tooltip && (() => {
               const metrics = shelfMetrics.get(tooltip.zone.name);
@@ -658,21 +732,23 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
 
       {/* Panel de zona seleccionada */}
       {selectedZone && (
-        <Card className="border-primary/30">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4" style={{ color: "#1A6894" }} />
+        <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#1A6894", backgroundColor: "#FFFFFF" }}>
+          {/* Cabecera */}
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4 flex-shrink-0" style={{ color: "#1A6894" }} />
+            <span className="text-sm font-semibold" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: "#232523" }}>
               {selectedZone.name}
+            </span>
+            <div className="ml-auto flex gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-7 text-xs"
+                className="h-7 text-xs"
+                style={{ color: "#1A6894" }}
                 onClick={() => {
                   const name = prompt("Nombre de la góndola:", selectedZone.name);
                   if (name) {
-                    setZones((prev) =>
-                      prev.map((z) => (z.id === selectedZone.id ? { ...z, name } : z))
-                    );
+                    setZones((prev) => prev.map((z) => (z.id === selectedZone.id ? { ...z, name } : z)));
                     setSelectedZone({ ...selectedZone, name });
                     setHasUnsavedChanges(true);
                   }
@@ -683,7 +759,8 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-destructive hover:text-destructive"
+                className="h-7 text-xs"
+                style={{ color: "#BC2C46" }}
                 onClick={() => {
                   setZones((prev) => prev.filter((z) => z.id !== selectedZone.id));
                   setSelectedZone(null);
@@ -692,31 +769,72 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               >
                 Eliminar
               </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            {(() => {
-              const metrics = shelfMetrics.get(selectedZone.name);
-              if (!metrics) return <p className="text-sm text-muted-foreground">Sin datos de ventas para esta góndola en el período seleccionado.</p>;
-              return (
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Monto total</p>
-                    <p className="font-bold" style={{ color: "#008064" }}>S/ {fmtCurrency(metrics.monto)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Productos</p>
-                    <p className="font-semibold">{metrics.productos}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Estado</p>
-                    {statusBadge(metrics.status)}
-                  </div>
+            </div>
+          </div>
+
+          {/* Selector de color */}
+          <div>
+            <p className="text-xs mb-2" style={{ color: "#919291", fontFamily: "'Italian Plate No 1', sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}>Color de zona</p>
+            <div className="flex flex-wrap gap-2">
+              {/* Opción: usar heatmap automático */}
+              <button
+                title="Heatmap automático"
+                onClick={() => {
+                  setZones((prev) => prev.map((z) => z.id === selectedZone.id ? { ...z, fillColor: undefined } : z));
+                  setSelectedZone({ ...selectedZone, fillColor: undefined });
+                  setHasUnsavedChanges(true);
+                }}
+                className="w-7 h-7 rounded-md border-2 flex items-center justify-center text-xs font-bold transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #a7f3d0 0%, #059669 50%, #065f46 100%)",
+                  borderColor: !selectedZone.fillColor ? "#1A6894" : "transparent",
+                  boxShadow: !selectedZone.fillColor ? "0 0 0 2px #1A6894" : "none",
+                }}
+              />
+              {FF_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  title={c.label}
+                  onClick={() => {
+                    setZones((prev) => prev.map((z) => z.id === selectedZone.id ? { ...z, fillColor: c.value } : z));
+                    setSelectedZone({ ...selectedZone, fillColor: c.value });
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-7 h-7 rounded-md border-2 transition-all"
+                  style={{
+                    backgroundColor: c.value,
+                    borderColor: selectedZone.fillColor === c.value ? "#232523" : "transparent",
+                    boxShadow: selectedZone.fillColor === c.value ? "0 0 0 2px #232523" : "none",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Métricas */}
+          {(() => {
+            const metrics = shelfMetrics.get(selectedZone.name);
+            if (!metrics) return (
+              <p className="text-sm" style={{ color: "#919291" }}>Sin datos de ventas para esta góndola en el período seleccionado.</p>
+            );
+            return (
+              <div className="flex gap-6 text-sm pt-1 border-t" style={{ borderColor: "#EAE8E2" }}>
+                <div>
+                  <p className="text-xs" style={{ color: "#919291" }}>Monto total</p>
+                  <p className="font-bold" style={{ color: "#008064" }}>S/ {fmtCurrency(metrics.monto)}</p>
                 </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
+                <div>
+                  <p className="text-xs" style={{ color: "#919291" }}>Productos</p>
+                  <p className="font-semibold" style={{ color: "#232523" }}>{metrics.productos}</p>
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: "#919291" }}>Estado</p>
+                  {statusBadge(metrics.status)}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       )}
     </div>
   );
