@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3 } from "lucide-react";
+import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2 } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -145,6 +145,26 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   // Transformer para redimensionar la zona seleccionada
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedRectRef = useRef<Konva.Rect>(null);
+  // Pantalla completa
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Escuchar cambios de fullscreen (Esc, etc.)
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!isFullscreen) {
+      fullscreenWrapperRef.current?.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  }, [isFullscreen]);
 
   // Paleta de colores F&F para las zonas
   const FF_COLORS = [
@@ -375,7 +395,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
     }
       saveZones.mutate({
         sapId: selectedBranch,
-        zones: zones.map((z) => ({ shelfName: z.name, x: z.x, y: z.y, width: z.width, height: z.height })),
+        zones: zones.map((z) => ({ shelfName: z.name, x: z.x, y: z.y, width: z.width, height: z.height, fillColor: z.fillColor ?? null })),
       });
   };
 
@@ -533,10 +553,36 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
       </Dialog>
 
       {/* Canvas Konva */}
+      <div ref={fullscreenWrapperRef} style={{ position: "relative" }}>
+      {/* Botón pantalla completa */}
+      <button
+        onClick={toggleFullscreen}
+        title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          zIndex: 20,
+          background: "rgba(255,255,255,0.92)",
+          border: "1px solid #EAE8E2",
+          borderRadius: 6,
+          padding: "6px 8px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 12,
+          color: "#232523",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
+        }}
+      >
+        {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        {isFullscreen ? "Salir" : "Pantalla completa"}
+      </button>
       <div
         ref={containerRef}
         className="border border-border rounded-lg overflow-hidden bg-muted/20 relative"
-        style={{ height: 520 }}
+        style={{ height: isFullscreen ? "100vh" : 520 }}
       >
         {isLoadingPersisted && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60 z-10">
@@ -600,6 +646,9 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               const isDarkFill = ["#1A6894","#008064","#BC2C46","#6B3FA0","#E05C3A","#232523","#065f46","#059669"].includes(resolvedFill);
               const textColor = isDarkFill ? "#FFFFFF" : "#232523";
               const subTextColor = isDarkFill ? "rgba(255,255,255,0.75)" : "#919291";
+              // Tamaño de fuente dinámico: escala con el área de la zona
+              const zoneFontSize = Math.min(18, Math.max(8, Math.floor(Math.min(zone.width / 7, zone.height / 3))));
+              const zoneSubFontSize = Math.max(7, zoneFontSize - 2);
 
               return (
                 <Group
@@ -668,19 +717,19 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                     x={6}
                     y={6}
                     width={zone.width - 12}
-                    fontSize={11}
+                    fontSize={zoneFontSize}
                     fontStyle="bold"
                     fill={textColor}
                     ellipsis
                     wrap="none"
                   />
-                  {metrics && (
+                  {metrics && zone.height > 30 && (
                     <Text
                       text={`S/ ${fmtCurrency(metrics.monto)}`}
                       x={6}
-                      y={22}
+                      y={zoneFontSize + 10}
                       width={zone.width - 12}
-                      fontSize={10}
+                      fontSize={zoneSubFontSize}
                       fill={subTextColor}
                       ellipsis
                       wrap="none"
@@ -729,6 +778,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
           </Layer>
         </Stage>
       </div>
+      </div>{/* /fullscreenWrapper */}
 
       {/* Panel de zona seleccionada */}
       {selectedZone && (
