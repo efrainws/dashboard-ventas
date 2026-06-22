@@ -93,13 +93,21 @@ function fmtNumber(n: number) {
 
 function statusBadge(status: string) {
   if (status === "Sin registro en stocks")
-    return <Badge variant="destructive" className="text-xs whitespace-nowrap">Sin registro</Badge>;
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#F8D7DC", color: "#BC2C46" }}>
+        Sin registro
+      </span>
+    );
   if (status === "Stock sin shelf")
-    return <Badge className="text-xs whitespace-nowrap bg-amber-500 hover:bg-amber-600">Sin shelf</Badge>;
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#FBF3D5", color: "#8B6B04" }}>
+        Sin shelf
+      </span>
+    );
   return (
-    <Badge className="text-xs whitespace-nowrap bg-emerald-600 hover:bg-emerald-700">
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#D6EDE8", color: "#005A47" }}>
       Con shelf
-    </Badge>
+    </span>
   );
 }
 
@@ -660,7 +668,7 @@ export default function SalesByShelf() {
   const [shelfStatus, setShelfStatus] = useState<"all" | "sin_registro" | "sin_shelf" | "con_shelf">("all");
   const [search, setSearch] = useState("");
   const [searchAgg, setSearchAgg] = useState("");
-  const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("tabla");
+  const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
 
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
@@ -803,14 +811,14 @@ export default function SalesByShelf() {
   };
 
   return (
-    <div className="min-h-screen bg-background" data-theme={effectiveTheme}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F5F4F1" }} data-theme={effectiveTheme}>
       <NavigationMenu />
       <div className="container py-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Venta por Góndola</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h1 className="text-2xl font-heading uppercase tracking-wide">Venta por Góndola</h1>
+            <p className="text-sm mt-1" style={{ color: "#919291" }}>
               Análisis de ventas por posición de góndola (shelf) en tienda.
               {includeIgv ? " Con IGV." : " Sin IGV."}
             </p>
@@ -843,7 +851,7 @@ export default function SalesByShelf() {
 
         {/* Filtro adicional: estado de shelf */}
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium text-muted-foreground">Estado shelf:</span>
+          <span className="text-sm font-medium" style={{ color: "#919291" }}>Estado shelf:</span>
           <Select value={shelfStatus} onValueChange={(v) => setShelfStatus(v as typeof shelfStatus)}>
             <SelectTrigger className="w-48 h-8 text-sm">
               <SelectValue />
@@ -861,7 +869,7 @@ export default function SalesByShelf() {
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-20 rounded-lg animate-pulse" style={{ backgroundColor: "#EAE8E2" }} />
             ))}
           </div>
         ) : (
@@ -869,15 +877,15 @@ export default function SalesByShelf() {
             {[
               { label: "Monto Total", value: `S/ ${fmtCurrency(kpis.totalMonto)}`, color: "#008064" },
               { label: "Cantidad Vendida", value: fmtNumber(kpis.totalCantidad), color: "#1A6894" },
-              { label: "Productos únicos", value: kpis.uniqueProducts.toString(), color: "#6366f1" },
-              { label: "Con shelf", value: kpis.conShelf.toString(), color: "#10b981" },
-              { label: "Sin shelf", value: kpis.sinShelf.toString(), color: "#f59e0b" },
-              { label: "Sin registro", value: kpis.sinRegistro.toString(), color: "#ef4444" },
+              { label: "Productos únicos", value: kpis.uniqueProducts.toString(), color: "#232523" },
+              { label: "Con shelf", value: kpis.conShelf.toString(), color: "#008064" },
+              { label: "Sin shelf", value: kpis.sinShelf.toString(), color: "#C49705" },
+              { label: "Sin registro", value: kpis.sinRegistro.toString(), color: "#BC2C46" },
             ].map((kpi) => (
-              <Card key={kpi.label} className="border-border/50">
+              <Card key={kpi.label} className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
                 <CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                  <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: kpi.color }}>
+                  <p className="text-xs" style={{ color: "#919291", fontFamily: "var(--font-sans)" }}>{kpi.label}</p>
+                  <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: kpi.color, fontFamily: "var(--font-sans)" }}>
                     {kpi.value}
                   </p>
                 </CardContent>
@@ -886,23 +894,32 @@ export default function SalesByShelf() {
           </div>
         )}
 
-        {/* Tabs: Tabla / Agregado / Mapa */}
+        {/* Tabs: Agregado / Mapa / Tabla */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "tabla" | "agregado" | "mapa")}>
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <TabsList>
-              <TabsTrigger value="tabla" className="flex items-center gap-1.5">
-                <TableIcon className="h-4 w-4" />
-                Tabla de datos
-              </TabsTrigger>
-              <TabsTrigger value="agregado" className="flex items-center gap-1.5">
-                <BarChart3 className="h-4 w-4" />
-                Agregado por góndola
-              </TabsTrigger>
-              <TabsTrigger value="mapa" className="flex items-center gap-1.5">
-                <LayoutGrid className="h-4 w-4" />
-                Mapa de tienda
-              </TabsTrigger>
-            </TabsList>
+            {/* Botones de selección de vista — separados, estilo F&F */}
+            <div className="flex items-center gap-2">
+              {([
+                { value: "agregado", icon: <BarChart3 className="h-4 w-4" />, label: "Agregado por Góndola" },
+                { value: "mapa",     icon: <LayoutGrid className="h-4 w-4" />, label: "Mapa de Tienda" },
+                { value: "tabla",    icon: <TableIcon className="h-4 w-4" />,  label: "Tabla de Datos" },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                  style={{
+                    backgroundColor: activeTab === tab.value ? "#232523" : "transparent",
+                    color: activeTab === tab.value ? "#FFFFFF" : "#919291",
+                    border: activeTab === tab.value ? "1px solid #232523" : "1px solid #EAE8E2",
+                    fontFamily: "var(--font-sans)",
+                  }}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
             {activeTab === "tabla" && (
               <div className="relative w-64">
@@ -944,36 +961,42 @@ export default function SalesByShelf() {
                 No se encontraron resultados para los filtros seleccionados.
               </div>
             ) : (
-              <Card className="border-border/50">
+              <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-border/50 bg-muted/30">
-                          <TableHead className="text-xs w-12">SAP</TableHead>
-                          <TableHead className="text-xs">Tienda</TableHead>
-                          <TableHead className="text-xs">Int. SKU</TableHead>
-                          <TableHead className="text-xs">Producto</TableHead>
-                          <TableHead className="text-xs">Categoría</TableHead>
-                          <TableHead className="text-xs">Góndola</TableHead>
-                          <TableHead className="text-xs">Estado</TableHead>
-                          <TableHead className="text-xs text-right">Cantidad</TableHead>
-                          <TableHead className="text-xs text-right">Monto</TableHead>
+                        <TableRow style={{ backgroundColor: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                          <TableHead className="text-xs w-12 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Int. SKU</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Producto</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Categoría</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Góndola</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Estado</TableHead>
+                          <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Cantidad</TableHead>
+                          <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Monto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredRows.map((row, i) => (
-                          <TableRow key={i} className="border-border/30 hover:bg-muted/20">
-                            <TableCell className="text-xs font-mono text-muted-foreground">{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium">{row.branch_name}</TableCell>
-                            <TableCell className="text-xs font-mono text-muted-foreground">{row.int_sku || "—"}</TableCell>
-                            <TableCell className="text-xs max-w-[200px]">
+                          <TableRow
+                            key={i}
+                            style={{ borderBottom: "1px solid #EAE8E2" }}
+                            className="transition-colors"
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                          >
+                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
+                            <TableCell className="text-xs font-medium" style={{ color: "#232523" }}>{row.branch_name}</TableCell>
+                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.int_sku || "—"}</TableCell>
+                            <TableCell className="text-xs max-w-[200px]" style={{ color: "#232523" }}>
                               <span className="block truncate" title={row.product_name}>{row.product_name}</span>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{row.category_name}</TableCell>
-                            <TableCell className="text-xs">{row.shelf_name || <span className="text-muted-foreground">—</span>}</TableCell>
+                            <TableCell className="text-xs" style={{ color: "#919291" }}>{row.category_name}</TableCell>
+                            <TableCell className="text-xs" style={{ color: "#232523" }}>{row.shelf_name || <span style={{ color: "#919291" }}>—</span>}</TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums">{fmtNumber(row.cantidad_vendida)}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{fmtNumber(row.cantidad_vendida)}</TableCell>
                             <TableCell className="text-xs text-right tabular-nums font-semibold" style={{ color: "#008064" }}>
                               S/ {fmtCurrency(row.monto_total)}
                             </TableCell>
@@ -982,7 +1005,7 @@ export default function SalesByShelf() {
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground">
+                  <div className="px-4 py-2 text-xs" style={{ borderTop: "1px solid #EAE8E2", color: "#919291" }}>
                     {filteredRows.length.toLocaleString()} registros
                     {search && ` (filtrados de ${rows.length.toLocaleString()})`}
                   </div>
@@ -1007,32 +1030,38 @@ export default function SalesByShelf() {
                 No se encontraron resultados para los filtros seleccionados.
               </div>
             ) : (
-              <Card className="border-border/50">
+              <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-border/50 bg-muted/30">
-                          <TableHead className="text-xs w-12">SAP</TableHead>
-                          <TableHead className="text-xs">Tienda</TableHead>
-                          <TableHead className="text-xs">Góndola</TableHead>
-                          <TableHead className="text-xs">Estado</TableHead>
-                          <TableHead className="text-xs text-right">Productos</TableHead>
-                          <TableHead className="text-xs text-right">Cantidad</TableHead>
-                          <TableHead className="text-xs text-right">Monto Total</TableHead>
+                        <TableRow style={{ backgroundColor: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                          <TableHead className="text-xs w-12 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Góndola</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Estado</TableHead>
+                          <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Productos</TableHead>
+                          <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Cantidad</TableHead>
+                          <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Monto Total</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredAggRows.map((row, i) => (
-                          <TableRow key={i} className="border-border/30 hover:bg-muted/20">
-                            <TableCell className="text-xs font-mono text-muted-foreground">{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium">{row.branch_name}</TableCell>
-                            <TableCell className="text-xs font-semibold">
-                              {row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>}
+                          <TableRow
+                            key={i}
+                            style={{ borderBottom: "1px solid #EAE8E2" }}
+                            className="transition-colors"
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                          >
+                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
+                            <TableCell className="text-xs font-medium" style={{ color: "#232523" }}>{row.branch_name}</TableCell>
+                            <TableCell className="text-xs font-semibold" style={{ color: "#232523" }}>
+                              {row.shelf_name || <span style={{ color: "#919291", fontStyle: "italic" }}>(Sin góndola asignada)</span>}
                             </TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums">{row.productos_distintos.toLocaleString()}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums">{fmtNumber(row.cantidad_vendida)}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{row.productos_distintos.toLocaleString()}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{fmtNumber(row.cantidad_vendida)}</TableCell>
                             <TableCell className="text-xs text-right tabular-nums font-bold" style={{ color: "#008064" }}>
                               S/ {fmtCurrency(row.monto_total)}
                             </TableCell>
@@ -1041,7 +1070,7 @@ export default function SalesByShelf() {
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="px-4 py-2 border-t border-border/30 text-xs text-muted-foreground">
+                  <div className="px-4 py-2 text-xs" style={{ borderTop: "1px solid #EAE8E2", color: "#919291" }}>
                     {filteredAggRows.length.toLocaleString()} góndolas
                     {searchAgg && ` (filtradas de ${aggRows.length.toLocaleString()})`}
                   </div>
@@ -1052,15 +1081,15 @@ export default function SalesByShelf() {
 
           {/* Tab: Mapa Konva */}
           <TabsContent value="mapa" className="mt-4">
-            <Card className="border-border/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
+              <CardHeader className="pb-3" style={{ borderBottom: "1px solid #EAE8E2" }}>
+                <CardTitle className="text-base flex items-center gap-2 font-heading uppercase" style={{ color: "#232523" }}>
                   <LayoutGrid className="h-4 w-4" style={{ color: "#1A6894" }} />
                   Mapa de Tienda — Heatmap de Ventas
                   {selectedBranch !== "all" && (
-                    <Badge variant="outline" className="ml-2 text-xs">
+                    <span className="ml-2 text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "#EAE8E2", color: "#919291", fontFamily: "var(--font-sans)", fontWeight: 400, textTransform: "none" }}>
                       {branchName || selectedBranch}
-                    </Badge>
+                    </span>
                   )}
                 </CardTitle>
               </CardHeader>
