@@ -2150,3 +2150,24 @@ Fecha: 1 de febrero de 2026
 - [x] ownBrandRouter: cachear listAllBrands (TTL.STATIC), getMonthlySales (TTL.SEMI_STATIC), getBranchesForStock (TTL.STATIC), getBranchesForSales (TTL.STATIC), getProductsForBrand (TTL.STATIC)
 - [x] ownBrandRouter: consolidar 3 queries de getSalesByProductBranch en 1 CTE (datos + count + totales)
 - [x] ownBrandRouter: invalidar caché centralizado al agregar/eliminar marcas
+
+## Mejoras al Mapa de Tienda (SalesByShelf) - 2026-06-22
+- [x] Zonas en el canvas: mostrar solo nombre + círculo indicador de color heatmap (sin monto dentro de la zona)
+- [x] Fondo de zona: color heatmap con opacidad 0.22 (semitransparente) + borde sólido del color heatmap
+- [x] Eliminar selector de color manual por zona del panel de zona seleccionada
+- [x] Paleta heatmap actualizada a colores F&F Esmeralda (#005A47, #008064, #4DAB96, #A8D8D0, #EAE8E2)
+- [x] Leyenda del heatmap actualizada a paleta F&F Esmeralda
+- [x] toggleFullscreen con fallback pseudo-fullscreen (position:fixed) para iframes
+- [x] Tooltip Konva actualizado: muestra Monto, Unidades, SKUs (en lugar de Monto, Productos, Status)
+- [x] Panel de zona seleccionada: muestra Unidades y SKUs (en lugar de Productos)
+- [x] shelfMetrics: incluye unidades (suma cantidad_vendida) y skus (Set de int_sku distintos)
+- [x] TypeScript: 0 errores confirmado
+
+## Mejoras de eficiencia para grandes volúmenes de datos con Python - 2026-06-22
+- [x] Crear scripts/data_processor.py con procesamiento eficiente de grandes volúmenes
+- [x] Server-side cursor (psycopg2 named cursor): evita cargar millones de filas en RAM
+- [x] Procesamiento por lotes con pandas: agregaciones vectorizadas (más rápido que bucles Python)
+- [x] Caché en disco con compresión gzip + TTL configurable (5 min por defecto)
+- [x] Procesamiento paralelo por sucursal con ProcessPoolExecutor (hasta 4 workers)
+- [x] Funciones: compute_shelf_aggregated, compute_top_products, compute_hourly_heatmap, compute_all_branches_parallel
+- [x] CLI con modos: shelf_agg, top_products, hourly_heatmap, benchmark, parallel

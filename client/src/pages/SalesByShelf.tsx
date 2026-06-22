@@ -160,9 +160,26 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
 
   const toggleFullscreen = useCallback(() => {
     if (!isFullscreen) {
-      fullscreenWrapperRef.current?.requestFullscreen?.();
+      // Intentar API nativa primero; si falla (iframe), usar pseudo-fullscreen via CSS
+      const el = fullscreenWrapperRef.current;
+      if (el) {
+        const req = el.requestFullscreen ?? (el as any).webkitRequestFullscreen ?? (el as any).mozRequestFullScreen;
+        if (req) {
+          req.call(el).catch(() => {
+            // Fallback: pseudo-fullscreen con position:fixed
+            setIsFullscreen(true);
+          });
+        } else {
+          setIsFullscreen(true);
+        }
+      }
     } else {
-      document.exitFullscreen?.();
+      const exit = document.exitFullscreen ?? (document as any).webkitExitFullscreen ?? (document as any).mozCancelFullScreen;
+      if (exit && document.fullscreenElement) {
+        exit.call(document).catch(() => setIsFullscreen(false));
+      } else {
+        setIsFullscreen(false);
+      }
     }
   }, [isFullscreen]);
 
@@ -269,15 +286,16 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
 
   // Calcular métricas por shelf para el heatmap
   const shelfMetrics = useMemo(() => {
-    const map = new Map<string, { monto: number; productos: number; status: string }>();
+    const map = new Map<string, { monto: number; unidades: number; skus: Set<string>; status: string }>();
     data.forEach((row) => {
       const key = row.shelf_name || row.shelf_id || "sin_shelf";
       const existing = map.get(key);
       if (existing) {
         existing.monto += row.monto_total;
-        existing.productos += 1;
+        existing.unidades += row.cantidad_vendida;
+        existing.skus.add(row.int_sku);
       } else {
-        map.set(key, { monto: row.monto_total, productos: 1, status: row.shelf_status });
+        map.set(key, { monto: row.monto_total, unidades: row.cantidad_vendida, skus: new Set([row.int_sku]), status: row.shelf_status });
       }
     });
     return map;
@@ -340,13 +358,14 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   }, [selectedBranch, branchName, stageSize, upsertLayout, toast]);
 
   // Color del heatmap según monto relativo
+  // Paleta heatmap F&F: Esmeralda (oscuro→claro) + neutro para sin datos
   function getHeatColor(monto: number): string {
     const ratio = monto / maxMonto;
-    if (ratio > 0.75) return "#065f46";
-    if (ratio > 0.5)  return "#059669";
-    if (ratio > 0.25) return "#34d399";
-    if (ratio > 0)    return "#a7f3d0";
-    return "#f3f4f6";
+    if (ratio > 0.75) return "#005A47"; // Esmeralda oscuro
+    if (ratio > 0.5)  return "#008064"; // Esmeralda F&F
+    if (ratio > 0.25) return "#4DAB96"; // Esmeralda medio
+    if (ratio > 0)    return "#A8D8D0"; // Esmeralda claro
+    return "#EAE8E2"; // Beige F&F (sin datos)
   }
 
   // Doble clic en canvas — abre diálogo para seleccionar qué góndola agregar
@@ -492,11 +511,11 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         <span className="font-medium">Intensidad de ventas:</span>
         {[
-          { color: "#f3f4f6", label: "Sin ventas" },
-          { color: "#a7f3d0", label: "Baja" },
-          { color: "#34d399", label: "Media" },
-          { color: "#059669", label: "Alta" },
-          { color: "#065f46", label: "Muy alta" },
+          { color: "#EAE8E2", label: "Sin ventas" },
+          { color: "#A8D8D0", label: "Baja" },
+          { color: "#4DAB96", label: "Media" },
+          { color: "#008064", label: "Alta" },
+          { color: "#005A47", label: "Muy alta" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1">
             <div className="w-4 h-4 rounded border border-border/50" style={{ background: item.color }} />
@@ -553,7 +572,18 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
       </Dialog>
 
       {/* Canvas Konva */}
-      <div ref={fullscreenWrapperRef} style={{ position: "relative" }}>
+      <div
+        ref={fullscreenWrapperRef}
+        style={isFullscreen ? {
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          background: "#F5F4F1",
+          display: "flex",
+          flexDirection: "column",
+          padding: 8,
+        } : { position: "relative" }}
+      >
       {/* Botón pantalla completa */}
       <button
         onClick={toggleFullscreen}
@@ -582,7 +612,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
       <div
         ref={containerRef}
         className="border border-border rounded-lg overflow-hidden bg-muted/20 relative"
-        style={{ height: isFullscreen ? "100vh" : 520 }}
+        style={{ height: isFullscreen ? "calc(100vh - 80px)" : 520, flex: isFullscreen ? 1 : undefined }}
       >
         {isLoadingPersisted && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60 z-10">
@@ -637,18 +667,15 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
 
             {zones.map((zone) => {
               const metrics = shelfMetrics.get(zone.name);
-              // Si la zona tiene color personalizado, úsarlo; si no, usar el heatmap
-              const resolvedFill = zone.fillColor
-                ? zone.fillColor
-                : metrics ? getHeatColor(metrics.monto) : "#EAE8E2";
+              // Color heatmap automático (sin color personalizado por zona)
+              const heatColor = metrics ? getHeatColor(metrics.monto) : "#EAE8E2";
               const isSelected = selectedZone?.id === zone.id;
-              // Determinar si el fondo es oscuro para elegir color de texto
-              const isDarkFill = ["#1A6894","#008064","#BC2C46","#6B3FA0","#E05C3A","#232523","#065f46","#059669"].includes(resolvedFill);
-              const textColor = isDarkFill ? "#FFFFFF" : "#232523";
-              const subTextColor = isDarkFill ? "rgba(255,255,255,0.75)" : "#919291";
+              // Texto siempre oscuro (fondo semitransparente claro)
+              const textColor = "#232523";
               // Tamaño de fuente dinámico: escala con el área de la zona
-              const zoneFontSize = Math.min(18, Math.max(8, Math.floor(Math.min(zone.width / 7, zone.height / 3))));
-              const zoneSubFontSize = Math.max(7, zoneFontSize - 2);
+              const zoneFontSize = Math.min(16, Math.max(8, Math.floor(Math.min(zone.width / 7, zone.height / 3))));
+              // Radio del círculo indicador de heatmap (esquina superior derecha)
+              const circleRadius = Math.min(7, Math.max(4, zoneFontSize * 0.5));
 
               return (
                 <Group
@@ -679,19 +706,16 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                     e.target.getStage()!.container().style.cursor = "grab";
                   }}
                 >
+                  {/* Fondo semitransparente del color heatmap */}
                   <Rect
                     ref={isSelected ? selectedRectRef : undefined}
                     name="zone-rect"
                     width={zone.width}
                     height={zone.height}
-                    fill={resolvedFill}
-                    stroke={isSelected ? "#1A6894" : "rgba(35,37,35,0.25)"}
-                    strokeWidth={isSelected ? 2.5 : 1}
+                    fill={heatColor}
+                    stroke="transparent"
                     cornerRadius={4}
-                    shadowBlur={isSelected ? 10 : 2}
-                    shadowColor={isSelected ? "#1A6894" : "rgba(0,0,0,0.15)"}
-                    shadowOpacity={isSelected ? 0.6 : 0.3}
-                    opacity={0.9}
+                    opacity={0.22}
                     onTransformEnd={(e) => {
                       const node = e.target as Konva.Rect;
                       const scaleX = node.scaleX();
@@ -703,7 +727,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                       setZones((prev) =>
                         prev.map((z) =>
                           z.id === zone.id
-                            ? { ...z, x: node.x() + zone.x - zone.x, y: node.y() + zone.y - zone.y, width: newWidth, height: newHeight }
+                            ? { ...z, width: newWidth, height: newHeight }
                             : z
                         )
                       );
@@ -711,30 +735,45 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                       setHasUnsavedChanges(true);
                     }}
                   />
+                  {/* Borde sólido del color heatmap */}
+                  <Rect
+                    name="zone-border"
+                    width={zone.width}
+                    height={zone.height}
+                    fill="transparent"
+                    stroke={isSelected ? "#1A6894" : (heatColor === "#EAE8E2" ? "#C4C2BC" : heatColor)}
+                    strokeWidth={isSelected ? 2.5 : 1.5}
+                    cornerRadius={4}
+                    shadowBlur={isSelected ? 10 : 0}
+                    shadowColor="#1A6894"
+                    shadowOpacity={0.5}
+                    listening={false}
+                  />
+                  {/* Nombre de la góndola (centrado verticalmente) */}
                   <Text
                     name="zone-label"
                     text={zone.name}
                     x={6}
-                    y={6}
-                    width={zone.width - 12}
+                    y={zone.height / 2 - zoneFontSize / 2}
+                    width={zone.width - circleRadius * 2 - 16}
                     fontSize={zoneFontSize}
                     fontStyle="bold"
                     fill={textColor}
                     ellipsis
                     wrap="none"
+                    listening={false}
                   />
-                  {metrics && zone.height > 30 && (
-                    <Text
-                      text={`S/ ${fmtCurrency(metrics.monto)}`}
-                      x={6}
-                      y={zoneFontSize + 10}
-                      width={zone.width - 12}
-                      fontSize={zoneSubFontSize}
-                      fill={subTextColor}
-                      ellipsis
-                      wrap="none"
-                    />
-                  )}
+                  {/* Círculo indicador de color heatmap (esquina superior derecha) */}
+                  <Rect
+                    x={zone.width - circleRadius * 2 - 5}
+                    y={5}
+                    width={circleRadius * 2}
+                    height={circleRadius * 2}
+                    cornerRadius={circleRadius}
+                    fill={heatColor === "#EAE8E2" ? "#C4C2BC" : heatColor}
+                    opacity={0.9}
+                    listening={false}
+                  />
                 </Group>
               );
             })}
@@ -766,8 +805,8 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                   {metrics ? (
                     <>
                       <Text text={`Monto: S/ ${fmtCurrency(metrics.monto)}`} x={8} y={26} fontSize={11} fill="#94a3b8" />
-                      <Text text={`Productos: ${metrics.productos}`} x={8} y={42} fontSize={11} fill="#94a3b8" />
-                      <Text text={metrics.status} x={8} y={56} fontSize={10} fill={getStatusColor(metrics.status)} />
+                      <Text text={`Unidades: ${fmtNumber(metrics.unidades)}`} x={8} y={42} fontSize={11} fill="#94a3b8" />
+                      <Text text={`SKUs: ${metrics.skus.size}`} x={8} y={56} fontSize={11} fill="#94a3b8" />
                     </>
                   ) : (
                     <Text text="Sin datos en el período" x={8} y={26} fontSize={11} fill="#94a3b8" />
@@ -822,44 +861,6 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
             </div>
           </div>
 
-          {/* Selector de color */}
-          <div>
-            <p className="text-xs mb-2" style={{ color: "#919291", fontFamily: "'Italian Plate No 1', sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}>Color de zona</p>
-            <div className="flex flex-wrap gap-2">
-              {/* Opción: usar heatmap automático */}
-              <button
-                title="Heatmap automático"
-                onClick={() => {
-                  setZones((prev) => prev.map((z) => z.id === selectedZone.id ? { ...z, fillColor: undefined } : z));
-                  setSelectedZone({ ...selectedZone, fillColor: undefined });
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-7 h-7 rounded-md border-2 flex items-center justify-center text-xs font-bold transition-all"
-                style={{
-                  background: "linear-gradient(135deg, #a7f3d0 0%, #059669 50%, #065f46 100%)",
-                  borderColor: !selectedZone.fillColor ? "#1A6894" : "transparent",
-                  boxShadow: !selectedZone.fillColor ? "0 0 0 2px #1A6894" : "none",
-                }}
-              />
-              {FF_COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  title={c.label}
-                  onClick={() => {
-                    setZones((prev) => prev.map((z) => z.id === selectedZone.id ? { ...z, fillColor: c.value } : z));
-                    setSelectedZone({ ...selectedZone, fillColor: c.value });
-                    setHasUnsavedChanges(true);
-                  }}
-                  className="w-7 h-7 rounded-md border-2 transition-all"
-                  style={{
-                    backgroundColor: c.value,
-                    borderColor: selectedZone.fillColor === c.value ? "#232523" : "transparent",
-                    boxShadow: selectedZone.fillColor === c.value ? "0 0 0 2px #232523" : "none",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
 
           {/* Métricas */}
           {(() => {
@@ -874,8 +875,12 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                   <p className="font-bold" style={{ color: "#008064" }}>S/ {fmtCurrency(metrics.monto)}</p>
                 </div>
                 <div>
-                  <p className="text-xs" style={{ color: "#919291" }}>Productos</p>
-                  <p className="font-semibold" style={{ color: "#232523" }}>{metrics.productos}</p>
+                  <p className="text-xs" style={{ color: "#919291" }}>Unidades</p>
+                  <p className="font-semibold" style={{ color: "#232523" }}>{fmtNumber(metrics.unidades)}</p>
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: "#919291" }}>SKUs</p>
+                  <p className="font-semibold" style={{ color: "#232523" }}>{metrics.skus.size}</p>
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>Estado</p>
