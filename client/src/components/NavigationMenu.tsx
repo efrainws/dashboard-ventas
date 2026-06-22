@@ -32,6 +32,7 @@ import {
   Layers,
   Database,
   ReceiptText,
+  LayoutGrid,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -159,6 +160,12 @@ export function NavigationMenu() {
                   <Link href="/top-customers" className="flex items-center w-full cursor-pointer">
                     <Users className="mr-2 h-4 w-4" />
                     <span>Top Clientes</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/sales-by-shelf" className="flex items-center w-full cursor-pointer">
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    <span>Venta por Góndola</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -423,6 +430,18 @@ export function NavigationMenu() {
                   >
                     <Users className="h-4 w-4 shrink-0" />
                     <span>Top Clientes</span>
+                  </Link>
+                  <Link
+                    href="/sales-by-shelf"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/sales-by-shelf")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <LayoutGrid className="h-4 w-4 shrink-0" />
+                    <span>Venta por Góndola</span>
                   </Link>
                 </div>
               )}

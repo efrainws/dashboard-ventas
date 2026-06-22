@@ -1824,6 +1824,136 @@ export const salesRouter = router({
    * Detalle de artículos de una transacción específica.
    * Devuelve: nombre del artículo, SKU, cantidad, monto total por línea.
    */
+  /**
+   * Venta por Góndola / Shelf
+   * Agrupa ventas por tienda + producto + estado de shelf (con o sin asignación en stocks)
+   * Filtros: fecha, sucursal, categoría, IGV. Sin filtro de canal.
+   */
+  getSalesByShelf: publicProcedure
+    .input(
+      z.object({
+        fecha_min:   z.string(),
+        fecha_max:   z.string(),
+        branch_id:   z.string().optional(),
+        category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
+        // Filtro de estado de shelf: 'all' | 'sin_registro' | 'sin_shelf' | 'con_shelf'
+        shelf_status: z.enum(['all', 'sin_registro', 'sin_shelf', 'con_shelf']).default('all'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv, shelf_status } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      const params: any[] = [];
+      let pi = 1;
+
+      // Filtro de sucursal
+      const branchClause = (branch_id && branch_id !== 'all')
+        ? `AND b.sap_id = $${pi++}` : '';
+      if (branch_id && branch_id !== 'all') params.push(branch_id);
+
+      // Filtro de categoría (usando la jerarquía de categorías)
+      const categoryClause = (category_id && category_id !== 'all')
+        ? `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}::uuid` : '';
+      if (category_id && category_id !== 'all') params.push(category_id);
+
+      // Filtro de estado de shelf
+      const shelfStatusClause =
+        shelf_status === 'sin_registro' ? 'AND st.id IS NULL' :
+        shelf_status === 'sin_shelf'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
+        shelf_status === 'con_shelf'    ? 'AND st.shelf_id IS NOT NULL' :
+        ''; // 'all' = sin filtro
+
+      const query = `
+        SELECT
+          b.sap_id                                                     AS branch_sap_id,
+          INITCAP(LOWER(b.name))                                       AS branch_name,
+          st.id                                                        AS stock_id,
+          sd.product_id,
+          p.int_sku,
+          INITCAP(LOWER(p.name))                                       AS product_name,
+          CASE
+            WHEN st.id IS NULL          THEN 'Sin registro en stocks'
+            WHEN st.shelf_id IS NULL    THEN 'Stock sin shelf'
+            ELSE                             'Con shelf asignado'
+          END                                                          AS shelf_status,
+          sh2.id                                                       AS shelf_id,
+          COALESCE(sh2.name, '')                                       AS shelf_name,
+          INITCAP(LOWER(COALESCE(g.name, p2.name, c2.name, 'Sin Categoría'))) AS category_name,
+          ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,
+          ROUND(SUM(${amtCol})::numeric, 2)                           AS monto_total
+        FROM public.sales_header sh
+        INNER JOIN public.sales_detail sd
+          ON sd.header_id = sh.id
+        INNER JOIN public.branches b
+          ON b.id = sh.branch_id
+        INNER JOIN public.products p
+          ON p.id = sd.product_id
+        LEFT JOIN public.stocks st
+          ON st.product_id = sd.product_id
+         AND st.branch_id  = sh.branch_id
+        LEFT JOIN public.shelves sh2
+          ON sh2.id = st.shelf_id
+        LEFT JOIN public.categories_products cp
+          ON cp.product_id       = p.id
+         AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+        LEFT JOIN public.categories c2 ON c2.id = cp.category_id
+        LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
+        LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
+        WHERE sh.doc_date >= '${fechaMinDate}'::date
+          AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
+          AND sh.doc_date IS NOT NULL
+          ${branchClause}
+          ${categoryClause}
+          ${shelfStatusClause}
+        GROUP BY
+          b.sap_id,
+          b.name,
+          st.id,
+          sd.product_id,
+          p.int_sku,
+          p.name,
+          sh2.id,
+          sh2.name,
+          CASE
+            WHEN st.id IS NULL          THEN 'Sin registro en stocks'
+            WHEN st.shelf_id IS NULL    THEN 'Stock sin shelf'
+            ELSE                             'Con shelf asignado'
+          END,
+          COALESCE(g.name, p2.name, c2.name, 'Sin Categoría')
+        ORDER BY
+          b.sap_id,
+          monto_total DESC NULLS LAST;
+      `;
+
+      try {
+        const result = await queryWithRetry(query, params);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            branch_sap_id:   row.branch_sap_id ?? '',
+            branch_name:     row.branch_name ?? '',
+            stock_id:        row.stock_id ?? null,
+            product_id:      row.product_id ?? '',
+            int_sku:         row.int_sku ?? '',
+            product_name:    row.product_name ?? '',
+            shelf_status:    row.shelf_status ?? 'Sin registro en stocks',
+            shelf_id:        row.shelf_id ?? null,
+            shelf_name:      row.shelf_name ?? '',
+            category_name:   row.category_name ?? 'Sin Categoría',
+            cantidad_vendida: Number(row.cantidad_vendida ?? 0),
+            monto_total:     Number(row.monto_total ?? 0),
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getSalesByShelf:', error);
+        throw new Error('Error al consultar ventas por góndola');
+      }
+    }),
+
   getTransactionDetail: publicProcedure
     .input(
       z.object({
