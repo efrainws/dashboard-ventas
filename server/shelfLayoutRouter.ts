@@ -11,6 +11,7 @@ import { storeLayouts, shelfZones } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { queryWithRetry } from "./postgres";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -261,4 +262,15 @@ export const shelfLayoutRouter = router({
 
       return { success: true, count: input.zones.length };
     }),
+
+  // ─── Góndolas disponibles (PostgreSQL) ──────────────────────────────
+
+  /** Lista todas las góndolas activas de la base de datos de productos */
+  listShelfs: protectedProcedure.query(async () => {
+    const result = await queryWithRetry(
+      "SELECT id, name FROM shelfs WHERE status = true ORDER BY name",
+      []
+    );
+    return result.rows as { id: string; name: string }[];
+  }),
 });

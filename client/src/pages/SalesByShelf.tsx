@@ -138,6 +138,9 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   const [isDragging, setIsDragging] = useState(false);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Diálogo de selección de góndola al hacer doble clic
+  const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null);
+  const [shelfSearch, setShelfSearch] = useState("");
 
   // Queries de layout y zonas persistentes
   const { data: layoutData, isLoading: layoutLoading } = trpc.shelfLayout.listLayouts.useQuery(
@@ -173,6 +176,14 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
     },
     onError: (e) => toast.error(`Error al guardar zonas: ${e.message}`),
   });
+
+  // Lista de góndolas disponibles para el diálogo de selección
+  const { data: availableShelfs = [] } = trpc.shelfLayout.listShelfs.useQuery();
+  const filteredShelfs = useMemo(() => {
+    if (!shelfSearch.trim()) return availableShelfs;
+    const q = shelfSearch.toLowerCase();
+    return availableShelfs.filter((s: { id: string; name: string }) => s.name.toLowerCase().includes(q));
+  }, [availableShelfs, shelfSearch]);
 
   // Cargar layout desde BD cuando cambia la tienda
   const currentLayout = useMemo(() => {
@@ -287,12 +298,11 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
     return "#f3f4f6";
   }
 
-  // Agregar zona manualmente (doble click en canvas — funciona sobre imagen de fondo y área vacía)
+  // Doble clic en canvas — abre diálogo para seleccionar qué góndola agregar
   const handleStageDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    // Ignorar doble clic sobre zonas existentes (Rect o Text dentro de un Group de zona)
+    // Ignorar doble clic sobre zonas existentes
     const targetName = e.target.name();
     if (targetName === "zone-rect" || targetName === "zone-label") return;
-    // Ignorar si el target es un Group de zona (clic en el grupo pero no en sus hijos)
     let node: Konva.Node | null = e.target;
     while (node) {
       if (node.name() === "zone-group") return;
@@ -302,17 +312,29 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
     if (!stage) return;
     const pos = stage.getPointerPosition();
     if (!pos) return;
-    const newZone: ShelfZone = {
-      id: `zone-${Date.now()}`,
-      name: `Góndola ${zones.length + 1}`,
+    // Guardar posición en coordenadas del canvas (sin escala) y abrir diálogo
+    setPendingPos({
       x: (pos.x - stagePos.x) / scale,
       y: (pos.y - stagePos.y) / scale,
+    });
+    setShelfSearch("");
+  }, [scale, stagePos]);
+
+  // Confirmar selección de góndola desde el diálogo
+  const handleSelectShelf = useCallback((shelf: { id: string; name: string }) => {
+    if (!pendingPos) return;
+    const newZone: ShelfZone = {
+      id: `zone-${Date.now()}`,
+      name: shelf.name,
+      x: pendingPos.x,
+      y: pendingPos.y,
       width: 120,
       height: 60,
     };
     setZones((prev) => [...prev, newZone]);
     setHasUnsavedChanges(true);
-  }, [zones.length, scale, stagePos]);
+    setPendingPos(null);
+  }, [pendingPos]);
 
   // Guardar zonas en BD
   const handleSaveZones = () => {
@@ -431,6 +453,53 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
           </div>
         ))}
       </div>
+
+      {/* Diálogo de selección de góndola */}
+      <Dialog open={!!pendingPos} onOpenChange={(open) => { if (!open) setPendingPos(null); }}>
+        <DialogContent style={{ width: "min(96vw, 480px)", maxWidth: "min(96vw, 480px)" }}>
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "'Italian Plate No 1', sans-serif", textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "1rem", color: "#232523" }}>
+              Seleccionar Góndola
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: "#919291" }}>Elige la góndola que deseas colocar en esta posición del mapa.</p>
+          {/* Buscador */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "#919291" }} />
+            <Input
+              placeholder="Buscar góndola..."
+              value={shelfSearch}
+              onChange={(e) => setShelfSearch(e.target.value)}
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+          {/* Lista de góndolas */}
+          <div className="overflow-y-auto rounded-md border" style={{ maxHeight: 320, borderColor: "#EAE8E2" }}>
+            {filteredShelfs.length === 0 ? (
+              <div className="py-8 text-center text-sm" style={{ color: "#919291" }}>No se encontraron góndolas</div>
+            ) : (
+              filteredShelfs.map((shelf: { id: string; name: string }) => (
+                <button
+                  key={shelf.id}
+                  onClick={() => handleSelectShelf(shelf)}
+                  className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                  style={{ borderBottom: "1px solid #EAE8E2", color: "#232523" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  {shelf.name}
+                </button>
+              ))
+            )}
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button variant="outline" size="sm" onClick={() => setPendingPos(null)} style={{ borderColor: "#EAE8E2", color: "#919291" }}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Canvas Konva */}
       <div
