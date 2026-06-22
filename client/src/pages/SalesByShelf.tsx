@@ -287,10 +287,21 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
     return "#f3f4f6";
   }
 
-  // Agregar zona manualmente (doble click en canvas vacío)
+  // Agregar zona manualmente (doble click en canvas — funciona sobre imagen de fondo y área vacía)
   const handleStageDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target !== e.target.getStage()) return;
-    const pos = e.target.getStage()!.getPointerPosition()!;
+    // Ignorar doble clic sobre zonas existentes (Rect o Text dentro de un Group de zona)
+    const targetName = e.target.name();
+    if (targetName === "zone-rect" || targetName === "zone-label") return;
+    // Ignorar si el target es un Group de zona (clic en el grupo pero no en sus hijos)
+    let node: Konva.Node | null = e.target;
+    while (node) {
+      if (node.name() === "zone-group") return;
+      node = node.getParent();
+    }
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
     const newZone: ShelfZone = {
       id: `zone-${Date.now()}`,
       name: `Góndola ${zones.length + 1}`,
@@ -486,6 +497,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               return (
                 <Group
                   key={zone.id}
+                  name="zone-group"
                   x={zone.x}
                   y={zone.y}
                   draggable
@@ -512,6 +524,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                   }}
                 >
                   <Rect
+                    name="zone-rect"
                     width={zone.width}
                     height={zone.height}
                     fill={fillColor}
@@ -523,6 +536,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                     opacity={0.85}
                   />
                   <Text
+                    name="zone-label"
                     text={zone.name}
                     x={4}
                     y={4}
