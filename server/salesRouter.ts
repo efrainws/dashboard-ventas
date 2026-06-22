@@ -1895,7 +1895,7 @@ export const salesRouter = router({
         LEFT JOIN public.stocks st
           ON st.product_id = sd.product_id
          AND st.branch_id  = sh.branch_id
-        LEFT JOIN public.shelves sh2
+        LEFT JOIN public.shelfs sh2
           ON sh2.id = st.shelf_id
         LEFT JOIN public.categories_products cp
           ON cp.product_id       = p.id
