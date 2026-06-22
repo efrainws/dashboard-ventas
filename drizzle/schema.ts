@@ -350,3 +350,61 @@ export const ownBrandCategoryBrands = mysqlTable("own_brand_category_brands", {
 
 export type OwnBrandCategoryBrand = typeof ownBrandCategoryBrands.$inferSelect;
 export type InsertOwnBrandCategoryBrand = typeof ownBrandCategoryBrands.$inferInsert;
+
+/**
+ * Layout de planta de cada tienda.
+ * Almacena la imagen del plano de la tienda (subida a S3) y su referencia por SAP ID.
+ * Cada tienda puede tener un único layout activo.
+ */
+export const storeLayouts = mysqlTable("store_layouts", {
+  id: int("id").autoincrement().primaryKey(),
+  /** SAP ID de la tienda (e.g., 'FF01') — clave de referencia con PostgreSQL */
+  sapId: varchar("sap_id", { length: 16 }).notNull().unique(),
+  /** Nombre descriptivo de la tienda */
+  branchName: varchar("branch_name", { length: 128 }).notNull(),
+  /** URL pública del archivo en S3 */
+  imageUrl: text("image_url").notNull(),
+  /** Clave del archivo en S3 (para eliminación) */
+  imageKey: varchar("image_key", { length: 512 }).notNull(),
+  /** Tipo MIME del archivo (image/png, image/svg+xml, image/jpeg) */
+  mimeType: varchar("mime_type", { length: 64 }).notNull(),
+  /** Usuario que subió el layout */
+  uploadedBy: int("uploaded_by").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StoreLayout = typeof storeLayouts.$inferSelect;
+export type InsertStoreLayout = typeof storeLayouts.$inferInsert;
+
+/**
+ * Zonas de góndola dibujadas sobre el layout de cada tienda.
+ * Almacena las coordenadas y dimensiones de cada zona en el canvas de Konva.js.
+ * Cada zona se vincula a una góndola (shelf) de PostgreSQL por su UUID.
+ */
+export const shelfZones = mysqlTable("shelf_zones", {
+  id: int("id").autoincrement().primaryKey(),
+  /** SAP ID de la tienda a la que pertenece esta zona */
+  sapId: varchar("sap_id", { length: 16 }).notNull(),
+  /** UUID de la góndola en public.shelfs de PostgreSQL (puede ser null si es zona libre) */
+  shelfId: varchar("shelf_id", { length: 64 }),
+  /** Nombre de la góndola (redundante para mostrar sin consultar PostgreSQL) */
+  shelfName: varchar("shelf_name", { length: 256 }),
+  /** Coordenada X en el canvas (píxeles relativos al canvas base) */
+  x: decimal("x", { precision: 10, scale: 2 }).notNull(),
+  /** Coordenada Y en el canvas */
+  y: decimal("y", { precision: 10, scale: 2 }).notNull(),
+  /** Ancho de la zona */
+  width: decimal("width", { precision: 10, scale: 2 }).notNull(),
+  /** Alto de la zona */
+  height: decimal("height", { precision: 10, scale: 2 }).notNull(),
+  /** Rotación en grados (0 por defecto) */
+  rotation: decimal("rotation", { precision: 6, scale: 2 }).default("0"),
+  /** Color de relleno en hex (opcional, se sobreescribe por heatmap) */
+  fillColor: varchar("fill_color", { length: 16 }),
+  /** Usuario que creó la zona */
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShelfZone = typeof shelfZones.$inferSelect;
+export type InsertShelfZone = typeof shelfZones.$inferInsert;
