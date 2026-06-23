@@ -144,7 +144,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   const [shelfSearch, setShelfSearch] = useState("");
   // Transformer para redimensionar la zona seleccionada
   const transformerRef = useRef<Konva.Transformer>(null);
-  const selectedRectRef = useRef<Konva.Rect>(null);
+  const selectedGroupRef = useRef<Konva.Group>(null);
   // Pantalla completa
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
@@ -275,8 +275,8 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
   // Conectar Transformer al Rect de la zona seleccionada
   useEffect(() => {
     if (!transformerRef.current) return;
-    if (selectedZone && selectedRectRef.current) {
-      transformerRef.current.nodes([selectedRectRef.current]);
+    if (selectedZone && selectedGroupRef.current) {
+      transformerRef.current.nodes([selectedGroupRef.current]);
       transformerRef.current.getLayer()?.batchDraw();
     } else {
       transformerRef.current.nodes([]);
@@ -673,13 +673,14 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               // Texto siempre oscuro (fondo semitransparente claro)
               const textColor = "#232523";
               // Tamaño de fuente dinámico: escala con el área de la zona
-              const zoneFontSize = Math.min(16, Math.max(8, Math.floor(Math.min(zone.width / 7, zone.height / 3))));
+              const zoneFontSize = Math.min(11, Math.max(6, Math.floor(Math.min(zone.width / 10, zone.height / 4))));
               // Radio del círculo indicador de heatmap (esquina superior derecha)
               const circleRadius = Math.min(7, Math.max(4, zoneFontSize * 0.5));
 
               return (
                 <Group
                   key={zone.id}
+                  ref={isSelected ? selectedGroupRef : undefined}
                   name="zone-group"
                   x={zone.x}
                   y={zone.y}
@@ -692,6 +693,24 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                           : z
                       )
                     );
+                    setHasUnsavedChanges(true);
+                  }}
+                  onTransformEnd={(e) => {
+                    const node = e.target as Konva.Group;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    node.scaleX(1);
+                    node.scaleY(1);
+                    const newWidth = Math.max(40, zone.width * scaleX);
+                    const newHeight = Math.max(20, zone.height * scaleY);
+                    setZones((prev) =>
+                      prev.map((z) =>
+                        z.id === zone.id
+                          ? { ...z, x: node.x(), y: node.y(), width: newWidth, height: newHeight }
+                          : z
+                      )
+                    );
+                    setSelectedZone((prev) => prev?.id === zone.id ? { ...prev, width: newWidth, height: newHeight } : prev);
                     setHasUnsavedChanges(true);
                   }}
                   onClick={() => setSelectedZone(isSelected ? null : zone)}
@@ -708,7 +727,6 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                 >
                   {/* Fondo semitransparente del color heatmap */}
                   <Rect
-                    ref={isSelected ? selectedRectRef : undefined}
                     name="zone-rect"
                     width={zone.width}
                     height={zone.height}
@@ -716,24 +734,6 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
                     stroke="transparent"
                     cornerRadius={4}
                     opacity={0.22}
-                    onTransformEnd={(e) => {
-                      const node = e.target as Konva.Rect;
-                      const scaleX = node.scaleX();
-                      const scaleY = node.scaleY();
-                      node.scaleX(1);
-                      node.scaleY(1);
-                      const newWidth = Math.max(40, node.width() * scaleX);
-                      const newHeight = Math.max(20, node.height() * scaleY);
-                      setZones((prev) =>
-                        prev.map((z) =>
-                          z.id === zone.id
-                            ? { ...z, width: newWidth, height: newHeight }
-                            : z
-                        )
-                      );
-                      setSelectedZone((prev) => prev?.id === zone.id ? { ...prev, width: newWidth, height: newHeight } : prev);
-                      setHasUnsavedChanges(true);
-                    }}
                   />
                   {/* Borde sólido del color heatmap */}
                   <Rect

@@ -134,7 +134,7 @@ const COVERAGE_ALERT_THRESHOLD = 5;
 
 function CoverageTag({ days }: { days: number | null }) {
   if (days === null) {
-    return <span className="text-xs" style={{ color: '#919291' }}>—</span>;
+    return <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>—</span>;
   }
   const isAlert = days < COVERAGE_ALERT_THRESHOLD;
   // Semáforo: rojo < 5 días | verde 5–10 días | amarillo > 10 días
@@ -200,7 +200,7 @@ function ProductDetailModal({
       label: "Tiendas",
       value: (
         <span className="flex items-center gap-1">
-          <Store className="h-3.5 w-3.5" style={{ color: "#757471" }} />
+          <Store className="h-3.5 w-3.5" style={{ color: "var(--muted-foreground)" }} />
           {row.branch_count}
         </span>
       ),
@@ -219,7 +219,7 @@ function ProductDetailModal({
     {
       label: "Venta diaria promedio",
       value: (
-        <span className="tabular-nums" style={{ color: "#757471" }}>
+        <span className="tabular-nums" style={{ color: "var(--muted-foreground)" }}>
           {row.avg_daily_qty > 0 ? row.avg_daily_qty.toFixed(1) : "—"}
         </span>
       ),
@@ -234,7 +234,7 @@ function ProductDetailModal({
     <Dialog open={!!row} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         className="max-w-sm mx-auto rounded-2xl"
-        style={{ fontFamily: "'Sailec', system-ui, sans-serif", backgroundColor: "#F5F4F1" }}
+        style={{ fontFamily: "'Sailec', system-ui, sans-serif", backgroundColor: "var(--background)" }}
       >
         <DialogHeader className="pb-2">
           {/* Rank badge */}
@@ -242,12 +242,12 @@ function ProductDetailModal({
             <div className="flex-1">
               <DialogTitle
                 className="text-base font-semibold leading-snug"
-                style={{ color: "#232523" }}
+                style={{ color: "var(--foreground)" }}
               >
                 {row.product_name}
               </DialogTitle>
               {row.sku && (
-                <p className="text-xs mt-0.5" style={{ color: "#919291" }}>SKU: {row.sku}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>SKU: {row.sku}</p>
               )}
             </div>
             {isCoverageAlert && (
@@ -274,7 +274,7 @@ function ProductDetailModal({
                 borderBottom: i < fields.length - 1 ? "1px solid #EAE8E2" : "none",
               }}
             >
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#919291" }}>
+              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
                 {label}
               </span>
               <span className="text-sm text-right">{value}</span>
@@ -349,7 +349,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                   ) : (
                     <span
                       className="font-mono text-xs"
-                      style={{ color: "#919291" }}
+                      style={{ color: "var(--muted-foreground)" }}
                     >
                       {String(row.rank).padStart(2, "0")}
                     </span>
@@ -361,7 +361,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                     {row.product_name}
                   </p>
                   {row.sku && (
-                    <p className="text-xs mt-0.5" style={{ color: "#919291" }}>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
                       SKU: {row.sku}
                     </p>
                   )}
@@ -381,7 +381,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                 {/* Métrica secundaria */}
                 <td
                   className="py-3 px-3 text-right tabular-nums hidden lg:table-cell"
-                  style={{ color: "#757471" }}
+                  style={{ color: "var(--muted-foreground)" }}
                 >
                   {mode === "qty"
                     ? formatCurrency(row.total_amount)
@@ -397,7 +397,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                 {/* Venta diaria promedio */}
                 <td
                   className="py-3 px-3 text-right tabular-nums hidden xl:table-cell"
-                  style={{ color: "#757471" }}
+                  style={{ color: "var(--muted-foreground)" }}
                 >
                   {row.avg_daily_qty > 0 ? formatNumber(Math.round(row.avg_daily_qty * 10) / 10) : '—'}
                 </td>
@@ -408,7 +408,7 @@ function RankingTable({ rows, mode }: { rows: ProductRow[]; mode: "qty" | "amoun
                 {/* Tiendas */}
                 <td
                   className="py-3 px-3 text-center hidden lg:table-cell"
-                  style={{ color: "#757471" }}
+                  style={{ color: "var(--muted-foreground)" }}
                 >
                   {row.branch_count}
                 </td>
@@ -593,7 +593,7 @@ export default function TopProducts() {
           <p className="text-muted-foreground text-sm">
             Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas
           </p>
-          <p className="text-xs" style={{ color: "#919291" }}>
+          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
             Período: {dateRangeText}
           </p>
         </div>
@@ -679,7 +679,7 @@ export default function TopProducts() {
                         {data.byQuantity[0] ? formatNumber(data.byQuantity[0].total_qty) : "—"}
                       </p>
                       {data.byQuantity[0] && (
-                        <p className="text-xs truncate" style={{ color: "#919291" }}>
+                        <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>
                           {data.byQuantity[0].product_name}
                         </p>
                       )}
@@ -707,7 +707,7 @@ export default function TopProducts() {
                         {data.byAmount[0] ? formatCurrency(data.byAmount[0].total_amount) : "—"}
                       </p>
                       {data.byAmount[0] && (
-                        <p className="text-xs truncate" style={{ color: "#919291" }}>
+                        <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>
                           {data.byAmount[0].product_name}
                         </p>
                       )}

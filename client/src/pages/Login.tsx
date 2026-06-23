@@ -4,12 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
-// ─── Colores del sistema Flora & Fauna ───────────────────────────────────────
-const GRAPHITE   = '#232523'; // panel izquierdo + botón
-const BONE       = '#F5F4F1'; // fondo panel derecho
-const PEBBLE     = '#EAE8E2'; // fondo inputs
-const STONE      = '#919291'; // texto secundario / labels
-
 export default function Login() {
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -38,13 +32,13 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex"
-      style={{ backgroundColor: BONE, fontFamily: 'Sailec, sans-serif' }}
+      className="min-h-screen flex bg-background"
+      style={{ fontFamily: 'Sailec, sans-serif' }}
     >
       {/* ── Panel izquierdo (solo desktop) ─────────────────────────────── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12"
-        style={{ backgroundColor: GRAPHITE }}
+        style={{ backgroundColor: 'var(--ff-carbon)' }}
       >
         <img
           src="/Logoclarochico.svg"
@@ -54,7 +48,7 @@ export default function Login() {
         />
         <p
           className="text-center text-sm leading-relaxed max-w-xs"
-          style={{ color: STONE, fontFamily: 'Sailec, sans-serif' }}
+          style={{ color: 'var(--muted-foreground)', fontFamily: 'Sailec, sans-serif' }}
         >
           Dashboard de Análisis de Ventas
         </p>
@@ -69,16 +63,15 @@ export default function Login() {
             <img
               src="/Logonegro.svg"
               alt="Flora & Fauna"
-              className="h-8 object-contain"
+              className="h-8 object-contain dark:invert"
             />
           </div>
 
           {/* Encabezado */}
           <div className="mb-8">
             <h1
-              className="text-3xl font-bold mb-1"
+              className="text-3xl font-bold mb-1 text-foreground"
               style={{
-                color: GRAPHITE,
                 fontFamily: "'Italian Plate No 1', Georgia, serif",
                 letterSpacing: '-0.01em',
               }}
@@ -94,8 +87,7 @@ export default function Login() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="email"
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: STONE }}
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 Correo electrónico
               </Label>
@@ -107,13 +99,8 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loginMutation.isPending}
                 autoComplete="email"
-                className="h-11 text-sm"
-                style={{
-                  borderColor: 'rgba(145,146,145,0.314)',
-                  backgroundColor: PEBBLE,
-                  color: GRAPHITE,
-                  fontFamily: 'Sailec, sans-serif',
-                }}
+                className="h-11 text-sm bg-muted text-foreground"
+                style={{ fontFamily: 'Sailec, sans-serif' }}
               />
             </div>
 
@@ -121,8 +108,7 @@ export default function Login() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="password"
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: STONE }}
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 Contraseña
               </Label>
@@ -135,19 +121,13 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loginMutation.isPending}
                   autoComplete="current-password"
-                  className="h-11 text-sm pr-10"
-                  style={{
-                    borderColor: 'rgba(145,146,145,0.314)',
-                    backgroundColor: PEBBLE,
-                    color: GRAPHITE,
-                    fontFamily: 'Sailec, sans-serif',
-                  }}
+                  className="h-11 text-sm pr-10 bg-muted text-foreground"
+                  style={{ fontFamily: 'Sailec, sans-serif' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-                  style={{ color: STONE }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70 text-muted-foreground"
                   tabIndex={-1}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
@@ -174,12 +154,8 @@ export default function Login() {
             <button
               type="submit"
               disabled={loginMutation.isPending}
-              className="w-full h-11 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{
-                backgroundColor: GRAPHITE,
-                color: BONE,
-                fontFamily: 'Sailec, sans-serif',
-              }}
+              className="w-full h-11 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 bg-foreground text-background"
+              style={{ fontFamily: 'Sailec, sans-serif' }}
             >
               {loginMutation.isPending ? (
                 <>

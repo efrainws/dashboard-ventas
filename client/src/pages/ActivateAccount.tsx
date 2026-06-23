@@ -44,7 +44,7 @@ function getPasswordStrength(password: string): {
   if (score <= 1) return { score, label: "Muy débil", color: "#E05252" };
   if (score === 2) return { score, label: "Débil", color: "#E08C52" };
   if (score === 3) return { score, label: "Aceptable", color: "#D4B84A" };
-  if (score === 4) return { score, label: "Fuerte", color: "#5C6B3A" };
+  if (score === 4) return { score, label: "Fuerte", color: "var(--muted-foreground)" };
   return { score, label: "Muy fuerte", color: "#3A6B4A" };
 }
 
@@ -362,7 +362,7 @@ export default function ActivateAccount() {
             <p className="text-xs text-destructive font-body">Las contraseñas no coinciden</p>
           )}
           {confirmPassword && confirmPassword === newPassword && (
-            <p className="text-xs font-body" style={{ color: "#5C6B3A" }}>
+            <p className="text-xs font-body" style={{ color: "var(--muted-foreground)" }}>
               ✓ Las contraseñas coinciden
             </p>
           )}

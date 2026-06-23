@@ -37,7 +37,7 @@ export default function AccessExpiredPage() {
 
   if (isActive) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F4F1" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center space-y-4 max-w-md px-6">
           <CheckCircle2 className="h-16 w-16 mx-auto" style={{ color: "#008064" }} />
           <h1 className="text-2xl font-bold" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
@@ -54,7 +54,7 @@ export default function AccessExpiredPage() {
 
   if (isRequested || submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F4F1" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center space-y-4 max-w-md px-6">
           <Clock className="h-16 w-16 mx-auto" style={{ color: "#008064" }} />
           <h1 className="text-2xl font-bold" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
@@ -72,7 +72,7 @@ export default function AccessExpiredPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F4F1" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
       <div className="w-full max-w-lg px-6 py-10 space-y-8">
 
         {/* Encabezado */}
@@ -102,7 +102,7 @@ export default function AccessExpiredPage() {
                 background: "#fff",
                 border: "1px solid #EAE8E2",
                 maxHeight: "280px",
-                color: "#3D3B3C",
+                color: "var(--foreground)",
                 whiteSpace: "pre-wrap",
               }}
             >

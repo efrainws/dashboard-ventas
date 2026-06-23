@@ -2171,3 +2171,11 @@ Fecha: 1 de febrero de 2026
 - [x] Procesamiento paralelo por sucursal con ProcessPoolExecutor (hasta 4 workers)
 - [x] Funciones: compute_shelf_aggregated, compute_top_products, compute_hourly_heatmap, compute_all_branches_parallel
 - [x] CLI con modos: shelf_agg, top_products, hourly_heatmap, benchmark, parallel
+
+## Correcciones Dark Mode y Mapa de Tienda (sesión 2026-06-23)
+
+- [x] Dark mode: corregir 32 colores hardcodeados en 10+ componentes (bg-white, #F5F4F1, #232523, #919291, etc.) → variables CSS semánticas
+- [x] Login.tsx: fondo, inputs y botón usan bg-background, bg-muted, text-foreground
+- [x] Konva offset: Transformer adjunto al Group (no al Rect interno) → sin offset visual
+- [x] Konva onTransformEnd: movido del Rect al Group para capturar posición y tamaño correctos
+- [x] Zonas: tamaño de fuente reducido (max 11px, min 6px, fórmula /10 y /4)

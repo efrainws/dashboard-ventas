@@ -102,7 +102,7 @@ export function TrialPopup() {
 
         <div
           className="rounded-lg p-3 text-sm mb-4"
-          style={{ background: "#F5F4F1", border: "1px solid #EAE8E2" }}
+          style={{ background: "var(--background)", border: "1px solid #EAE8E2" }}
         >
           <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground mb-1.5">
             Restricciones durante el trial

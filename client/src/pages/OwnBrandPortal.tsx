@@ -1773,7 +1773,7 @@ export default function OwnBrandPortal() {
                               {showStore && (
                                 <TableCell className="text-sm">
                                   <div className="flex items-center gap-1.5">
-                                    <Store className="h-3 w-3 shrink-0" style={{ color: "#919291" }} />
+                                    <Store className="h-3 w-3 shrink-0" style={{ color: "var(--muted-foreground)" }} />
                                     <span className="truncate max-w-[140px]">{row.tienda}</span>
                                   </div>
                                 </TableCell>

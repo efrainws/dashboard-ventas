@@ -50,7 +50,7 @@ export default function TermsPage() {
   const alreadyAccepted = myStatus?.supplierStatus === "subscribed_active" || myStatus?.supplierStatus === "access_requested";
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F4F1" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       <div className="container py-10 max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -70,7 +70,7 @@ export default function TermsPage() {
           <CardContent className="pt-6">
             <div
               className="prose prose-sm max-w-none text-sm leading-relaxed"
-              style={{ color: "#3D3B3C", whiteSpace: "pre-wrap", maxHeight: "50vh", overflowY: "auto" }}
+              style={{ color: "var(--foreground)", whiteSpace: "pre-wrap", maxHeight: "50vh", overflowY: "auto" }}
             >
               {terms.content}
             </div>
