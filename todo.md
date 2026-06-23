@@ -2179,3 +2179,9 @@ Fecha: 1 de febrero de 2026
 - [x] Konva offset: Transformer adjunto al Group (no al Rect interno) → sin offset visual
 - [x] Konva onTransformEnd: movido del Rect al Group para capturar posición y tamaño correctos
 - [x] Zonas: tamaño de fuente reducido (max 11px, min 6px, fórmula /10 y /4)
+
+## Comparaciones período anterior en Ventas por Góndola
+- [x] Endpoint getSalesByShelfComparison en salesRouter (período actual vs anterior calculado automáticamente)
+- [x] KPIs principales: Monto Total y Cantidad Vendida con VariationBadge (icono TrendingUp/Down + %)
+- [x] Tabla de agregado por góndola: columnas Productos, Cantidad y Monto con icono + % variación
+- [x] Tooltips del mapa de tienda: monto, unidades y SKUs con variación vs período anterior en color verde/rojo

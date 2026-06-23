@@ -2117,4 +2117,167 @@ export const salesRouter = router({
         throw new Error('Error al consultar detalle de transacción');
       }
     }),
+
+  /**
+   * Compara métricas de ventas por góndola entre el período actual y el anterior.
+   * Devuelve para cada góndola: monto_total, cantidad_vendida, productos_distintos
+   * tanto del período actual como del anterior, para calcular variaciones.
+   */
+  getSalesByShelfComparison: publicProcedure
+    .input(
+      z.object({
+        fecha_min:    z.string(), // YYYY-MM-DD
+        fecha_max:    z.string(), // YYYY-MM-DD
+        branch_id:    z.string().optional(),
+        category_id:  z.string().optional(),
+        include_igv:  z.boolean().default(true),
+        shelf_status: z.enum(['all', 'sin_registro', 'sin_shelf', 'con_shelf']).default('all'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv, shelf_status } = input;
+      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
+      const fechaMinDate = fecha_min.substring(0, 10);
+      const fechaMaxDate = fecha_max.substring(0, 10);
+
+      // Calcular período anterior (misma duración, inmediatamente antes)
+      const currentStart = new Date(fechaMinDate + 'T12:00:00');
+      const currentEnd   = new Date(fechaMaxDate + 'T12:00:00');
+      const durationDays = Math.round((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const prevEnd      = new Date(currentStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      const prevStart    = new Date(prevEnd);
+      prevStart.setDate(prevStart.getDate() - (durationDays - 1));
+      const prevStartStr = prevStart.toISOString().substring(0, 10);
+      const prevEndStr   = prevEnd.toISOString().substring(0, 10);
+
+      const params: any[] = [];
+      let pi = 1;
+      const branchClause = (branch_id && branch_id !== 'all')
+        ? `AND b.sap_id = $${pi++}` : '';
+      if (branch_id && branch_id !== 'all') params.push(branch_id);
+      const categoryClause = (category_id && category_id !== 'all')
+        ? `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}::uuid` : '';
+      if (category_id && category_id !== 'all') params.push(category_id);
+      const shelfStatusClause =
+        shelf_status === 'sin_registro' ? 'AND st.id IS NULL' :
+        shelf_status === 'sin_shelf'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
+        shelf_status === 'con_shelf'    ? 'AND st.shelf_id IS NOT NULL' : '';
+
+      const query = `
+        WITH base AS (
+          SELECT
+            b.sap_id                                                     AS branch_sap_id,
+            INITCAP(LOWER(b.name))                                       AS branch_name,
+            sh2.id                                                       AS shelf_id,
+            COALESCE(sh2.name, '(Sin góndola asignada)')                 AS shelf_name,
+            CASE
+              WHEN st.id IS NULL THEN 'Sin registro en stocks'
+              WHEN st.shelf_id IS NULL THEN 'Stock sin shelf'
+              ELSE 'Con shelf asignado'
+            END                                                          AS shelf_status,
+            sd.product_id,
+            ${amtCol}                                                    AS line_total,
+            sd.quantity,
+            CASE
+              WHEN sh.doc_date >= '${fechaMinDate}'::date
+               AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
+              THEN 'current'
+              WHEN sh.doc_date >= '${prevStartStr}'::date
+               AND sh.doc_date <  ('${prevEndStr}'::date + INTERVAL '1 day')
+              THEN 'previous'
+              ELSE NULL
+            END AS period
+          FROM public.sales_header sh
+          INNER JOIN public.sales_detail sd ON sd.header_id = sh.id
+          INNER JOIN public.branches b      ON b.id = sh.branch_id
+          INNER JOIN public.products p      ON p.id = sd.product_id
+          LEFT JOIN  public.stocks st
+            ON st.product_id = sd.product_id
+           AND st.branch_id  = sh.branch_id
+          LEFT JOIN  public.shelfs sh2      ON sh2.id = st.shelf_id
+          LEFT JOIN  public.categories_products cp
+            ON cp.product_id        = p.id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN  public.categories c2 ON c2.id = cp.category_id
+          LEFT JOIN  public.categories p2 ON p2.id = c2.parent_category_id
+          LEFT JOIN  public.categories g  ON g.id  = p2.parent_category_id
+          WHERE sh.doc_date IS NOT NULL
+            AND (
+              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
+              OR
+              (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
+            )
+            ${branchClause}
+            ${categoryClause}
+            ${shelfStatusClause}
+        )
+        SELECT
+          branch_sap_id,
+          branch_name,
+          shelf_id,
+          shelf_name,
+          MAX(shelf_status)                                              AS shelf_status,
+          period,
+          COUNT(DISTINCT product_id)                                     AS productos_distintos,
+          ROUND(SUM(quantity)::numeric, 2)                              AS cantidad_vendida,
+          ROUND(SUM(line_total)::numeric, 2)                            AS monto_total
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY branch_sap_id, branch_name, shelf_id, shelf_name, period
+        ORDER BY branch_sap_id, monto_total DESC NULLS LAST;
+      `;
+
+      const igvKey = include_igv ? 'igv' : 'noigv';
+      const cacheKey = `sales:shelf:comparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${shelf_status}:${igvKey}`;
+
+      try {
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await queryWithRetry(query, params);
+
+          // Pivotar: agrupar por (branch_sap_id, shelf_id, shelf_name) y separar current/previous
+          type ShelfKey = string;
+          interface ShelfEntry {
+            branch_sap_id: string;
+            branch_name: string;
+            shelf_id: string | null;
+            shelf_name: string;
+            shelf_status: string;
+            current:  { monto_total: number; cantidad_vendida: number; productos_distintos: number };
+            previous: { monto_total: number; cantidad_vendida: number; productos_distintos: number };
+          }
+          const map = new Map<ShelfKey, ShelfEntry>();
+
+          for (const row of result.rows) {
+            const key: ShelfKey = `${row.branch_sap_id}::${row.shelf_id ?? 'null'}`;
+            if (!map.has(key)) {
+              map.set(key, {
+                branch_sap_id: row.branch_sap_id ?? '',
+                branch_name:   row.branch_name ?? '',
+                shelf_id:      row.shelf_id ?? null,
+                shelf_name:    row.shelf_name ?? '(Sin góndola asignada)',
+                shelf_status:  row.shelf_status ?? 'Sin registro en stocks',
+                current:  { monto_total: 0, cantidad_vendida: 0, productos_distintos: 0 },
+                previous: { monto_total: 0, cantidad_vendida: 0, productos_distintos: 0 },
+              });
+            }
+            const entry = map.get(key)!;
+            const target = row.period === 'current' ? entry.current : entry.previous;
+            target.monto_total        = Number(row.monto_total ?? 0);
+            target.cantidad_vendida   = Number(row.cantidad_vendida ?? 0);
+            target.productos_distintos = Number(row.productos_distintos ?? 0);
+          }
+
+          return {
+            success: true,
+            period_current:  { start: fechaMinDate, end: fechaMaxDate },
+            period_previous: { start: prevStartStr,  end: prevEndStr  },
+            data: Array.from(map.values()),
+          };
+        });
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getSalesByShelfComparison:', error);
+        throw new Error('Error al consultar comparación de ventas por góndola');
+      }
+    }),
 });

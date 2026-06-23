@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -118,15 +118,56 @@ function getStatusColor(status: string): string {
   return "#10b981";
 }
 
+// ─── Comparación de períodos ──────────────────────────────────────────────
+interface ShelfCompEntry {
+  branch_sap_id: string;
+  branch_name: string;
+  shelf_id: string | null;
+  shelf_name: string;
+  shelf_status: string;
+  current:  { monto_total: number; cantidad_vendida: number; productos_distintos: number };
+  previous: { monto_total: number; cantidad_vendida: number; productos_distintos: number };
+}
+
+function calcVariation(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+function VariationBadge({ current, previous, prefix = "" }: { current: number; previous: number; prefix?: string }) {
+  const pct = calcVariation(current, previous);
+  if (pct === null) return <span className="text-xs" style={{ color: "#919291" }}>—</span>;
+  const isUp = pct > 0;
+  const isFlat = Math.abs(pct) < 0.1;
+  if (isFlat) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs tabular-nums" style={{ color: "#919291" }}>
+        <Minus className="h-3 w-3" />
+        0%
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-xs tabular-nums font-medium"
+      style={{ color: isUp ? "#008064" : "#BC2C46" }}
+    >
+      {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {prefix}{Math.abs(pct).toFixed(1)}%
+    </span>
+  );
+}
+
 // ─── Componente de visualización Konva ───────────────────────────────────────
 
 interface StoreLayoutViewerProps {
   data: ShelfRow[];
   selectedBranch: string;
   branchName: string;
+  compMap?: Map<string, ShelfCompEntry>;
 }
 
-function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutViewerProps) {
+function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map() }: StoreLayoutViewerProps) {
   const utils = trpc.useUtils();
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -798,15 +839,32 @@ function StoreLayoutViewer({ data, selectedBranch, branchName }: StoreLayoutView
               const metrics = shelfMetrics.get(tooltip.zone.name);
               const tipX = (tooltip.x - stagePos.x) / scale + 10;
               const tipY = (tooltip.y - stagePos.y) / scale - 10;
+              // Buscar datos de comparación para esta zona
+              // La zona.name coincide con shelf_name en compMap
+              const compEntry = metrics ? Array.from(compMap.values()).find(
+                (e) => e.shelf_name === tooltip.zone.name
+              ) : undefined;
+              const montoVar = compEntry ? calcVariation(metrics!.monto, compEntry.previous.monto_total) : null;
+              const unidVar  = compEntry ? calcVariation(metrics!.unidades, compEntry.previous.cantidad_vendida) : null;
+              const skuVar   = compEntry ? calcVariation(metrics!.skus.size, compEntry.previous.productos_distintos) : null;
+              const fmtVar = (v: number | null) => {
+                if (v === null) return '';
+                const sign = v > 0 ? '+' : '';
+                return ` (${sign}${v.toFixed(1)}%)`;
+              };
+              const tooltipHeight = metrics ? (compEntry ? 100 : 70) : 40;
               return (
                 <Group x={tipX} y={tipY}>
-                  <Rect width={180} height={metrics ? 70 : 40} fill="#1e293b" cornerRadius={6} opacity={0.92} />
+                  <Rect width={220} height={tooltipHeight} fill="#1e293b" cornerRadius={6} opacity={0.95} />
                   <Text text={tooltip.zone.name} x={8} y={8} fontSize={12} fontStyle="bold" fill="#f8fafc" />
                   {metrics ? (
                     <>
-                      <Text text={`Monto: S/ ${fmtCurrency(metrics.monto)}`} x={8} y={26} fontSize={11} fill="#94a3b8" />
-                      <Text text={`Unidades: ${fmtNumber(metrics.unidades)}`} x={8} y={42} fontSize={11} fill="#94a3b8" />
-                      <Text text={`SKUs: ${metrics.skus.size}`} x={8} y={56} fontSize={11} fill="#94a3b8" />
+                      <Text text={`Monto: S/ ${fmtCurrency(metrics.monto)}${fmtVar(montoVar)}`} x={8} y={26} fontSize={10} fill={montoVar !== null ? (montoVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
+                      <Text text={`Unidades: ${fmtNumber(metrics.unidades)}${fmtVar(unidVar)}`} x={8} y={42} fontSize={10} fill={unidVar !== null ? (unidVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
+                      <Text text={`SKUs: ${metrics.skus.size}${fmtVar(skuVar)}`} x={8} y={58} fontSize={10} fill={skuVar !== null ? (skuVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
+                      {compEntry && (
+                        <Text text="vs período anterior" x={8} y={78} fontSize={9} fill="#64748b" fontStyle="italic" />
+                      )}
                     </>
                   ) : (
                     <Text text="Sin datos en el período" x={8} y={26} fontSize={11} fill="#94a3b8" />
@@ -967,6 +1025,36 @@ export default function SalesByShelf() {
     include_igv: includeIgv,
     shelf_status: shelfStatus,
   });
+
+  // Query de comparación por góndola (período actual vs anterior)
+  const { data: compResult } = trpc.sales.getSalesByShelfComparison.useQuery({
+    fecha_min: fechaMin,
+    fecha_max: fechaMax,
+    branch_id: selectedBranch !== "all" ? selectedBranch : undefined,
+    category_id: selectedCategory !== "all" ? selectedCategory : undefined,
+    include_igv: includeIgv,
+    shelf_status: shelfStatus,
+  });
+  const compData: ShelfCompEntry[] = (compResult?.data ?? []) as ShelfCompEntry[];
+  // Mapa de comparación: key = "branch_sap_id::shelf_id"
+  const compMap = useMemo(() => {
+    const m = new Map<string, ShelfCompEntry>();
+    compData.forEach((e) => {
+      const key = `${e.branch_sap_id}::${e.shelf_id ?? 'null'}`;
+      m.set(key, e);
+    });
+    return m;
+  }, [compData]);
+  // Totales del período anterior para KPIs
+  const prevKpis = useMemo(() => {
+    let totalMonto = 0;
+    let totalCantidad = 0;
+    compData.forEach((e) => {
+      totalMonto    += e.previous.monto_total;
+      totalCantidad += e.previous.cantidad_vendida;
+    });
+    return { totalMonto, totalCantidad };
+  }, [compData]);
 
   const rows: ShelfRow[] = queryResult?.data ?? [];
   const aggRows: ShelfAggRow[] = aggResult?.data ?? [];
@@ -1130,17 +1218,46 @@ export default function SalesByShelf() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* KPI: Monto Total con comparación */}
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-sans)" }}>Monto Total</p>
+                <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: "#008064", fontFamily: "var(--font-sans)" }}>
+                  S/ {fmtCurrency(kpis.totalMonto)}
+                </p>
+                {prevKpis.totalMonto > 0 && (
+                  <div className="mt-1">
+                    <VariationBadge current={kpis.totalMonto} previous={prevKpis.totalMonto} />
+                    <span className="text-xs ml-1 text-muted-foreground">vs período ant.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* KPI: Cantidad Vendida con comparación */}
+            <Card className="border-0 shadow-sm bg-card">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-sans)" }}>Cantidad Vendida</p>
+                <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: "#1A6894", fontFamily: "var(--font-sans)" }}>
+                  {fmtNumber(kpis.totalCantidad)}
+                </p>
+                {prevKpis.totalCantidad > 0 && (
+                  <div className="mt-1">
+                    <VariationBadge current={kpis.totalCantidad} previous={prevKpis.totalCantidad} />
+                    <span className="text-xs ml-1 text-muted-foreground">vs período ant.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* KPIs sin comparación */}
             {[
-              { label: "Monto Total", value: `S/ ${fmtCurrency(kpis.totalMonto)}`, color: "#008064" },
-              { label: "Cantidad Vendida", value: fmtNumber(kpis.totalCantidad), color: "#1A6894" },
-              { label: "Productos únicos", value: kpis.uniqueProducts.toString(), color: "#232523" },
-              { label: "Con shelf", value: kpis.conShelf.toString(), color: "#008064" },
-              { label: "Sin shelf", value: kpis.sinShelf.toString(), color: "#C49705" },
-              { label: "Sin registro", value: kpis.sinRegistro.toString(), color: "#BC2C46" },
+              { label: "Productos únicos", value: kpis.uniqueProducts.toString(), color: "var(--foreground)" },
+              { label: "Con shelf",        value: kpis.conShelf.toString(),        color: "#008064" },
+              { label: "Sin shelf",        value: kpis.sinShelf.toString(),        color: "#C49705" },
+              { label: "Sin registro",     value: kpis.sinRegistro.toString(),     color: "#BC2C46" },
             ].map((kpi) => (
-              <Card key={kpi.label} className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
+              <Card key={kpi.label} className="border-0 shadow-sm bg-card">
                 <CardContent className="p-3">
-                  <p className="text-xs" style={{ color: "#919291", fontFamily: "var(--font-sans)" }}>{kpi.label}</p>
+                  <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-sans)" }}>{kpi.label}</p>
                   <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: kpi.color, fontFamily: "var(--font-sans)" }}>
                     {kpi.value}
                   </p>
@@ -1302,7 +1419,10 @@ export default function SalesByShelf() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredAggRows.map((row, i) => (
+                        {filteredAggRows.map((row, i) => {
+                          const compKey = `${row.branch_sap_id}::${row.shelf_id ?? 'null'}`;
+                          const comp = compMap.get(compKey);
+                          return (
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
@@ -1316,13 +1436,21 @@ export default function SalesByShelf() {
                               {row.shelf_name || <span style={{ color: "#919291", fontStyle: "italic" }}>(Sin góndola asignada)</span>}
                             </TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{row.productos_distintos.toLocaleString()}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{fmtNumber(row.cantidad_vendida)}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>
+                              <div>{row.productos_distintos.toLocaleString()}</div>
+                              {comp && <VariationBadge current={row.productos_distintos} previous={comp.previous.productos_distintos} />}
+                            </TableCell>
+                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>
+                              <div>{fmtNumber(row.cantidad_vendida)}</div>
+                              {comp && <VariationBadge current={row.cantidad_vendida} previous={comp.previous.cantidad_vendida} />}
+                            </TableCell>
                             <TableCell className="text-xs text-right tabular-nums font-bold" style={{ color: "#008064" }}>
-                              S/ {fmtCurrency(row.monto_total)}
+                              <div>S/ {fmtCurrency(row.monto_total)}</div>
+                              {comp && <VariationBadge current={row.monto_total} previous={comp.previous.monto_total} />}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -1360,6 +1488,7 @@ export default function SalesByShelf() {
                     data={rows}
                     selectedBranch={selectedBranch}
                     branchName={branchName}
+                    compMap={compMap}
                   />
                 )}
               </CardContent>
