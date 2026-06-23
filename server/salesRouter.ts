@@ -305,12 +305,14 @@ export const salesRouter = router({
       }
 
       // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail
+      // Incluye JOIN a branches (para filtrar por branch_id) y categories (para category_id)
       const query = `
         WITH filtered_headers AS (
           SELECT
             sh.id,
             sh.doc_date,
             sh.branch_id,
+            b.sap_id AS branch_sap_id,
             CASE
               WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
@@ -318,17 +320,28 @@ export const salesRouter = router({
                 THEN 'previous'
             END AS period
           FROM sales_header sh
+          LEFT JOIN branches b ON b.id = sh.branch_id
           WHERE sh.doc_date IS NOT NULL
             AND (
               (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
               OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
             )
+            ${additionalFilters.filter(f => f.includes('b.sap_id')).join('\n            ')}
         ),
         agg_detail AS (
-          SELECT sd.header_id, SUM(${amtCol}) AS line_total
+          SELECT
+            sd.header_id,
+            SUM(${amtCol}) AS line_total,
+            COALESCE(g.id, p.id, c.id) AS category_id
           FROM sales_detail sd
           INNER JOIN filtered_headers fh ON fh.id = sd.header_id
-          GROUP BY sd.header_id
+          LEFT JOIN categories_products cp
+            ON cp.product_id = sd.product_id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN categories c ON c.id = cp.category_id
+          LEFT JOIN categories p ON p.id = c.parent_category_id
+          LEFT JOIN categories g ON g.id = p.parent_category_id
+          GROUP BY sd.header_id, COALESCE(g.id, p.id, c.id)
         )
         SELECT
           fh.period,
@@ -337,6 +350,7 @@ export const salesRouter = router({
         FROM filtered_headers fh
         JOIN agg_detail ad ON ad.header_id = fh.id
         WHERE fh.period IS NOT NULL
+          ${additionalFilters.filter(f => f.includes('category')).map(f => f.replace('COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)', 'ad.category_id')).join('\n          ')}
         GROUP BY fh.period;
       `;
 
