@@ -2391,4 +2391,35 @@ export const salesRouter = router({
       }
     }),
 
+  // ─── Reasignar producto a góndola (proxy server-side para evitar CORS) ────────
+  reassignProductShelf: publicProcedure
+    .input(z.object({
+      branchSapId: z.string(),
+      intSku:      z.number().int(),
+      shelfId:     z.string().uuid(),
+    }))
+    .mutation(async ({ input }) => {
+      const { branchSapId, intSku, shelfId } = input;
+      const url = 'https://server.florayfauna.pe/api/productos/estantes/p';
+      const body = JSON.stringify({ branchSapId, intSku, shelfId });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+      } catch (err: any) {
+        console.error('[reassignProductShelf] Network error:', err?.message);
+        throw new Error(`Error de red al conectar con el servidor: ${err?.message ?? 'desconocido'}`);
+      }
+      if (!response.ok) {
+        let detail = '';
+        try { detail = await response.text(); } catch {}
+        console.error(`[reassignProductShelf] HTTP ${response.status}:`, detail);
+        throw new Error(`Error del servidor externo (HTTP ${response.status})${detail ? ': ' + detail : ''}`);
+      }
+      return { success: true };
+    }),
+
 });

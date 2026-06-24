@@ -998,6 +998,7 @@ function ShelfReassignModal({
   const [reassigning, setReassigning] = useState<Record<string, ReassignState>>({});
   const [selectedShelves, setSelectedShelves] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
+  const reassignMutation = trpc.sales.reassignProductShelf.useMutation();
 
   const { data: productsData, isLoading: loadingProducts } = trpc.sales.getProductsByShelfAndBranch.useQuery(
     { branch_sap_id: target?.branch_sap_id ?? '', shelf_id: target?.shelf_id ?? null, fecha_min: target?.fecha_min, fecha_max: target?.fecha_max },
@@ -1020,31 +1021,19 @@ function ShelfReassignModal({
     );
   }, [products, search]);
 
-  const handleReassign = async (product: ProductRow) => {
+    const handleReassign = async (product: ProductRow) => {
     const newShelfId = selectedShelves[product.product_id];
     if (!newShelfId || !target) return;
-
     setReassigning((prev) => ({
       ...prev,
       [product.product_id]: { productId: product.product_id, newShelfId, status: 'loading' },
     }));
-
     try {
-      const response = await fetch('https://server.florayfauna.pe/api/productos/estantes/p', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branchSapId: target.branch_sap_id,
-          intSku: Number(product.int_sku),
-          shelfId: newShelfId,
-        }),
+      await reassignMutation.mutateAsync({
+        branchSapId: target.branch_sap_id,
+        intSku: Number(product.int_sku),
+        shelfId: newShelfId,
       });
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => response.statusText);
-        throw new Error(errText || `HTTP ${response.status}`);
-      }
-
       setReassigning((prev) => ({
         ...prev,
         [product.product_id]: { productId: product.product_id, newShelfId, status: 'success', message: 'Reasignado correctamente' },
