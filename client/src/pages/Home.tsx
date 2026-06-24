@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -101,6 +101,14 @@ export default function Home() {
       href: "/top-customers",
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#C49705]", // Mostaza
+    },
+    {
+      title: "Análisis por Góndola",
+      description: "Visualiza ventas por posición de góndola en tienda con heatmap y comparación de períodos",
+      icon: LayoutGrid,
+      href: "/sales-by-shelf",
+      color: "text-[#EAE8E2]", // Beige
+      bgColor: "bg-[#005A47]", // Esmeralda oscuro
     },
   ];
 

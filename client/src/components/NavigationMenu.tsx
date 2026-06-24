@@ -165,7 +165,7 @@ export function NavigationMenu() {
                 <DropdownMenuItem asChild>
                   <Link href="/sales-by-shelf" className="flex items-center w-full cursor-pointer">
                     <LayoutGrid className="mr-2 h-4 w-4" />
-                    <span>Venta por Góndola</span>
+                    <span>Análisis por Góndola</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -441,7 +441,7 @@ export function NavigationMenu() {
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4 shrink-0" />
-                    <span>Venta por Góndola</span>
+                    <span>Análisis por Góndola</span>
                   </Link>
                 </div>
               )}

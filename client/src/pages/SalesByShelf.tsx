@@ -99,22 +99,22 @@ function statusBadge(status: string) {
         Sin registro
       </span>
     );
-  if (status === "Stock sin shelf")
+  if (status === "Stock sin góndola")
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#FBF3D5", color: "#8B6B04" }}>
-        Sin shelf
+        Sin góndola
       </span>
     );
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#D6EDE8", color: "#005A47" }}>
-      Con shelf
+      Con góndola
     </span>
   );
 }
 
 function getStatusColor(status: string): string {
   if (status === "Sin registro en stocks") return "#ef4444";
-  if (status === "Stock sin shelf") return "#f59e0b";
+  if (status === "Stock sin góndola") return "#f59e0b";
   return "#10b981";
 }
 
@@ -329,7 +329,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
   const shelfMetrics = useMemo(() => {
     const map = new Map<string, { monto: number; unidades: number; skus: Set<string>; status: string }>();
     data.forEach((row) => {
-      const key = row.shelf_name || row.shelf_id || "sin_shelf";
+      const key = row.shelf_name || row.shelf_id || "sin_gondola";
       const existing = map.get(key);
       if (existing) {
         existing.monto += row.monto_total;
@@ -619,7 +619,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "#F5F4F1",
+          background: "var(--muted)",
           display: "flex",
           flexDirection: "column",
           padding: 8,
@@ -840,7 +840,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
               const tipX = (tooltip.x - stagePos.x) / scale + 10;
               const tipY = (tooltip.y - stagePos.y) / scale - 10;
               // Buscar datos de comparación para esta zona
-              // La zona.name coincide con shelf_name en compMap
+              // La zona.name coincide con góndola_name en compMap
               const compEntry = metrics ? Array.from(compMap.values()).find(
                 (e) => e.shelf_name === tooltip.zone.name
               ) : undefined;
@@ -879,7 +879,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
 
       {/* Panel de zona seleccionada */}
       {selectedZone && (
-        <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#1A6894", backgroundColor: "#FFFFFF" }}>
+        <div className="rounded-xl border p-4 space-y-3 bg-card" style={{ borderColor: "#1A6894" }}>
           {/* Cabecera */}
           <div className="flex items-center gap-2">
             <LayoutGrid className="h-4 w-4 flex-shrink-0" style={{ color: "#1A6894" }} />
@@ -979,7 +979,7 @@ export default function SalesByShelf() {
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [shelfStatus, setShelfStatus] = useState<"all" | "sin_registro" | "sin_shelf" | "con_shelf">("all");
+  const [shelfStatus, setShelfStatus] = useState<"all" | "sin_registro" | "sin_gondola" | "con_gondola">("all");
   const [search, setSearch] = useState("");
   const [searchAgg, setSearchAgg] = useState("");
   const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
@@ -1102,8 +1102,8 @@ export default function SalesByShelf() {
     const totalMonto = rows.reduce((s, r) => s + r.monto_total, 0);
     const totalCantidad = rows.reduce((s, r) => s + r.cantidad_vendida, 0);
     const sinRegistro = rows.filter((r) => r.shelf_status === "Sin registro en stocks").length;
-    const sinShelf = rows.filter((r) => r.shelf_status === "Stock sin shelf").length;
-    const conShelf = rows.filter((r) => r.shelf_status === "Con shelf asignado").length;
+    const sinShelf = rows.filter((r) => r.shelf_status === "Stock sin góndola").length;
+    const conShelf = rows.filter((r) => r.shelf_status === "Con góndola asignado").length;
     const uniqueProducts = new Set(rows.map((r) => r.product_id)).size;
     return { totalMonto, totalCantidad, sinRegistro, sinShelf, conShelf, uniqueProducts };
   }, [rows]);
@@ -1155,15 +1155,15 @@ export default function SalesByShelf() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F4F1" }} data-theme={effectiveTheme}>
+    <div className="min-h-screen bg-background" data-theme={effectiveTheme}>
       <NavigationMenu />
       <div className="container py-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-heading uppercase tracking-wide">Venta por Góndola</h1>
+            <h1 className="text-2xl font-heading uppercase tracking-wide">Análisis por Góndola</h1>
             <p className="text-sm mt-1" style={{ color: "#919291" }}>
-              Análisis de ventas por posición de góndola (shelf) en tienda.
+              Análisis de ventas por posición de góndola en tienda.
               {includeIgv ? " Con IGV." : " Sin IGV."}
             </p>
           </div>
@@ -1196,15 +1196,15 @@ export default function SalesByShelf() {
         {/* Filtro adicional: estado de shelf */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-medium" style={{ color: "#919291" }}>Estado shelf:</span>
-          <Select value={shelfStatus} onValueChange={(v) => setShelfStatus(v as typeof shelfStatus)}>
+          <Select value={shelfStatus} onValueChange={(v) => setShelfStatus(v as "all" | "sin_registro" | "sin_gondola" | "con_gondola")}>
             <SelectTrigger className="w-48 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="sin_registro">Sin registro en stocks</SelectItem>
-              <SelectItem value="sin_shelf">Stock sin shelf</SelectItem>
-              <SelectItem value="con_shelf">Con shelf asignado</SelectItem>
+              <SelectItem value="sin_gondola">Stock sin góndola</SelectItem>
+              <SelectItem value="con_gondola">Con góndola asignado</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1251,8 +1251,8 @@ export default function SalesByShelf() {
             {/* KPIs sin comparación */}
             {[
               { label: "Productos únicos", value: kpis.uniqueProducts.toString(), color: "var(--foreground)" },
-              { label: "Con shelf",        value: kpis.conShelf.toString(),        color: "#008064" },
-              { label: "Sin shelf",        value: kpis.sinShelf.toString(),        color: "#C49705" },
+              { label: "Con góndola",        value: kpis.conShelf.toString(),        color: "#008064" },
+              { label: "Sin góndola",        value: kpis.sinShelf.toString(),        color: "#C49705" },
               { label: "Sin registro",     value: kpis.sinRegistro.toString(),     color: "#BC2C46" },
             ].map((kpi) => (
               <Card key={kpi.label} className="border-0 shadow-sm bg-card">
@@ -1334,12 +1334,12 @@ export default function SalesByShelf() {
                 No se encontraron resultados para los filtros seleccionados.
               </div>
             ) : (
-              <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
+              <Card className="border-0 shadow-sm bg-card">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow style={{ backgroundColor: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                        <TableRow className="bg-muted/40 border-b">
                           <TableHead className="text-xs w-12 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Int. SKU</TableHead>
@@ -1356,12 +1356,10 @@ export default function SalesByShelf() {
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="transition-colors"
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                            className="hover:bg-muted/30 transition-colors"
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium" style={{ color: "#232523" }}>{row.branch_name}</TableCell>
+                            <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.int_sku || "—"}</TableCell>
                             <TableCell className="text-xs max-w-[200px]" style={{ color: "#232523" }}>
                               <span className="block truncate" title={row.product_name}>{row.product_name}</span>
@@ -1403,12 +1401,12 @@ export default function SalesByShelf() {
                 No se encontraron resultados para los filtros seleccionados.
               </div>
             ) : (
-              <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
+              <Card className="border-0 shadow-sm bg-card">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow style={{ backgroundColor: "#F5F4F1", borderBottom: "1px solid #EAE8E2" }}>
+                        <TableRow className="bg-muted/40 border-b">
                           <TableHead className="text-xs w-12 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Góndola</TableHead>
@@ -1426,12 +1424,10 @@ export default function SalesByShelf() {
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="transition-colors"
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                            className="hover:bg-muted/30 transition-colors"
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium" style={{ color: "#232523" }}>{row.branch_name}</TableCell>
+                            <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
                             <TableCell className="text-xs font-semibold" style={{ color: "#232523" }}>
                               {row.shelf_name || <span style={{ color: "#919291", fontStyle: "italic" }}>(Sin góndola asignada)</span>}
                             </TableCell>
@@ -1465,7 +1461,7 @@ export default function SalesByShelf() {
 
           {/* Tab: Mapa Konva */}
           <TabsContent value="mapa" className="mt-4">
-            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#FFFFFF" }}>
+            <Card className="border-0 shadow-sm bg-card">
               <CardHeader className="pb-3" style={{ borderBottom: "1px solid #EAE8E2" }}>
                 <CardTitle className="text-base flex items-center gap-2 font-heading uppercase" style={{ color: "#232523" }}>
                   <LayoutGrid className="h-4 w-4" style={{ color: "#1A6894" }} />

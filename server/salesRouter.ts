@@ -1851,8 +1851,8 @@ export const salesRouter = router({
         branch_id:   z.string().optional(),
         category_id: z.string().optional(),
         include_igv: z.boolean().default(true),
-        // Filtro de estado de shelf: 'all' | 'sin_registro' | 'sin_shelf' | 'con_shelf'
-        shelf_status: z.enum(['all', 'sin_registro', 'sin_shelf', 'con_shelf']).default('all'),
+        // Filtro de estado de shelf: 'all' | 'sin_registro' | 'sin_gondola' | 'con_gondola'
+        shelf_status: z.enum(['all', 'sin_registro', 'sin_gondola', 'con_gondola']).default('all'),
       })
     )
     .query(async ({ input }) => {
@@ -1877,8 +1877,8 @@ export const salesRouter = router({
       // Filtro de estado de shelf
       const shelfStatusClause =
         shelf_status === 'sin_registro' ? 'AND st.id IS NULL' :
-        shelf_status === 'sin_shelf'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
-        shelf_status === 'con_shelf'    ? 'AND st.shelf_id IS NOT NULL' :
+        shelf_status === 'sin_gondola'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
+        shelf_status === 'con_gondola'    ? 'AND st.shelf_id IS NOT NULL' :
         ''; // 'all' = sin filtro
 
       const query = `
@@ -1980,7 +1980,7 @@ export const salesRouter = router({
         branch_id:    z.string().optional(),
         category_id:  z.string().optional(),
         include_igv:  z.boolean().default(true),
-        shelf_status: z.enum(['all', 'sin_registro', 'sin_shelf', 'con_shelf']).default('all'),
+        shelf_status: z.enum(['all', 'sin_registro', 'sin_gondola', 'con_gondola']).default('all'),
       })
     )
     .query(async ({ input }) => {
@@ -2002,8 +2002,8 @@ export const salesRouter = router({
 
       const shelfStatusClause =
         shelf_status === 'sin_registro' ? 'AND st.id IS NULL' :
-        shelf_status === 'sin_shelf'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
-        shelf_status === 'con_shelf'    ? 'AND st.shelf_id IS NOT NULL' :
+        shelf_status === 'sin_gondola'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
+        shelf_status === 'con_gondola'    ? 'AND st.shelf_id IS NOT NULL' :
         '';
 
       const query = `
@@ -2131,7 +2131,7 @@ export const salesRouter = router({
         branch_id:    z.string().optional(),
         category_id:  z.string().optional(),
         include_igv:  z.boolean().default(true),
-        shelf_status: z.enum(['all', 'sin_registro', 'sin_shelf', 'con_shelf']).default('all'),
+        shelf_status: z.enum(['all', 'sin_registro', 'sin_gondola', 'con_gondola']).default('all'),
       })
     )
     .query(async ({ input }) => {
@@ -2161,8 +2161,8 @@ export const salesRouter = router({
       if (category_id && category_id !== 'all') params.push(category_id);
       const shelfStatusClause =
         shelf_status === 'sin_registro' ? 'AND st.id IS NULL' :
-        shelf_status === 'sin_shelf'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
-        shelf_status === 'con_shelf'    ? 'AND st.shelf_id IS NOT NULL' : '';
+        shelf_status === 'sin_gondola'    ? 'AND st.id IS NOT NULL AND st.shelf_id IS NULL' :
+        shelf_status === 'con_gondola'    ? 'AND st.shelf_id IS NOT NULL' : '';
 
       const query = `
         WITH base AS (
