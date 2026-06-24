@@ -962,6 +962,8 @@ interface ReassignTarget {
   branch_name: string;
   shelf_id: string | null;
   shelf_name: string;
+  fecha_min?: string;
+  fecha_max?: string;
 }
 
 interface ProductRow {
@@ -998,7 +1000,7 @@ function ShelfReassignModal({
   const [search, setSearch] = useState('');
 
   const { data: productsData, isLoading: loadingProducts } = trpc.sales.getProductsByShelfAndBranch.useQuery(
-    { branch_sap_id: target?.branch_sap_id ?? '', shelf_id: target?.shelf_id ?? null },
+    { branch_sap_id: target?.branch_sap_id ?? '', shelf_id: target?.shelf_id ?? null, fecha_min: target?.fecha_min, fecha_max: target?.fecha_max },
     { enabled: !!target }
   );
 
@@ -1062,7 +1064,7 @@ function ShelfReassignModal({
 
   return (
     <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col gap-0 p-0">
+      <DialogContent className="sm:max-w-5xl w-full flex flex-col gap-0 p-0 overflow-hidden" style={{ maxHeight: '90vh' }}>
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="text-base font-heading uppercase flex items-center gap-2">
             <Edit3 className="h-4 w-4 text-primary" />
@@ -1089,7 +1091,7 @@ function ShelfReassignModal({
         </div>
 
         {/* Tabla */}
-        <ScrollArea className="flex-1 px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           {loadingProducts || loadingShelves ? (
             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -1103,11 +1105,11 @@ function ShelfReassignModal({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40">
-                  <TableHead className="text-xs font-heading uppercase w-24" style={{ color: "#919291" }}>SKU</TableHead>
-                  <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Artículo</TableHead>
-                  <TableHead className="text-xs font-heading uppercase text-right w-20" style={{ color: "#919291" }}>Stock</TableHead>
-                  <TableHead className="text-xs font-heading uppercase w-56" style={{ color: "#919291" }}>Nueva góndola</TableHead>
-                  <TableHead className="text-xs font-heading uppercase w-28 text-center" style={{ color: "#919291" }}>Acción</TableHead>
+                  <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>SKU</TableHead>
+                  <TableHead className="text-xs font-heading uppercase hidden sm:table-cell" style={{ color: "#919291" }}>Artículo</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-right hidden sm:table-cell" style={{ color: "#919291" }}>Stock</TableHead>
+                  <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Nueva góndola</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-center hidden sm:table-cell" style={{ color: "#919291" }}>Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1120,10 +1122,10 @@ function ShelfReassignModal({
                   return (
                     <TableRow key={product.product_id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="text-xs tabular-nums text-muted-foreground">{product.int_sku}</TableCell>
-                      <TableCell className="text-xs text-foreground font-medium max-w-[200px]">
+                      <TableCell className="text-xs text-foreground font-medium hidden sm:table-cell">
                         <span className="block truncate" title={product.product_name}>{product.product_name}</span>
                       </TableCell>
-                      <TableCell className="text-xs text-right tabular-nums text-foreground">{product.stock.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums text-foreground hidden sm:table-cell">{product.stock.toLocaleString()}</TableCell>
                       <TableCell className="text-xs">
                         <Select
                           value={selectedShelf}
@@ -1141,7 +1143,7 @@ function ShelfReassignModal({
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center hidden sm:table-cell">
                         {state?.status === 'success' ? (
                           <span className="inline-flex items-center gap-1 text-xs text-[#008064]">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Listo
@@ -1175,7 +1177,7 @@ function ShelfReassignModal({
               </TableBody>
             </Table>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
         <div className="px-6 py-3 border-t flex justify-between items-center text-xs text-muted-foreground">
@@ -1600,6 +1602,8 @@ export default function SalesByShelf() {
                               branch_name: row.branch_name,
                               shelf_id: row.shelf_id,
                               shelf_name: row.shelf_name,
+                              fecha_min: fechaMin,
+                              fecha_max: fechaMax,
                             })}
                             title="Clic para ver y reasignar artículos"
                           >
@@ -1675,6 +1679,8 @@ export default function SalesByShelf() {
                               branch_name: row.branch_name,
                               shelf_id: row.shelf_id,
                               shelf_name: row.shelf_name,
+                              fecha_min: fechaMin,
+                              fecha_max: fechaMax,
                             })}
                             title="Clic para ver y reasignar artículos"
                           >

@@ -2285,34 +2285,52 @@ export const salesRouter = router({
     .input(z.object({
       branch_sap_id: z.string(),
       shelf_id:      z.string().nullable(),   // null → productos sin góndola asignada
+      fecha_min:     z.string().optional(),   // YYYY-MM-DD para filtrar por ventas
+      fecha_max:     z.string().optional(),   // YYYY-MM-DD para filtrar por ventas
     }))
     .query(async ({ input }) => {
-      const { branch_sap_id, shelf_id } = input;
+      const { branch_sap_id, shelf_id, fecha_min, fecha_max } = input;
 
-      // Condición de filtro por góndola
-      const shelfClause = shelf_id === null
-        ? 'AND st.shelf_id IS NULL AND st.id IS NOT NULL'
-        : `AND st.shelf_id = '${shelf_id}'`;
+      // Condición de góndola: filtrar el stock del producto en esa tienda
+      const shelfStockClause = shelf_id === null
+        ? 'AND st.shelf_id IS NULL'
+        : `AND st.shelf_id = '${shelf_id.replace(/'/g, "''")}'`;
 
+      // Filtro de fecha para ventas (opcional)
+      const fechaMinDate = fecha_min ? fecha_min.substring(0, 10) : null;
+      const fechaMaxDate = fecha_max ? fecha_max.substring(0, 10) : null;
+      const fechaClause = (fechaMinDate && fechaMaxDate)
+        ? `AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')`
+        : '';
+
+      // Filtra solo productos que tienen ventas registradas en esa tienda+góndola
+      // JOIN: sales_header -> sales_detail -> products -> stocks (con shelf) -> shelfs
       const query = `
-        SELECT
+        SELECT DISTINCT
           p.id                                                         AS product_id,
           p.int_sku                                                    AS int_sku,
           INITCAP(LOWER(p.name))                                       AS product_name,
           COALESCE(st.stock, 0)                                        AS stock,
           st.id                                                        AS stock_id,
           st.shelf_id                                                  AS shelf_id,
-          COALESCE(sh.name, '(Sin góndola)')                           AS shelf_name
-        FROM public.products p
+          COALESCE(sh2.name, '(Sin góndola)')                          AS shelf_name,
+          sh2.id                                                       AS shelf_uuid
+        FROM public.sales_header sh
+        INNER JOIN public.sales_detail sd
+          ON sd.header_id = sh.id
+        INNER JOIN public.products p
+          ON p.id = sd.product_id
+        INNER JOIN public.branches b
+          ON b.id = sh.branch_id
+         AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'
         INNER JOIN public.stocks st
           ON st.product_id = p.id
-        INNER JOIN public.branches b
-          ON b.id = st.branch_id
-         AND b.sap_id = '${branch_sap_id}'
-        LEFT JOIN public.shelfs sh
-          ON sh.id = st.shelf_id
-        WHERE 1=1
-          ${shelfClause}
+         AND st.branch_id  = sh.branch_id
+        LEFT JOIN public.shelfs sh2
+          ON sh2.id = st.shelf_id
+        WHERE sh.doc_date IS NOT NULL
+          ${fechaClause}
+          ${shelfStockClause}
         ORDER BY INITCAP(LOWER(p.name))
         LIMIT 500;
       `;
@@ -2327,7 +2345,7 @@ export const salesRouter = router({
             product_name: row.product_name ?? '',
             stock:        Number(row.stock ?? 0),
             stock_id:     row.stock_id ?? null,
-            shelf_id:     row.shelf_id ?? null,
+            shelf_id:     row.shelf_uuid ?? row.shelf_id ?? null,
             shelf_name:   row.shelf_name ?? '(Sin góndola)',
           })),
         };
