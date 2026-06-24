@@ -2280,4 +2280,97 @@ export const salesRouter = router({
         throw new Error('Error al consultar comparación de ventas por góndola');
       }
     }),
+  // ─── Artículos por tienda + góndola (para modal de reasignación) ────────────
+  getProductsByShelfAndBranch: publicProcedure
+    .input(z.object({
+      branch_sap_id: z.string(),
+      shelf_id:      z.string().nullable(),   // null → productos sin góndola asignada
+    }))
+    .query(async ({ input }) => {
+      const { branch_sap_id, shelf_id } = input;
+
+      // Condición de filtro por góndola
+      const shelfClause = shelf_id === null
+        ? 'AND st.shelf_id IS NULL AND st.id IS NOT NULL'
+        : `AND st.shelf_id = '${shelf_id}'`;
+
+      const query = `
+        SELECT
+          p.id                                                         AS product_id,
+          p.int_sku                                                    AS int_sku,
+          INITCAP(LOWER(p.name))                                       AS product_name,
+          COALESCE(st.stock, 0)                                        AS stock,
+          st.id                                                        AS stock_id,
+          st.shelf_id                                                  AS shelf_id,
+          COALESCE(sh.name, '(Sin góndola)')                           AS shelf_name
+        FROM public.products p
+        INNER JOIN public.stocks st
+          ON st.product_id = p.id
+        INNER JOIN public.branches b
+          ON b.id = st.branch_id
+         AND b.sap_id = '${branch_sap_id}'
+        LEFT JOIN public.shelfs sh
+          ON sh.id = st.shelf_id
+        WHERE 1=1
+          ${shelfClause}
+        ORDER BY INITCAP(LOWER(p.name))
+        LIMIT 500;
+      `;
+
+      try {
+        const result = await queryWithRetry(query, []);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            product_id:   row.product_id,
+            int_sku:      row.int_sku ?? '',
+            product_name: row.product_name ?? '',
+            stock:        Number(row.stock ?? 0),
+            stock_id:     row.stock_id ?? null,
+            shelf_id:     row.shelf_id ?? null,
+            shelf_name:   row.shelf_name ?? '(Sin góndola)',
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getProductsByShelfAndBranch:', error);
+        throw new Error('Error al obtener artículos por góndola');
+      }
+    }),
+
+  // ─── Lista de góndolas por tienda (para selector de reasignación) ────────────
+  getShelfsByBranch: publicProcedure
+    .input(z.object({
+      branch_sap_id: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const { branch_sap_id } = input;
+
+      const query = `
+        SELECT DISTINCT
+          sh.id                                                        AS shelf_id,
+          sh.name                                                      AS shelf_name
+        FROM public.shelfs sh
+        INNER JOIN public.stocks st
+          ON st.shelf_id = sh.id
+        INNER JOIN public.branches b
+          ON b.id = st.branch_id
+         AND b.sap_id = '${branch_sap_id}'
+        ORDER BY sh.name;
+      `;
+
+      try {
+        const result = await queryWithRetry(query, []);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            shelf_id:   row.shelf_id,
+            shelf_name: row.shelf_name ?? '',
+          })),
+        };
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getShelfsByBranch:', error);
+        throw new Error('Error al obtener góndolas por tienda');
+      }
+    }),
+
 });

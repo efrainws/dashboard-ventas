@@ -33,8 +33,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3 } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -109,6 +111,13 @@ function statusBadge(status: string) {
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#D6EDE8", color: "#005A47" }}>
       Con góndola
     </span>
+    </div>
+      {/* Modal de reasignación */}
+      <ShelfReassignModal
+        target={reassignTarget}
+        onClose={() => setReassignTarget(null)}
+      />
+    </>
   );
 }
 
@@ -955,6 +964,242 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+// ─── Modal de reasignación de artículos por góndola ──────────────────────────
+interface ReassignTarget {
+  branch_sap_id: string;
+  branch_name: string;
+  shelf_id: string | null;
+  shelf_name: string;
+}
+
+interface ProductRow {
+  product_id: string;
+  int_sku: string;
+  product_name: string;
+  stock: number;
+  stock_id: string | null;
+  shelf_id: string | null;
+  shelf_name: string;
+}
+
+interface ShelfOption {
+  shelf_id: string;
+  shelf_name: string;
+}
+
+interface ReassignState {
+  productId: string;
+  newShelfId: string;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  message?: string;
+}
+
+function ShelfReassignModal({
+  target,
+  onClose,
+}: {
+  target: ReassignTarget | null;
+  onClose: () => void;
+}) {
+  const [reassigning, setReassigning] = useState<Record<string, ReassignState>>({});
+  const [selectedShelves, setSelectedShelves] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
+
+  const { data: productsData, isLoading: loadingProducts } = trpc.sales.getProductsByShelfAndBranch.useQuery(
+    { branch_sap_id: target?.branch_sap_id ?? '', shelf_id: target?.shelf_id ?? null },
+    { enabled: !!target }
+  );
+
+  const { data: shelvesData, isLoading: loadingShelves } = trpc.sales.getShelfsByBranch.useQuery(
+    { branch_sap_id: target?.branch_sap_id ?? '' },
+    { enabled: !!target }
+  );
+
+  const products: ProductRow[] = productsData?.data ?? [];
+  const shelves: ShelfOption[] = shelvesData?.data ?? [];
+
+  const filteredProducts = useMemo(() => {
+    if (!search.trim()) return products;
+    const q = search.toLowerCase();
+    return products.filter(
+      (p) => p.product_name.toLowerCase().includes(q) || p.int_sku.toLowerCase().includes(q)
+    );
+  }, [products, search]);
+
+  const handleReassign = async (product: ProductRow) => {
+    const newShelfId = selectedShelves[product.product_id];
+    if (!newShelfId || !target) return;
+
+    setReassigning((prev) => ({
+      ...prev,
+      [product.product_id]: { productId: product.product_id, newShelfId, status: 'loading' },
+    }));
+
+    try {
+      const response = await fetch('https://server.florayfauna.pe/api/productos/estantes/p', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branchSapId: target.branch_sap_id,
+          intSku: Number(product.int_sku),
+          shelfId: newShelfId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => response.statusText);
+        throw new Error(errText || `HTTP ${response.status}`);
+      }
+
+      setReassigning((prev) => ({
+        ...prev,
+        [product.product_id]: { productId: product.product_id, newShelfId, status: 'success', message: 'Reasignado correctamente' },
+      }));
+      toast.success(`${product.product_name} reasignado correctamente`);
+    } catch (err: any) {
+      const msg = err?.message ?? 'Error desconocido';
+      setReassigning((prev) => ({
+        ...prev,
+        [product.product_id]: { productId: product.product_id, newShelfId, status: 'error', message: msg },
+      }));
+      toast.error(`Error al reasignar: ${msg}`);
+    }
+  };
+
+  if (!target) return null;
+
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogTitle className="text-base font-heading uppercase flex items-center gap-2">
+            <Edit3 className="h-4 w-4 text-primary" />
+            Reasignar artículos — {target.branch_name} ({target.branch_sap_id})
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground mt-1">
+            Góndola actual: <span className="font-medium text-foreground">{target.shelf_name || '(Sin góndola asignada)'}</span>
+            {' · '}
+            {products.length} artículo{products.length !== 1 ? 's' : ''}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Buscador */}
+        <div className="px-6 py-3 border-b">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre o SKU..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-8 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <ScrollArea className="flex-1 px-6 py-4">
+          {loadingProducts || loadingShelves ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Cargando artículos...</span>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground">
+              No se encontraron artículos para esta góndola.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="text-xs font-heading uppercase w-24" style={{ color: "#919291" }}>SKU</TableHead>
+                  <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Artículo</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-right w-20" style={{ color: "#919291" }}>Stock</TableHead>
+                  <TableHead className="text-xs font-heading uppercase w-56" style={{ color: "#919291" }}>Nueva góndola</TableHead>
+                  <TableHead className="text-xs font-heading uppercase w-28 text-center" style={{ color: "#919291" }}>Acción</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => {
+                  const state = reassigning[product.product_id];
+                  const selectedShelf = selectedShelves[product.product_id] ?? '';
+                  const isSameShelf = selectedShelf === (product.shelf_id ?? '');
+                  const canReassign = selectedShelf && !isSameShelf;
+
+                  return (
+                    <TableRow key={product.product_id} className="hover:bg-muted/20 transition-colors">
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">{product.int_sku}</TableCell>
+                      <TableCell className="text-xs text-foreground font-medium max-w-[200px]">
+                        <span className="block truncate" title={product.product_name}>{product.product_name}</span>
+                      </TableCell>
+                      <TableCell className="text-xs text-right tabular-nums text-foreground">{product.stock.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">
+                        <Select
+                          value={selectedShelf}
+                          onValueChange={(v) => setSelectedShelves((prev) => ({ ...prev, [product.product_id]: v }))}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue placeholder="Seleccionar góndola..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {shelves.map((s) => (
+                              <SelectItem key={s.shelf_id} value={s.shelf_id} className="text-xs">
+                                {s.shelf_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {state?.status === 'success' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-[#008064]">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Listo
+                          </span>
+                        ) : state?.status === 'error' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-destructive" title={state.message}>
+                            <XCircle className="h-3.5 w-3.5" /> Error
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-3"
+                            disabled={!canReassign || state?.status === 'loading'}
+                            onClick={() => handleReassign(product)}
+                          >
+                            {state?.status === 'loading' ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Reasignar
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t flex justify-between items-center text-xs text-muted-foreground">
+          <span>
+            {Object.values(reassigning).filter((s) => s.status === 'success').length} reasignación(es) exitosa(s)
+          </span>
+          <Button variant="outline" size="sm" onClick={onClose} className="h-7 text-xs">
+            Cerrar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 export default function SalesByShelf() {
   const { user } = useAuth();
   const { effectiveTheme } = useTheme();
@@ -1356,7 +1601,14 @@ export default function SalesByShelf() {
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="hover:bg-muted/30 transition-colors"
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => setReassignTarget({
+                              branch_sap_id: row.branch_sap_id,
+                              branch_name: row.branch_name,
+                              shelf_id: row.shelf_id,
+                              shelf_name: row.shelf_name,
+                            })}
+                            title="Clic para ver y reasignar artículos"
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
@@ -1424,7 +1676,14 @@ export default function SalesByShelf() {
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="hover:bg-muted/30 transition-colors"
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => setReassignTarget({
+                              branch_sap_id: row.branch_sap_id,
+                              branch_name: row.branch_name,
+                              shelf_id: row.shelf_id,
+                              shelf_name: row.shelf_name,
+                            })}
+                            title="Clic para ver y reasignar artículos"
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
