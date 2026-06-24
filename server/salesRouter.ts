@@ -1891,7 +1891,7 @@ export const salesRouter = router({
           INITCAP(LOWER(p.name))                                       AS product_name,
           CASE
             WHEN st.id IS NULL          THEN 'Sin registro en stocks'
-            WHEN st.shelf_id IS NULL    THEN 'Stock sin shelf'
+            WHEN st.shelf_id IS NULL    THEN 'Stock sin góndola'
             ELSE                             'Con shelf asignado'
           END                                                          AS shelf_status,
           sh2.id                                                       AS shelf_id,
@@ -1934,7 +1934,7 @@ export const salesRouter = router({
           sh2.name,
           CASE
             WHEN st.id IS NULL          THEN 'Sin registro en stocks'
-            WHEN st.shelf_id IS NULL    THEN 'Stock sin shelf'
+            WHEN st.shelf_id IS NULL    THEN 'Stock sin góndola'
             ELSE                             'Con shelf asignado'
           END,
           COALESCE(g.name, p2.name, c2.name, 'Sin Categoría')
@@ -2014,8 +2014,8 @@ export const salesRouter = router({
           COALESCE(sh2.name, '(Sin góndola asignada)')                 AS shelf_name,
           CASE
             WHEN MAX(CASE WHEN st.id IS NULL THEN 1 ELSE 0 END) = 1 THEN 'Sin registro en stocks'
-            WHEN MAX(CASE WHEN st.shelf_id IS NULL AND st.id IS NOT NULL THEN 1 ELSE 0 END) = 1 THEN 'Stock sin shelf'
-            ELSE 'Con shelf asignado'
+            WHEN MAX(CASE WHEN st.shelf_id IS NULL AND st.id IS NOT NULL THEN 1 ELSE 0 END) = 1 THEN 'Stock sin góndola'
+            ELSE 'Con góndola asignada'
           END                                                          AS shelf_status,
           COUNT(DISTINCT sd.product_id)                                AS productos_distintos,
           ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,
@@ -2174,7 +2174,7 @@ export const salesRouter = router({
             CASE
               WHEN st.id IS NULL THEN 'Sin registro en stocks'
               WHEN st.shelf_id IS NULL THEN 'Stock sin shelf'
-              ELSE 'Con shelf asignado'
+              ELSE 'Con góndola asignada'
             END                                                          AS shelf_status,
             sd.product_id,
             ${amtCol}                                                    AS line_total,

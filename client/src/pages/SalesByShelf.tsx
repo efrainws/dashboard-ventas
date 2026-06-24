@@ -93,13 +93,13 @@ function fmtNumber(n: number) {
 }
 
 function statusBadge(status: string) {
-  if (status === "Sin registro en stocks")
+  if (status === "Sin registro en stocks" || status === "Sin registro")
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#F8D7DC", color: "#BC2C46" }}>
         Sin registro
       </span>
     );
-  if (status === "Stock sin góndola")
+  if (status === "Stock sin góndola" || status === "Stock sin shelf")
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#FBF3D5", color: "#8B6B04" }}>
         Sin góndola
@@ -113,8 +113,8 @@ function statusBadge(status: string) {
 }
 
 function getStatusColor(status: string): string {
-  if (status === "Sin registro en stocks") return "#ef4444";
-  if (status === "Stock sin góndola") return "#f59e0b";
+  if (status === "Sin registro en stocks" || status === "Sin registro") return "#ef4444";
+  if (status === "Stock sin góndola" || status === "Stock sin shelf") return "#f59e0b";
   return "#10b981";
 }
 
@@ -930,7 +930,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
               <div className="flex gap-6 text-sm pt-1 border-t" style={{ borderColor: "#EAE8E2" }}>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>Monto total</p>
-                  <p className="font-bold" style={{ color: "#008064" }}>S/ {fmtCurrency(metrics.monto)}</p>
+                  <p className="font-bold text-foreground">S/ {fmtCurrency(metrics.monto)}</p>
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>Unidades</p>
@@ -1102,8 +1102,8 @@ export default function SalesByShelf() {
     const totalMonto = rows.reduce((s, r) => s + r.monto_total, 0);
     const totalCantidad = rows.reduce((s, r) => s + r.cantidad_vendida, 0);
     const sinRegistro = rows.filter((r) => r.shelf_status === "Sin registro en stocks").length;
-    const sinShelf = rows.filter((r) => r.shelf_status === "Stock sin góndola").length;
-    const conShelf = rows.filter((r) => r.shelf_status === "Con góndola asignado").length;
+    const sinShelf = rows.filter((r) => r.shelf_status === "Stock sin góndola" || r.shelf_status === "Stock sin shelf").length;
+    const conShelf = rows.filter((r) => r.shelf_status === "Con góndola asignada" || r.shelf_status === "Con shelf asignado").length;
     const uniqueProducts = new Set(rows.map((r) => r.product_id)).size;
     return { totalMonto, totalCantidad, sinRegistro, sinShelf, conShelf, uniqueProducts };
   }, [rows]);
@@ -1361,14 +1361,14 @@ export default function SalesByShelf() {
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.int_sku || "—"}</TableCell>
-                            <TableCell className="text-xs max-w-[200px]" style={{ color: "#232523" }}>
+                            <TableCell className="text-xs max-w-[200px] text-foreground">
                               <span className="block truncate" title={row.product_name}>{row.product_name}</span>
                             </TableCell>
                             <TableCell className="text-xs" style={{ color: "#919291" }}>{row.category_name}</TableCell>
-                            <TableCell className="text-xs" style={{ color: "#232523" }}>{row.shelf_name || <span style={{ color: "#919291" }}>—</span>}</TableCell>
+                            <TableCell className="text-xs text-foreground">{row.shelf_name || <span className="text-muted-foreground">—</span>}</TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>{fmtNumber(row.cantidad_vendida)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums font-semibold" style={{ color: "#008064" }}>
+                            <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(row.cantidad_vendida)}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">
                               S/ {fmtCurrency(row.monto_total)}
                             </TableCell>
                           </TableRow>
@@ -1428,19 +1428,19 @@ export default function SalesByShelf() {
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
-                            <TableCell className="text-xs font-semibold" style={{ color: "#232523" }}>
-                              {row.shelf_name || <span style={{ color: "#919291", fontStyle: "italic" }}>(Sin góndola asignada)</span>}
+                            <TableCell className="text-xs font-semibold text-foreground">
+                              {row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>}
                             </TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>
+                            <TableCell className="text-xs text-right tabular-nums text-foreground">
                               <div>{row.productos_distintos.toLocaleString()}</div>
                               {comp && <VariationBadge current={row.productos_distintos} previous={comp.previous.productos_distintos} />}
                             </TableCell>
-                            <TableCell className="text-xs text-right tabular-nums" style={{ color: "#232523" }}>
+                            <TableCell className="text-xs text-right tabular-nums text-foreground">
                               <div>{fmtNumber(row.cantidad_vendida)}</div>
                               {comp && <VariationBadge current={row.cantidad_vendida} previous={comp.previous.cantidad_vendida} />}
                             </TableCell>
-                            <TableCell className="text-xs text-right tabular-nums font-bold" style={{ color: "#008064" }}>
+                            <TableCell className="text-xs text-right tabular-nums font-bold text-foreground">
                               <div>S/ {fmtCurrency(row.monto_total)}</div>
                               {comp && <VariationBadge current={row.monto_total} previous={comp.previous.monto_total} />}
                             </TableCell>
