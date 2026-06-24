@@ -111,16 +111,8 @@ function statusBadge(status: string) {
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#D6EDE8", color: "#005A47" }}>
       Con góndola
     </span>
-    </div>
-      {/* Modal de reasignación */}
-      <ShelfReassignModal
-        target={reassignTarget}
-        onClose={() => setReassignTarget(null)}
-      />
-    </>
   );
 }
-
 function getStatusColor(status: string): string {
   if (status === "Sin registro en stocks" || status === "Sin registro") return "#ef4444";
   if (status === "Stock sin góndola" || status === "Stock sin shelf") return "#f59e0b";
@@ -1228,6 +1220,7 @@ export default function SalesByShelf() {
   const [search, setSearch] = useState("");
   const [searchAgg, setSearchAgg] = useState("");
   const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
+  const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
 
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
@@ -1751,6 +1744,11 @@ export default function SalesByShelf() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Modal de reasignación */}
+      <ShelfReassignModal
+        target={reassignTarget}
+        onClose={() => setReassignTarget(null)}
+      />
     </div>
   );
 }
