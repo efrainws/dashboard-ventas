@@ -1000,6 +1000,13 @@ function ShelfReassignModal({
   const [search, setSearch] = useState('');
   const reassignMutation = trpc.sales.reassignProductShelf.useMutation();
 
+  // Limpiar estado al cambiar de tienda/góndola para que cada combinación sea independiente
+  useEffect(() => {
+    setReassigning({});
+    setSelectedShelves({});
+    setSearch('');
+  }, [target?.branch_sap_id, target?.shelf_id]);
+
   const { data: productsData, isLoading: loadingProducts } = trpc.sales.getProductsByShelfAndBranch.useQuery(
     { branch_sap_id: target?.branch_sap_id ?? '', shelf_id: target?.shelf_id ?? null, fecha_min: target?.fecha_min, fecha_max: target?.fecha_max },
     { enabled: !!target }

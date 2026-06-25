@@ -2304,10 +2304,11 @@ export const salesRouter = router({
         ? `AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')`
         : '';
 
-      // Filtra solo productos que tienen ventas registradas en esa tienda+góndola
-      // JOIN: sales_header -> sales_detail -> products -> stocks (con shelf) -> shelfs
+      // Filtra solo productos que tienen ventas registradas en esa tienda+góndola.
+      // El stock se obtiene exclusivamente para la tienda indicada (b2.sap_id = branch_sap_id)
+      // para evitar mezclar registros de stocks de otras tiendas.
       const query = `
-        SELECT DISTINCT
+        SELECT DISTINCT ON (p.id)
           p.id                                                         AS product_id,
           p.int_sku                                                    AS int_sku,
           INITCAP(LOWER(p.name))                                       AS product_name,
@@ -2316,23 +2317,24 @@ export const salesRouter = router({
           st.shelf_id                                                  AS shelf_id,
           COALESCE(sh2.name, '(Sin góndola)')                          AS shelf_name,
           sh2.id                                                       AS shelf_uuid
-        FROM public.sales_header sh
+        FROM public.branches b
+        INNER JOIN public.sales_header sh
+          ON sh.branch_id = b.id
         INNER JOIN public.sales_detail sd
           ON sd.header_id = sh.id
         INNER JOIN public.products p
           ON p.id = sd.product_id
-        INNER JOIN public.branches b
-          ON b.id = sh.branch_id
-         AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'
+        -- Stock SOLO de esta tienda (b.id garantiza que es la misma tienda del header)
         INNER JOIN public.stocks st
           ON st.product_id = p.id
-         AND st.branch_id  = sh.branch_id
+         AND st.branch_id  = b.id
         LEFT JOIN public.shelfs sh2
           ON sh2.id = st.shelf_id
-        WHERE sh.doc_date IS NOT NULL
+        WHERE b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'
+          AND sh.doc_date IS NOT NULL
           ${fechaClause}
           ${shelfStockClause}
-        ORDER BY INITCAP(LOWER(p.name))
+        ORDER BY p.id, INITCAP(LOWER(p.name))
         LIMIT 500;
       `;
 
