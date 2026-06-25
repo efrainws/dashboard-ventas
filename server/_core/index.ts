@@ -50,6 +50,18 @@ async function startServer() {
       createContext,
     })
   );
+  // ── Error handler global: garantiza que /api/* siempre devuelva JSON ──────
+  // Esto evita que Express devuelva HTML cuando un middleware lanza una excepción
+  // no capturada (p.ej. durante el warm-up del pool de PostgreSQL al reiniciar).
+  // Express requiere 4 argumentos para reconocer un error handler.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use('/api', (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('[Express] Unhandled API error:', err?.message ?? err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: { message: err?.message ?? 'Internal server error', code: -32603 } });
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
