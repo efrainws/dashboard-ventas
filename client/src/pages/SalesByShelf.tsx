@@ -1054,12 +1054,12 @@ function ShelfReassignModal({
   return (
     <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-5xl w-full flex flex-col gap-0 p-0 overflow-hidden" style={{ maxHeight: '90vh' }}>
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="text-base font-heading uppercase flex items-center gap-2">
+        <DialogHeader className="px-6 pt-8 pb-6 border-b">
+          <DialogTitle className="text-base font-heading uppercase flex items-center gap-2 mb-2">
             <Edit3 className="h-4 w-4 text-primary" />
             Reasignar artículos — {target.branch_name} ({target.branch_sap_id})
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground mt-1">
+          <DialogDescription className="text-sm text-muted-foreground mt-2">
             Góndola actual: <span className="font-medium text-foreground">{target.shelf_name || '(Sin góndola asignada)'}</span>
             {' · '}
             {products.length} artículo{products.length !== 1 ? 's' : ''}
