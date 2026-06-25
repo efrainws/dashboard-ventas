@@ -1060,8 +1060,8 @@ function ShelfReassignModal({
 
   return (
     <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-5xl w-full flex flex-col gap-0 p-0 overflow-hidden" style={{ maxHeight: '90vh' }}>
-        <DialogHeader className="px-6 pt-8 pb-6 border-b">
+      <DialogContent className="sm:max-w-5xl w-full flex flex-col gap-0 p-0 overflow-hidden" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <DialogHeader className="px-6 pt-8 pb-6 border-b flex-shrink-0">
           <DialogTitle className="text-base font-heading uppercase flex items-center gap-2 mb-2">
             <Edit3 className="h-4 w-4 text-primary" />
             Reasignar artículos — {target.branch_name} ({target.branch_sap_id})
@@ -1074,7 +1074,7 @@ function ShelfReassignModal({
         </DialogHeader>
 
         {/* Buscador */}
-        <div className="px-6 py-3 border-b">
+        <div className="px-6 py-3 border-b flex-shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -1087,7 +1087,7 @@ function ShelfReassignModal({
         </div>
 
         {/* Tabla */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4" style={{ minHeight: 0, height: 0 }}>
           {loadingProducts || loadingShelves ? (
             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -1176,7 +1176,7 @@ function ShelfReassignModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t flex justify-between items-center text-xs text-muted-foreground">
+        <div className="px-6 py-3 border-t flex justify-between items-center text-xs text-muted-foreground flex-shrink-0">
           <span>
             {Object.values(reassigning).filter((s) => s.status === 'success').length} reasignación(es) exitosa(s)
           </span>
