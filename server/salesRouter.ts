@@ -2433,7 +2433,7 @@ export const salesRouter = router({
       let response: Response;
       try {
         response = await fetch(`${FF_BASE}/api/productos/estantes/p`, {
-          method: 'PUT',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -2446,9 +2446,17 @@ export const salesRouter = router({
       }
       if (!response.ok) {
         let detail = '';
-        try { detail = await response.text(); } catch {}
-        console.error(`[reassignProductShelf] PUT HTTP ${response.status}:`, detail);
-        throw new Error(`Error del servidor externo (HTTP ${response.status})${detail ? ': ' + detail : ''}`);
+        let userMessage = `Error del servidor externo (HTTP ${response.status})`;
+        try {
+          const raw = await response.text();
+          detail = raw;
+          // Intentar extraer mensaje legible del JSON de error
+          const parsed = JSON.parse(raw);
+          if (parsed?.message) userMessage = parsed.message;
+          else if (typeof parsed === 'string') userMessage = parsed;
+        } catch {}
+        console.error(`[reassignProductShelf] POST HTTP ${response.status}:`, detail);
+        throw new Error(userMessage);
       }
       return { success: true };
     }),
