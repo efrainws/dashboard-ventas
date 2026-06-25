@@ -1645,9 +1645,9 @@ export default function SalesByShelf() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/40 border-b">
-                          <TableHead className="text-xs w-12 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
-                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Góndola</TableHead>
+                          <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Tienda</TableHead>
+                          <TableHead className="text-xs w-16 font-heading uppercase" style={{ color: "#919291" }}>SAP</TableHead>
                           <TableHead className="text-xs font-heading uppercase" style={{ color: "#919291" }}>Estado</TableHead>
                           <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Productos</TableHead>
                           <TableHead className="text-xs font-heading uppercase text-right" style={{ color: "#919291" }}>Cantidad</TableHead>
@@ -1673,11 +1673,11 @@ export default function SalesByShelf() {
                             })}
                             title="Clic para ver y reasignar artículos"
                           >
-                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
                             <TableCell className="text-xs font-semibold text-foreground">
                               {row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>}
                             </TableCell>
+                            <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
+                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
                             <TableCell className="text-xs text-right tabular-nums text-foreground">
                               <div>{row.productos_distintos.toLocaleString()}</div>
