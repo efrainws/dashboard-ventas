@@ -2,6 +2,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { pool, queryWithRetry } from "./postgres";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
+import { ENV } from "./_core/env";
 
 export const salesRouter = router({
   /**
@@ -2400,23 +2401,53 @@ export const salesRouter = router({
     }))
     .mutation(async ({ input }) => {
       const { branchSapId, intSku, shelfId } = input;
-      const url = 'https://server.florayfauna.pe/api/productos/estantes/p';
-      const body = JSON.stringify({ branchSapId, intSku, shelfId });
+      const FF_BASE = 'https://server.florayfauna.pe';
+
+      // ── 1. Obtener token de autenticación ──────────────────────────────────
+      let token: string;
+      try {
+        const loginRes = await fetch(`${FF_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: ENV.ffApiUsername,
+            password: ENV.ffApiPassword,
+            site:     ENV.ffApiSite,
+          }),
+        });
+        if (!loginRes.ok) {
+          const errText = await loginRes.text().catch(() => '');
+          console.error(`[reassignProductShelf] Login HTTP ${loginRes.status}:`, errText);
+          throw new Error(`Error al autenticarse con el servidor externo (HTTP ${loginRes.status})`);
+        }
+        const loginData = await loginRes.json() as { token?: string };
+        if (!loginData.token) throw new Error('El servidor externo no devolvió un token de autenticación');
+        token = loginData.token;
+      } catch (err: any) {
+        if (err.message.startsWith('Error al autenticarse') || err.message.startsWith('El servidor externo')) throw err;
+        console.error('[reassignProductShelf] Login network error:', err?.message);
+        throw new Error(`Error de red al autenticarse: ${err?.message ?? 'desconocido'}`);
+      }
+
+      // ── 2. Ejecutar la reasignación con el token ───────────────────────────
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await fetch(`${FF_BASE}/api/productos/estantes/p`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ branchSapId, intSku, shelfId }),
         });
       } catch (err: any) {
-        console.error('[reassignProductShelf] Network error:', err?.message);
-        throw new Error(`Error de red al conectar con el servidor: ${err?.message ?? 'desconocido'}`);
+        console.error('[reassignProductShelf] PUT network error:', err?.message);
+        throw new Error(`Error de red al reasignar: ${err?.message ?? 'desconocido'}`);
       }
       if (!response.ok) {
         let detail = '';
         try { detail = await response.text(); } catch {}
-        console.error(`[reassignProductShelf] HTTP ${response.status}:`, detail);
+        console.error(`[reassignProductShelf] PUT HTTP ${response.status}:`, detail);
         throw new Error(`Error del servidor externo (HTTP ${response.status})${detail ? ': ' + detail : ''}`);
       }
       return { success: true };
