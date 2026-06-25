@@ -2359,21 +2359,18 @@ export const salesRouter = router({
   // ─── Lista de góndolas por tienda (para selector de reasignación) ────────────
   getShelfsByBranch: publicProcedure
     .input(z.object({
-      branch_sap_id: z.string(),
+      branch_sap_id: z.string().optional(),
     }))
-    .query(async ({ input }) => {
-      const { branch_sap_id } = input;
-
+    .query(async () => {
+      // Consultar directamente la tabla shelfs sin filtrar por tienda.
+      // Las góndolas son globales (no específicas por tienda), por lo que
+      // se devuelven todas las góndolas activas ordenadas alfabéticamente.
       const query = `
-        SELECT DISTINCT
-          sh.id                                                        AS shelf_id,
-          sh.name                                                      AS shelf_name
+        SELECT
+          sh.id   AS shelf_id,
+          sh.name AS shelf_name
         FROM public.shelfs sh
-        INNER JOIN public.stocks st
-          ON st.shelf_id = sh.id
-        INNER JOIN public.branches b
-          ON b.id = st.branch_id
-         AND b.sap_id = '${branch_sap_id}'
+        WHERE sh.status = true
         ORDER BY sh.name;
       `;
 
@@ -2388,7 +2385,7 @@ export const salesRouter = router({
         };
       } catch (error) {
         console.error('[PostgreSQL] Error en getShelfsByBranch:', error);
-        throw new Error('Error al obtener góndolas por tienda');
+        throw new Error('Error al obtener góndolas');
       }
     }),
 
