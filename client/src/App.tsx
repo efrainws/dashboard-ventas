@@ -32,6 +32,7 @@ import DatabaseConnections from "./pages/DatabaseConnections";
 import CreditNotes from "./pages/CreditNotes";
 import TopCustomers from "./pages/TopCustomers";
 import SalesByShelf from "./pages/SalesByShelf";
+import SalesByCategoryAnalysis from "./pages/SalesByCategoryAnalysis";
 
 type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
 
@@ -188,6 +189,9 @@ function Router() {
       </Route>
       <Route path="/sales-by-shelf">
         {() => <ProtectedRoute component={SalesByShelf} path="/sales-by-shelf" guard="no_supplier" />}
+      </Route>
+      <Route path="/sales-by-category">
+        {() => <ProtectedRoute component={SalesByCategoryAnalysis} path="/sales-by-category" guard="no_supplier" />}
       </Route>
 
       {/* Gestión de usuarios — solo system_specialist */}

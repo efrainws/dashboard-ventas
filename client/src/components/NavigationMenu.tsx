@@ -33,6 +33,7 @@ import {
   Database,
   ReceiptText,
   LayoutGrid,
+  FolderTree,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -60,7 +61,8 @@ export function NavigationMenu() {
     location.startsWith("/identified-transactions") ||
     location.startsWith("/credit-notes") ||
     location.startsWith("/top-products") ||
-    location.startsWith("/top-customers");
+    location.startsWith("/top-customers") ||
+    location.startsWith("/sales-by-category");
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -166,6 +168,12 @@ export function NavigationMenu() {
                   <Link href="/sales-by-shelf" className="flex items-center w-full cursor-pointer">
                     <LayoutGrid className="mr-2 h-4 w-4" />
                     <span>Análisis por Góndola</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/sales-by-category" className="flex items-center w-full cursor-pointer">
+                    <FolderTree className="mr-2 h-4 w-4" />
+                    <span>Análisis por Categorías</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -442,6 +450,18 @@ export function NavigationMenu() {
                   >
                     <LayoutGrid className="h-4 w-4 shrink-0" />
                     <span>Análisis por Góndola</span>
+                  </Link>
+                  <Link
+                    href="/sales-by-category"
+                    onClick={closeMobile}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive("/sales-by-category")
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <FolderTree className="h-4 w-4 shrink-0" />
+                    <span>Análisis por Categorías</span>
                   </Link>
                 </div>
               )}

@@ -2185,3 +2185,18 @@ Fecha: 1 de febrero de 2026
 - [x] KPIs principales: Monto Total y Cantidad Vendida con VariationBadge (icono TrendingUp/Down + %)
 - [x] Tabla de agregado por góndola: columnas Productos, Cantidad y Monto con icono + % variación
 - [x] Tooltips del mapa de tienda: monto, unidades y SKUs con variación vs período anterior en color verde/rojo
+
+## Análisis por Categorías (nueva vista)
+- [x] Endpoint: getCategoryTree (árbol dept/sección/familia)
+- [x] Endpoint: getCategoryLineChart (ventas por período para la categoría seleccionada)
+- [x] Endpoint: getCategoryPieBreakdown (distribución de hijos de la categoría seleccionada)
+- [x] Endpoint: getCategoryEvolution (tabla pivotada por producto × tienda × período)
+- [x] Página SalesByCategoryAnalysis con filtros (fecha, tienda, dept, sección, familia, IGV)
+- [x] Filtros de sección y familia dependientes (cascada)
+- [x] Botón "Aplicar Filtros" que dispara las queries
+- [x] Gráfico de líneas: ventas en monto (con opción de cambiar a unidades)
+- [x] Gráfico de pie: distribución por categoría hija de la seleccionada
+- [x] Tabla de artículos: reutilizar SalesEvolutionTable
+- [x] Regla de tienda única para usuarios store_user (branchLocked)
+- [x] Registrar ruta /sales-by-category en App.tsx
+- [x] Agregar al menú de navegación bajo "Ventas"
