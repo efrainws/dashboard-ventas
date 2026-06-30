@@ -34,7 +34,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { SalesEvolutionTable, type Granularity, type EvolutionRow } from "@/components/SalesEvolutionTable";
 import { useFilters } from "@/contexts/FiltersContext";
 import { useIgv } from "@/contexts/IgvContext";
-import { useAggregatedSales } from "@/hooks/useAggregatedSales";
+
 import {
   LineChart,
   Line,
@@ -233,14 +233,19 @@ export default function SalesByCategoryAnalysis() {
     setPendingFamilia("all");
   };
 
-  // ─── Branch list from aggregated sales hook ────────────────────────────────
-  const { metrics: salesMetrics } = useAggregatedSales();
-  const branches = salesMetrics.branches;
-
+  // ─── Branch catalog (loaded on mount, no sales query needed) ───────────────
+  const { data: branchCatalog, isLoading: branchesLoading } =
+    trpc.categoryAnalysis.getBranchCatalog.useQuery(undefined, {
+      staleTime: 5 * 60 * 1000,
+    });
+  const branches = useMemo(
+    () => branchCatalog ?? [],
+    [branchCatalog]
+  );
   const lockedBranchName = useMemo(() => {
     if (!isStoreUser || !assignedStoreCode) return null;
     return branches.find((b) => b.sap_id === assignedStoreCode)?.name ?? assignedStoreCode;
-  }, [isStoreUser, assignedStoreCode, branches]);
+  }, [isStoreUser, assignedStoreCode, branches]);;
 
   // ─── Evolution table state ─────────────────────────────────────────────────
   const [granularity, setGranularity] = useState<Granularity>("day");
@@ -427,9 +432,9 @@ export default function SalesByCategoryAnalysis() {
                     {lockedBranchName ?? assignedStoreCode}
                   </div>
                 ) : (
-                  <Select value={pendingBranch} onValueChange={setPendingBranch}>
+                  <Select value={pendingBranch} onValueChange={setPendingBranch} disabled={branchesLoading}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Todas las tiendas" />
+                      <SelectValue placeholder={branchesLoading ? "Cargando…" : "Todas las tiendas"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas las tiendas</SelectItem>

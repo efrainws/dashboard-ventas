@@ -415,7 +415,7 @@ export const categoryAnalysisRouter = router({
           `,
           params
         );
-        return res.rows as Array<{
+          return res.rows as Array<{
           period: string;
           product_id: string | null;
           producto: string;
@@ -428,4 +428,32 @@ export const categoryAnalysisRouter = router({
         }>;
       });
     }),
+
+  /**
+   * Catálogo ligero de tiendas — se carga al abrir la página,
+   * sin necesidad de ejecutar ninguna consulta de ventas.
+   */
+  getBranchCatalog: publicProcedure.query(async () => {
+    return cached("branch_catalog", TTL.STATIC, async () => {
+      const res = await queryWithRetry(
+        `SELECT
+           id,
+           name,
+           sap_id,
+           address
+         FROM branches
+         ORDER BY
+           NULLIF(regexp_replace(sap_id, '[^0-9]', '', 'g'), '')::int NULLS LAST,
+           name ASC`,
+        []
+      );
+      return res.rows as Array<{
+        id: string;
+        name: string;
+        sap_id: string;
+        address: string | null;
+      }>;
+    });
+  }),
+
 });
