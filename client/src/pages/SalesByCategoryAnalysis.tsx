@@ -96,13 +96,18 @@ function toDate(s: string | Date): Date {
 }
 
 function formatPeriodLabel(key: string, granularity: Granularity): string {
-  const d = toDate(key);
+  // Always parse as local time by appending T00:00:00 to the YYYY-MM-DD string.
+  // This prevents UTC offset from shifting the date (e.g. "2026-06-15T04:00:00Z" → Sun Jun 14 in UTC-5).
+  const isoDate = String(key).slice(0, 10);
+  const d = new Date(isoDate + "T00:00:00");
   if (isNaN(d.getTime())) return key;
   if (granularity === "day") return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
   if (granularity === "week") {
     const end = new Date(d);
     end.setDate(end.getDate() + 6);
-    return `${d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}–${end.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}`;
+    const startLabel = d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+    const endLabel = end.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+    return `${startLabel} – ${endLabel}`;
   }
   return d.toLocaleDateString("es-PE", { month: "short", year: "2-digit" });
 }
