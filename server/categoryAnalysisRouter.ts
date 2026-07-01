@@ -201,12 +201,15 @@ export const categoryAnalysisRouter = router({
         granularity,
       } = input;
       const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      // Cast to ::text so pg driver returns a plain 'YYYY-MM-DD' string instead of a
+      // JavaScript Date object. superjson would serialize Date as UTC timestamp, which
+      // causes a 1-day shift when the client is in UTC-5 (Lima).
       const dateTrunc =
         granularity === "day"
-          ? "sh.doc_date::date"
+          ? "sh.doc_date::date::text"
           : granularity === "week"
-            ? "date_trunc('week', sh.doc_date)::date"
-            : "date_trunc('month', sh.doc_date)::date";
+            ? "date_trunc('week', sh.doc_date)::date::text"
+            : "date_trunc('month', sh.doc_date)::date::text";
 
       const params: unknown[] = [fecha_min, fecha_max];
       const branchFilter = buildBranchFilter(branch_id, params);
@@ -361,12 +364,15 @@ export const categoryAnalysisRouter = router({
         group_by_store,
       } = input;
       const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      // Cast to ::text so pg driver returns a plain 'YYYY-MM-DD' string instead of a
+      // JavaScript Date object. superjson would serialize Date as UTC timestamp, which
+      // causes a 1-day shift when the client is in UTC-5 (Lima).
       const dateTrunc =
         granularity === "day"
-          ? "sh.doc_date::date"
+          ? "sh.doc_date::date::text"
           : granularity === "week"
-            ? "date_trunc('week', sh.doc_date)::date"
-            : "date_trunc('month', sh.doc_date)::date";
+            ? "date_trunc('week', sh.doc_date)::date::text"
+            : "date_trunc('month', sh.doc_date)::date::text";
 
       const params: unknown[] = [fecha_min, fecha_max];
       const branchFilter = buildBranchFilter(branch_id, params);
