@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid, FolderTree } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid, FolderTree, Gauge } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -70,14 +70,7 @@ export default function Home() {
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#008064]", // Esmeralda
     },
-    {
-      title: "Transacciones Identificadas",
-      description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
-      icon: UserCheck,
-      href: "/identified-transactions",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#BC2C46]", // Granate
-    },
+
     {
       title: "Top 50 Productos",
       description: "Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas",
@@ -86,14 +79,7 @@ export default function Home() {
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#5BB6B7]", // Celeste
     },
-    {
-      title: "Notas de Crédito",
-      description: "Detalle de notas de crédito emitidas por tienda con breakdown por cajero",
-      icon: ReceiptText,
-      href: "/credit-notes",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#BC2C46]", // Granate
-    },
+
     {
       title: "Top Clientes",
       description: "Ranking de los mejores clientes por monto de compra por tienda y período",
@@ -117,6 +103,25 @@ export default function Home() {
       href: "/sales-by-category",
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#6B3FA0]", // Púrpura
+    },
+  ];
+
+  const opsModules = [
+    {
+      title: "Transacciones Identificadas",
+      description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
+      icon: UserCheck,
+      href: "/identified-transactions",
+      color: "text-[#EAE8E2]",
+      bgColor: "bg-[#BC2C46]", // Granate
+    },
+    {
+      title: "Notas de Crédito",
+      description: "Detalle de notas de crédito emitidas por tienda con breakdown por cajero",
+      icon: ReceiptText,
+      href: "/credit-notes",
+      color: "text-[#EAE8E2]",
+      bgColor: "bg-[#BC2C46]", // Granate
     },
   ];
 
@@ -176,6 +181,42 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Indicadores de Operación Section */}
+        <div className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <Gauge className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-semibold tracking-tight">Indicadores de Operación</h2>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {opsModules.map((module) => {
+              const Icon = module.icon;
+              return (
+                <Link key={module.href} href={module.href}>
+                  <div className="block h-full">
+                    <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
+                      <CardHeader>
+                        <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
+                          <Icon className={`h-6 w-6 ${module.color}`} />
+                        </div>
+                        <CardTitle className="text-xl">{module.title}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {module.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Button variant="outline" className="w-full">
+                          Acceder al Módulo
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Quick Stats or Additional Info */}
         <div className="bg-muted/50 rounded-lg p-8 space-y-4">
           <h3 className="text-lg font-semibold">Información del Sistema</h3>
@@ -190,7 +231,7 @@ export default function Home() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Módulos Disponibles</p>
-              <p className="font-medium">{salesModules.length} módulos activos</p>
+              <p className="font-medium">{salesModules.length + opsModules.length} módulos activos</p>
             </div>
           </div>
         </div>
