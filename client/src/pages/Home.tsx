@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid } from "lucide-react";
+import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid, FolderTree } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
@@ -109,6 +109,14 @@ export default function Home() {
       href: "/sales-by-shelf",
       color: "text-[#EAE8E2]", // Beige
       bgColor: "bg-[#005A47]", // Esmeralda oscuro
+    },
+    {
+      title: "Análisis por Categorías",
+      description: "Explora ventas por departamento, sección y familia con gráfico de líneas, distribución y detalle de artículos",
+      icon: FolderTree,
+      href: "/sales-by-category",
+      color: "text-[#EAE8E2]", // Beige
+      bgColor: "bg-[#6B3FA0]", // Púrpura
     },
   ];
 
