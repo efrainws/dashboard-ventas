@@ -1061,4 +1061,58 @@ export const supplierPortalRouter = router({
         quantity: string;
       }>;
     }),
+
+  // ─── Gráfico de líneas: evolución temporal agregada ───────────────────────────
+  getSalesLineChart: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        supplierId: z.string().optional(),
+        productIds: z.array(z.string()).optional(),
+        branchId: z.string().optional(),
+        granularity: z.enum(['day', 'week', 'month']).default('day'),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const dateTrunc = input.granularity === 'day'
+        ? `sh.doc_date::date::text`
+        : input.granularity === 'week'
+          ? `date_trunc('week', sh.doc_date)::date::text`
+          : `date_trunc('month', sh.doc_date)::date::text`;
+      const params: any[] = [supplierId, from, to];
+      let pIdx = 4;
+      const productFilter = (input.productIds && input.productIds.length > 0)
+        ? (() => {
+            const placeholders = input.productIds!.map((_, i) => `$${pIdx + i}`).join(', ');
+            params.push(...input.productIds!);
+            pIdx += input.productIds!.length;
+            return `AND p.id IN (${placeholders})`;
+          })()
+        : '';
+      const branchFilter = input.branchId
+        ? (() => { params.push(input.branchId); return `AND b.id = $${pIdx++}`; })()
+        : '';
+      const query = `
+        SELECT
+          ${dateTrunc} AS period,
+          SUM(${amtCol}) AS amount,
+          SUM(sd.quantity) AS quantity
+        FROM public.sales_header sh
+        JOIN public.sales_detail sd ON sd.header_id = sh.id
+        JOIN public.products p ON p.id = sd.product_id
+        LEFT JOIN public.branches b ON b.id = sh.branch_id
+        WHERE sh.doc_date IS NOT NULL
+          AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
+          AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+          ${productFilter}
+          ${branchFilter}
+        GROUP BY period
+        ORDER BY period ASC
+      `;
+      const res = await pool.query(query, params);
+      return res.rows as Array<{ period: string; amount: string; quantity: string }>;
+    }),
 });

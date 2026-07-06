@@ -209,6 +209,9 @@ export default function SupplierPortal() {
   const [isExportingStock, setIsExportingStock] = useState(false);
   // Granularidad de la tabla de evolución temporal
   const [evolutionGranularity, setEvolutionGranularity] = useState<Granularity>("day");
+  // Granularidad y métrica del gráfico de líneas
+  const [lineGranularity, setLineGranularity] = useState<Granularity>("day");
+  const [lineMetric, setLineMetric] = useState<"amount" | "quantity">("amount");
   // Modal de detalle diario
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
@@ -356,6 +359,18 @@ export default function SupplierPortal() {
     include_igv: includeIgv,
   }, { enabled: false });
 
+  // Query: gráfico de líneas de evolución temporal
+  const { data: lineChartRaw, isLoading: lineChartLoading } =
+    trpc.supplierPortal.getSalesLineChart.useQuery({
+      from,
+      to,
+      supplierId: effectiveSupplierId,
+      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
+      branchId: salesBranchId,
+      granularity: lineGranularity,
+      include_igv: includeIgv,
+    }, { enabled: queriesEnabled && activeTab === "ventas" });
+
   // Query: tabla de evolución temporal de ventas
   const { data: evolutionData, isLoading: evolutionLoading } =
     trpc.supplierPortal.getSalesEvolution.useQuery({
@@ -493,6 +508,32 @@ export default function SupplierPortal() {
       tickets: r.tickets,
     }));
   }, [dailySales]);
+
+  // Datos del gráfico de líneas
+  const lineChartData = useMemo(() => {
+    if (!lineChartRaw) return [];
+    return lineChartRaw.map((row) => {
+      const isoDate = String(row.period).slice(0, 10);
+      const d = new Date(isoDate + "T00:00:00");
+      let label: string;
+      if (lineGranularity === "day") {
+        label = d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+      } else if (lineGranularity === "week") {
+        const end = new Date(d);
+        end.setDate(end.getDate() + 6);
+        const s = d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+        const e = end.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+        label = `${s} – ${e}`;
+      } else {
+        label = d.toLocaleDateString("es-PE", { month: "short", year: "2-digit" });
+      }
+      return {
+        label,
+        amount: parseFloat(row.amount ?? "0"),
+        quantity: parseFloat(row.quantity ?? "0"),
+      };
+    });
+  }, [lineChartRaw, lineGranularity]);
 
   // Filtrar proveedores por búsqueda
   const filteredSuppliers = useMemo(() => {
@@ -1694,6 +1735,110 @@ export default function SupplierPortal() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Gráfico de líneas: evolución temporal */}
+        {activeTab === "ventas" && (
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Evolución de Ventas
+                </CardTitle>
+                <div className="flex flex-wrap gap-2">
+                  {/* Toggle Monto / Unidades */}
+                  <div className="flex rounded-md border overflow-hidden text-xs">
+                    <button
+                      className={`px-3 py-1.5 transition-colors ${
+                        lineMetric === "amount" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                      }`}
+                      onClick={() => setLineMetric("amount")}
+                    >
+                      Monto
+                    </button>
+                    <button
+                      className={`px-3 py-1.5 transition-colors ${
+                        lineMetric === "quantity" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                      }`}
+                      onClick={() => setLineMetric("quantity")}
+                    >
+                      Unidades
+                    </button>
+                  </div>
+                  {/* Toggle Granularidad */}
+                  <div className="flex rounded-md border overflow-hidden text-xs">
+                    {(["day", "week", "month"] as Granularity[]).map((g) => (
+                      <button
+                        key={g}
+                        className={`px-3 py-1.5 transition-colors ${
+                          lineGranularity === g ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                        }`}
+                        onClick={() => setLineGranularity(g)}
+                      >
+                        {g === "day" ? "Día" : g === "week" ? "Semana" : "Mes"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {lineChartLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : lineChartData.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+                  Sin datos para el período seleccionado
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={lineChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) =>
+                        lineMetric === "amount"
+                          ? `S/ ${(v / 1000).toFixed(0)}k`
+                          : v.toLocaleString("es-PE", { maximumFractionDigits: 0 })
+                      }
+                      width={60}
+                    />
+                    <Tooltip
+                      formatter={(v: number) =>
+                        lineMetric === "amount"
+                          ? [new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v), "Monto"]
+                          : [v.toLocaleString("es-PE", { maximumFractionDigits: 0 }), "Unidades"]
+                      }
+                      labelStyle={{ fontWeight: 600 }}
+                      contentStyle={{
+                        background: "var(--popover)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey={lineMetric}
+                      stroke="var(--ff-esmeralda, #10b981)"
+                      strokeWidth={2}
+                      dot={lineChartData.length <= 31}
+                      activeDot={{ r: 5 }}
+                      name={lineMetric === "amount" ? "Monto" : "Unidades"}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Tabla de evolución temporal */}
