@@ -548,8 +548,8 @@ export const salesRouter = router({
           LEFT JOIN products p ON p.id = sd.product_id
           LEFT JOIN categories_products cp ON cp.product_id = p.id AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
           LEFT JOIN categories leaf_cat ON leaf_cat.id = cp.category_id
-          LEFT JOIN categories parent_cat ON parent_cat.id = leaf_cat.parent_id
-          LEFT JOIN categories grandparent_cat ON grandparent_cat.id = parent_cat.parent_id`;
+          LEFT JOIN categories parent_cat ON parent_cat.id = leaf_cat.parent_category_id
+          LEFT JOIN categories grandparent_cat ON grandparent_cat.id = parent_cat.parent_category_id`;
         categoryFilter = `AND COALESCE(grandparent_cat.id, parent_cat.id, leaf_cat.id) = $${paramIndex}`;
         queryParams.push(category_id);
         paramIndex++;
