@@ -8,9 +8,14 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  LabelList,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 
 export interface SalesDataPoint {
@@ -56,12 +61,47 @@ const COLORS = [
   "var(--ff-granate-light)",   // Granate claro
 ];
 
+// ─── Helper: ícono de tendencia con tooltip ────────────────────────────────────
+interface TrendIconProps {
+  change: number;          // variación porcentual
+  prevValue: number;       // valor del período anterior
+  formatFn: (v: number) => string;
+  periodLabel?: string;    // etiqueta del período anterior (opcional)
+}
+
+function TrendIconWithTooltip({ change, prevValue, formatFn, periodLabel }: TrendIconProps) {
+  const isPositive = change > 0;
+  const color = isPositive ? "#008064" : "#BC2C46";
+  const Icon = isPositive ? TrendingUp : TrendingDown;
+  const sign = isPositive ? "+" : "";
+
+  return (
+    <UITooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center cursor-default">
+          <Icon className="h-3 w-3" style={{ color }} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-[200px]">
+        <p className="font-semibold" style={{ color }}>
+          {sign}{change.toFixed(1)}% vs período anterior
+        </p>
+        <p className="text-muted-foreground mt-0.5">
+          {periodLabel ? `${periodLabel}: ` : "Anterior: "}
+          {formatFn(prevValue)}
+        </p>
+      </TooltipContent>
+    </UITooltip>
+  );
+}
+
 export function BranchBarChart({ data, comparisonData, title, description, daysInMonth }: BranchBarChartProps) {
   // Calcular días del mes actual si no se pasa como prop
   const resolvedDaysInMonth = daysInMonth ?? (() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   })();
+
   // Agregar ventas por sucursal y calcular días únicos globales
   const branchData = useMemo(() => {
     const grouped = new Map<
@@ -155,245 +195,248 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
     return value.toLocaleString("es-PE");
   };
 
-  // Custom label para las barras (mostrar valor encima)
-  const renderCustomLabel = (props: any) => {
-    const { x, y, width, value } = props;
-    return (
-      <text
-        x={x + width / 2}
-        y={y - 5}
-        fill="hsl(var(--foreground))"
-        textAnchor="middle"
-        className="text-xs font-medium"
-      >
-        {formatCurrency(value)}
-      </text>
-    );
-  };
-
   return (
-    <Card className="overflow-hidden" style={{ border: "1px solid var(--ff-card-header-border)" }}>
-      <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid var(--ff-card-header-border)", background: "var(--ff-card-header-bg)" }}>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
-          {title || "Comparación por Sucursal"}
-        </CardTitle>
-        <CardDescription>
-          {description || "Ventas totales por sucursal ordenadas de mayor a menor"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {branchData.length === 0 ? (
-          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-            No hay datos disponibles para mostrar
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={branchData}
-                margin={{ top: 5, right: 10, left: 10, bottom: 100 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="displayName"
-                  angle={-45}
-                  textAnchor="end"
-                  height={100}
-                  className="text-xs"
-                  interval={0}
-                />
-                <YAxis
-                  className="text-xs"
-                  tickFormatter={formatCurrencyShort}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                  formatter={(value: number, name: string) => {
-                    if (name === "sales") {
-                      return [formatCurrency(value), "Ventas"];
-                    }
-                    return [value, name];
-                  }}
-                  labelFormatter={(label) => label}
-                />
+    <TooltipProvider>
+      <Card className="overflow-hidden" style={{ border: "1px solid var(--ff-card-header-border)" }}>
+        <CardHeader className="pb-3 rounded-t-lg" style={{ borderBottom: "1px solid var(--ff-card-header-border)", background: "var(--ff-card-header-bg)" }}>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            {title || "Comparación por Sucursal"}
+          </CardTitle>
+          <CardDescription>
+            {description || "Ventas totales por sucursal ordenadas de mayor a menor"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {branchData.length === 0 ? (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              No hay datos disponibles para mostrar
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={branchData}
+                  margin={{ top: 5, right: 10, left: 10, bottom: 100 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="displayName"
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    className="text-xs"
+                    interval={0}
+                  />
+                  <YAxis
+                    className="text-xs"
+                    tickFormatter={formatCurrencyShort}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "var(--radius)",
+                    }}
+                    formatter={(value: number, name: string) => {
+                      if (name === "sales") {
+                        return [formatCurrency(value), "Ventas"];
+                      }
+                      return [value, name];
+                    }}
+                    labelFormatter={(label) => label}
+                  />
 
-                <Bar dataKey="sales" name="sales" radius={[8, 8, 0, 0]}>
-                  {branchData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <Bar dataKey="sales" name="sales" radius={[8, 8, 0, 0]}>
+                    {branchData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
 
-            {/* Tabla de resumen */}
-            <div>
-              <table className="ff-table">
-                <thead>
-                  <tr>
-                    <th>Sucursal</th>
-                    <th>Ventas</th>
-                    <th>Transacciones</th>
-                    <th>Ticket Promedio</th>
-                    <th>Venta Prom. Diaria</th>
-                    <th>Proyección Mensual</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {branchData.map((item, index) => (
-                    <tr key={index}>
-                      <td className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        />
-                        {item.displayName}
-                      </td>
-                      <td>
-                        <div className="flex items-center justify-end gap-1">
-                          {formatCurrency(item.sales)}
-                          {comparisonData && (() => {
-                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
-                            if (comparison && comparison.previous.total_sales > 0) {
-                              const change = ((comparison.current.total_sales - comparison.previous.total_sales) / comparison.previous.total_sales) * 100;
-                              if (Math.abs(change) >= 0.1) {
-                                return change > 0 ? (
-                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
-                                );
+              {/* Tabla de resumen */}
+              <div>
+                <table className="ff-table">
+                  <thead>
+                    <tr>
+                      <th>Sucursal</th>
+                      <th>Ventas</th>
+                      <th>Transacciones</th>
+                      <th>Ticket Promedio</th>
+                      <th>Venta Prom. Diaria</th>
+                      <th>Proyección Mensual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {branchData.map((item, index) => (
+                      <tr key={index}>
+                        <td className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          />
+                          {item.displayName}
+                        </td>
+
+                        {/* Ventas */}
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            {formatCurrency(item.sales)}
+                            {comparisonData && (() => {
+                              const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                              if (cmp && cmp.previous.total_sales > 0) {
+                                const change = ((cmp.current.total_sales - cmp.previous.total_sales) / cmp.previous.total_sales) * 100;
+                                if (Math.abs(change) >= 0.1) {
+                                  return (
+                                    <TrendIconWithTooltip
+                                      change={change}
+                                      prevValue={cmp.previous.total_sales}
+                                      formatFn={formatCurrency}
+                                    />
+                                  );
+                                }
                               }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center justify-end gap-1">
-                          {formatNumber(item.tickets)}
-                          {comparisonData && (() => {
-                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
-                            if (comparison && comparison.previous.total_tickets > 0) {
-                              const change = ((comparison.current.total_tickets - comparison.previous.total_tickets) / comparison.previous.total_tickets) * 100;
-                              if (Math.abs(change) >= 0.1) {
-                                return change > 0 ? (
-                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
-                                );
+                              return null;
+                            })()}
+                          </div>
+                        </td>
+
+                        {/* Transacciones */}
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            {formatNumber(item.tickets)}
+                            {comparisonData && (() => {
+                              const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                              if (cmp && cmp.previous.total_tickets > 0) {
+                                const change = ((cmp.current.total_tickets - cmp.previous.total_tickets) / cmp.previous.total_tickets) * 100;
+                                if (Math.abs(change) >= 0.1) {
+                                  return (
+                                    <TrendIconWithTooltip
+                                      change={change}
+                                      prevValue={cmp.previous.total_tickets}
+                                      formatFn={formatNumber}
+                                    />
+                                  );
+                                }
                               }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center justify-end gap-1">
-                          {formatCurrency(item.avgTicket)}
-                          {comparisonData && (() => {
-                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
-                            if (comparison && comparison.previous.avg_ticket > 0) {
-                              const change = ((comparison.current.avg_ticket - comparison.previous.avg_ticket) / comparison.previous.avg_ticket) * 100;
-                              if (Math.abs(change) >= 0.1) {
-                                return change > 0 ? (
-                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
-                                );
+                              return null;
+                            })()}
+                          </div>
+                        </td>
+
+                        {/* Ticket Promedio */}
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            {formatCurrency(item.avgTicket)}
+                            {comparisonData && (() => {
+                              const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                              if (cmp && cmp.previous.avg_ticket > 0) {
+                                const change = ((cmp.current.avg_ticket - cmp.previous.avg_ticket) / cmp.previous.avg_ticket) * 100;
+                                if (Math.abs(change) >= 0.1) {
+                                  return (
+                                    <TrendIconWithTooltip
+                                      change={change}
+                                      prevValue={cmp.previous.avg_ticket}
+                                      formatFn={formatCurrency}
+                                    />
+                                  );
+                                }
                               }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center justify-end gap-1">
-                          {formatCurrency(item.avgSalesPerDay)}
-                          {comparisonData && (() => {
-                            const comparison = comparisonData.find(c => c.branch_sap_id === item.sapId);
-                            if (comparison && comparison.previous.avg_sales_per_day > 0) {
-                              const change = ((comparison.current.avg_sales_per_day - comparison.previous.avg_sales_per_day) / comparison.previous.avg_sales_per_day) * 100;
-                              if (Math.abs(change) >= 0.1) {
-                                return change > 0 ? (
-                                  <TrendingUp className="h-3 w-3" style={{ color: '#008064' }} />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3" style={{ color: '#BC2C46' }} />
-                                );
+                              return null;
+                            })()}
+                          </div>
+                        </td>
+
+                        {/* Venta Prom. Diaria */}
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            {formatCurrency(item.avgSalesPerDay)}
+                            {comparisonData && (() => {
+                              const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
+                              if (cmp && cmp.previous.avg_sales_per_day > 0) {
+                                const change = ((cmp.current.avg_sales_per_day - cmp.previous.avg_sales_per_day) / cmp.previous.avg_sales_per_day) * 100;
+                                if (Math.abs(change) >= 0.1) {
+                                  return (
+                                    <TrendIconWithTooltip
+                                      change={change}
+                                      prevValue={cmp.previous.avg_sales_per_day}
+                                      formatFn={formatCurrency}
+                                    />
+                                  );
+                                }
                               }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      {/* Proyección mensual = promedio diario × días del mes */}
+                              return null;
+                            })()}
+                          </div>
+                        </td>
+
+                        {/* Proyección mensual = promedio diario × días del mes */}
+                        <td>
+                          {formatCurrency(item.avgSalesPerDay * resolvedDaysInMonth)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td>Total</td>
                       <td>
-                        {formatCurrency(item.avgSalesPerDay * resolvedDaysInMonth)}
+                        {formatCurrency(
+                          branchData.reduce((sum, item) => sum + item.sales, 0)
+                        )}
+                      </td>
+                      <td>
+                        {/* Contar tickets únicos globales */}
+                        {formatNumber(
+                          (() => {
+                            const allSaleIds = new Set<string>();
+                            data.forEach(row => {
+                              if (row.sale_ids) {
+                                row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
+                              }
+                            });
+                            return allSaleIds.size;
+                          })()
+                        )}
+                      </td>
+                      <td>
+                        {formatCurrency(
+                          (() => {
+                            const totalSales = branchData.reduce((sum, item) => sum + item.sales, 0);
+                            const allSaleIds = new Set<string>();
+                            data.forEach(row => {
+                              if (row.sale_ids) {
+                                row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
+                              }
+                            });
+                            return allSaleIds.size > 0 ? totalSales / allSaleIds.size : 0;
+                          })()
+                        )}
+                      </td>
+                      <td>
+                        {formatCurrency(
+                          branchData.length > 0
+                            ? branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount
+                            : 0
+                        )}
+                      </td>
+                      {/* Total proyección mensual */}
+                      <td>
+                        {formatCurrency(
+                          branchData.length > 0
+                            ? (branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount) * resolvedDaysInMonth
+                            : 0
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>Total</td>
-                    <td>
-                      {formatCurrency(
-                        branchData.reduce((sum, item) => sum + item.sales, 0)
-                      )}
-                    </td>
-                    <td>
-                      {/* Contar tickets únicos globales */}
-                      {formatNumber(
-                        (() => {
-                          const allSaleIds = new Set<string>();
-                          data.forEach(row => {
-                            if (row.sale_ids) {
-                              row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
-                            }
-                          });
-                          return allSaleIds.size;
-                        })()
-                      )}
-                    </td>
-                    <td>
-                      {formatCurrency(
-                        (() => {
-                          const totalSales = branchData.reduce((sum, item) => sum + item.sales, 0);
-                          const allSaleIds = new Set<string>();
-                          data.forEach(row => {
-                            if (row.sale_ids) {
-                              row.sale_ids.forEach(saleId => allSaleIds.add(saleId));
-                            }
-                          });
-                          return totalSales / allSaleIds.size;
-                        })()
-                      )}
-                    </td>
-                    <td>
-                      {formatCurrency(
-                        branchData.length > 0
-                          ? branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount
-                          : 0
-                      )}
-                    </td>
-                    {/* Total proyección mensual */}
-                    <td>
-                      {formatCurrency(
-                        branchData.length > 0
-                          ? (branchData.reduce((sum, item) => sum + item.sales, 0) / branchData[0].globalDaysCount) * resolvedDaysInMonth
-                          : 0
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }

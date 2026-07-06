@@ -539,8 +539,18 @@ export const salesRouter = router({
       const queryParams: any[] = [];
       let paramIndex = 1;
 
+      // Construir filtro de categoría para el JOIN con sales_detail (si aplica)
+      let categoryJoin = '';
+      let categoryFilter = '';
       if (category_id && category_id !== 'all') {
-        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
+        // Necesitamos filtrar por categoría a nivel de sales_detail
+        categoryJoin = `
+          LEFT JOIN products p ON p.id = sd.product_id
+          LEFT JOIN categories_products cp ON cp.product_id = p.id AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN categories leaf_cat ON leaf_cat.id = cp.category_id
+          LEFT JOIN categories parent_cat ON parent_cat.id = leaf_cat.parent_id
+          LEFT JOIN categories grandparent_cat ON grandparent_cat.id = parent_cat.parent_id`;
+        categoryFilter = `AND COALESCE(grandparent_cat.id, parent_cat.id, leaf_cat.id) = $${paramIndex}`;
         queryParams.push(category_id);
         paramIndex++;
       }
@@ -572,6 +582,8 @@ export const salesRouter = router({
           SELECT sd.header_id, SUM(${amtCol}) AS line_total
           FROM sales_detail sd
           INNER JOIN filtered_headers fh ON fh.id = sd.header_id
+          ${categoryJoin}
+          WHERE 1=1 ${categoryFilter}
           GROUP BY sd.header_id
         )
         SELECT
