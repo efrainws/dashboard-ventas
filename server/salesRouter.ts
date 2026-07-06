@@ -1147,6 +1147,8 @@ export const salesRouter = router({
 
       // Extraer hora y día de semana directamente en UTC (sin conversión de zona horaria)
       // para que coincida con HourlyLineChart que usa date.getUTCHours().
+      // Transacciones con time = 00:00:00 exacto no tienen hora real (importadas sin hora);
+      // se agrupan como hour_of_day = -1 para que el frontend las muestre como "Sin hora".
       const metricExpr = metric === 'amount'
         ? 'SUM(line_total)'
         : 'COUNT(DISTINCT sale_id)';
@@ -1166,7 +1168,10 @@ export const salesRouter = router({
         )
         SELECT
           EXTRACT(DOW FROM doc_date)::int   AS day_of_week,
-          EXTRACT(HOUR FROM doc_date)::int  AS hour_of_day,
+          CASE
+            WHEN doc_date::time = TIME '00:00:00' THEN -1
+            ELSE EXTRACT(HOUR FROM doc_date)::int
+          END                               AS hour_of_day,
           ${metricExpr.replace('sd.total', 'line_total').replace('sh.id', 'sale_id')} AS value
         FROM base
         GROUP BY day_of_week, hour_of_day

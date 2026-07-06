@@ -67,7 +67,7 @@ type HeatmapMode = "weekly" | "day_comparison";
 
 interface TooltipState {
   rowLabel: string;
-  hour: number;
+  hour: number;   // -1 = sin hora
   value: number;
   avg?: number;
   x: number;
@@ -80,21 +80,20 @@ interface TooltipState {
 // ─── Componente ────────────────────────────────────────────────────────────────
 
 export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }: HeatmapChartProps) {
-  const [metric, setMetric]         = useState<"amount" | "transactions">("amount");
-  const [mode, setMode]             = useState<HeatmapMode>("weekly");
+  const [metric, setMetric]           = useState<"amount" | "transactions">("amount");
+  const [mode, setMode]               = useState<HeatmapMode>("weekly");
   const [selectedDay, setSelectedDay] = useState<number>(1); // 1 = Lunes por defecto
-  const [tooltip, setTooltip]       = useState<TooltipState | null>(null);
+  const [tooltip, setTooltip]         = useState<TooltipState | null>(null);
 
   const enabled = !!fechaMin && !!fechaMax;
 
-  // ── Query modo semanal ──────────────────────────────────────────────────────────────────────
+  // ── Query modo semanal ──────────────────────────────────────────────────────
   const weeklyQuery = trpc.sales.getHeatmapData.useQuery(
     { fecha_min: fechaMin, fecha_max: fechaMax, branch_id: branchId, metric, include_igv: includeIgv },
     { enabled: enabled && mode === "weekly" }
   );
 
-  // ── Query modo comparación ──────────────────────────────────────────────────────────────────
-  // base_date = fechaMax (fecha más reciente del rango seleccionado)
+  // ── Query modo comparación ──────────────────────────────────────────────────
   const compQuery = trpc.sales.getHeatmapDayComparison.useQuery(
     {
       base_date: fechaMax.substring(0, 10),
@@ -107,21 +106,29 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
     { enabled: enabled && mode === "day_comparison" }
   );
 
-  // ── Matriz modo semanal: 7 filas (días) × 24 cols (horas) ──────────────────
+  // ── Matriz modo semanal: 7 filas (días) × 25 cols (horas 0-23 + "sin hora") ─
+  // Índice 24 en la matriz = columna "Sin hora" (hour_of_day = -1 en BD)
+  const SIN_HORA_IDX = 24; // posición en la matriz para registros sin hora
+
   const weeklyMatrix = useMemo(() => {
-    const m: (number | null)[][] = Array.from({ length: 7 }, () => Array(24).fill(null));
+    // 7 días × 25 slots (0-23 + sin hora)
+    const m: (number | null)[][] = Array.from({ length: 7 }, () => Array(25).fill(null));
     if (!weeklyQuery.data?.data) return m;
     for (const row of weeklyQuery.data.data) {
       const v = parseFloat(row.value as unknown as string);
-      m[row.day_of_week][row.hour_of_day] = isNaN(v) ? null : v;
+      if (isNaN(v)) continue;
+      const col = row.hour_of_day === -1 ? SIN_HORA_IDX : row.hour_of_day;
+      if (col >= 0 && col < 25) {
+        m[row.day_of_week][col] = v;
+      }
     }
     return m;
   }, [weeklyQuery.data]);
 
-  // ── Matriz modo comparación: N filas (fechas) × 24 cols (horas) ────────────
+  // ── Matriz modo comparación: N filas (fechas) × 25 cols ────────────────────
   const { compMatrix, compRowLabels, compFullDates } = useMemo(() => {
     const targetDates = compQuery.data?.target_dates ?? [];
-    const matrix: (number | null)[][] = targetDates.map(() => Array(24).fill(null));
+    const matrix: (number | null)[][] = targetDates.map(() => Array(25).fill(null));
     const rowLabels: string[] = targetDates.map(d => {
       const dayName = DAYS_SHORT[new Date(d + "T12:00:00Z").getUTCDay()];
       return `${dayName} ${formatDateLabel(d)}`;
@@ -135,7 +142,10 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
         const rowIdx = targetDates.indexOf(row.date_label);
         if (rowIdx >= 0) {
           const v = parseFloat(row.value as unknown as string);
-          matrix[rowIdx][row.hour_of_day] = isNaN(v) ? null : v;
+          const col = row.hour_of_day === -1 ? SIN_HORA_IDX : row.hour_of_day;
+          if (!isNaN(v) && col >= 0 && col < 25) {
+            matrix[rowIdx][col] = v;
+          }
         }
       }
     }
@@ -144,21 +154,20 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
 
   // ── Promedio por hora en modo comparación (para tooltip) ───────────────────
   const compHourAvg = useMemo(() => {
-    return ALL_HOURS.map(h => {
-      const vals = compMatrix.map(row => row[h]).filter((v): v is number => v !== null && v > 0);
+    return Array.from({ length: 25 }, (_, col) => {
+      const vals = compMatrix.map(row => row[col]).filter((v): v is number => v !== null && v > 0);
       return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     });
   }, [compMatrix]);
 
-  // ── Días activos en modo semanal (solo días con al menos un valor > 0) ────────
+  // ── Días activos en modo semanal (solo días con al menos un valor > 0) ──────
   const activeWeekDays = useMemo(() => {
     return [0, 1, 2, 3, 4, 5, 6].filter(day =>
-      ALL_HOURS.some(h => (weeklyMatrix[day][h] ?? 0) > 0)
+      Array.from({ length: 25 }, (_, col) => col).some(col => (weeklyMatrix[day][col] ?? 0) > 0)
     );
   }, [weeklyMatrix]);
 
   // ── Selección de matriz activa ──────────────────────────────────────────────
-  // En modo semanal solo incluimos las filas (días) que tienen datos
   const activeMatrix = useMemo(() =>
     mode === "weekly"
       ? activeWeekDays.map(day => weeklyMatrix[day])
@@ -169,11 +178,16 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
   const activeRowLabel = (idx: number) =>
     mode === "weekly" ? DAYS_SHORT[activeWeekDays[idx]] : (compRowLabels[idx] ?? "");
 
-  // ── Horas activas (columnas con al menos un valor > 0) ─────────────────────
-  const activeHours = useMemo(() =>
-    ALL_HOURS.filter(h => activeMatrix.some(row => (row[h] ?? 0) > 0)),
-    [activeMatrix]
-  );
+  // ── Columnas activas: horas 0-23 con datos + columna "Sin hora" si hay datos ─
+  // Representamos las columnas como índices 0-24 (24 = sin hora)
+  const activeColumns = useMemo(() => {
+    const cols = ALL_HOURS.filter(h => activeMatrix.some(row => (row[h] ?? 0) > 0));
+    // Agregar columna "Sin hora" al final si tiene datos
+    if (activeMatrix.some(row => (row[SIN_HORA_IDX] ?? 0) > 0)) {
+      cols.push(SIN_HORA_IDX);
+    }
+    return cols;
+  }, [activeMatrix]);
 
   // ── Escala de color ─────────────────────────────────────────────────────────
   const { minVal, maxVal } = useMemo(() => {
@@ -181,12 +195,14 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
     return { minVal: Math.min(...vals, 0), maxVal: Math.max(...vals, 1) };
   }, [activeMatrix]);
 
-  // ── Totales por hora (fila inferior) ───────────────────────────────────────
-  const hourTotals = useMemo(() =>
-    ALL_HOURS.map(h => activeMatrix.reduce((sum, row) => sum + (row[h] ?? 0), 0)),
+  // ── Totales por columna (fila inferior) ────────────────────────────────────
+  const colTotals = useMemo(() =>
+    Array.from({ length: 25 }, (_, col) =>
+      activeMatrix.reduce((sum, row) => sum + (row[col] ?? 0), 0)
+    ),
     [activeMatrix]
   );
-  const maxHourTotal = Math.max(...activeHours.map(h => hourTotals[h]), 1);
+  const maxColTotal = Math.max(...activeColumns.map(col => colTotals[col]), 1);
 
   // ── Estado de carga / error ─────────────────────────────────────────────────
   const isLoading = mode === "weekly" ? weeklyQuery.isLoading : compQuery.isLoading;
@@ -199,6 +215,13 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
   const chartTitle = mode === "weekly"
     ? "Mapa de Calor — Actividad por Día y Hora"
     : `Comparación de ${DAYS_FULL[selectedDay]} — últimas ${WEEKS_BACK} semanas`;
+
+  // ── Helper: etiqueta de columna ─────────────────────────────────────────────
+  const colLabel = (col: number) =>
+    col === SIN_HORA_IDX ? "S/H" : String(col).padStart(2, "0");
+
+  const colTooltipLabel = (col: number) =>
+    col === SIN_HORA_IDX ? "Sin hora registrada" : `${String(col).padStart(2, "0")}:00 – ${String(col + 1).padStart(2, "0")}:00`;
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -305,8 +328,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                   <div className="font-semibold mb-0.5">{tooltip.rowLabel}</div>
                 )}
                 <div className="text-muted-foreground">
-                  {String(tooltip.hour).padStart(2, "0")}:00 –{" "}
-                  {String(tooltip.hour + 1).padStart(2, "0")}:00
+                  {colTooltipLabel(tooltip.hour)}
                 </div>
                 <div className="text-primary font-bold mt-0.5">
                   {formatValue(tooltip.value, metric)}
@@ -326,12 +348,19 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
             )}
 
             <div className="min-w-[400px]">
-              {/* Cabecera de horas — etiqueta en cada columna */}
+              {/* Cabecera de columnas */}
               <div className="flex items-center mb-1">
                 <div className="w-20 shrink-0" />
-                {activeHours.map((h) => (
-                  <div key={h} className="flex-1 text-center text-[10px] text-muted-foreground leading-none">
-                    {String(h).padStart(2, "0")}
+                {activeColumns.map((col) => (
+                  <div
+                    key={col}
+                    className={`flex-1 text-center text-[10px] leading-none ${
+                      col === SIN_HORA_IDX
+                        ? "text-amber-500 font-semibold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {colLabel(col)}
                   </div>
                 ))}
               </div>
@@ -345,24 +374,31 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                   </div>
 
                   {/* Celdas */}
-                  {activeHours.map(h => {
-                    const val = activeMatrix[rowIdx]?.[h] ?? null;
+                  {activeColumns.map(col => {
+                    const val = activeMatrix[rowIdx]?.[col] ?? null;
+                    const isSinHora = col === SIN_HORA_IDX;
                     const bg = val !== null && val > 0
-                      ? interpolateColor(val, minVal, maxVal)
+                      ? isSinHora
+                        ? "repeating-linear-gradient(45deg, rgba(245,158,11,0.25) 0px, rgba(245,158,11,0.25) 4px, rgba(245,158,11,0.08) 4px, rgba(245,158,11,0.08) 8px)"
+                        : interpolateColor(val, minVal, maxVal)
                       : "var(--muted)";
-                    const textColor = val !== null && val > 0 ? "#fff" : "transparent";
-                    const avg = mode === "day_comparison" ? (compHourAvg[h] ?? undefined) : undefined;
+                    const textColor = val !== null && val > 0
+                      ? isSinHora ? "#b45309" : "#fff"
+                      : "transparent";
+                    const avg = mode === "day_comparison" ? (compHourAvg[col] ?? undefined) : undefined;
 
                     return (
                       <div
-                        key={h}
-                        className="flex-1 rounded-[2px] mx-[1px] cursor-default transition-opacity hover:opacity-80"
+                        key={col}
+                        className={`flex-1 rounded-[2px] mx-[1px] cursor-default transition-opacity hover:opacity-80 ${
+                          isSinHora ? "border border-amber-300/40" : ""
+                        }`}
                         style={{ background: bg, height: "clamp(28px, 4vw, 48px)", minWidth: 0 }}
                         onMouseEnter={e => {
                           if (val !== null) {
                             setTooltip({
                               rowLabel: activeRowLabel(rowIdx),
-                              hour: h,
+                              hour: col,
                               value: val,
                               avg,
                               x: e.clientX,
@@ -410,17 +446,18 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                 <div className="w-20 shrink-0 text-[10px] text-muted-foreground text-right pr-2">
                   Total
                 </div>
-                {activeHours.map(h => {
-                  const v = hourTotals[h];
-                  const pct = v / maxHourTotal;
+                {activeColumns.map(col => {
+                  const v = colTotals[col];
+                  const pct = v / maxColTotal;
+                  const isSinHora = col === SIN_HORA_IDX;
                   return (
-                    <div key={h} className="flex-1 mx-[1px] flex flex-col items-center gap-0.5">
+                    <div key={col} className="flex-1 mx-[1px] flex flex-col items-center gap-0.5">
                       <div className="w-full rounded-sm overflow-hidden" style={{ height: 16 }}>
                         <div
                           className="w-full rounded-sm"
                           style={{
                             height: `${Math.max(pct * 100, v > 0 ? 8 : 0)}%`,
-                            background: "var(--ff-esmeralda)",
+                            background: isSinHora ? "rgb(245,158,11)" : "var(--ff-esmeralda)",
                             opacity: 0.7,
                           }}
                         />
@@ -431,7 +468,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
               </div>
 
               {/* Leyenda */}
-              <div className="flex items-center gap-2 mt-4 justify-end">
+              <div className="flex items-center gap-2 mt-4 justify-end flex-wrap">
                 <span className="text-[10px] text-muted-foreground">Menor</span>
                 <div
                   className="h-3 w-32 rounded-sm"
@@ -443,6 +480,18 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                 <span className="text-[10px] text-muted-foreground ml-2">
                   Máx: {formatValue(maxVal, metric)}
                 </span>
+                {/* Indicador columna Sin hora */}
+                {activeColumns.includes(SIN_HORA_IDX) && (
+                  <span className="text-[10px] text-amber-500 ml-2 flex items-center gap-1">
+                    <span
+                      className="inline-block w-3 h-3 rounded-sm border border-amber-300"
+                      style={{
+                        background: "repeating-linear-gradient(45deg, rgba(245,158,11,0.35) 0px, rgba(245,158,11,0.35) 3px, rgba(245,158,11,0.1) 3px, rgba(245,158,11,0.1) 6px)",
+                      }}
+                    />
+                    S/H = Sin hora registrada
+                  </span>
+                )}
               </div>
             </div>
           </div>
