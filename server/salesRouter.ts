@@ -2479,12 +2479,36 @@ export const salesRouter = router({
     }),
 
   /**
+   * Catálogo de góndolas activas para la plantilla de carga masiva
+   * Devuelve id y nombre de todas las góndolas con status=true
+   */
+  getShelfCatalog: publicProcedure
+    .query(async () => {
+      const query = `
+        SELECT id AS shelf_id, name AS shelf_name
+        FROM public.shelfs
+        WHERE status = true
+        ORDER BY name;
+      `;
+      try {
+        const result = await queryWithRetry(query, []);
+        return result.rows.map((r: any) => ({
+          shelf_id:   r.shelf_id as string,
+          shelf_name: (r.shelf_name ?? '') as string,
+        }));
+      } catch (err) {
+        console.error('[PostgreSQL] Error en getShelfCatalog:', err);
+        throw new Error('Error al obtener catálogo de góndolas');
+      }
+    }),
+
+  /**
    * Carga masiva de asociaciones producto-góndola-tienda desde un Excel
+   * Acepta shelf_name (nombre de la góndola) en lugar de shelf_id (UUID)
    * Solo accesible para cst_user, commercial_specialist y system_specialist
    */
   bulkAssignProductShelf: protectedProcedure
     .input(z.object({
-      // Base64 del archivo Excel
       fileBase64: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -2494,8 +2518,23 @@ export const salesRouter = router({
         throw new Error('No tienes permisos para realizar esta operación');
       }
 
+      // Cargar catálogo de góndolas (nombre normalizado → UUID)
+      let shelfMap: Map<string, string>;
+      try {
+        const catResult = await queryWithRetry(
+          `SELECT id AS shelf_id, LOWER(TRIM(name)) AS shelf_name_lower FROM public.shelfs WHERE status = true`,
+          []
+        );
+        shelfMap = new Map(
+          catResult.rows.map((r: any) => [r.shelf_name_lower as string, r.shelf_id as string])
+        );
+      } catch (err: any) {
+        throw new Error(`Error al cargar catálogo de góndolas: ${err?.message ?? 'desconocido'}`);
+      }
+
       // Parsear el Excel desde base64
-      let rows: { int_sku: string; branch_sap_id: string; shelf_id: string }[];
+      // Acepta columna 'shelf_name' (nuevo) o 'shelf_id' (retrocompatibilidad con UUID directo)
+      let rows: { int_sku: string; branch_sap_id: string; shelf_name: string }[];
       try {
         const buffer = Buffer.from(input.fileBase64, 'base64');
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -2503,19 +2542,36 @@ export const salesRouter = router({
         const sheet = workbook.Sheets[sheetName];
         const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
         rows = rawRows
-          .filter((r: any) => r.int_sku && r.branch_sap_id && r.shelf_id)
+          .filter((r: any) => r.int_sku && r.branch_sap_id && (r.shelf_name || r.shelf_id))
           .map((r: any) => ({
-            int_sku: String(r.int_sku).trim(),
+            int_sku:      String(r.int_sku).trim(),
             branch_sap_id: String(r.branch_sap_id).trim().toUpperCase(),
-            shelf_id: String(r.shelf_id).trim(),
+            // Preferir shelf_name; si no existe, usar shelf_id como fallback
+            shelf_name:   String(r.shelf_name ?? r.shelf_id ?? '').trim(),
           }));
         if (rows.length === 0) {
-          throw new Error('El archivo no contiene filas válidas. Verifica que las columnas sean: int_sku, branch_sap_id, shelf_id');
+          throw new Error('El archivo no contiene filas válidas. Verifica que las columnas sean: int_sku, branch_sap_id, shelf_name');
         }
       } catch (err: any) {
         if (err.message.startsWith('El archivo')) throw err;
         throw new Error(`Error al leer el archivo Excel: ${err?.message ?? 'desconocido'}`);
       }
+
+      // Resolver shelf_name → shelf_id para cada fila
+      // Si el valor ya es un UUID válido, se usa directamente (retrocompatibilidad)
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const resolvedRows: { int_sku: string; branch_sap_id: string; shelf_name: string; shelf_id: string | null; resolveError?: string }[] =
+        rows.map((row) => {
+          if (UUID_RE.test(row.shelf_name)) {
+            // Ya es un UUID — usar directamente
+            return { ...row, shelf_id: row.shelf_name };
+          }
+          const uuid = shelfMap.get(row.shelf_name.toLowerCase());
+          if (!uuid) {
+            return { ...row, shelf_id: null, resolveError: `Góndola no encontrada: "${row.shelf_name}"` };
+          }
+          return { ...row, shelf_id: uuid };
+        });
 
       // Obtener token de autenticación con la API de Flora & Fauna
       const FF_BASE = 'https://server.florayfauna.pe';
@@ -2544,8 +2600,13 @@ export const salesRouter = router({
       }
 
       // Procesar cada fila secuencialmente
-      const results: { int_sku: string; branch_sap_id: string; shelf_id: string; success: boolean; error?: string }[] = [];
-      for (const row of rows) {
+      const results: { int_sku: string; branch_sap_id: string; shelf_name: string; success: boolean; error?: string }[] = [];
+      for (const row of resolvedRows) {
+        // Si no se pudo resolver el nombre, reportar error sin llamar a la API
+        if (!row.shelf_id) {
+          results.push({ int_sku: row.int_sku, branch_sap_id: row.branch_sap_id, shelf_name: row.shelf_name, success: false, error: row.resolveError });
+          continue;
+        }
         try {
           const response = await fetch(`${FF_BASE}/api/productos/estantes/p`, {
             method: 'POST',
@@ -2566,12 +2627,12 @@ export const salesRouter = router({
               const parsed = JSON.parse(raw);
               if (parsed?.message) userMessage = parsed.message;
             } catch {}
-            results.push({ ...row, success: false, error: userMessage });
+            results.push({ int_sku: row.int_sku, branch_sap_id: row.branch_sap_id, shelf_name: row.shelf_name, success: false, error: userMessage });
           } else {
-            results.push({ ...row, success: true });
+            results.push({ int_sku: row.int_sku, branch_sap_id: row.branch_sap_id, shelf_name: row.shelf_name, success: true });
           }
         } catch (err: any) {
-          results.push({ ...row, success: false, error: err?.message ?? 'Error de red' });
+          results.push({ int_sku: row.int_sku, branch_sap_id: row.branch_sap_id, shelf_name: row.shelf_name, success: false, error: err?.message ?? 'Error de red' });
         }
       }
 

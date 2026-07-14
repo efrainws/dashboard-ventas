@@ -1223,7 +1223,7 @@ export default function SalesByShelf() {
   // Modal de carga masiva Excel
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
-  const [bulkResults, setBulkResults] = useState<{ results: { int_sku: string; branch_sap_id: string; shelf_id: string; success: boolean; error?: string }[]; successCount: number; errorCount: number; total: number } | null>(null);
+  const [bulkResults, setBulkResults] = useState<{ results: { int_sku: string; branch_sap_id: string; shelf_name: string; success: boolean; error?: string }[]; successCount: number; errorCount: number; total: number } | null>(null);
   const bulkAssignMutation = trpc.sales.bulkAssignProductShelf.useMutation({
     onSuccess: (data) => {
       setBulkResults(data);
@@ -1237,18 +1237,33 @@ export default function SalesByShelf() {
     onError: (e) => toast.error(`Error: ${e.message}`),
   });
 
-  // Generar y descargar la plantilla Excel
+  // Catálogo de góndolas para la plantilla
+  const { data: shelfCatalog } = trpc.sales.getShelfCatalog.useQuery();
+
+  // Generar y descargar la plantilla Excel con hoja de referencia de góndolas
   const downloadTemplate = () => {
     import('xlsx').then((XLSX) => {
       const wb = XLSX.utils.book_new();
+
+      // Hoja 1: Plantilla de carga
       const wsData = [
-        ['int_sku', 'branch_sap_id', 'shelf_id'],
-        ['12345', 'FF01', 'ba44406d-406e-4e86-826a-6ef2cfcfc99e'],
-        ['67890', 'FF02', '844be3de-929c-457a-8eaf-bc6873a78a96'],
+        ['int_sku', 'branch_sap_id', 'shelf_name'],
+        ['12345', 'FF01', 'Frutas Frescas - Nivel 2'],
+        ['67890', 'FF02', 'Verduras - Góndola Central'],
       ];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 40 }];
+      ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 45 }];
       XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+
+      // Hoja 2: Catálogo de góndolas (referencia)
+      const catalogData: (string | number)[][] = [
+        ['shelf_name (nombre exacto a usar)', 'shelf_id (UUID de referencia)'],
+        ...(shelfCatalog ?? []).map((s) => [s.shelf_name, s.shelf_id]),
+      ];
+      const wsCatalog = XLSX.utils.aoa_to_sheet(catalogData);
+      wsCatalog['!cols'] = [{ wch: 50 }, { wch: 40 }];
+      XLSX.utils.book_append_sheet(wb, wsCatalog, 'Catálogo Góndolas');
+
       XLSX.writeFile(wb, 'plantilla-gondola-producto-tienda.xlsx');
     });
   };
@@ -1888,7 +1903,7 @@ export default function SalesByShelf() {
                         <tr className="border-b">
                           <th className="text-left py-1 pr-2">Int. SKU</th>
                           <th className="text-left py-1 pr-2">Tienda</th>
-                          <th className="text-left py-1 pr-2">Góndola ID</th>
+                          <th className="text-left py-1 pr-2">Góndola</th>
                           <th className="text-left py-1">Estado</th>
                         </tr>
                       </thead>
@@ -1897,7 +1912,7 @@ export default function SalesByShelf() {
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-1 pr-2">{r.int_sku}</td>
                             <td className="py-1 pr-2">{r.branch_sap_id}</td>
-                            <td className="py-1 pr-2 font-mono text-xs">{r.shelf_id.slice(0, 8)}…</td>
+                            <td className="py-1 pr-2">{r.shelf_name}</td>
                             <td className="py-1" style={{ color: '#BC2C46' }}>{r.error}</td>
                           </tr>
                         ))}
