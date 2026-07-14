@@ -1,4 +1,5 @@
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import * as XLSX from "xlsx";
 import { pool, queryWithRetry } from "./postgres";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
@@ -2474,7 +2475,108 @@ export const salesRouter = router({
         console.error(`[reassignProductShelf] POST HTTP ${response.status}:`, detail);
         throw new Error(userMessage);
       }
-      return { success: true };
+       return { success: true };
     }),
 
+  /**
+   * Carga masiva de asociaciones producto-góndola-tienda desde un Excel
+   * Solo accesible para cst_user, commercial_specialist y system_specialist
+   */
+  bulkAssignProductShelf: protectedProcedure
+    .input(z.object({
+      // Base64 del archivo Excel
+      fileBase64: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Verificar rol del usuario
+      const allowedRoles = ['cst_user', 'commercial_specialist', 'system_specialist'];
+      if (!allowedRoles.includes(ctx.user.role)) {
+        throw new Error('No tienes permisos para realizar esta operación');
+      }
+
+      // Parsear el Excel desde base64
+      let rows: { int_sku: string; branch_sap_id: string; shelf_id: string }[];
+      try {
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
+        rows = rawRows
+          .filter((r: any) => r.int_sku && r.branch_sap_id && r.shelf_id)
+          .map((r: any) => ({
+            int_sku: String(r.int_sku).trim(),
+            branch_sap_id: String(r.branch_sap_id).trim().toUpperCase(),
+            shelf_id: String(r.shelf_id).trim(),
+          }));
+        if (rows.length === 0) {
+          throw new Error('El archivo no contiene filas válidas. Verifica que las columnas sean: int_sku, branch_sap_id, shelf_id');
+        }
+      } catch (err: any) {
+        if (err.message.startsWith('El archivo')) throw err;
+        throw new Error(`Error al leer el archivo Excel: ${err?.message ?? 'desconocido'}`);
+      }
+
+      // Obtener token de autenticación con la API de Flora & Fauna
+      const FF_BASE = 'https://server.florayfauna.pe';
+      let token: string;
+      try {
+        const loginRes = await fetch(`${FF_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: ENV.ffApiUsername,
+            password: ENV.ffApiPassword,
+            site:     ENV.ffApiSite,
+          }),
+        });
+        if (!loginRes.ok) {
+          const errText = await loginRes.text().catch(() => '');
+          console.error(`[bulkAssignProductShelf] Login HTTP ${loginRes.status}:`, errText);
+          throw new Error(`Error al autenticarse con el servidor externo (HTTP ${loginRes.status})`);
+        }
+        const loginData = await loginRes.json() as { token?: string };
+        if (!loginData.token) throw new Error('El servidor externo no devolvió un token de autenticación');
+        token = loginData.token;
+      } catch (err: any) {
+        if (err.message.startsWith('Error al autenticarse') || err.message.startsWith('El servidor externo')) throw err;
+        throw new Error(`Error de red al autenticarse: ${err?.message ?? 'desconocido'}`);
+      }
+
+      // Procesar cada fila secuencialmente
+      const results: { int_sku: string; branch_sap_id: string; shelf_id: string; success: boolean; error?: string }[] = [];
+      for (const row of rows) {
+        try {
+          const response = await fetch(`${FF_BASE}/api/productos/estantes/p`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              branchSapId: row.branch_sap_id,
+              intSku: parseInt(row.int_sku, 10),
+              shelfId: row.shelf_id,
+            }),
+          });
+          if (!response.ok) {
+            let userMessage = `HTTP ${response.status}`;
+            try {
+              const raw = await response.text();
+              const parsed = JSON.parse(raw);
+              if (parsed?.message) userMessage = parsed.message;
+            } catch {}
+            results.push({ ...row, success: false, error: userMessage });
+          } else {
+            results.push({ ...row, success: true });
+          }
+        } catch (err: any) {
+          results.push({ ...row, success: false, error: err?.message ?? 'Error de red' });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+      return { results, successCount, errorCount, total: rows.length };
+    }),
 });

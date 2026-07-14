@@ -36,7 +36,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3 } from "lucide-react";
+import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -1211,6 +1211,7 @@ export default function SalesByShelf() {
 
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
+  const canBulkAssign = ['cst_user', 'commercial_specialist', 'system_specialist'].includes(userRole ?? '');
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -1219,6 +1220,49 @@ export default function SalesByShelf() {
   const [searchAgg, setSearchAgg] = useState("");
   const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
+  // Modal de carga masiva Excel
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkResults, setBulkResults] = useState<{ results: { int_sku: string; branch_sap_id: string; shelf_id: string; success: boolean; error?: string }[]; successCount: number; errorCount: number; total: number } | null>(null);
+  const bulkAssignMutation = trpc.sales.bulkAssignProductShelf.useMutation({
+    onSuccess: (data) => {
+      setBulkResults(data);
+      setBulkFile(null);
+      if (data.errorCount === 0) {
+        toast.success(`${data.successCount} asociaciones cargadas correctamente.`);
+      } else {
+        toast.warning(`${data.successCount} éxitos, ${data.errorCount} errores.`);
+      }
+    },
+    onError: (e) => toast.error(`Error: ${e.message}`),
+  });
+
+  // Generar y descargar la plantilla Excel
+  const downloadTemplate = () => {
+    import('xlsx').then((XLSX) => {
+      const wb = XLSX.utils.book_new();
+      const wsData = [
+        ['int_sku', 'branch_sap_id', 'shelf_id'],
+        ['12345', 'FF01', 'ba44406d-406e-4e86-826a-6ef2cfcfc99e'],
+        ['67890', 'FF02', '844be3de-929c-457a-8eaf-bc6873a78a96'],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 40 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+      XLSX.writeFile(wb, 'plantilla-gondola-producto-tienda.xlsx');
+    });
+  };
+
+  // Procesar el archivo Excel seleccionado
+  const handleBulkSubmit = async () => {
+    if (!bulkFile) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = (e.target?.result as string).split(',')[1];
+      bulkAssignMutation.mutate({ fileBase64: base64 });
+    };
+    reader.readAsDataURL(bulkFile);
+  };
 
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
@@ -1403,15 +1447,27 @@ export default function SalesByShelf() {
               {includeIgv ? " Con IGV." : " Sin IGV."}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={activeTab === "agregado" ? exportAggCsv : exportCsv}
-            disabled={activeTab === "tabla" ? filteredRows.length === 0 : filteredAggRows.length === 0}
-          >
-            <Download className="h-4 w-4 mr-1.5" />
-            Exportar CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            {canBulkAssign && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setBulkResults(null); setBulkFile(null); setBulkModalOpen(true); }}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                Carga masiva
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={activeTab === "agregado" ? exportAggCsv : exportCsv}
+              disabled={activeTab === "tabla" ? filteredRows.length === 0 : filteredAggRows.length === 0}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Exportar CSV
+            </Button>
+          </div>
         </div>
 
         {/* Filtros */}
@@ -1751,6 +1807,126 @@ export default function SalesByShelf() {
         target={reassignTarget}
         onClose={() => setReassignTarget(null)}
       />
+
+      {/* Modal de carga masiva Excel */}
+      <Dialog open={bulkModalOpen} onOpenChange={(open) => { if (!open) { setBulkModalOpen(false); setBulkResults(null); setBulkFile(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Carga masiva: Producto → Góndola → Tienda
+            </DialogTitle>
+            <DialogDescription>
+              Sube un archivo Excel para vincular productos a góndolas por tienda.
+              Descarga la plantilla para ver el formato requerido.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Paso 1: Descargar plantilla */}
+            <div className="rounded-lg border p-4 space-y-2">
+              <p className="text-sm font-medium">Paso 1 — Descarga la plantilla</p>
+              <p className="text-xs" style={{ color: '#919291' }}>
+                La plantilla contiene las columnas requeridas con ejemplos de cómo llenarla.
+              </p>
+              <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                <Download className="h-4 w-4 mr-1.5" />
+                Descargar plantilla.xlsx
+              </Button>
+            </div>
+
+            {/* Paso 2: Subir archivo */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-medium">Paso 2 — Sube tu archivo Excel</p>
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="bulk-excel-input"
+                  className="flex items-center gap-2 cursor-pointer rounded-md border border-dashed px-4 py-2 text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-4 w-4" />
+                  {bulkFile ? bulkFile.name : 'Seleccionar archivo .xlsx o .xls'}
+                </label>
+                <input
+                  id="bulk-excel-input"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => { setBulkFile(e.target.files?.[0] ?? null); setBulkResults(null); }}
+                />
+                {bulkFile && (
+                  <Button variant="ghost" size="sm" onClick={() => setBulkFile(null)}>
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="rounded-md p-3 text-xs space-y-1" style={{ backgroundColor: '#FBF3D5', color: '#8B6B04' }}>
+                <div className="flex items-start gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Columnas requeridas: <strong>int_sku</strong>, <strong>branch_sap_id</strong> (ej: FF01), <strong>shelf_id</strong> (UUID de la góndola)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Resultados */}
+            {bulkResults && (
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">Resultados</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#D6EDE8', color: '#005A47' }}>
+                    {bulkResults.successCount} éxitos
+                  </span>
+                  {bulkResults.errorCount > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F8D7DC', color: '#BC2C46' }}>
+                      {bulkResults.errorCount} errores
+                    </span>
+                  )}
+                </div>
+                {bulkResults.errorCount > 0 && (
+                  <ScrollArea className="h-40">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-1 pr-2">Int. SKU</th>
+                          <th className="text-left py-1 pr-2">Tienda</th>
+                          <th className="text-left py-1 pr-2">Góndola ID</th>
+                          <th className="text-left py-1">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkResults.results.filter(r => !r.success).map((r, i) => (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="py-1 pr-2">{r.int_sku}</td>
+                            <td className="py-1 pr-2">{r.branch_sap_id}</td>
+                            <td className="py-1 pr-2 font-mono text-xs">{r.shelf_id.slice(0, 8)}…</td>
+                            <td className="py-1" style={{ color: '#BC2C46' }}>{r.error}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </ScrollArea>
+                )}
+              </div>
+            )}
+
+            {/* Botón de envío */}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setBulkModalOpen(false); setBulkResults(null); setBulkFile(null); }}>
+                Cerrar
+              </Button>
+              <Button
+                onClick={handleBulkSubmit}
+                disabled={!bulkFile || bulkAssignMutation.isPending}
+              >
+                {bulkAssignMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Procesando…</>
+                ) : (
+                  <><Upload className="h-4 w-4 mr-1.5" /> Cargar asociaciones</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
