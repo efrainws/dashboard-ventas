@@ -34,7 +34,7 @@ import TopCustomers from "./pages/TopCustomers";
 import SalesByShelf from "./pages/SalesByShelf";
 import SalesByCategoryAnalysis from "./pages/SalesByCategoryAnalysis";
 
-type RouteGuard = "no_supplier" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
+type RouteGuard = "no_supplier" | "no_own_brand" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
 
 /**
  * Ruta protegida con autenticación y control de acceso por perfil.
@@ -76,6 +76,11 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
+  // Guard: bloquear own_brand_user en indicadores de operación
+  if (guard === "no_own_brand" && user.role === "own_brand_user") {
+    return <AccessDenied />;
+  }
+
   // Guard: solo roles gestores pueden acceder
   if (
     guard === "managers_only" &&
@@ -106,8 +111,11 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
-  // own_brand_user → redirigir siempre a su portal exclusivo (excepto si ya está en /marca-propia)
-  if (user.role === "own_brand_user" && path !== "/marca-propia") {
+  // Rutas de ventas accesibles para own_brand_user (tableros generales)
+  const SALES_ROUTES_FOR_OWN_BRAND = ["/", "/sales", "/hourly", "/sales-vs-target", "/top-products", "/top-customers", "/sales-by-shelf", "/sales-by-category", "/tickets"];
+  const isOnSalesRoute = SALES_ROUTES_FOR_OWN_BRAND.some((r) => path === r || path.startsWith(r + "/"));
+  // own_brand_user → puede acceder a ventas y a su portal; en cualquier otra ruta va a /marca-propia
+  if (user.role === "own_brand_user" && path !== "/marca-propia" && !isOnSalesRoute) {
     return <Redirect to="/marca-propia" />;
   }
 
@@ -174,7 +182,7 @@ function Router() {
           <ProtectedRoute
             component={IdentifiedTransactions}
             path="/identified-transactions"
-            guard="no_supplier"
+            guard="no_own_brand"
           />
         )}
       </Route>
@@ -182,7 +190,7 @@ function Router() {
         {() => <ProtectedRoute component={TopProducts} path="/top-products" guard="no_supplier" />}
       </Route>
       <Route path="/credit-notes">
-        {() => <ProtectedRoute component={CreditNotes} path="/credit-notes" guard="no_supplier" />}
+        {() => <ProtectedRoute component={CreditNotes} path="/credit-notes" guard="no_own_brand" />}
       </Route>
       <Route path="/top-customers">
         {() => <ProtectedRoute component={TopCustomers} path="/top-customers" guard="no_supplier" />}

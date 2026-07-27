@@ -181,41 +181,43 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Indicadores de Operación Section */}
-        <div className="space-y-6">
-          <div className="flex items-center space-x-2">
-            <Gauge className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-semibold tracking-tight">Indicadores de Operación</h2>
-          </div>
+        {/* Indicadores de Operación Section — oculto para own_brand_user */}
+        {user?.role !== "own_brand_user" && (
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <Gauge className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-semibold tracking-tight">Indicadores de Operación</h2>
+            </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {opsModules.map((module) => {
-              const Icon = module.icon;
-              return (
-                <Link key={module.href} href={module.href}>
-                  <div className="block h-full">
-                    <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
-                      <CardHeader>
-                        <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
-                          <Icon className={`h-6 w-6 ${module.color}`} />
-                        </div>
-                        <CardTitle className="text-xl">{module.title}</CardTitle>
-                        <CardDescription className="text-sm">
-                          {module.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button variant="outline" className="w-full">
-                          Acceder al Módulo
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </Link>
-              );
-            })}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {opsModules.map((module) => {
+                const Icon = module.icon;
+                return (
+                  <Link key={module.href} href={module.href}>
+                    <div className="block h-full">
+                      <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
+                        <CardHeader>
+                          <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
+                            <Icon className={`h-6 w-6 ${module.color}`} />
+                          </div>
+                          <CardTitle className="text-xl">{module.title}</CardTitle>
+                          <CardDescription className="text-sm">
+                            {module.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button variant="outline" className="w-full">
+                            Acceder al Módulo
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quick Stats or Additional Info */}
         <div className="bg-muted/50 rounded-lg p-8 space-y-4">
@@ -231,7 +233,7 @@ export default function Home() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Módulos Disponibles</p>
-              <p className="font-medium">{salesModules.length + opsModules.length} módulos activos</p>
+              <p className="font-medium">{salesModules.length + (user?.role !== "own_brand_user" ? opsModules.length : 0)} módulos activos</p>
             </div>
           </div>
         </div>

@@ -173,39 +173,41 @@ export function NavigationMenu() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Dropdown Indicadores de Operación */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={`flex items-center space-x-1 text-sm font-medium ${
-                  isOpsActive ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <Gauge className="h-4 w-4" />
-                <span>Indicadores de Operación</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel>Indicadores de Operación</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem asChild>
-                  <Link href="/identified-transactions" className="flex items-center w-full cursor-pointer">
-                    <UserCheck className="mr-2 h-4 w-4" />
-                    <span>Transacciones Identificadas</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/credit-notes" className="flex items-center w-full cursor-pointer">
-                    <ReceiptText className="mr-2 h-4 w-4" />
-                    <span>Notas de Crédito</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Dropdown Indicadores de Operación — oculto para own_brand_user */}
+          {user?.role !== "own_brand_user" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`flex items-center space-x-1 text-sm font-medium ${
+                    isOpsActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <Gauge className="h-4 w-4" />
+                  <span>Indicadores de Operación</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>Indicadores de Operación</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/identified-transactions" className="flex items-center w-full cursor-pointer">
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      <span>Transacciones Identificadas</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/credit-notes" className="flex items-center w-full cursor-pointer">
+                      <ReceiptText className="mr-2 h-4 w-4" />
+                      <span>Notas de Crédito</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Tickets */}
           <Link
@@ -470,55 +472,57 @@ export function NavigationMenu() {
               )}
             </div>
 
-            {/* Indicadores de Operación — sección expandible móvil */}
-            <div>
-              <button
-                onClick={() => setOpsExpanded((prev) => !prev)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isOpsActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <span className="flex items-center space-x-3">
-                  <Gauge className="h-4 w-4 shrink-0" />
-                  <span>Indicadores de Operación</span>
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${
-                    opsExpanded ? "rotate-180" : ""
+            {/* Indicadores de Operación — sección expandible móvil — oculto para own_brand_user */}
+            {user?.role !== "own_brand_user" && (
+              <div>
+                <button
+                  onClick={() => setOpsExpanded((prev) => !prev)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isOpsActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-muted"
                   }`}
-                />
-              </button>
-              {opsExpanded && (
-                <div className="mt-1 ml-4 pl-3 border-l border-border flex flex-col space-y-1">
-                  <Link
-                    href="/identified-transactions"
-                    onClick={closeMobile}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                      isActive("/identified-transactions")
-                        ? "text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <span className="flex items-center space-x-3">
+                    <Gauge className="h-4 w-4 shrink-0" />
+                    <span>Indicadores de Operación</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      opsExpanded ? "rotate-180" : ""
                     }`}
-                  >
-                    <UserCheck className="h-4 w-4 shrink-0" />
-                    <span>Transacciones Identificadas</span>
-                  </Link>
-                  <Link
-                    href="/credit-notes"
-                    onClick={closeMobile}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                      isActive("/credit-notes")
-                        ? "text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <ReceiptText className="h-4 w-4 shrink-0" />
-                    <span>Notas de Crédito</span>
-                  </Link>
-                </div>
-              )}
-            </div>
+                  />
+                </button>
+                {opsExpanded && (
+                  <div className="mt-1 ml-4 pl-3 border-l border-border flex flex-col space-y-1">
+                    <Link
+                      href="/identified-transactions"
+                      onClick={closeMobile}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive("/identified-transactions")
+                          ? "text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <UserCheck className="h-4 w-4 shrink-0" />
+                      <span>Transacciones Identificadas</span>
+                    </Link>
+                    <Link
+                      href="/credit-notes"
+                      onClick={closeMobile}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive("/credit-notes")
+                          ? "text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <ReceiptText className="h-4 w-4 shrink-0" />
+                      <span>Notas de Crédito</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Tickets */}
             <Link

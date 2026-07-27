@@ -108,3 +108,4 @@ temp/
 
 # Ignorar archivo de datos grande
 client/public/data.json
+.project-config.json
