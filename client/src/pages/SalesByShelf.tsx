@@ -1786,8 +1786,11 @@ export default function SalesByShelf() {
                                   </TooltipTrigger>
                                   <TooltipContent side="left" className="text-xs max-w-[220px]">
                                     <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
                                     <p>{comp.previous.productos_distintos.toLocaleString()} productos</p>
+                                    <p className="mt-1" style={{ color: row.productos_distintos - comp.previous.productos_distintos >= 0 ? '#008064' : '#BC2C46' }}>
+                                      {row.productos_distintos - comp.previous.productos_distintos >= 0 ? '+' : ''}{(row.productos_distintos - comp.previous.productos_distintos).toLocaleString()} vs período ant.
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               ) : (
@@ -1805,8 +1808,11 @@ export default function SalesByShelf() {
                                   </TooltipTrigger>
                                   <TooltipContent side="left" className="text-xs max-w-[220px]">
                                     <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
                                     <p>{fmtNumber(comp.previous.cantidad_vendida)} unidades</p>
+                                    <p className="mt-1" style={{ color: row.cantidad_vendida - comp.previous.cantidad_vendida >= 0 ? '#008064' : '#BC2C46' }}>
+                                      {row.cantidad_vendida - comp.previous.cantidad_vendida >= 0 ? '+' : ''}{fmtNumber(row.cantidad_vendida - comp.previous.cantidad_vendida)} vs período ant.
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               ) : (
@@ -1824,11 +1830,11 @@ export default function SalesByShelf() {
                                   </TooltipTrigger>
                                   <TooltipContent side="left" className="text-xs max-w-[240px]">
                                     <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
                                     <p className="font-semibold">S/ {fmtCurrency(comp.previous.monto_total)}</p>
-                                    {periodCurrent && (
-                                      <p className="text-muted-foreground text-[11px] mt-1">Período actual: {fmtDate(periodCurrent.start)} – {fmtDate(periodCurrent.end)}</p>
-                                    )}
+                                    <p className="mt-1" style={{ color: row.monto_total - comp.previous.monto_total >= 0 ? '#008064' : '#BC2C46' }}>
+                                      {row.monto_total - comp.previous.monto_total >= 0 ? '+' : ''}S/ {fmtCurrency(row.monto_total - comp.previous.monto_total)} vs período ant.
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               ) : (
