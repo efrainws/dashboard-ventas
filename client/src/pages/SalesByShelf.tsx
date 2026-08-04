@@ -36,6 +36,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
@@ -1206,7 +1211,9 @@ export default function SalesByShelf() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
-    return { from: yesterday, to: new Date(yesterday.getTime() + 86399999) };
+    const from = new Date(yesterday);
+    from.setDate(from.getDate() - 14); // 15 días: ayer-14 hasta ayer
+    return { from, to: new Date(yesterday.getTime() + 86399999) };
   });
 
   const userRole = user?.role as string | undefined;
@@ -1331,6 +1338,15 @@ export default function SalesByShelf() {
     shelf_status: shelfStatus,
   });
   const compData: ShelfCompEntry[] = (compResult?.data ?? []) as ShelfCompEntry[];
+  // Fechas de los períodos para mostrar en tooltips
+  const periodCurrent  = compResult?.period_current  as { start: string; end: string } | undefined;
+  const periodPrevious = compResult?.period_previous as { start: string; end: string } | undefined;
+
+  // Helper: formatear fecha "YYYY-MM-DD" a "DD/MM/YYYY"
+  const fmtDate = (s: string) => {
+    const [y, m, d] = s.split('-');
+    return `${d}/${m}/${y}`;
+  };
   // Mapa de comparación: key = "branch_sap_id::shelf_id"
   const compMap = useMemo(() => {
     const m = new Map<string, ShelfCompEntry>();
@@ -1441,7 +1457,9 @@ export default function SalesByShelf() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
-    setDateRange({ from: yesterday, to: new Date(yesterday.getTime() + 86399999) });
+    const from = new Date(yesterday);
+    from.setDate(from.getDate() - 14); // 15 días: ayer-14 hasta ayer
+    setDateRange({ from, to: new Date(yesterday.getTime() + 86399999) });
     if (!isStoreUser) setSelectedBranch("all");
     setSelectedCategory("all");
     setShelfStatus("all");
@@ -1758,16 +1776,64 @@ export default function SalesByShelf() {
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
                             <TableCell className="text-xs text-right tabular-nums text-foreground">
-                              <div>{row.productos_distintos.toLocaleString()}</div>
-                              {comp && <VariationBadge current={row.productos_distintos} previous={comp.previous.productos_distintos} />}
+                              {comp && periodPrevious ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help inline-block w-full">
+                                      <div>{row.productos_distintos.toLocaleString()}</div>
+                                      <VariationBadge current={row.productos_distintos} previous={comp.previous.productos_distintos} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-xs max-w-[220px]">
+                                    <p className="font-semibold mb-1">Período anterior</p>
+                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p>{comp.previous.productos_distintos.toLocaleString()} productos</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <div>{row.productos_distintos.toLocaleString()}</div>
+                              )}
                             </TableCell>
                             <TableCell className="text-xs text-right tabular-nums text-foreground">
-                              <div>{fmtNumber(row.cantidad_vendida)}</div>
-                              {comp && <VariationBadge current={row.cantidad_vendida} previous={comp.previous.cantidad_vendida} />}
+                              {comp && periodPrevious ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help inline-block w-full">
+                                      <div>{fmtNumber(row.cantidad_vendida)}</div>
+                                      <VariationBadge current={row.cantidad_vendida} previous={comp.previous.cantidad_vendida} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-xs max-w-[220px]">
+                                    <p className="font-semibold mb-1">Período anterior</p>
+                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p>{fmtNumber(comp.previous.cantidad_vendida)} unidades</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <div>{fmtNumber(row.cantidad_vendida)}</div>
+                              )}
                             </TableCell>
                             <TableCell className="text-xs text-right tabular-nums font-bold text-foreground">
-                              <div>S/ {fmtCurrency(row.monto_total)}</div>
-                              {comp && <VariationBadge current={row.monto_total} previous={comp.previous.monto_total} />}
+                              {comp && periodPrevious ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help inline-block w-full">
+                                      <div>S/ {fmtCurrency(row.monto_total)}</div>
+                                      <VariationBadge current={row.monto_total} previous={comp.previous.monto_total} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-xs max-w-[240px]">
+                                    <p className="font-semibold mb-1">Período anterior</p>
+                                    <p className="text-muted-foreground text-[11px] mb-1">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
+                                    <p className="font-semibold">S/ {fmtCurrency(comp.previous.monto_total)}</p>
+                                    {periodCurrent && (
+                                      <p className="text-muted-foreground text-[11px] mt-1">Período actual: {fmtDate(periodCurrent.start)} – {fmtDate(periodCurrent.end)}</p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <div>S/ {fmtCurrency(row.monto_total)}</div>
+                              )}
                             </TableCell>
                           </TableRow>
                           );
