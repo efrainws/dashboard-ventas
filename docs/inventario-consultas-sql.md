@@ -399,7 +399,7 @@ SELECT DISTINCT b.id, b.name, b.sap_id
 **Origen:** `server/ownBrandRouter.ts:704`  
 **Propósito:** Devuelve el stock por producto y sucursal, con paginación.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `stocks`.  
-**Parámetros / fragmentos variables:** `:limite_resultados`, `:desplazamiento_paginacion`, `:id_producto`, `{{predicado_sucursal}}`, `{{validacion_categoria_producto}}`, `:parametro_contextual_uno`.
+**Parámetros / fragmentos variables:** `:limite_resultados`, `:desplazamiento_paginacion`, `:id_producto`, `{{predicado_sucursal}}`, `{{validacion_categoria_producto}}`, `:ids_marcas_autorizadas`.
 
 ```sql
 SELECT
@@ -413,7 +413,7 @@ SELECT
            FROM public.branches b
            CROSS JOIN (
              SELECT id, name, int_sku FROM public.products
-             WHERE id = :id_producto AND brand_id = ANY(:parametro_contextual_uno::uuid[]) {{validacion_categoria_producto}}
+             WHERE id = :id_producto AND brand_id = ANY(:ids_marcas_autorizadas::uuid[]) {{validacion_categoria_producto}}
            ) p
            LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
            WHERE 1=1 {{predicado_sucursal}}
@@ -490,7 +490,7 @@ SELECT COUNT(*)::int AS total
 **Origen:** `server/ownBrandRouter.ts:848`  
 **Propósito:** Exporta el stock por producto y sucursal sin paginación de interfaz.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `stocks`.  
-**Parámetros / fragmentos variables:** `:id_producto`, `{{predicado_sucursal}}`, `{{validacion_categoria_producto}}`, `:parametro_contextual_uno`.
+**Parámetros / fragmentos variables:** `:id_producto`, `{{predicado_sucursal}}`, `{{validacion_categoria_producto}}`, `:ids_marcas_autorizadas`.
 
 ```sql
 SELECT
@@ -499,7 +499,7 @@ SELECT
            FROM public.branches b
            CROSS JOIN (
              SELECT id, name, int_sku FROM public.products
-             WHERE id = :id_producto AND brand_id = ANY(:parametro_contextual_uno::uuid[]) {{validacion_categoria_producto}}
+             WHERE id = :id_producto AND brand_id = ANY(:ids_marcas_autorizadas::uuid[]) {{validacion_categoria_producto}}
            ) p
            LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id
            WHERE 1=1 {{predicado_sucursal}}
@@ -1602,7 +1602,7 @@ SELECT
 **Origen:** `server/salesRouter.ts:1600`  
 **Propósito:** Devuelve el ranking de clientes por contribución dentro de cada sucursal.  
 **Tablas o CTEs relevantes:** `branches`, `customers`, `sales_header`.  
-**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_canal_venta}}`, `{{predicado_sucursal}}`, `:id_cliente`.
+**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_canal_venta}}`, `{{predicado_sucursal}}`, `:id_cliente`, `:id_cliente_generico_excluido`, `:limite_clientes_top`.
 
 ```sql
 WITH branch_totals AS (
@@ -1633,7 +1633,7 @@ WITH branch_totals AS (
           WHERE sh.doc_date IS NOT NULL
             AND sh.doc_date >= '{{fecha_inicio_analisis}}'::date AND sh.doc_date < ('{{fecha_fin_analisis}}'::date + INTERVAL '1 day')
             AND sh.customer_id IS NOT NULL
-            AND sh.customer_id <> '{{fragmento_dinamico_GENERIC_CUSTOMER}}'
+            AND sh.customer_id <> '{{id_cliente_generico_excluido}}'
             {{predicado_sucursal}}
             {{predicado_canal_venta}}
           GROUP BY b.sap_id, b.name, sh.customer_id, c.commercial_name
@@ -1653,7 +1653,7 @@ WITH branch_totals AS (
         )
         SELECT *
         FROM ranked
-        WHERE rn <= {{fragmento_dinamico_top_n}}
+        WHERE rn <= {{limite_clientes_top}}
         ORDER BY
           CAST(SUBSTRING(codigo_tienda FROM '[0-9]+') AS INTEGER) NULLS LAST,
           rn;
@@ -1664,7 +1664,7 @@ WITH branch_totals AS (
 **Origen:** `server/salesRouter.ts:1722`  
 **Propósito:** Devuelve el ranking general de clientes, con métricas de frecuencia y ticket promedio.  
 **Tablas o CTEs relevantes:** `branches`, `customer_data`, `customers`, `sales_header`.  
-**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_canal_venta}}`, `{{predicado_sucursal}}`, `:id_cliente`.
+**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_canal_venta}}`, `{{predicado_sucursal}}`, `:id_cliente`, `:id_cliente_generico_excluido`, `:limite_clientes_top`.
 
 ```sql
 WITH date_range AS (
@@ -1685,9 +1685,9 @@ WITH date_range AS (
           WHERE sh.doc_date IS NOT NULL
             AND sh.doc_date >= '{{fecha_inicio_analisis}}'::date AND sh.doc_date < ('{{fecha_fin_analisis}}'::date + INTERVAL '1 day')
             AND sh.customer_id IS NOT NULL
-            AND sh.customer_id <> '{{fragmento_dinamico_GENERIC_CUSTOMER}}'
+            AND sh.customer_id <> '{{id_cliente_generico_excluido}}'
             {{predicado_sucursal}}
-            {{fragmento_dinamico_channelFilterG}}
+            {{predicado_canal_venta}}
           GROUP BY sh.customer_id, c.commercial_name
         )
         SELECT
@@ -1697,7 +1697,7 @@ WITH date_range AS (
         FROM customer_data cd
         CROSS JOIN date_range dr
         ORDER BY cd.monto_total DESC
-        LIMIT {{fragmento_dinamico_top_n}};
+        LIMIT {{limite_clientes_top}};
 ```
 
 ### 17. getCustomerTransactions — consulta 17
@@ -1731,7 +1731,7 @@ SELECT
 **Origen:** `server/salesRouter.ts:1903`  
 **Propósito:** Obtiene el detalle de ventas por producto y asignación de góndola.  
 **Tablas o CTEs relevantes:** `branches`, `categories`, `categories_products`, `products`, `sales_detail`, `sales_header`, `shelfs`, `stocks`.  
-**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`.
+**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`, `{{predicado_estado_gondola}}`.
 
 ```sql
 SELECT
@@ -1774,7 +1774,7 @@ SELECT
           AND sh.doc_date IS NOT NULL
           {{predicado_sucursal}}
           {{predicado_categoria}}
-          {{fragmento_dinamico_shelfStatusClause}}
+          {{predicado_estado_gondola}}
         GROUP BY
           b.sap_id,
           b.name,
@@ -1800,7 +1800,7 @@ SELECT
 **Origen:** `server/salesRouter.ts:2028`  
 **Propósito:** Agrega resultados de ventas por tienda y góndola.  
 **Tablas o CTEs relevantes:** `branches`, `categories`, `categories_products`, `products`, `sales_detail`, `sales_header`, `shelfs`, `stocks`.  
-**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`.
+**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`, `{{predicado_estado_gondola}}`.
 
 ```sql
 SELECT
@@ -1839,7 +1839,7 @@ SELECT
           AND sh.doc_date IS NOT NULL
           {{predicado_sucursal}}
           {{predicado_categoria}}
-          {{fragmento_dinamico_shelfStatusClause}}
+          {{predicado_estado_gondola}}
         GROUP BY
           b.sap_id,
           b.name,
@@ -1855,14 +1855,14 @@ SELECT
 **Origen:** `server/salesRouter.ts:2109`  
 **Propósito:** Obtiene el detalle de líneas de una transacción de venta.  
 **Tablas o CTEs relevantes:** `products`, `sales_detail`.  
-**Parámetros / fragmentos variables:** `{{columna_importe_segun_igv}}`, `:id_cabecera_venta`.
+**Parámetros / fragmentos variables:** `{{columna_importe_segun_igv}}`, `:id_cabecera_venta`, `{{columna_precio_unitario}}`.
 
 ```sql
 SELECT
           COALESCE(p.name, sd.descripcion, 'Producto desconocido') AS producto_nombre,
           p.int_sku                 AS sku,
           sd.quantity               AS cantidad,
-          {{fragmento_dinamico_priceCol}}               AS precio_unitario,
+          {{columna_precio_unitario}}               AS precio_unitario,
           {{columna_importe_segun_igv}}                 AS monto_linea
         FROM public.sales_detail sd
         LEFT JOIN public.products p ON p.id = sd.product_id
@@ -1875,7 +1875,7 @@ SELECT
 **Origen:** `server/salesRouter.ts:2186`  
 **Propósito:** Compara cada góndola contra el período inmediatamente anterior de igual duración.  
 **Tablas o CTEs relevantes:** `branches`, `categories`, `categories_products`, `products`, `sales_detail`, `sales_header`, `shelfs`, `stocks`.  
-**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `:fecha_inicio_periodo_anterior`, `:fecha_fin_periodo_anterior`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`.
+**Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `:fecha_inicio_periodo_anterior`, `:fecha_fin_periodo_anterior`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `{{predicado_categoria}}`, `:id_cabecera_venta`, `:codigo_sucursal_sap`, `{{predicado_estado_gondola}}`.
 
 ```sql
 WITH base AS (
@@ -1923,7 +1923,7 @@ WITH base AS (
             )
             {{predicado_sucursal}}
             {{predicado_categoria}}
-            {{fragmento_dinamico_shelfStatusClause}}
+            {{predicado_estado_gondola}}
         )
         SELECT
           branch_sap_id,
@@ -1946,7 +1946,7 @@ WITH base AS (
 **Origen:** `server/salesRouter.ts:2328`  
 **Propósito:** Obtiene productos vendidos para una tienda y góndola específica.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `sales_detail`, `sales_header`, `shelfs`, `stocks`.  
-**Parámetros / fragmentos variables:** `:id_cabecera_venta`, `:codigo_sucursal_sap`.
+**Parámetros / fragmentos variables:** `:id_cabecera_venta`, `:codigo_sucursal_sap`, `{{predicado_fecha_venta}}`, `{{predicado_stock_gondola}}`.
 
 ```sql
 SELECT DISTINCT ON (p.id)
@@ -1973,8 +1973,8 @@ SELECT DISTINCT ON (p.id)
           ON sh2.id = st.shelf_id
         WHERE b.sap_id = '{{codigo_sucursal_sap}}'
           AND sh.doc_date IS NOT NULL
-          {{fragmento_dinamico_fechaClause}}
-          {{fragmento_dinamico_shelfStockClause}}
+          {{predicado_fecha_venta}}
+          {{predicado_stock_gondola}}
         ORDER BY p.id, INITCAP(LOWER(p.name))
         LIMIT 500;
 ```
@@ -2240,7 +2240,7 @@ WHERE 1 = 1
 **Origen:** `server/supplierPortalRouter.ts:402`  
 **Propósito:** Devuelve el stock por producto y sucursal, con paginación.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `stocks`.  
-**Parámetros / fragmentos variables:** `:subconsulta_productos_proveedor_autorizado`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
+**Parámetros / fragmentos variables:** `:subconsulta_productos_proveedor_autorizado`, `{{predicados_stock_adicionales}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
 
 ```sql
 SELECT
@@ -2256,7 +2256,7 @@ SELECT
          JOIN public.branches b ON b.id = st.branch_id
          WHERE p.id IN {{subconsulta_productos_proveedor_autorizado}}
            AND st.stock > 0
-           {{fragmento_dinamico_whereExtra}}
+           {{predicados_stock_adicionales}}
          ORDER BY p.name ASC, b.sap_id ASC
          LIMIT :fecha_inicio_analisis OFFSET :fecha_fin_analisis
 ```
@@ -2347,7 +2347,7 @@ SELECT
 **Origen:** `server/supplierPortalRouter.ts:576`  
 **Propósito:** Obtiene el catálogo de productos de marca propia y su stock consolidado.  
 **Tablas o CTEs relevantes:** `filtered`, `products`, `stocks`.  
-**Parámetros / fragmentos variables:** `:subconsulta_productos_proveedor_autorizado`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
+**Parámetros / fragmentos variables:** `:subconsulta_productos_proveedor_autorizado`, `{{predicado_busqueda_texto}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
 
 ```sql
 WITH filtered AS (
@@ -2358,7 +2358,7 @@ WITH filtered AS (
                p.short_description AS description
              FROM public.products p
              WHERE p.id IN {{subconsulta_productos_proveedor_autorizado}}
-               {{fragmento_dinamico_searchClause}}
+               {{predicado_busqueda_texto}}
            )
            SELECT
              f.id,
@@ -2380,7 +2380,7 @@ WITH filtered AS (
 **Origen:** `server/supplierPortalRouter.ts:683`  
 **Propósito:** Agrega ventas por producto y tienda, con totales y paginación en una sola consulta.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `sales_detail`, `sales_header`.  
-**Parámetros / fragmentos variables:** `{{columna_importe_segun_igv}}`, `{{dimension_producto_opcional}}`, `{{dimension_tienda_opcional}}`, `{{columnas_agrupacion_dimension}}`, `:id_cabecera_venta`, `:subconsulta_productos_proveedor_autorizado`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `:id_sucursal`, `:id_producto`.
+**Parámetros / fragmentos variables:** `{{columna_importe_segun_igv}}`, `{{dimension_producto_opcional}}`, `{{dimension_tienda_opcional}}`, `{{columnas_agrupacion_dimension}}`, `:id_cabecera_venta`, `:subconsulta_productos_proveedor_autorizado`, `{{predicados_stock_adicionales}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `:id_sucursal`, `:id_producto`.
 
 ```sql
 WITH base AS (
@@ -2396,7 +2396,7 @@ WITH base AS (
            JOIN public.branches b ON b.id = sh.branch_id
            WHERE p.id IN {{subconsulta_productos_proveedor_autorizado}}
              AND sh.doc_date >= :fecha_inicio_analisis::date AND sh.doc_date < (:fecha_fin_analisis::date + INTERVAL '1 day')
-             {{fragmento_dinamico_whereExtra}}
+             {{predicados_stock_adicionales}}
            GROUP BY {{columnas_agrupacion_dimension}}
          ),
          totals AS (
@@ -2541,7 +2541,7 @@ SELECT DISTINCT
 **Origen:** `server/supplierPortalRouter.ts:1031`  
 **Propósito:** Devuelve una serie temporal de ventas para marca propia.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `sales_detail`, `sales_header`.  
-**Parámetros / fragmentos variables:** `{{expresion_granularidad_temporal}}`, `{{columna_importe_segun_igv}}`, `{{dimension_producto_opcional}}`, `{{dimension_tienda_opcional}}`, `{{columnas_agrupacion}}`, `{{predicado_sucursal}}`, `:id_cabecera_venta`, `:ordenamiento_por_producto_opcional`, `:ordenamiento_por_tienda_opcional`, `:subconsulta_productos_proveedor_autorizado`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
+**Parámetros / fragmentos variables:** `{{expresion_granularidad_temporal}}`, `{{columna_importe_segun_igv}}`, `{{dimension_producto_opcional}}`, `{{dimension_tienda_opcional}}`, `{{columnas_agrupacion}}`, `{{predicado_sucursal}}`, `:id_cabecera_venta`, `:ordenamiento_por_producto_opcional`, `:ordenamiento_por_tienda_opcional`, `:subconsulta_productos_proveedor_autorizado`, `{{predicado_producto}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
 
 ```sql
 SELECT
@@ -2557,7 +2557,7 @@ SELECT
         WHERE sh.doc_date IS NOT NULL
           AND sh.doc_date >= :fecha_inicio_analisis::date AND sh.doc_date < (:fecha_fin_analisis::date + INTERVAL '1 day')
           AND p.id IN {{subconsulta_productos_proveedor_autorizado}}
-          {{fragmento_dinamico_productFilter}}
+          {{predicado_producto}}
           {{predicado_sucursal}}
         GROUP BY {{columnas_agrupacion}}
         ORDER BY period ASC, {{ordenamiento_por_producto_opcional}} {{ordenamiento_por_tienda_opcional}}
@@ -2568,7 +2568,7 @@ SELECT
 **Origen:** `server/supplierPortalRouter.ts:1098`  
 **Propósito:** Devuelve la evolución temporal de ventas para el portal de proveedor.  
 **Tablas o CTEs relevantes:** `branches`, `products`, `sales_detail`, `sales_header`.  
-**Parámetros / fragmentos variables:** `{{expresion_granularidad_temporal}}`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `:id_cabecera_venta`, `:subconsulta_productos_proveedor_autorizado`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
+**Parámetros / fragmentos variables:** `{{expresion_granularidad_temporal}}`, `{{columna_importe_segun_igv}}`, `{{predicado_sucursal}}`, `:id_cabecera_venta`, `:subconsulta_productos_proveedor_autorizado`, `{{predicado_producto}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
 
 ```sql
 SELECT
@@ -2582,7 +2582,7 @@ SELECT
         WHERE sh.doc_date IS NOT NULL
           AND sh.doc_date >= :fecha_inicio_analisis::date AND sh.doc_date < (:fecha_fin_analisis::date + INTERVAL '1 day')
           AND p.id IN {{subconsulta_productos_proveedor_autorizado}}
-          {{fragmento_dinamico_productFilter}}
+          {{predicado_producto}}
           {{predicado_sucursal}}
         GROUP BY period
         ORDER BY period ASC
@@ -2595,7 +2595,7 @@ SELECT
 **Origen:** `server/targetsRouter.ts:92`  
 **Propósito:** Calcula ventas reales frente a metas por tienda y período.  
 **Tablas o CTEs relevantes:** `branches`, `sales_detail`, `sales_header`.  
-**Parámetros / fragmentos variables:** `{{predicado_canal_venta}}`, `:id_cabecera_venta`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
+**Parámetros / fragmentos variables:** `{{predicado_canal_venta}}`, `:id_cabecera_venta`, `{{predicado_sucursal}}`, `:fecha_inicio_analisis`, `:fecha_fin_analisis`.
 
 ```sql
 SELECT
@@ -2607,7 +2607,7 @@ SELECT
         JOIN sales_detail sd ON sd.header_id = sh.id
         LEFT JOIN branches b ON b.id = sh.branch_id
         WHERE sh.doc_date >= :fecha_inicio_analisis::date AND sh.doc_date < (:fecha_fin_analisis::date + INTERVAL '1 day')
-          {{fragmento_dinamico_storeFilter}}
+          {{predicado_sucursal}}
           {{predicado_canal_venta}}
         GROUP BY sh.branch_id, b.name, b.sap_id
         ORDER BY b.sap_id;
@@ -2672,12 +2672,12 @@ SELECT sap_id, INITCAP(LOWER(COALESCE(name, ''))) AS name
 **Origen:** `server/userRouter.ts:188`  
 **Propósito:** Lista proveedores disponibles al gestionar usuarios.  
 **Tablas o CTEs relevantes:** `suppliers`.  
-**Parámetros / fragmentos variables:** `:parametro_contextual_uno`.
+**Parámetros / fragmentos variables:** `:termino_busqueda_proveedor`.
 
 ```sql
 SELECT id, ruc, name
             FROM public.suppliers
-            WHERE ruc ILIKE :parametro_contextual_uno
+            WHERE ruc ILIKE :termino_busqueda_proveedor
             ORDER BY ruc ASC
             LIMIT 50
 ```

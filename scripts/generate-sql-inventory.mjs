@@ -149,6 +149,17 @@ const variableAliases = {
   catCheck: "validacion_categoria_producto",
   catCheckCount: "validacion_categoria_producto",
   SUPPLIER_PRODUCTS_SUBQUERY: "subconsulta_productos_proveedor_autorizado",
+  GENERIC_CUSTOMER: "id_cliente_generico_excluido",
+  top_n: "limite_clientes_top",
+  channelFilterG: "predicado_canal_venta",
+  shelfStatusClause: "predicado_estado_gondola",
+  priceCol: "columna_precio_unitario",
+  fechaClause: "predicado_fecha_venta",
+  shelfStockClause: "predicado_stock_gondola",
+  whereExtra: "predicados_stock_adicionales",
+  searchClause: "predicado_busqueda_texto",
+  productFilter: "predicado_producto",
+  storeFilter: "predicado_sucursal",
 };
 
 const positionalAliases = (entry, sql) => {
@@ -158,11 +169,17 @@ const positionalAliases = (entry, sql) => {
   if (entry.sourceFile === "postgres.ts") {
     return { 1: "fecha_inicio_carga_cache", 2: "fecha_fin_carga_cache" };
   }
+  if (entry.sourceFile === "ownBrandRouter.ts") {
+    return { 1: "ids_marcas_autorizadas", 2: "id_producto", 3: "limite_resultados", 4: "desplazamiento_paginacion" };
+  }
   if (entry.sourceFile === "supplierPortalRouter.ts") {
     return { 1: "id_proveedor_autenticado", 2: "fecha_inicio_analisis", 3: "fecha_fin_analisis", 4: "id_sucursal", 5: "id_producto", 6: "limite_resultados", 7: "desplazamiento_paginacion" };
   }
   if (entry.sourceFile === "targetsRouter.ts") {
     return { 1: "fecha_inicio_analisis", 2: "fecha_fin_analisis", 3: "id_sucursal", 4: "id_meta" };
+  }
+  if (entry.sourceFile === "userRouter.ts") {
+    return { 1: "termino_busqueda_proveedor" };
   }
   if (entry.sourceFile === "salesRouter.ts" && /cashier_id|pos_by_branch/.test(sql)) {
     return { 1: "fecha_inicio_analisis", 2: "fecha_fin_analisis", 3: "codigo_sucursal_sap" };
