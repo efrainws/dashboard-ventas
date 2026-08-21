@@ -1,0 +1,674 @@
+[
+  {
+    "sourceFile": "categoryAnalysisRouter.ts",
+    "startLine": 104,
+    "procedure": "getCategoryTree",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH ${CP_HIER_CTE}\n        SELECT DISTINCT\n          dept_id,\n          dept_name,\n          seccion_id,\n          seccion_name,\n          leaf_category_id AS familia_id,\n          leaf_name        AS familia_name\n        FROM cp_hier\n        ORDER BY dept_name, seccion_name, leaf_name"
+  },
+  {
+    "sourceFile": "categoryAnalysisRouter.ts",
+    "startLine": 222,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "dateTrunc",
+    "sql": "WITH ${CP_HIER_CTE}\n          SELECT\n            ${dateTrunc}                AS period,\n            SUM(${amtCol})              AS amount,\n            SUM(sd.quantity)            AS quantity\n          FROM sales_header sh\n          JOIN sales_detail sd ON sd.header_id = sh.id\n          JOIN products p      ON p.id = sd.product_id\n          JOIN cp_hier         ON cp_hier.product_id = p.id\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= $1::date\n            AND sh.doc_date <  ($2::date + INTERVAL '1 day')\n            ${branchFilter}\n            ${catFilter}\n          GROUP BY period\n          ORDER BY period ASC"
+  },
+  {
+    "sourceFile": "categoryAnalysisRouter.ts",
+    "startLine": 306,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH ${CP_HIER_CTE}\n          SELECT\n            ${groupCol}        AS category_id,\n            ${nameCol}         AS category_name,\n            SUM(${amtCol})     AS amount,\n            SUM(sd.quantity)   AS quantity\n          FROM sales_header sh\n          JOIN sales_detail sd ON sd.header_id = sh.id\n          JOIN products p      ON p.id = sd.product_id\n          JOIN cp_hier         ON cp_hier.product_id = p.id\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= $1::date\n            AND sh.doc_date <  ($2::date + INTERVAL '1 day')\n            ${branchFilter}\n            ${parentFilter}\n          GROUP BY ${groupCol}, ${nameCol}\n          ORDER BY amount DESC"
+  },
+  {
+    "sourceFile": "categoryAnalysisRouter.ts",
+    "startLine": 401,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH ${CP_HIER_CTE}\n          SELECT\n            ${dateTrunc}             AS period,\n            ${selectProduct}\n            ${selectStore}\n            SUM(${amtCol})           AS amount,\n            SUM(sd.quantity)         AS quantity\n          FROM sales_header sh\n          JOIN sales_detail sd ON sd.header_id = sh.id\n          JOIN products p      ON p.id = sd.product_id\n          JOIN cp_hier         ON cp_hier.product_id = p.id\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= $1::date\n            AND sh.doc_date <  ($2::date + INTERVAL '1 day')\n            ${branchFilter}\n            ${catFilter}\n          GROUP BY ${groupByClause}\n          ORDER BY period ASC, ${gp ? \"p.name ASC,\" : \"\"} ${gs ? \"b.sap_id ASC\" : \"1\"}"
+  },
+  {
+    "sourceFile": "categoryAnalysisRouter.ts",
+    "startLine": 445,
+    "procedure": "getBranchCatalog",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           id,\n           name,\n           sap_id,\n           address\n         FROM branches\n         ORDER BY\n           NULLIF(regexp_replace(sap_id, '[^0-9]', '', 'g'), '')::int NULLS LAST,\n           name ASC"
+  },
+  {
+    "sourceFile": "db.ts",
+    "startLine": 294,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})"
+  },
+  {
+    "sourceFile": "db.ts",
+    "startLine": 538,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})"
+  },
+  {
+    "sourceFile": "dbConnectionsRouter.ts",
+    "startLine": 291,
+    "procedure": "consulta_utilitaria",
+    "assignedVariable": "consulta_embebida_en_linea",
+    "sql": "SELECT version()"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 191,
+    "procedure": "listBrands",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, name FROM public.brands WHERE id IN (${placeholders}) ORDER BY name ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 209,
+    "procedure": "listAllBrands",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, name FROM public.brands ORDER BY name ASC LIMIT 1000"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 280,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             COUNT(DISTINCT sh.id)::int                    AS total_tickets,\n             COUNT(DISTINCT p.id)::int                     AS productos_vendidos,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,\n             COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE 1=1 ${brandClause}\n             ${clauses.join(\" \")}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 334,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             sh.doc_date::date                             AS fecha,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             COUNT(DISTINCT sh.id)::int                    AS tickets,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE 1=1 ${brandClause}\n             ${clauses.join(\" \")}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           GROUP BY sh.doc_date::date\n           ORDER BY fecha ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 384,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name                                        AS producto,\n             p.int_sku,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE 1=1 ${brandClause}\n             ${clauses.join(\" \")}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           GROUP BY p.id, p.name, p.int_sku\n           ORDER BY total_ventas DESC\n           LIMIT $${limitIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 435,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             b.name                                        AS tienda,\n             b.sap_id,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.branches b ON b.id = sh.branch_id\n           WHERE 1=1 ${brandClause}\n             ${clauses.join(\" \")}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           GROUP BY b.id, b.name, b.sap_id\n           ORDER BY total_ventas DESC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 468,
+    "procedure": "getMonthlySales",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,\n           ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,\n           COUNT(DISTINCT sh.id)::int                     AS tickets,\n           ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades\n         FROM public.sales_detail sd\n         JOIN public.products p ON p.id = sd.product_id\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         WHERE 1=1 ${brandClause}\n           AND sh.doc_date >= NOW() - INTERVAL '6 months'\n         GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')\n         ORDER BY mes ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 565,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             ${caseExpr} AS category_id,\n             ROUND(SUM(${amtColCat})::numeric, 2) AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)  AS total_unidades\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE p.brand_id = ANY($${globalBrandParam}::uuid[])\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           GROUP BY ${caseExpr}\n           HAVING ${caseExpr} IS NOT NULL AND SUM(${amtColCat}) > 0"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 616,
+    "procedure": "getBranchesForStock",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT b.id, b.name, b.sap_id\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE 1=1 ${brandClause}\n           AND st.stock > 0\n         ORDER BY b.sap_id ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 641,
+    "procedure": "getBranchesForSales",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT b.id, b.name, b.sap_id\n         FROM public.sales_detail sd\n         JOIN public.products p ON p.id = sd.product_id\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         JOIN public.branches b ON b.id = sh.branch_id\n         WHERE 1=1 ${brandClause}\n         ORDER BY b.sap_id ASC\n         LIMIT 500"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 704,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name                                        AS producto,\n             p.int_sku,\n             b.id                                          AS branch_id,\n             b.name                                        AS tienda,\n             b.sap_id,\n             COALESCE(st.stock, 0)                         AS stock_actual,\n             st.min_stock\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id, name, int_sku FROM public.products\n             WHERE id = $${pidIdx} AND brand_id = ANY($1::uuid[]) ${catCheck}\n           ) p\n           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id\n           WHERE 1=1 ${branchClause}\n           ORDER BY b.sap_id ASC\n           LIMIT $${limitIdx} OFFSET $${offsetIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 732,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id FROM public.products\n             WHERE id = $${pidIdx} AND brand_id = ANY($1::uuid[]) ${catCheckCount}\n           ) p\n           WHERE 1=1 ${input.branchId ?"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 766,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           p.name                                        AS producto,\n           p.int_sku,\n           b.id                                          AS branch_id,\n           b.name                                        AS tienda,\n           b.sap_id,\n           st.stock                                      AS stock_actual,\n           st.min_stock\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE 1=1 ${brandClause}\n           AND st.stock > 0\n           ${extraClauses.join(\" \")}\n         ORDER BY p.name ASC, b.sap_id ASC\n         LIMIT $${limitIdx} OFFSET $${offsetIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 798,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE 1=1 ${brandClause}\n           AND st.stock > 0\n           ${countClauses.join(\" \")}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 848,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name AS producto, p.int_sku, b.id AS branch_id, b.name AS tienda,\n             b.sap_id, COALESCE(st.stock, 0) AS stock_actual, st.min_stock\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id, name, int_sku FROM public.products\n             WHERE id = $${pidIdx} AND brand_id = ANY($1::uuid[]) ${catCheck}\n           ) p\n           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id\n           WHERE 1=1 ${branchClause}\n           ORDER BY b.sap_id ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 873,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           p.name AS producto, p.int_sku, b.id AS branch_id, b.name AS tienda,\n           b.sap_id, st.stock AS stock_actual, st.min_stock\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE 1=1 ${brandClause}\n           AND st.stock > 0\n           ${extraClauses.join(\" \")}\n         ORDER BY p.name ASC, b.sap_id ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 920,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n               r.oc,\n               r.date::date                                  AS fecha,\n               b.name                                        AS tienda,\n               b.sap_id,\n               p.name                                        AS producto,\n               p.int_sku,\n               r.ordered_quantity,\n               r.received_quantity,\n               r.status\n             FROM public.receptions r\n             JOIN public.products p ON p.id = r.product_id\n             JOIN public.branches b ON b.id = r.branch_id\n             WHERE 1=1 ${brandClause}\n               AND r.date >= $${fromIdx}::date AND r.date < ($${toIdx}::date + INTERVAL '1 day')\n             ORDER BY r.date DESC\n             LIMIT $${limitIdx} OFFSET $${offsetIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 940,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n             FROM public.receptions r\n             JOIN public.products p ON p.id = r.product_id\n             WHERE 1=1 ${brandClause}\n               AND r.date >= $${fromIdx}::date AND r.date < ($${toIdx}::date + INTERVAL '1 day')"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 999,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           p.id,\n           p.name,\n           p.int_sku,\n           p.short_description                           AS description,\n           COALESCE(SUM(st.stock), 0)::int              AS stock_total,\n           COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock\n         FROM public.products p\n         LEFT JOIN public.stocks st ON st.product_id = p.id AND st.stock > 0\n         WHERE 1=1 ${brandClause}\n           ${whereClauses.join(\" \")}\n         GROUP BY p.id, p.name, p.int_sku, p.short_description\n         ORDER BY p.name ASC\n         LIMIT $${limitIdx} OFFSET $${offsetIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1025,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n         FROM public.products p\n         WHERE 1=1 ${brandClause}\n           ${countClauses.join(\" \")}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1115,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH base AS (\n           SELECT\n             ${selectProduct}\n             ${selectStore}\n             SUM(sd.quantity)::numeric                     AS cantidad,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS monto,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.branches b ON b.id = sh.branch_id\n           WHERE 1=1 ${brandClause}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n             ${clauses.join(\" \")}\n           GROUP BY ${groupByDims}\n         ),\n         totals AS (\n           SELECT\n             SUM(cantidad)::numeric                        AS total_cantidad,\n             ROUND(SUM(monto)::numeric, 2)                 AS total_monto,\n             SUM(tickets)::int                             AS total_tickets,\n             COUNT(*)::int                                 AS total_rows\n           FROM base\n         )\n         SELECT\n           b.*,\n           t.total_cantidad,\n           t.total_monto,\n           t.total_tickets,\n           t.total_rows\n         FROM base b\n         CROSS JOIN totals t\n         ORDER BY monto DESC\n         LIMIT $${limitIdx} OFFSET $${offsetIdx}"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1196,
+    "procedure": "getSalesDailyDetail",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             sh.doc_date::date                             AS fecha,\n             SUM(sd.quantity)::numeric                     AS cantidad,\n             ROUND(SUM(sd.total)::numeric, 2)              AS monto,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.products p ON p.id = sd.product_id\n           WHERE 1=1 ${brandClause}\n             AND sd.product_id = $${pidIdx}\n             AND sh.branch_id = $${bidIdx}\n             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           GROUP BY sh.doc_date::date\n           ORDER BY fecha ASC"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1277,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           ${selectProduct}\n           ${selectStore}\n           SUM(sd.quantity)::numeric                     AS cantidad,\n           ROUND(SUM(${amtColExport})::numeric, 2)              AS monto,\n           COUNT(DISTINCT sh.id)::int                    AS tickets\n         FROM public.sales_detail sd\n         JOIN public.products p ON p.id = sd.product_id\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         JOIN public.branches b ON b.id = sh.branch_id\n         WHERE 1=1 ${brandClause}\n           AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n           ${clauses.join(\" \")}\n         GROUP BY ${groupByDims}\n         ORDER BY monto DESC\n         LIMIT 10000"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1313,
+    "procedure": "getProductsForBrand",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT\n           p.id,\n           p.name,\n           p.int_sku::text AS sku\n         FROM public.products p\n         WHERE 1=1 ${brandClause}\n         ORDER BY p.name ASC\n         LIMIT 2000"
+  },
+  {
+    "sourceFile": "ownBrandRouter.ts",
+    "startLine": 1398,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          ${dateTrunc} AS period,\n          ${selectProduct}\n          ${selectStore}\n          SUM(${amtCol}) AS amount,\n          SUM(sd.quantity) AS quantity\n        FROM public.sales_header sh\n        JOIN public.sales_detail sd ON sd.header_id = sh.id\n        JOIN public.products p ON p.id = sd.product_id\n        LEFT JOIN public.branches b ON b.id = sh.branch_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')\n          ${brandClause}\n          ${clauses.join(' ')}\n        GROUP BY ${groupByClause}\n        ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 107,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT p.id, p.name, p.sku, p.brand_id, b.name AS brand_name\n        FROM products p\n        LEFT JOIN brands b ON b.id = p.brand_id"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 114,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, doc_date, branch_id, total, subtotal\n        FROM sales_header\n        WHERE doc_date >= $1::date"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 122,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT sd.id, sd.header_id, sd.product_id, sd.total, sd.subtotal, sd.quantity,\n               p.brand_id\n        FROM sales_header sh\n        JOIN sales_detail sd ON sd.header_id = sh.id\n        JOIN products p ON p.id = sd.product_id\n        WHERE sh.doc_date >= $1::date\n          AND sh.doc_date < ($2::date + INTERVAL '1 day')\n        LIMIT 200000"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 134,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, name, sap_id FROM branches"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 135,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, name, parent_category_id FROM categories LIMIT 5000"
+  },
+  {
+    "sourceFile": "postgres.ts",
+    "startLine": 140,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT sh.id, sh.doc_date, sd.product_id, p.brand_id\n        FROM sales_header sh\n        JOIN sales_detail sd ON sd.header_id = sh.id\n        JOIN products p ON p.id = sd.product_id\n        WHERE sh.doc_date >= $1::date\n          AND sh.doc_date < ($2::date + INTERVAL '1 day')\n        LIMIT 50000"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 52,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            sh.source_system_id,\n            INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,\n            INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,\n            b.sap_id                               AS branch_sap_id,\n            CASE\n              WHEN EXISTS (\n                SELECT 1 FROM methods_payment mp\n                WHERE mp.header_id = sh.id\n                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid\n              ) THEN 'Rappi'\n              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid\n                THEN 'eCommerce'\n              ELSE 'Presencial'\n            END AS sales_channel\n          FROM sales_header sh\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date >= '${fechaMinDate}'::date\n            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n            AND sh.doc_date IS NOT NULL\n        ),\n        base AS (\n          SELECT\n            fh.id AS sale_id,\n            fh.doc_date,\n            fh.branch_id,\n            fh.branch_name,\n            fh.branch_address,\n            fh.branch_sap_id,\n            fh.sales_channel,\n            ${amtCol} AS line_total,\n            cp.category_id AS leaf_category_id,\n            c.name AS leaf_category_name,\n            p.id   AS parent_category_id,\n            p.name AS parent_category_name,\n            g.id   AS grandparent_category_id,\n            g.name AS grandparent_category_name\n          FROM filtered_headers fh\n          JOIN sales_detail sd ON sd.header_id = fh.id\n          LEFT JOIN categories_products cp\n            ON cp.product_id = sd.product_id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN categories c ON c.id = cp.category_id\n          LEFT JOIN categories p ON p.id = c.parent_category_id\n          LEFT JOIN categories g ON g.id = p.parent_category_id\n        )\n        SELECT\n          doc_date::date AS doc_date,\n          branch_id,\n          branch_sap_id,\n          branch_name,\n          branch_address,\n          sales_channel,\n          COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)\n            AS category_abuelo_id,\n          INITCAP(LOWER(COALESCE(\n            grandparent_category_name,\n            parent_category_name,\n            leaf_category_name,\n            'Sin Categoría'\n          ))) AS category_abuelo_name,\n          SUM(line_total) AS sales_amount,\n          COUNT(DISTINCT sale_id) AS tickets_count,\n          array_agg(DISTINCT sale_id) AS sale_ids\n        FROM base\n        WHERE 1=1\n          ${additionalFilters.join('\\n          ')}\n        GROUP BY\n          doc_date::date, branch_id, branch_sap_id,\n          branch_name, branch_address,\n          sales_channel,\n          category_abuelo_id, category_abuelo_name\n        ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER), category_abuelo_name;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 190,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            sh.source_system_id,\n            INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,\n            INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,\n            b.sap_id                               AS branch_sap_id,\n            CASE\n              WHEN EXISTS (\n                SELECT 1 FROM methods_payment mp\n                WHERE mp.header_id = sh.id\n                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid\n              ) THEN 'Rappi'\n              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid\n                THEN 'eCommerce'\n              ELSE 'Presencial'\n            END AS sales_channel\n          FROM sales_header sh\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date >= '${fechaMinDate}'::date\n            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n            AND sh.doc_date IS NOT NULL\n        )\n        SELECT\n          date_trunc('hour', fh.doc_date) AS hour_ts,\n          fh.branch_id,\n          fh.branch_sap_id,\n          fh.branch_name,\n          fh.branch_address,\n          fh.sales_channel,\n          SUM(${amtCol}) AS sales_amount,\n          COUNT(DISTINCT fh.id) AS tickets_count\n        FROM filtered_headers fh\n        JOIN sales_detail sd ON sd.header_id = fh.id\n        WHERE 1=1\n          ${additionalFilters.join('\\n          ')}\n        GROUP BY\n          hour_ts, fh.branch_id, fh.branch_sap_id,\n          fh.branch_name, fh.branch_address,\n          fh.sales_channel\n        ORDER BY hour_ts, CAST(SUBSTRING(fh.branch_sap_id FROM '[0-9]+') AS INTEGER);"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 311,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            b.sap_id AS branch_sap_id,\n            CASE\n              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n                THEN 'current'\n              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')\n                THEN 'previous'\n            END AS period\n          FROM sales_header sh\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND (\n              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))\n              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))\n            )\n            ${additionalFilters.filter(f => f.includes('b.sap_id')).join('\\n            ')}\n        ),\n        agg_detail AS (\n          SELECT\n            sd.header_id,\n            SUM(${amtCol}) AS line_total,\n            COALESCE(g.id, p.id, c.id) AS category_id\n          FROM sales_detail sd\n          INNER JOIN filtered_headers fh ON fh.id = sd.header_id\n          LEFT JOIN categories_products cp\n            ON cp.product_id = sd.product_id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN categories c ON c.id = cp.category_id\n          LEFT JOIN categories p ON p.id = c.parent_category_id\n          LEFT JOIN categories g ON g.id = p.parent_category_id\n          GROUP BY sd.header_id, COALESCE(g.id, p.id, c.id)\n        )\n        SELECT\n          fh.period,\n          SUM(ad.line_total) AS total_sales,\n          COUNT(DISTINCT fh.id) AS total_tickets\n        FROM filtered_headers fh\n        JOIN agg_detail ad ON ad.header_id = fh.id\n        WHERE fh.period IS NOT NULL\n          ${additionalFilters.filter(f => f.includes('category')).map(f => f.replace('COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)', 'ad.category_id')).join('\\n          ')}\n        GROUP BY fh.period;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 436,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH base AS (\n          SELECT\n            sh.id AS sale_id,\n            sh.doc_date,\n            sh.branch_id,\n            ${amtCol} AS line_total,\n            CASE\n              WHEN EXISTS (\n                SELECT 1 FROM methods_payment mp\n                WHERE mp.header_id = sh.id\n                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid\n              ) THEN 'Rappi'\n              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid\n                THEN 'eCommerce'\n              ELSE 'Presencial'\n            END AS sales_channel,\n            CASE\n              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n                THEN 'current'\n              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')\n                THEN 'previous'\n              ELSE NULL\n            END AS period\n          FROM sales_header sh\n          JOIN sales_detail sd ON sd.header_id = sh.id\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND (\n              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))\n              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))\n            )\n            ${additionalFilters.join('\\n            ')}\n        )\n        SELECT\n          period,\n          SUM(line_total) AS total_sales,\n          COUNT(DISTINCT sale_id) AS total_tickets\n        FROM base\n        WHERE period IS NOT NULL\n          ${channelFilter}\n        GROUP BY period;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 560,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            INITCAP(LOWER(COALESCE(b.name,''))) AS branch_name,\n            b.sap_id AS branch_sap_id,\n            CASE\n              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n                THEN 'current'\n              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')\n                THEN 'previous'\n            END AS period\n          FROM sales_header sh\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND (\n              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))\n              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))\n            )\n        ),\n        agg_detail AS (\n          SELECT sd.header_id, SUM(${amtCol}) AS line_total\n          FROM sales_detail sd\n          INNER JOIN filtered_headers fh ON fh.id = sd.header_id\n          ${categoryJoin}\n          WHERE 1=1 ${categoryFilter}\n          GROUP BY sd.header_id\n        )\n        SELECT\n          fh.period,\n          fh.branch_id,\n          fh.branch_name,\n          fh.branch_sap_id,\n          SUM(ad.line_total) AS total_sales,\n          COUNT(DISTINCT fh.id) AS total_tickets,\n          COUNT(DISTINCT DATE(fh.doc_date)) AS total_days\n        FROM filtered_headers fh\n        JOIN agg_detail ad ON ad.header_id = fh.id\n        WHERE fh.period IS NOT NULL\n        GROUP BY fh.period, fh.branch_id, fh.branch_name, fh.branch_sap_id\n        ORDER BY fh.branch_sap_id;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 693,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            CASE\n              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n                THEN 'current'\n              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')\n                THEN 'previous'\n            END AS period\n          FROM sales_header sh\n          WHERE sh.doc_date IS NOT NULL\n            AND (\n              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))\n              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))\n            )\n        ),\n        base AS (\n          SELECT\n            fh.id AS sale_id,\n            fh.period,\n            ${amtCol} AS line_total,\n            cp.category_id AS leaf_category_id,\n            c.name AS leaf_category_name,\n            p.id AS parent_category_id,\n            p.name AS parent_category_name,\n            g.id AS grandparent_category_id,\n            g.name AS grandparent_category_name\n          FROM filtered_headers fh\n          JOIN sales_detail sd ON sd.header_id = fh.id\n          LEFT JOIN branches b ON b.id = fh.branch_id\n          LEFT JOIN categories_products cp\n            ON cp.product_id = sd.product_id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN categories c ON c.id = cp.category_id\n          LEFT JOIN categories p ON p.id = c.parent_category_id\n          LEFT JOIN categories g ON g.id = p.parent_category_id\n          WHERE fh.period IS NOT NULL\n            ${additionalFilters.join('\\n            ')}\n        )\n        SELECT\n          period,\n          COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) AS category_id,\n          INITCAP(LOWER(COALESCE(\n            grandparent_category_name,\n            parent_category_name,\n            leaf_category_name,\n            'Sin Categoría'\n          ))) AS category_name,\n          SUM(line_total) AS total_sales\n        FROM base\n        GROUP BY period, category_id, category_name\n        ORDER BY category_name;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 835,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH line_items AS (\n          SELECT\n            prod.id                                   AS product_id,\n            prod.name                                 AS product_name,\n            prod.int_sku                              AS sku,\n            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,\n            b.sap_id                                  AS branch_sap_id,\n            INITCAP(LOWER(COALESCE(\n              g.name, p2.name, c2.name, 'Sin Categoría'\n            )))                                       AS category_name,\n            sd.quantity                               AS qty,\n            ${amtCol}                                 AS amount\n          FROM public.sales_header sh\n          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id\n          JOIN public.products       prod ON prod.id       = sd.product_id\n          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id\n          LEFT JOIN public.categories_products cp\n            ON cp.product_id       = prod.id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN public.categories c2 ON c2.id = cp.category_id\n          LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id\n          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n            ${branchClause}\n            ${categoryClause}\n        ),\n        aggregated AS (\n          SELECT\n            product_id,\n            product_name,\n            sku,\n            MAX(category_name)   AS category_name,\n            SUM(qty)             AS total_qty,\n            SUM(amount)          AS total_amount,\n            COUNT(DISTINCT branch_sap_id) AS branch_count\n          FROM line_items\n          GROUP BY product_id, product_name, sku\n        ),\n        -- Stock actual: suma del stock de todas las tiendas en scope\n        stock_agg AS (\n          SELECT\n            s.product_id,\n            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock\n          FROM public.stocks s\n          LEFT JOIN public.branches sb ON sb.id = s.branch_id\n          WHERE 1=1\n            ${stockBranchClause}\n          GROUP BY s.product_id\n        )\n        SELECT\n          a.product_id,\n          a.product_name,\n          a.sku,\n          a.category_name,\n          a.total_qty::numeric                                         AS total_qty,\n          a.total_amount::numeric                                      AS total_amount,\n          a.branch_count,\n          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,\n          -- Venta diaria promedio = total_qty / días del período\n          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,\n          -- Cobertura = stock / venta_diaria (NULL si venta_diaria = 0)\n          CASE\n            WHEN a.total_qty > 0\n            THEN ROUND(\n              COALESCE(sa.total_stock, 0)::numeric\n              / (a.total_qty::numeric / ${daysDiff}),\n              1\n            )\n            ELSE NULL\n          END                                                          AS coverage_days,\n          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,\n          RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount\n        FROM aggregated a\n        LEFT JOIN stock_agg sa ON sa.product_id = a.product_id\n        WHERE a.total_qty > 0\n        ORDER BY rank_qty\n        LIMIT 50;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 917,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "queryByAmount",
+    "sql": "WITH line_items AS (\n          SELECT\n            prod.id                                   AS product_id,\n            prod.name                                 AS product_name,\n            prod.int_sku                              AS sku,\n            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,\n            b.sap_id                                  AS branch_sap_id,\n            INITCAP(LOWER(COALESCE(\n              g.name, p2.name, c2.name, 'Sin Categoría'\n            )))                                       AS category_name,\n            sd.quantity                               AS qty,\n            ${amtCol}                                 AS amount\n          FROM public.sales_header sh\n          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id\n          JOIN public.products       prod ON prod.id       = sd.product_id\n          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id\n          LEFT JOIN public.categories_products cp\n            ON cp.product_id       = prod.id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN public.categories c2 ON c2.id = cp.category_id\n          LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id\n          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n            ${branchClause}\n            ${categoryClause}\n        ),\n        aggregated AS (\n          SELECT\n            product_id,\n            product_name,\n            sku,\n            MAX(category_name)   AS category_name,\n            SUM(qty)             AS total_qty,\n            SUM(amount)          AS total_amount,\n            COUNT(DISTINCT branch_sap_id) AS branch_count\n          FROM line_items\n          GROUP BY product_id, product_name, sku\n        ),\n        stock_agg AS (\n          SELECT\n            s.product_id,\n            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock\n          FROM public.stocks s\n          LEFT JOIN public.branches sb ON sb.id = s.branch_id\n          WHERE 1=1\n            ${stockBranchClause}\n          GROUP BY s.product_id\n        )\n        SELECT\n          a.product_id,\n          a.product_name,\n          a.sku,\n          a.category_name,\n          a.total_qty::numeric                                         AS total_qty,\n          a.total_amount::numeric                                      AS total_amount,\n          a.branch_count,\n          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,\n          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,\n          CASE\n            WHEN a.total_qty > 0\n            THEN ROUND(\n              COALESCE(sa.total_stock, 0)::numeric\n              / (a.total_qty::numeric / ${daysDiff}),\n              1\n            )\n            ELSE NULL\n          END                                                          AS coverage_days,\n          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,\n          RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount\n        FROM aggregated a\n        LEFT JOIN stock_agg sa ON sa.product_id = a.product_id\n        WHERE a.total_amount > 0\n        ORDER BY rank_amount\n        LIMIT 50;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1062,
+    "procedure": "getIdentifiedTransactions",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          DATE(sh.doc_date) AS sale_day,\n          b.name            AS nombre,\n          b.sap_id          AS codigo_tienda,\n          COUNT(*)          AS total_transactions,\n          COUNT(*) FILTER (\n            WHERE sh.customer_id IS NOT NULL\n              AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'\n          )                 AS identified_transactions,\n          ROUND(\n            100.0 * COUNT(*) FILTER (\n              WHERE sh.customer_id IS NOT NULL\n                AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'\n            ) / NULLIF(COUNT(*), 0),\n            2\n          )                 AS identified_percentage\n        FROM public.sales_header sh\n        LEFT JOIN public.branches b ON b.id = sh.branch_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n          ${additionalFilters.join('\\n          ')}\n        GROUP BY\n          DATE(sh.doc_date),\n          b.name,\n          b.sap_id\n        ORDER BY\n          sale_day,\n          CAST(SUBSTRING(b.sap_id FROM '[0-9]+') AS INTEGER) NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1169,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH base AS (\n          SELECT\n            sh.id AS sale_id,\n            sh.doc_date,\n            ${amtCol} AS line_total\n          FROM sales_header sh\n          JOIN sales_detail sd ON sd.header_id = sh.id\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')\n            ${additionalFilters.join('\\n            ')}\n        )\n        SELECT\n          EXTRACT(DOW FROM doc_date)::int   AS day_of_week,\n          CASE\n            WHEN doc_date::time = TIME '00:00:00' THEN -1\n            ELSE EXTRACT(HOUR FROM doc_date)::int\n          END                               AS hour_of_day,\n          ${metricExpr.replace('sd.total', 'line_total').replace('sh.id', 'sale_id')} AS value\n        FROM base\n        GROUP BY day_of_week, hour_of_day\n        ORDER BY day_of_week, hour_of_day;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1275,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH filtered_headers AS (\n          SELECT\n            sh.id,\n            sh.doc_date,\n            sh.branch_id,\n            b.sap_id AS branch_sap_id\n          FROM sales_header sh\n          LEFT JOIN branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${minDate}'::date\n            AND sh.doc_date < ('${maxDate}'::date + INTERVAL '1 day')\n            AND sh.doc_date::date IN (${datePlaceholders})\n            ${additionalFilters.join('\\n            ')}\n        ),\n        base AS (\n          SELECT\n            fh.id AS sale_id,\n            fh.doc_date,\n            ${amtCol} AS line_total\n          FROM filtered_headers fh\n          JOIN sales_detail sd ON sd.header_id = fh.id\n        )\n        SELECT\n          doc_date::date::text                   AS date_label,\n          EXTRACT(HOUR FROM doc_date)::int       AS hour_of_day,\n          ${metricExpr}                          AS value\n        FROM base\n        GROUP BY date_label, hour_of_day\n        ORDER BY date_label, hour_of_day;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1339,
+    "procedure": "getIdentifiedTransactionsByCashier",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          sh.cashier_id,\n          c.name                                         AS cashier_name,\n          c.num_doc                                      AS cashier_num_doc,\n          COUNT(*)                                       AS total_transactions,\n          COUNT(*) FILTER (\n            WHERE sh.customer_id IS NOT NULL\n              AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'\n          )                                              AS identified_transactions,\n          ROUND(\n            100.0 * COUNT(*) FILTER (\n              WHERE sh.customer_id IS NOT NULL\n                AND sh.customer_id <> '8572af00-5600-46ff-958c-9f4ff701a4a2'\n            ) / NULLIF(COUNT(*), 0),\n            2\n          )                                              AS identified_percentage\n        FROM public.sales_header sh\n        LEFT JOIN public.branches b   ON b.id  = sh.branch_id\n        LEFT JOIN public.cashier  c   ON c.id  = sh.cashier_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')\n          AND b.sap_id = $3\n        GROUP BY sh.cashier_id, c.name, c.num_doc\n        ORDER BY total_transactions DESC;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1414,
+    "procedure": "getCreditNotes",
+    "assignedVariable": "query",
+    "sql": "WITH nc_data AS (\n          SELECT\n            DATE(sh.doc_date)   AS sale_day,\n            b.name              AS nombre,\n            b.sap_id            AS codigo_tienda,\n            COUNT(*)            AS total_nc,\n            SUM(sh.total)       AS monto_total_nc,\n            SUM(sh.subtotal)    AS monto_subtotal_nc\n          FROM public.sales_header sh\n          INNER JOIN public.pos_by_branch pbb\n            ON pbb.serie = sh.order_serial\n            AND pbb.is_nc = TRUE\n          LEFT JOIN public.branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')\n            ${additionalFilters.join('\\n            ')}\n          GROUP BY\n            DATE(sh.doc_date),\n            b.name,\n            b.sap_id\n        ),\n        total_ventas AS (\n          SELECT\n            b2.sap_id            AS codigo_tienda,\n            COUNT(*)             AS total_txn,\n            SUM(sh2.total)       AS monto_total_ventas,\n            SUM(sh2.subtotal)    AS monto_subtotal_ventas\n          FROM public.sales_header sh2\n          LEFT JOIN public.branches b2 ON b2.id = sh2.branch_id\n          WHERE sh2.doc_date IS NOT NULL\n            AND DATE(sh2.doc_date) >= $1::date\n            AND DATE(sh2.doc_date) <= $2::date\n            ${additionalFilters.join('\\n            ')}\n          GROUP BY b2.sap_id\n        )\n        SELECT\n          nc.sale_day,\n          nc.nombre,\n          nc.codigo_tienda,\n          nc.total_nc,\n          nc.monto_total_nc,\n          nc.monto_subtotal_nc,\n          COALESCE(tv.total_txn, 0)              AS total_txn_tienda,\n          COALESCE(tv.monto_total_ventas, 0)     AS monto_total_ventas,\n          COALESCE(tv.monto_subtotal_ventas, 0)  AS monto_subtotal_ventas\n        FROM nc_data nc\n        LEFT JOIN total_ventas tv USING (codigo_tienda)\n        ORDER BY\n          nc.sale_day,\n          CAST(SUBSTRING(nc.codigo_tienda FROM '[0-9]+') AS INTEGER) NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1515,
+    "procedure": "getCreditNotesByCashier",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          sh.cashier_id,\n          c.name                AS cashier_name,\n          c.num_doc             AS cashier_num_doc,\n          COUNT(*)              AS total_nc,\n          SUM(sh.total)         AS monto_total_nc,\n          SUM(sh.subtotal)      AS monto_subtotal_nc\n        FROM public.sales_header sh\n        INNER JOIN public.pos_by_branch pbb\n          ON pbb.serie = sh.order_serial\n          AND pbb.is_nc = TRUE\n        LEFT JOIN public.branches b  ON b.id  = sh.branch_id\n        LEFT JOIN public.cashier  c  ON c.id  = sh.cashier_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')\n          AND b.sap_id = $3\n        GROUP BY sh.cashier_id, c.name, c.num_doc\n        ORDER BY total_nc DESC;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1600,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH branch_totals AS (\n          SELECT\n            b.sap_id            AS codigo_tienda,\n            b.name              AS nombre_tienda,\n            SUM(${amtCol})      AS total_tienda,\n            COUNT(*)            AS txn_tienda\n          FROM public.sales_header sh\n          LEFT JOIN public.branches b ON b.id = sh.branch_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMin}'::date AND sh.doc_date < ('${fechaMax}'::date + INTERVAL '1 day')\n            ${branchFilter}\n            ${channelFilter}\n          GROUP BY b.sap_id, b.name\n        ),\n        customer_branch AS (\n          SELECT\n            b.sap_id            AS codigo_tienda,\n            b.name              AS nombre_tienda,\n            sh.customer_id,\n            c.commercial_name   AS customer_name,\n            SUM(${amtCol})      AS monto,\n            COUNT(*)            AS transacciones\n          FROM public.sales_header sh\n          LEFT JOIN public.branches  b ON b.id = sh.branch_id\n          LEFT JOIN public.customers c ON c.id = sh.customer_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMin}'::date AND sh.doc_date < ('${fechaMax}'::date + INTERVAL '1 day')\n            AND sh.customer_id IS NOT NULL\n            AND sh.customer_id <> '${GENERIC_CUSTOMER}'\n            ${branchFilter}\n            ${channelFilter}\n          GROUP BY b.sap_id, b.name, sh.customer_id, c.commercial_name\n        ),\n        ranked AS (\n          SELECT\n            cb.*,\n            bt.total_tienda,\n            bt.txn_tienda,\n            ROUND(100.0 * cb.monto / NULLIF(bt.total_tienda, 0), 2) AS pct_tienda,\n            ROW_NUMBER() OVER (\n              PARTITION BY cb.codigo_tienda\n              ORDER BY cb.monto DESC\n            ) AS rn\n          FROM customer_branch cb\n          LEFT JOIN branch_totals bt USING (codigo_tienda)\n        )\n        SELECT *\n        FROM ranked\n        WHERE rn <= ${top_n}\n        ORDER BY\n          CAST(SUBSTRING(codigo_tienda FROM '[0-9]+') AS INTEGER) NULLS LAST,\n          rn;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1722,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH date_range AS (\n          SELECT\n            DATE_PART('year', AGE('${fechaMax}'::date, '${fechaMin}'::date)) * 12\n            + DATE_PART('month', AGE('${fechaMax}'::date, '${fechaMin}'::date)) + 1 AS num_months\n        ),\n        customer_data AS (\n          SELECT\n            sh.customer_id,\n            c.commercial_name                     AS customer_name,\n            SUM(${amtCol})                        AS monto_total,\n            COUNT(*)                              AS total_transacciones,\n            ARRAY_AGG(DISTINCT b.name ORDER BY b.name) AS tiendas\n          FROM public.sales_header sh\n          LEFT JOIN public.branches  b ON b.id = sh.branch_id\n          LEFT JOIN public.customers c ON c.id = sh.customer_id\n          WHERE sh.doc_date IS NOT NULL\n            AND sh.doc_date >= '${fechaMin}'::date AND sh.doc_date < ('${fechaMax}'::date + INTERVAL '1 day')\n            AND sh.customer_id IS NOT NULL\n            AND sh.customer_id <> '${GENERIC_CUSTOMER}'\n            ${branchFilter}\n            ${channelFilterG}\n          GROUP BY sh.customer_id, c.commercial_name\n        )\n        SELECT\n          cd.*,\n          ROUND((cd.monto_total::numeric)        / dr.num_months::numeric, 2) AS monto_promedio_mes,\n          ROUND((cd.total_transacciones::numeric) / dr.num_months::numeric, 2) AS txn_promedio_mes\n        FROM customer_data cd\n        CROSS JOIN date_range dr\n        ORDER BY cd.monto_total DESC\n        LIMIT ${top_n};"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1818,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          sh.id                              AS header_id,\n          sh.order_serial                    AS comprobante,\n          sh.doc_date                        AS fecha,\n          b.name                             AS tienda_nombre,\n          b.sap_id                           AS tienda_sap_id,\n          ${amtCol}                          AS monto_total\n        FROM public.sales_header sh\n        JOIN public.branches b ON b.id = sh.branch_id\n        WHERE sh.customer_id = '${customer_id.replace(/'/g, \"''\")}'\n          AND sh.doc_date IS NOT NULL\n          AND sh.doc_date >= '${fechaMin}'::date AND sh.doc_date < ('${fechaMax}'::date + INTERVAL '1 day')\n          ${branchFilter}\n          ${channelFilter}\n        ORDER BY sh.doc_date DESC\n        LIMIT 500;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 1903,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          b.sap_id                                                     AS branch_sap_id,\n          INITCAP(LOWER(b.name))                                       AS branch_name,\n          st.id                                                        AS stock_id,\n          sd.product_id,\n          p.int_sku,\n          INITCAP(LOWER(p.name))                                       AS product_name,\n          CASE\n            WHEN st.id IS NULL          THEN 'Sin registro en stocks'\n            WHEN st.shelf_id IS NULL    THEN 'Stock sin góndola'\n            ELSE                             'Con shelf asignado'\n          END                                                          AS shelf_status,\n          sh2.id                                                       AS shelf_id,\n          COALESCE(sh2.name, '')                                       AS shelf_name,\n          INITCAP(LOWER(COALESCE(g.name, p2.name, c2.name, 'Sin Categoría'))) AS category_name,\n          ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,\n          ROUND(SUM(${amtCol})::numeric, 2)                           AS monto_total\n        FROM public.sales_header sh\n        INNER JOIN public.sales_detail sd\n          ON sd.header_id = sh.id\n        INNER JOIN public.branches b\n          ON b.id = sh.branch_id\n        INNER JOIN public.products p\n          ON p.id = sd.product_id\n        LEFT JOIN public.stocks st\n          ON st.product_id = sd.product_id\n         AND st.branch_id  = sh.branch_id\n        LEFT JOIN public.shelfs sh2\n          ON sh2.id = st.shelf_id\n        LEFT JOIN public.categories_products cp\n          ON cp.product_id       = p.id\n         AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n        LEFT JOIN public.categories c2 ON c2.id = cp.category_id\n        LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id\n        LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id\n        WHERE sh.doc_date >= '${fechaMinDate}'::date\n          AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')\n          AND sh.doc_date IS NOT NULL\n          ${branchClause}\n          ${categoryClause}\n          ${shelfStatusClause}\n        GROUP BY\n          b.sap_id,\n          b.name,\n          st.id,\n          sd.product_id,\n          p.int_sku,\n          p.name,\n          sh2.id,\n          sh2.name,\n          CASE\n            WHEN st.id IS NULL          THEN 'Sin registro en stocks'\n            WHEN st.shelf_id IS NULL    THEN 'Stock sin góndola'\n            ELSE                             'Con shelf asignado'\n          END,\n          COALESCE(g.name, p2.name, c2.name, 'Sin Categoría')\n        ORDER BY\n          b.sap_id,\n          monto_total DESC NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2028,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          b.sap_id                                                     AS branch_sap_id,\n          INITCAP(LOWER(b.name))                                       AS branch_name,\n          sh2.id                                                       AS shelf_id,\n          COALESCE(sh2.name, '(Sin góndola asignada)')                 AS shelf_name,\n          CASE\n            WHEN MAX(CASE WHEN st.id IS NULL THEN 1 ELSE 0 END) = 1 THEN 'Sin registro en stocks'\n            WHEN MAX(CASE WHEN st.shelf_id IS NULL AND st.id IS NOT NULL THEN 1 ELSE 0 END) = 1 THEN 'Stock sin góndola'\n            ELSE 'Con góndola asignada'\n          END                                                          AS shelf_status,\n          COUNT(DISTINCT sd.product_id)                                AS productos_distintos,\n          ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,\n          ROUND(SUM(${amtCol})::numeric, 2)                           AS monto_total\n        FROM public.sales_header sh\n        INNER JOIN public.sales_detail sd\n          ON sd.header_id = sh.id\n        INNER JOIN public.branches b\n          ON b.id = sh.branch_id\n        INNER JOIN public.products p\n          ON p.id = sd.product_id\n        LEFT JOIN public.stocks st\n          ON st.product_id = sd.product_id\n         AND st.branch_id  = sh.branch_id\n        LEFT JOIN public.shelfs sh2\n          ON sh2.id = st.shelf_id\n        LEFT JOIN public.categories_products cp\n          ON cp.product_id       = p.id\n         AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n        LEFT JOIN public.categories c2 ON c2.id = cp.category_id\n        LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id\n        LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id\n        WHERE sh.doc_date >= '${fechaMinDate}'::date\n          AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')\n          AND sh.doc_date IS NOT NULL\n          ${branchClause}\n          ${categoryClause}\n          ${shelfStatusClause}\n        GROUP BY\n          b.sap_id,\n          b.name,\n          sh2.id,\n          sh2.name\n        ORDER BY\n          b.sap_id,\n          monto_total DESC NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2109,
+    "procedure": "getTransactionDetail",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          COALESCE(p.name, sd.descripcion, 'Producto desconocido') AS producto_nombre,\n          p.int_sku                 AS sku,\n          sd.quantity               AS cantidad,\n          ${priceCol}               AS precio_unitario,\n          ${amtCol}                 AS monto_linea\n        FROM public.sales_detail sd\n        LEFT JOIN public.products p ON p.id = sd.product_id\n        WHERE sd.header_id = '${header_id.replace(/'/g, \"''\")}'\n        ORDER BY ${amtCol} DESC NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2186,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "WITH base AS (\n          SELECT\n            b.sap_id                                                     AS branch_sap_id,\n            INITCAP(LOWER(b.name))                                       AS branch_name,\n            sh2.id                                                       AS shelf_id,\n            COALESCE(sh2.name, '(Sin góndola asignada)')                 AS shelf_name,\n            CASE\n              WHEN st.id IS NULL THEN 'Sin registro en stocks'\n              WHEN st.shelf_id IS NULL THEN 'Stock sin shelf'\n              ELSE 'Con góndola asignada'\n            END                                                          AS shelf_status,\n            sd.product_id,\n            ${amtCol}                                                    AS line_total,\n            sd.quantity,\n            CASE\n              WHEN sh.doc_date >= '${fechaMinDate}'::date\n               AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')\n              THEN 'current'\n              WHEN sh.doc_date >= '${prevStartStr}'::date\n               AND sh.doc_date <  ('${prevEndStr}'::date + INTERVAL '1 day')\n              THEN 'previous'\n              ELSE NULL\n            END AS period\n          FROM public.sales_header sh\n          INNER JOIN public.sales_detail sd ON sd.header_id = sh.id\n          INNER JOIN public.branches b      ON b.id = sh.branch_id\n          INNER JOIN public.products p      ON p.id = sd.product_id\n          LEFT JOIN  public.stocks st\n            ON st.product_id = sd.product_id\n           AND st.branch_id  = sh.branch_id\n          LEFT JOIN  public.shelfs sh2      ON sh2.id = st.shelf_id\n          LEFT JOIN  public.categories_products cp\n            ON cp.product_id        = p.id\n           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'\n          LEFT JOIN  public.categories c2 ON c2.id = cp.category_id\n          LEFT JOIN  public.categories p2 ON p2.id = c2.parent_category_id\n          LEFT JOIN  public.categories g  ON g.id  = p2.parent_category_id\n          WHERE sh.doc_date IS NOT NULL\n            AND (\n              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))\n              OR\n              (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))\n            )\n            ${branchClause}\n            ${categoryClause}\n            ${shelfStatusClause}\n        )\n        SELECT\n          branch_sap_id,\n          branch_name,\n          shelf_id,\n          shelf_name,\n          MAX(shelf_status)                                              AS shelf_status,\n          period,\n          COUNT(DISTINCT product_id)                                     AS productos_distintos,\n          ROUND(SUM(quantity)::numeric, 2)                              AS cantidad_vendida,\n          ROUND(SUM(line_total)::numeric, 2)                            AS monto_total\n        FROM base\n        WHERE period IS NOT NULL\n        GROUP BY branch_sap_id, branch_name, shelf_id, shelf_name, period\n        ORDER BY branch_sap_id, monto_total DESC NULLS LAST;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2328,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT DISTINCT ON (p.id)\n          p.id                                                         AS product_id,\n          p.int_sku                                                    AS int_sku,\n          INITCAP(LOWER(p.name))                                       AS product_name,\n          COALESCE(st.stock, 0)                                        AS stock,\n          st.id                                                        AS stock_id,\n          st.shelf_id                                                  AS shelf_id,\n          COALESCE(sh2.name, '(Sin góndola)')                          AS shelf_name,\n          sh2.id                                                       AS shelf_uuid\n        FROM public.branches b\n        INNER JOIN public.sales_header sh\n          ON sh.branch_id = b.id\n        INNER JOIN public.sales_detail sd\n          ON sd.header_id = sh.id\n        INNER JOIN public.products p\n          ON p.id = sd.product_id\n        -- Stock SOLO de esta tienda (b.id garantiza que es la misma tienda del header)\n        INNER JOIN public.stocks st\n          ON st.product_id = p.id\n         AND st.branch_id  = b.id\n        LEFT JOIN public.shelfs sh2\n          ON sh2.id = st.shelf_id\n        WHERE b.sap_id = '${branch_sap_id.replace(/'/g, \"''\")}'\n          AND sh.doc_date IS NOT NULL\n          ${fechaClause}\n          ${shelfStockClause}\n        ORDER BY p.id, INITCAP(LOWER(p.name))\n        LIMIT 500;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2388,
+    "procedure": "getShelfsByBranch",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          sh.id   AS shelf_id,\n          sh.name AS shelf_name\n        FROM public.shelfs sh\n        WHERE sh.status = true\n        ORDER BY sh.name;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2487,
+    "procedure": "getShelfCatalog",
+    "assignedVariable": "query",
+    "sql": "SELECT id AS shelf_id, name AS shelf_name\n        FROM public.shelfs\n        WHERE status = true\n        ORDER BY name;"
+  },
+  {
+    "sourceFile": "salesRouter.ts",
+    "startLine": 2525,
+    "procedure": "bulkAssignProductShelf",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id AS shelf_id, LOWER(TRIM(name)) AS shelf_name_lower FROM public.shelfs WHERE status = true"
+  },
+  {
+    "sourceFile": "shelfLayoutRouter.ts",
+    "startLine": 271,
+    "procedure": "consulta_utilitaria",
+    "assignedVariable": "consulta_embebida_en_linea",
+    "sql": "SELECT id, name FROM shelfs WHERE status = true ORDER BY name"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 77,
+    "procedure": "listAllSuppliers",
+    "assignedVariable": "SUPPLIER_PRODUCTS_SUBQUERY",
+    "sql": "SELECT id, ruc, name\n         FROM public.suppliers\n         ORDER BY name ASC\n         LIMIT 500"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 96,
+    "procedure": "getMySupplier",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, ruc, name, description, sap_id, status\n         FROM public.suppliers\n         WHERE id = $1"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 129,
+    "procedure": "getSalesSummary",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             COUNT(DISTINCT sh.id)::int                    AS total_tickets,\n             COUNT(DISTINCT p.id)::int                     AS productos_vendidos,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS total_unidades,\n             COUNT(DISTINCT sh.branch_id)::int             AS tiendas_activas\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 166,
+    "procedure": "getDailySales",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             sh.doc_date::date                             AS fecha,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             COUNT(DISTINCT sh.id)::int                    AS tickets,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n           GROUP BY sh.doc_date::date\n           ORDER BY fecha ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 208,
+    "procedure": "getTopProducts",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name                                        AS producto,\n             p.int_sku,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades_vendidas,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n           GROUP BY p.id, p.name, p.int_sku\n           ORDER BY total_ventas DESC\n           LIMIT $4"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 248,
+    "procedure": "getSalesByBranch",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             b.name                                        AS tienda,\n             b.sap_id,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS total_ventas,\n             ROUND(SUM(sd.quantity)::numeric, 2)           AS unidades,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.branches b ON b.id = sh.branch_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n           GROUP BY b.id, b.name, b.sap_id\n           ORDER BY total_ventas DESC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 284,
+    "procedure": "getBranchesForStock",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT b.id, b.name, b.sap_id\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND st.stock > 0\n         ORDER BY b.sap_id ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 307,
+    "procedure": "getBranchesForSales",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT b.id, b.name, b.sap_id\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.branches b ON b.id = sh.branch_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           ORDER BY b.sap_id ASC\n           LIMIT 500"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 345,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name                                        AS producto,\n             p.int_sku,\n             b.id                                          AS branch_id,\n             b.name                                        AS tienda,\n             b.sap_id,\n             COALESCE(st.stock, 0)                         AS stock_actual,\n             st.min_stock\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id, name, int_sku FROM public.products\n             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           ) p\n           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id\n           WHERE 1=1 ${branchClause}\n           ORDER BY b.sap_id ASC\n           LIMIT $3 OFFSET $4"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 367,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id FROM public.products\n             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           ) p\n           WHERE 1=1 ${input.branchId ?"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 402,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           p.name                                        AS producto,\n           p.int_sku,\n           b.id                                          AS branch_id,\n           b.name                                        AS tienda,\n           b.sap_id,\n           st.stock                                      AS stock_actual,\n           st.min_stock\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND st.stock > 0\n           ${whereExtra}\n         ORDER BY p.name ASC, b.sap_id ASC\n         LIMIT $2 OFFSET $3"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 432,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND st.stock > 0\n           ${countClauses.join(\" \")}"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 474,
+    "procedure": "getReceptions",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           r.oc,\n           r.date::date                                  AS fecha,\n           b.name                                        AS tienda,\n           b.sap_id,\n           p.name                                        AS producto,\n           p.int_sku,\n           r.ordered_quantity,\n           r.received_quantity,\n           r.status\n         FROM public.receptions r\n         JOIN public.products p ON p.id = r.product_id\n         JOIN public.branches b ON b.id = r.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND r.date::date BETWEEN $2 AND $3\n         ORDER BY r.date DESC\n         LIMIT $4 OFFSET $5"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 494,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT COUNT(*)::int AS total\n         FROM public.receptions r\n         JOIN public.products p ON p.id = r.product_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND r.date::date BETWEEN $2 AND $3"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 527,
+    "procedure": "getMonthlySales",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           TO_CHAR(sh.doc_date, 'YYYY-MM')                AS mes,\n           ROUND(SUM(sd.total)::numeric, 2)               AS total_ventas,\n           COUNT(DISTINCT sh.id)::int                     AS tickets,\n           ROUND(SUM(sd.quantity)::numeric, 2)            AS unidades\n         FROM public.sales_detail sd\n         JOIN public.products p ON p.id = sd.product_id\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND sh.doc_date >= NOW() - INTERVAL '6 months'\n         GROUP BY TO_CHAR(sh.doc_date, 'YYYY-MM')\n         ORDER BY mes ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 576,
+    "procedure": "getProductCatalog",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH filtered AS (\n             SELECT\n               p.id,\n               p.name,\n               p.int_sku,\n               p.short_description AS description\n             FROM public.products p\n             WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n               ${searchClause}\n           )\n           SELECT\n             f.id,\n             f.name,\n             f.int_sku,\n             f.description,\n             COALESCE(SUM(st.stock), 0)::int              AS stock_total,\n             COUNT(DISTINCT st.branch_id)::int             AS tiendas_con_stock,\n             COUNT(*) OVER()::int                          AS _total\n           FROM filtered f\n           LEFT JOIN public.stocks st ON st.product_id = f.id AND st.stock > 0\n           GROUP BY f.id, f.name, f.int_sku, f.description\n           ORDER BY f.name ASC\n           LIMIT $2 OFFSET $3"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 683,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "WITH base AS (\n           SELECT\n             ${selectProduct}\n             ${selectStore}\n             SUM(sd.quantity)::numeric                     AS cantidad,\n             ROUND(SUM(${amtCol})::numeric, 2)              AS monto,\n             COUNT(DISTINCT sh.id)::int                    AS tickets\n           FROM public.sales_detail sd\n           JOIN public.products p ON p.id = sd.product_id\n           JOIN public.sales_header sh ON sh.id = sd.header_id\n           JOIN public.branches b ON b.id = sh.branch_id\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n             ${whereExtra}\n           GROUP BY ${groupByDims}\n         ),\n         totals AS (\n           SELECT\n             COUNT(*)::int                                 AS total_rows,\n             SUM(cantidad)::numeric                        AS total_cantidad,\n             ROUND(SUM(monto)::numeric, 2)                 AS total_monto,\n             SUM(tickets)::int                             AS total_tickets\n           FROM base\n         )\n         SELECT\n           b.*,\n           t.total_rows,\n           t.total_cantidad,\n           t.total_monto,\n           t.total_tickets\n         FROM (SELECT * FROM base ORDER BY monto DESC LIMIT $4 OFFSET $5) b\n         CROSS JOIN totals t"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 762,
+    "procedure": "getSalesDailyDetail",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           sh.doc_date::date                             AS fecha,\n           SUM(sd.quantity)::numeric                     AS cantidad,\n           ROUND(SUM(sd.total)::numeric, 2)              AS monto,\n           COUNT(DISTINCT sh.id)::int                    AS tickets\n         FROM public.sales_detail sd\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         JOIN public.products p ON p.id = sd.product_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND sd.product_id = $2\n           AND sh.branch_id = $3\n           AND sh.doc_date >= $4::date AND sh.doc_date < ($5::date + INTERVAL '1 day')\n         GROUP BY sh.doc_date::date\n         ORDER BY fecha ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 836,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           ${selectProduct}\n           ${selectStore}\n           SUM(sd.quantity)::numeric                     AS cantidad,\n           ROUND(SUM(sd.total)::numeric, 2)              AS monto,\n           COUNT(DISTINCT sh.id)::int                    AS tickets\n         FROM public.sales_detail sd\n         JOIN public.products p ON p.id = sd.product_id\n         JOIN public.sales_header sh ON sh.id = sd.header_id\n         JOIN public.branches b ON b.id = sh.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n           ${clauses.join(\" \")}\n         GROUP BY ${groupByDims}\n         ORDER BY monto DESC\n         LIMIT 10000"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 887,
+    "procedure": "exportStockByProduct",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n             p.name                                        AS producto,\n             p.int_sku,\n             b.id                                          AS branch_id,\n             b.name                                        AS tienda,\n             b.sap_id,\n             COALESCE(st.stock, 0)                         AS stock_actual,\n             st.min_stock\n           FROM public.branches b\n           CROSS JOIN (\n             SELECT id, name, int_sku FROM public.products\n             WHERE id = $2 AND id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           ) p\n           LEFT JOIN public.stocks st ON st.product_id = p.id AND st.branch_id = b.id\n           WHERE 1=1 ${branchClause}\n           ORDER BY b.sap_id ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 920,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT\n           p.name                                        AS producto,\n           p.int_sku,\n           b.id                                          AS branch_id,\n           b.name                                        AS tienda,\n           b.sap_id,\n           st.stock                                      AS stock_actual,\n           st.min_stock\n         FROM public.stocks st\n         JOIN public.products p ON p.id = st.product_id\n         JOIN public.branches b ON b.id = st.branch_id\n         WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           AND st.stock > 0\n           ${extraClauses.join(\" \")}\n         ORDER BY p.name ASC, b.sap_id ASC"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 953,
+    "procedure": "getProductsForSupplier",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT DISTINCT\n             p.id,\n             p.name,\n             p.int_sku::text AS sku\n           FROM public.products p\n           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n           ORDER BY p.name ASC\n           LIMIT 2000"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 1031,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          ${dateTrunc} AS period,\n          ${selectProduct}\n          ${selectStore}\n          SUM(${amtCol}) AS amount,\n          SUM(sd.quantity) AS quantity\n        FROM public.sales_header sh\n        JOIN public.sales_detail sd ON sd.header_id = sh.id\n        JOIN public.products p ON p.id = sd.product_id\n        LEFT JOIN public.branches b ON b.id = sh.branch_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n          AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n          ${productFilter}\n          ${branchFilter}\n        GROUP BY ${groupByClause}\n        ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}"
+  },
+  {
+    "sourceFile": "supplierPortalRouter.ts",
+    "startLine": 1098,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          ${dateTrunc} AS period,\n          SUM(${amtCol}) AS amount,\n          SUM(sd.quantity) AS quantity\n        FROM public.sales_header sh\n        JOIN public.sales_detail sd ON sd.header_id = sh.id\n        JOIN public.products p ON p.id = sd.product_id\n        LEFT JOIN public.branches b ON b.id = sh.branch_id\n        WHERE sh.doc_date IS NOT NULL\n          AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')\n          AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}\n          ${productFilter}\n          ${branchFilter}\n        GROUP BY period\n        ORDER BY period ASC"
+  },
+  {
+    "sourceFile": "targetsRouter.ts",
+    "startLine": 92,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "salesQuery",
+    "sql": "SELECT\n          sh.branch_id AS store_id,\n          INITCAP(LOWER(COALESCE(b.name, ''))) AS store_name,\n          COALESCE(b.sap_id, '') AS store_sap_id,\n          SUM(sd.total) AS total_sales\n        FROM sales_header sh\n        JOIN sales_detail sd ON sd.header_id = sh.id\n        LEFT JOIN branches b ON b.id = sh.branch_id\n        WHERE sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')\n          ${storeFilter}\n          ${channelFilter}\n        GROUP BY sh.branch_id, b.name, b.sap_id\n        ORDER BY b.sap_id;"
+  },
+  {
+    "sourceFile": "targetsRouter.ts",
+    "startLine": 415,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id AS store_id, sap_id AS store_sap_id FROM branches WHERE sap_id IS NOT NULL"
+  },
+  {
+    "sourceFile": "targetsRouter.ts",
+    "startLine": 514,
+    "procedure": "getAllStores",
+    "assignedVariable": "query",
+    "sql": "SELECT\n          id AS store_id,\n          INITCAP(LOWER(COALESCE(name, ''))) AS store_name,\n          COALESCE(sap_id, '') AS store_sap_id\n        FROM branches\n        ORDER BY sap_id;"
+  },
+  {
+    "sourceFile": "userRouter.ts",
+    "startLine": 125,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id::text, ruc, name FROM public.suppliers WHERE id::text IN (${placeholders})"
+  },
+  {
+    "sourceFile": "userRouter.ts",
+    "startLine": 156,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT sap_id, INITCAP(LOWER(COALESCE(name, ''))) AS name\n        FROM branches\n        WHERE sap_id IS NOT NULL AND sap_id <> ''\n        ORDER BY CAST(SUBSTRING(sap_id FROM '[0-9]+') AS INTEGER) ASC"
+  },
+  {
+    "sourceFile": "userRouter.ts",
+    "startLine": 188,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, ruc, name\n            FROM public.suppliers\n            WHERE ruc ILIKE $1\n            ORDER BY ruc ASC\n            LIMIT 50"
+  },
+  {
+    "sourceFile": "userRouter.ts",
+    "startLine": 197,
+    "procedure": "sin_nombre_de_procedimiento_detectado",
+    "assignedVariable": "consulta_embebida",
+    "sql": "SELECT id, ruc, name\n            FROM public.suppliers\n            ORDER BY ruc ASC\n            LIMIT 100"
+  }
+]

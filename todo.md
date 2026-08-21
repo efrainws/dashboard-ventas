@@ -2200,3 +2200,6 @@ Fecha: 1 de febrero de 2026
 - [x] Regla de tienda única para usuarios store_user (branchLocked)
 - [x] Registrar ruta /sales-by-category en App.tsx
 - [x] Agregar al menú de navegación bajo "Ventas"
+
+## Inventario de consultas SQL
+- [x] Documentar todas las consultas SQL ejecutadas por el backend, con parámetros descriptivos y trazabilidad a sus archivos de origen
