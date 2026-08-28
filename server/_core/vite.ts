@@ -6,12 +6,22 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
+export function createViteDevServerOptions(server: Server) {
+  return {
     middlewareMode: true,
-    hmr: { server },
+    // El navegador accede mediante un proxy HTTPS; el WebSocket debe usar WSS
+    // sobre el puerto público del proxy, aunque Vite se ejecute dentro de Express.
+    hmr: {
+      server,
+      protocol: "wss" as const,
+      clientPort: 443,
+    },
     allowedHosts: true as const,
   };
+}
+
+export async function setupVite(app: Express, server: Server) {
+  const serverOptions = createViteDevServerOptions(server);
 
   const vite = await createViteServer({
     ...viteConfig,

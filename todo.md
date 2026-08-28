@@ -2203,3 +2203,6 @@ Fecha: 1 de febrero de 2026
 
 ## Inventario de consultas SQL
 - [x] Documentar todas las consultas SQL ejecutadas por el backend, con parámetros descriptivos y trazabilidad a sus archivos de origen
+
+## Corrección del servidor de desarrollo
+- [x] Corregir la conexión WebSocket de Vite para la recarga en el proxy de desarrollo
