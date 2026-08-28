@@ -1,10 +1,9 @@
 /**
- * Construye el detalle de líneas de una nota de crédito para un cajero.
+ * Construye el listado de documentos de notas de crédito para un cajero.
  * Los cuatro parámetros enlazados son, en orden: fecha de inicio, fecha de fin,
  * código SAP de tienda e identificador de cajero (que puede ser nulo).
  */
 export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
-  const productAmountColumn = includeIgv ? "sd.total" : "sd.subtotal";
   const transactionAmountColumn = includeIgv ? "sh.total" : "sh.subtotal";
 
   return `
@@ -21,13 +20,9 @@ export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
           THEN 'Cliente no identificado'
         ELSE COALESCE(customer.commercial_name, 'Cliente no identificado')
       END AS cliente_vinculado,
-      COALESCE(product.name, sd.descripcion, 'Producto desconocido') AS producto_nombre,
-      product.int_sku::text AS sku,
-      COALESCE(sd.quantity, 0)::numeric AS cantidad,
-      COALESCE(${productAmountColumn}, 0)::numeric AS monto_producto,
       COALESCE(${transactionAmountColumn}, 0)::numeric AS monto_transaccion,
-      COALESCE(SUM(sd.quantity) OVER (PARTITION BY sh.id), 0)::numeric
-        AS cantidad_total_transaccion
+      COALESCE(SUM(sd.quantity), 0)::numeric AS cantidad_total_transaccion,
+      COUNT(sd.id) AS total_lineas_producto
     FROM public.sales_header sh
     INNER JOIN public.pos_by_branch pbb
       ON pbb.serie = sh.order_serial
@@ -36,12 +31,20 @@ export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
     LEFT JOIN public.cashier cashier ON cashier.id = sh.cashier_id
     LEFT JOIN public.customers customer ON customer.id = sh.customer_id
     LEFT JOIN public.sales_detail sd ON sd.header_id = sh.id
-    LEFT JOIN public.products product ON product.id = sd.product_id
     WHERE sh.doc_date IS NOT NULL
       AND sh.doc_date >= $1::date
       AND sh.doc_date < ($2::date + INTERVAL '1 day')
       AND branch.sap_id = $3
       AND sh.cashier_id IS NOT DISTINCT FROM $4::uuid
-    ORDER BY sh.doc_date DESC, sh.id, monto_producto DESC NULLS LAST;
+    GROUP BY
+      sh.id,
+      sh.order_serial,
+      sh.doc_date,
+      sh.cashier_id,
+      cashier.name,
+      sh.customer_id,
+      customer.commercial_name,
+      ${transactionAmountColumn}
+    ORDER BY sh.doc_date DESC, sh.id;
   `;
 }

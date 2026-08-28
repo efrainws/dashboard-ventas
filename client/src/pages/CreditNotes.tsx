@@ -173,6 +173,19 @@ interface CashierRow {
   monto_subtotal_nc: number;
 }
 
+interface CreditNoteDocument {
+  header_id: string;
+  numero_transaccion: string;
+  fecha_transaccion: string | null;
+  cashier_id: string | null;
+  cashier_name: string;
+  customer_id: string | null;
+  cliente_vinculado: string;
+  monto_transaccion: number;
+  cantidad_total_transaccion: number;
+  total_lineas_producto: number;
+}
+
 function formatTransactionDate(value: string | null) {
   if (!value) return "—";
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
@@ -329,9 +342,9 @@ function ThresholdsModal({
   );
 }
 
-// ─── Segundo nivel: transacciones y productos de un cajero ─────────────────────
+// ─── Segundo nivel: documentos de notas de crédito de un cajero ────────────────
 
-function CashierTransactionDetail({
+function CashierDocumentsDetail({
   open,
   store,
   cashier,
@@ -339,6 +352,7 @@ function CashierTransactionDetail({
   fechaMax,
   includeIgv,
   onBack,
+  onSelectDocument,
 }: {
   open: boolean;
   store: StoreRow | null;
@@ -347,6 +361,7 @@ function CashierTransactionDetail({
   fechaMax: string;
   includeIgv: boolean;
   onBack: () => void;
+  onSelectDocument: (document: CreditNoteDocument) => void;
 }) {
   const { data, isLoading, error } = trpc.sales.getCreditNoteTransactionsByCashier.useQuery(
     {
@@ -386,7 +401,7 @@ function CashierTransactionDetail({
             <p className="text-sm font-semibold leading-tight">{cashier.cashier_name}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {cashier.cashier_num_doc ? `Doc: ${cashier.cashier_num_doc}` : "Sin documento de cajero"}
-              {" · "}Notas de crédito y líneas de producto
+              {" · "}Documentos de notas de crédito
             </p>
           </div>
         </div>
@@ -411,7 +426,7 @@ function CashierTransactionDetail({
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ReceiptText className="mb-3 h-10 w-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No hay transacciones de notas de crédito para este cajero en el período seleccionado
+            No hay documentos de notas de crédito para este cajero en el período seleccionado
           </p>
         </div>
       ) : (
@@ -432,47 +447,150 @@ function CashierTransactionDetail({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-border/50">
-            <Table className="min-w-[900px]">
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="border-border/50">
                   <TableHead className="pl-4">Transacción</TableHead>
                   <TableHead>Cliente vinculado</TableHead>
-                  <TableHead>Producto</TableHead>
+                  <TableHead className="text-right">Líneas</TableHead>
                   <TableHead className="text-right">Cantidad</TableHead>
-                  <TableHead className="text-right">Monto producto ({includeIgv ? "c/ IGV" : "s/ IGV"})</TableHead>
                   <TableHead className="text-right pr-4">Monto transacción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row, index) => {
-                  const isNewTransaction = index === 0 || rows[index - 1].header_id !== row.header_id;
-                  return (
-                    <TableRow
-                      key={`${row.header_id}-${row.sku}-${index}`}
-                      className={`border-border/50 ${isNewTransaction && index > 0 ? "border-t-2 border-t-border" : ""}`}
-                    >
-                      <TableCell className="pl-4 align-top">
-                        <p className="font-medium tabular-nums leading-tight">{row.numero_transaccion}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{formatTransactionDate(row.fecha_transaccion)}</p>
-                      </TableCell>
-                      <TableCell className="max-w-[220px] align-top">
-                        <p className="truncate text-sm" title={row.cliente_vinculado}>{row.cliente_vinculado}</p>
-                        {row.customer_id && <p className="mt-0.5 text-xs text-muted-foreground">Cliente identificado</p>}
-                      </TableCell>
-                      <TableCell className="max-w-[250px] align-top">
-                        <p className="truncate text-sm" title={row.producto_nombre}>{row.producto_nombre}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">SKU: {row.sku}</p>
-                      </TableCell>
-                      <TableCell className="text-right align-top tabular-nums">{formatNumber(row.cantidad)}</TableCell>
-                      <TableCell className="text-right align-top tabular-nums">S/ {formatCurrency(row.monto_producto)}</TableCell>
-                      <TableCell className="text-right align-top tabular-nums pr-4 font-medium">S/ {formatCurrency(row.monto_transaccion)}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                {rows.map((row) => (
+                  <TableRow
+                    key={row.header_id}
+                    className="cursor-pointer border-border/50 transition-colors hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none"
+                    onClick={() => onSelectDocument(row)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSelectDocument(row);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Ver productos de la transacción ${row.numero_transaccion}`}
+                  >
+                    <TableCell className="pl-4 align-top">
+                      <p className="font-medium tabular-nums leading-tight">{row.numero_transaccion}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{formatTransactionDate(row.fecha_transaccion)}</p>
+                    </TableCell>
+                    <TableCell className="max-w-[260px] align-top">
+                      <p className="truncate text-sm" title={row.cliente_vinculado}>{row.cliente_vinculado}</p>
+                      {row.customer_id && <p className="mt-0.5 text-xs text-muted-foreground">Cliente identificado</p>}
+                    </TableCell>
+                    <TableCell className="text-right align-top tabular-nums">{formatNumber(row.total_lineas_producto)}</TableCell>
+                    <TableCell className="text-right align-top tabular-nums">{formatNumber(row.cantidad_total_transaccion)}</TableCell>
+                    <TableCell className="text-right align-top tabular-nums pr-4 font-medium">S/ {formatCurrency(row.monto_transaccion)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ─── Tercer nivel: líneas de producto de un documento ─────────────────────────
+
+function TransactionProductLinesDetail({
+  open,
+  document,
+  includeIgv,
+  onBack,
+}: {
+  open: boolean;
+  document: CreditNoteDocument;
+  includeIgv: boolean;
+  onBack: () => void;
+}) {
+  const { data, isLoading, error } = trpc.sales.getTransactionDetail.useQuery(
+    {
+      header_id: document.header_id,
+      include_igv: includeIgv,
+    },
+    { enabled: open && !!document.header_id }
+  );
+
+  const rows = data?.data ?? [];
+  const totals = useMemo(
+    () => ({
+      quantity: rows.reduce((total, row) => total + row.cantidad, 0),
+      amount: rows.reduce((total, row) => total + row.monto_linea, 0),
+    }),
+    [rows]
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-md border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <ShoppingBasket className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tabular-nums leading-tight">Documento {document.numero_transaccion}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground" title={document.cliente_vinculado}>
+              {document.cliente_vinculado} · {formatTransactionDate(document.fecha_transaccion)}
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onBack} className="shrink-0 self-start sm:self-auto">
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Volver a documentos
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-11 w-full rounded" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-8 text-center">
+          <p className="text-sm font-medium text-destructive">No se pudieron cargar las líneas del documento</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error.message}</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <ShoppingBasket className="mb-3 h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Este documento no tiene líneas de producto registradas</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-border/50">
+          <Table className="min-w-[680px]">
+            <TableHeader>
+              <TableRow className="border-border/50">
+                <TableHead className="pl-4">Producto</TableHead>
+                <TableHead className="text-right">Cantidad</TableHead>
+                <TableHead className="text-right">Precio unitario ({includeIgv ? "c/ IGV" : "s/ IGV"})</TableHead>
+                <TableHead className="text-right pr-4">Monto de línea</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, index) => (
+                <TableRow key={`${row.sku}-${index}`} className="border-border/50">
+                  <TableCell className="pl-4 max-w-[360px]">
+                    <p className="truncate text-sm" title={row.producto_nombre}>{row.producto_nombre}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">SKU: {row.sku}</p>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatNumber(row.cantidad)}</TableCell>
+                  <TableCell className="text-right tabular-nums">S/ {formatCurrency(row.precio_unitario)}</TableCell>
+                  <TableCell className="text-right tabular-nums pr-4 font-medium">S/ {formatCurrency(row.monto_linea)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="border-t-2 border-border bg-muted/20 font-semibold">
+                <TableCell className="pl-4 text-sm">Total del documento</TableCell>
+                <TableCell className="text-right text-sm tabular-nums">{formatNumber(totals.quantity)}</TableCell>
+                <TableCell />
+                <TableCell className="text-right pr-4 text-sm tabular-nums">S/ {formatCurrency(totals.amount)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
@@ -498,6 +616,7 @@ function CashierDetailModal({
   onClose: () => void;
 }) {
   const [selectedCashier, setSelectedCashier] = useState<CashierRow | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<CreditNoteDocument | null>(null);
   const { data, isLoading } = trpc.sales.getCreditNotesByCashier.useQuery(
     {
       fecha_min: fechaMin,
@@ -511,6 +630,7 @@ function CashierDetailModal({
 
   useEffect(() => {
     setSelectedCashier(null);
+    setSelectedDocument(null);
   }, [open, store?.codigo_tienda]);
 
   const totals = useMemo(() => {
@@ -605,8 +725,15 @@ function CashierDetailModal({
 
         {/* Cuerpo scrollable */}
         <div className="overflow-y-auto flex-1 px-6 py-4">
-          {selectedCashier ? (
-            <CashierTransactionDetail
+          {selectedCashier && selectedDocument ? (
+            <TransactionProductLinesDetail
+              open={open}
+              document={selectedDocument}
+              includeIgv={includeIgv}
+              onBack={() => setSelectedDocument(null)}
+            />
+          ) : selectedCashier ? (
+            <CashierDocumentsDetail
               open={open}
               store={store}
               cashier={selectedCashier}
@@ -614,6 +741,7 @@ function CashierDetailModal({
               fechaMax={fechaMax}
               includeIgv={includeIgv}
               onBack={() => setSelectedCashier(null)}
+              onSelectDocument={setSelectedDocument}
             />
           ) : isLoading ? (
             <div className="space-y-2">
@@ -656,7 +784,7 @@ function CashierDetailModal({
                         }}
                         role="button"
                         tabIndex={0}
-                        aria-label={`Ver transacciones de ${row.cashier_name}`}
+                        aria-label={`Ver documentos de notas de crédito de ${row.cashier_name}`}
                       >
                         <TableCell className="pl-4 max-w-[220px]">
                           {row.cashier_num_doc ? (

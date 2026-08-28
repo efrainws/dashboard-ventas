@@ -1554,8 +1554,8 @@ export const salesRouter = router({
     }),
 
   /**
-   * Segundo nivel de detalle de Notas de Crédito. Lista las líneas de producto
-   * de las transacciones emitidas por un cajero en una tienda y período dados.
+   * Segundo nivel de detalle de Notas de Crédito. Lista los documentos emitidos
+   * por un cajero en una tienda y período dados.
    */
   getCreditNoteTransactionsByCashier: publicProcedure
     .input(
@@ -1590,12 +1590,9 @@ export const salesRouter = router({
             cashier_name: row.cashier_name ?? "Sin cajero registrado",
             customer_id: row.customer_id ?? null,
             cliente_vinculado: row.cliente_vinculado ?? "Cliente no identificado",
-            producto_nombre: row.producto_nombre ?? "Producto desconocido",
-            sku: row.sku ?? "—",
-            cantidad: Number(row.cantidad ?? 0),
-            monto_producto: Number(row.monto_producto ?? 0),
             monto_transaccion: Number(row.monto_transaccion ?? 0),
             cantidad_total_transaccion: Number(row.cantidad_total_transaccion ?? 0),
+            total_lineas_producto: Number(row.total_lineas_producto ?? 0),
           })),
         };
       } catch (error) {

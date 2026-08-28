@@ -13,16 +13,19 @@ describe("buildCreditNoteTransactionsByCashierQuery", () => {
 
   it("selecciona los importes con IGV o sin IGV de forma consistente", () => {
     expect(buildCreditNoteTransactionsByCashierQuery(true)).toContain(
-      "COALESCE(sd.total, 0)::numeric AS monto_producto"
-    );
-    expect(buildCreditNoteTransactionsByCashierQuery(true)).toContain(
       "COALESCE(sh.total, 0)::numeric AS monto_transaccion"
-    );
-    expect(buildCreditNoteTransactionsByCashierQuery(false)).toContain(
-      "COALESCE(sd.subtotal, 0)::numeric AS monto_producto"
     );
     expect(buildCreditNoteTransactionsByCashierQuery(false)).toContain(
       "COALESCE(sh.subtotal, 0)::numeric AS monto_transaccion"
     );
+  });
+
+  it("agrega líneas y unidades por documento, sin devolver el detalle de productos", () => {
+    const query = buildCreditNoteTransactionsByCashierQuery(true);
+
+    expect(query).toContain("COALESCE(SUM(sd.quantity), 0)::numeric AS cantidad_total_transaccion");
+    expect(query).toContain("COUNT(sd.id) AS total_lineas_producto");
+    expect(query).toContain("GROUP BY");
+    expect(query).not.toContain("AS producto_nombre");
   });
 });
