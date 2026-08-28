@@ -2206,3 +2206,6 @@ Fecha: 1 de febrero de 2026
 
 ## Corrección del servidor de desarrollo
 - [x] Corregir la conexión WebSocket de Vite para la recarga en el proxy de desarrollo
+
+## Notas de Crédito: detalle por cajero
+- [x] Añadir el detalle de transacciones y líneas de productos al seleccionar un cajero, sin modificar la tabla actual por cajero

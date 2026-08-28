@@ -54,6 +54,8 @@ import {
   TrendingDown,
   Settings2,
   Info,
+  ChevronLeft,
+  ShoppingBasket,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
@@ -160,6 +162,29 @@ interface StoreRow {
   total_txn_tienda: number;
   monto_total_ventas: number;
   monto_subtotal_ventas: number;
+}
+
+interface CashierRow {
+  cashier_id: string | null;
+  cashier_name: string;
+  cashier_num_doc: string | null;
+  total_nc: number;
+  monto_total_nc: number;
+  monto_subtotal_nc: number;
+}
+
+function formatTransactionDate(value: string | null) {
+  if (!value) return "—";
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // ─── Modal de configuración de umbrales ──────────────────────────────────────
@@ -304,6 +329,155 @@ function ThresholdsModal({
   );
 }
 
+// ─── Segundo nivel: transacciones y productos de un cajero ─────────────────────
+
+function CashierTransactionDetail({
+  open,
+  store,
+  cashier,
+  fechaMin,
+  fechaMax,
+  includeIgv,
+  onBack,
+}: {
+  open: boolean;
+  store: StoreRow | null;
+  cashier: CashierRow;
+  fechaMin: string;
+  fechaMax: string;
+  includeIgv: boolean;
+  onBack: () => void;
+}) {
+  const { data, isLoading, error } = trpc.sales.getCreditNoteTransactionsByCashier.useQuery(
+    {
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+      branch_sap_id: store?.codigo_tienda ?? "",
+      cashier_id: cashier.cashier_id,
+      include_igv: includeIgv,
+    },
+    { enabled: open && !!store?.codigo_tienda }
+  );
+
+  const rows = data?.data ?? [];
+  const transactionSummary = useMemo(() => {
+    const transactions = new Map<string, { amount: number; quantity: number }>();
+    for (const row of rows) {
+      if (!transactions.has(row.header_id)) {
+        transactions.set(row.header_id, {
+          amount: row.monto_transaccion,
+          quantity: row.cantidad_total_transaccion,
+        });
+      }
+    }
+    return {
+      count: transactions.size,
+      amount: Array.from(transactions.values()).reduce((total, transaction) => total + transaction.amount, 0),
+      quantity: Array.from(transactions.values()).reduce((total, transaction) => total + transaction.quantity, 0),
+    };
+  }, [rows]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-md border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <ShoppingBasket className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight">{cashier.cashier_name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {cashier.cashier_num_doc ? `Doc: ${cashier.cashier_num_doc}` : "Sin documento de cajero"}
+              {" · "}Notas de crédito y líneas de producto
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onBack} className="shrink-0 self-start sm:self-auto">
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Volver a cajeros
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-11 w-full rounded" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-8 text-center">
+          <p className="text-sm font-medium text-destructive">No se pudo cargar el detalle del cajero</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error.message}</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <ReceiptText className="mb-3 h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No hay transacciones de notas de crédito para este cajero en el período seleccionado
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/30 p-3 text-center text-xs">
+            <div>
+              <p className="text-muted-foreground">Notas de crédito</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatNumber(transactionSummary.count)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Unidades</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatNumber(transactionSummary.quantity)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Monto NC</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums">S/ {formatCurrency(transactionSummary.amount)}</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-md border border-border/50">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow className="border-border/50">
+                  <TableHead className="pl-4">Transacción</TableHead>
+                  <TableHead>Cliente vinculado</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead className="text-right">Monto producto ({includeIgv ? "c/ IGV" : "s/ IGV"})</TableHead>
+                  <TableHead className="text-right pr-4">Monto transacción</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, index) => {
+                  const isNewTransaction = index === 0 || rows[index - 1].header_id !== row.header_id;
+                  return (
+                    <TableRow
+                      key={`${row.header_id}-${row.sku}-${index}`}
+                      className={`border-border/50 ${isNewTransaction && index > 0 ? "border-t-2 border-t-border" : ""}`}
+                    >
+                      <TableCell className="pl-4 align-top">
+                        <p className="font-medium tabular-nums leading-tight">{row.numero_transaccion}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{formatTransactionDate(row.fecha_transaccion)}</p>
+                      </TableCell>
+                      <TableCell className="max-w-[220px] align-top">
+                        <p className="truncate text-sm" title={row.cliente_vinculado}>{row.cliente_vinculado}</p>
+                        {row.customer_id && <p className="mt-0.5 text-xs text-muted-foreground">Cliente identificado</p>}
+                      </TableCell>
+                      <TableCell className="max-w-[250px] align-top">
+                        <p className="truncate text-sm" title={row.producto_nombre}>{row.producto_nombre}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">SKU: {row.sku}</p>
+                      </TableCell>
+                      <TableCell className="text-right align-top tabular-nums">{formatNumber(row.cantidad)}</TableCell>
+                      <TableCell className="text-right align-top tabular-nums">S/ {formatCurrency(row.monto_producto)}</TableCell>
+                      <TableCell className="text-right align-top tabular-nums pr-4 font-medium">S/ {formatCurrency(row.monto_transaccion)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Modal de detalle por cajero ──────────────────────────────────────────────
 
 function CashierDetailModal({
@@ -323,6 +497,7 @@ function CashierDetailModal({
   thresholds: Thresholds;
   onClose: () => void;
 }) {
+  const [selectedCashier, setSelectedCashier] = useState<CashierRow | null>(null);
   const { data, isLoading } = trpc.sales.getCreditNotesByCashier.useQuery(
     {
       fecha_min: fechaMin,
@@ -333,6 +508,10 @@ function CashierDetailModal({
   );
 
   const rows = data?.data ?? [];
+
+  useEffect(() => {
+    setSelectedCashier(null);
+  }, [open, store?.codigo_tienda]);
 
   const totals = useMemo(() => {
     const total_nc = rows.reduce((s, r) => s + r.total_nc, 0);
@@ -426,7 +605,17 @@ function CashierDetailModal({
 
         {/* Cuerpo scrollable */}
         <div className="overflow-y-auto flex-1 px-6 py-4">
-          {isLoading ? (
+          {selectedCashier ? (
+            <CashierTransactionDetail
+              open={open}
+              store={store}
+              cashier={selectedCashier}
+              fechaMin={fechaMin}
+              fechaMax={fechaMax}
+              includeIgv={includeIgv}
+              onBack={() => setSelectedCashier(null)}
+            />
+          ) : isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-9 w-full rounded" />
@@ -457,7 +646,17 @@ function CashierDetailModal({
                     return (
                       <TableRow
                         key={row.cashier_id ?? idx}
-                        className="border-border/50 hover:bg-muted/30 transition-colors"
+                        className="cursor-pointer border-border/50 transition-colors hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none"
+                        onClick={() => setSelectedCashier(row)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedCashier(row);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Ver transacciones de ${row.cashier_name}`}
                       >
                         <TableCell className="pl-4 max-w-[220px]">
                           {row.cashier_num_doc ? (

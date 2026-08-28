@@ -1,6 +1,7 @@
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as XLSX from "xlsx";
 import { pool, queryWithRetry } from "./postgres";
+import { buildCreditNoteTransactionsByCashierQuery } from "./creditNoteQueries";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
 import { ENV } from "./_core/env";
@@ -1549,6 +1550,57 @@ export const salesRouter = router({
       } catch (error) {
         console.error('[PostgreSQL] Error executing credit notes by cashier query:', error);
         throw new Error('Error al consultar notas de crédito por cajero');
+      }
+    }),
+
+  /**
+   * Segundo nivel de detalle de Notas de Crédito. Lista las líneas de producto
+   * de las transacciones emitidas por un cajero en una tienda y período dados.
+   */
+  getCreditNoteTransactionsByCashier: publicProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_sap_id: z.string(),
+        cashier_id: z.string().nullable(),
+        include_igv: z.boolean().default(true),
+      })
+    )
+    .query(async ({ input }) => {
+      const fechaMin = input.fecha_min.substring(0, 10);
+      const fechaMax = input.fecha_max.substring(0, 10);
+      const query = buildCreditNoteTransactionsByCashierQuery(input.include_igv);
+
+      try {
+        const result = await queryWithRetry(query, [
+          fechaMin,
+          fechaMax,
+          input.branch_sap_id,
+          input.cashier_id,
+        ]);
+
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            header_id: row.header_id,
+            numero_transaccion: row.numero_transaccion ?? "—",
+            fecha_transaccion: row.fecha_transaccion ?? null,
+            cashier_id: row.cashier_id ?? null,
+            cashier_name: row.cashier_name ?? "Sin cajero registrado",
+            customer_id: row.customer_id ?? null,
+            cliente_vinculado: row.cliente_vinculado ?? "Cliente no identificado",
+            producto_nombre: row.producto_nombre ?? "Producto desconocido",
+            sku: row.sku ?? "—",
+            cantidad: Number(row.cantidad ?? 0),
+            monto_producto: Number(row.monto_producto ?? 0),
+            monto_transaccion: Number(row.monto_transaccion ?? 0),
+            cantidad_total_transaccion: Number(row.cantidad_total_transaccion ?? 0),
+          })),
+        };
+      } catch (error) {
+        console.error("[PostgreSQL] Error en detalle de NC por cajero:", error);
+        throw new Error("Error al consultar transacciones de notas de crédito por cajero");
       }
     }),
 
