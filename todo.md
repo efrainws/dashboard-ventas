@@ -2210,3 +2210,4 @@ Fecha: 1 de febrero de 2026
 ## Notas de Crédito: detalle por cajero
 - [x] Añadir el detalle de transacciones y líneas de productos al seleccionar un cajero, sin modificar la tabla actual por cajero
 - [x] Separar el segundo nivel en documentos y añadir un tercer nivel con las líneas de producto por transacción
+- [x] Mostrar order_serial y order_number unidos por un guion como identificador de transacción

@@ -9,7 +9,17 @@ export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
   return `
     SELECT
       sh.id::text AS header_id,
-      COALESCE(sh.order_serial::text, sh.id::text) AS numero_transaccion,
+      COALESCE(
+        NULLIF(
+          CONCAT_WS(
+            '-',
+            NULLIF(sh.order_serial::text, ''),
+            NULLIF(sh.order_number::text, '')
+          ),
+          ''
+        ),
+        sh.id::text
+      ) AS numero_transaccion,
       sh.doc_date::text AS fecha_transaccion,
       sh.cashier_id::text AS cashier_id,
       COALESCE(cashier.name, 'Sin cajero registrado') AS cashier_name,
@@ -39,6 +49,7 @@ export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
     GROUP BY
       sh.id,
       sh.order_serial,
+      sh.order_number,
       sh.doc_date,
       sh.cashier_id,
       cashier.name,

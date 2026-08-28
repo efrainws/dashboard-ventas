@@ -28,4 +28,13 @@ describe("buildCreditNoteTransactionsByCashierQuery", () => {
     expect(query).toContain("GROUP BY");
     expect(query).not.toContain("AS producto_nombre");
   });
+
+  it("compone el identificador visible con serie y número separados por un guion", () => {
+    const query = buildCreditNoteTransactionsByCashierQuery(true);
+
+    expect(query).toContain("CONCAT_WS(");
+    expect(query).toContain("NULLIF(sh.order_serial::text, '')");
+    expect(query).toContain("NULLIF(sh.order_number::text, '')");
+    expect(query).toContain("sh.order_number,");
+  });
 });
