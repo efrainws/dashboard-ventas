@@ -1,7 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Store, ShoppingCart, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface StoreTargetCardProps {
   storeName: string;
@@ -21,13 +20,13 @@ interface StoreTargetCardProps {
   activeChannelLabel?: string;
 }
 
-/** Devuelve el color de cumplimiento según el porcentaje */
-function getComplianceColor(pct: number | null): string {
-  if (pct === null) return "#919291"; // Humo – sin meta
-  if (pct >= 100) return "#008064";  // Esmeralda
-  if (pct >= 90)  return "#1A6894";  // Cobalto
-  if (pct >= 75)  return "#C49705";  // Mostaza
-  return "#BC2C46";                   // Granate
+/** Devuelve una variante semántica global según el porcentaje de cumplimiento. */
+function getComplianceTone(pct: number | null): string {
+  if (pct === null) return "ff-target-tone--not-set";
+  if (pct >= 100) return "ff-target-tone--complete";
+  if (pct >= 90) return "ff-target-tone--on-track";
+  if (pct >= 75) return "ff-target-tone--attention";
+  return "ff-target-tone--critical";
 }
 
 const CHANNEL_ICON: Record<string, React.ReactNode> = {
@@ -36,10 +35,10 @@ const CHANNEL_ICON: Record<string, React.ReactNode> = {
   "Rappi":       <Bike className="h-3 w-3" />,
 };
 
-const CHANNEL_COLOR: Record<string, string> = {
-  "Presencial":  "bg-[#1A6894]/10 text-[#1A6894] border-[#1A6894]/30",
-  "eCommerce":   "bg-[#008064]/10 text-[#008064] border-[#008064]/30",
-  "Rappi":       "bg-[#FF6900]/10 text-[#FF6900] border-[#FF6900]/30",
+const CHANNEL_TONE: Record<string, string> = {
+  "Presencial": "ff-channel-presencial",
+  "eCommerce": "ff-channel-ecommerce",
+  "Rappi": "ff-channel-rappi",
 };
 
 export function StoreTargetCard({
@@ -75,10 +74,9 @@ export function StoreTargetCard({
       ? (dailyAverage / dailyTarget) * 100
       : null;
 
-  // ── Colores ──────────────────────────────────────────────────────────────
-  const periodColor     = getComplianceColor(hasTarget ? completionPercentage : null);
-  const projectionColor = getComplianceColor(projectionVsTarget);
-  const dailyColor      = getComplianceColor(dailyVsTarget);
+  const periodTone = getComplianceTone(hasTarget ? completionPercentage : null);
+  const projectionTone = getComplianceTone(projectionVsTarget);
+  const dailyTone = getComplianceTone(dailyVsTarget);
 
   // ── Formateo ─────────────────────────────────────────────────────────────
   const fmt = (n: number) =>
@@ -94,7 +92,7 @@ export function StoreTargetCard({
     p !== null ? `${p.toFixed(1)}%` : "—";
 
   return (
-    <Card className="relative hover:shadow-lg transition-shadow overflow-hidden">
+    <Card className="ff-target-card relative overflow-hidden">
       {/* Botón de edición – posición absoluta para no ocupar espacio */}
       {canEdit && onEditClick && (
         <Button
@@ -111,23 +109,19 @@ export function StoreTargetCard({
 
         {/* ── Línea 1: Nombre de tienda + badge de canal ───────────────── */}
         <div className="pr-8">
-          <p
-            className="font-bold uppercase leading-tight tracking-wide font-heading text-[#232523] dark:text-[#EAE8E2]"
-            style={{ fontSize: "20px" }}
-          >
+          <p className="font-heading text-xl font-bold leading-tight tracking-wide text-foreground">
             {storeName}
           </p>
           {activeChannelLabel && (
             <div className="mt-1 flex flex-wrap gap-1">
               {activeChannelLabel.split(" + ").map((label) => (
-                <Badge
+                <span
                   key={label}
-                  variant="outline"
-                  className={`text-[10px] px-1.5 py-0 h-4 font-normal ${CHANNEL_COLOR[label] ?? "bg-muted text-muted-foreground"}`}
+                  className={`ff-channel-chip ${CHANNEL_TONE[label] ?? "ff-channel-neutral"}`}
                 >
                   {CHANNEL_ICON[label] && <span className="mr-0.5">{CHANNEL_ICON[label]}</span>}
                   {label}
-                </Badge>
+                </span>
               ))}
             </div>
           )}
@@ -135,74 +129,52 @@ export function StoreTargetCard({
 
         {/* ── Línea 2: Barra de cumplimiento ───────────────────────────── */}
         {hasTarget ? (
-          <div className="space-y-1">
+          <div className={`space-y-1 ${periodTone}`}>
             <div className="flex items-center justify-between">
-              <span
-                className="text-xs text-muted-foreground"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
+              <span className="text-xs text-muted-foreground">
                 Cumplimiento del período
               </span>
-              <span
-                className="text-sm font-semibold tabular-nums"
-                style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
-              >
+              <span className="ff-target-value text-sm font-semibold tabular-nums">
                 {completionPercentage.toFixed(1)}%
               </span>
             </div>
-            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="ff-target-progress">
               <div
-                className="h-full transition-all duration-500"
+                className="ff-target-progress-fill"
                 style={{
                   width: `${Math.min(completionPercentage, 100)}%`,
-                  backgroundColor: periodColor,
                 }}
               />
             </div>
           </div>
         ) : (
-          <p
-            className="text-xs text-muted-foreground italic"
-            style={{ fontFamily: "Sailec, sans-serif" }}
-          >
+          <p className="text-xs italic text-muted-foreground">
             Meta no configurada
           </p>
         )}
 
         {/* Divisor */}
-        <div className="border-t border-border/40" />
+        <div className="ff-target-divider" />
 
         {/* ── Línea 3: Venta del período vs Meta del período ────────────── */}
-        <div className="space-y-0.5">
-          <p
-            className="text-[10px] uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Sailec, sans-serif" }}
-          >
+        <div className={`space-y-0.5 ${periodTone}`}>
+          <p className="ff-target-meta-label">
             Período
           </p>
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5 min-w-0">
-              <span
-                className="text-lg font-semibold tabular-nums leading-none"
-                style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
-              >
+              <span className="ff-target-value text-lg font-semibold leading-none tabular-nums">
                 {fmtShort(totalSales)}
               </span>
               {hasTarget && (
-                <span
-                  className="text-xs font-medium tabular-nums"
-                  style={{ fontFamily: "Sailec, sans-serif", color: periodColor }}
-                >
+                <span className="ff-target-value text-xs font-medium tabular-nums">
                   ({pctStr(completionPercentage)})
                 </span>
               )}
             </div>
             {hasTarget && (
-              <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
-                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
+              <span className="flex shrink-0 items-baseline gap-1 text-xs tabular-nums text-muted-foreground">
+                <span className="ff-target-meta-label opacity-60">meta</span>
                 {fmtShort(proratedTarget)}
               </span>
             )}
@@ -210,43 +182,28 @@ export function StoreTargetCard({
         </div>
 
         {/* ── Línea 4: Proyección mensual vs Meta mensual ───────────────── */}
-        <div className="space-y-0.5">
-          <p
-            className="text-[10px] uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Sailec, sans-serif" }}
-          >
+        <div className={`space-y-0.5 ${projectionTone}`}>
+          <p className="ff-target-meta-label">
             Proyección mensual
           </p>
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5 min-w-0">
-              <span
-                className="text-base font-semibold tabular-nums leading-none"
-                style={{ fontFamily: "Sailec, sans-serif", color: projectionColor }}
-              >
+              <span className="ff-target-value text-base font-semibold leading-none tabular-nums">
                 {fmtShort(projection)}
               </span>
               {projectionVsTarget !== null && (
-                <span
-                  className="text-xs font-medium tabular-nums"
-                  style={{ fontFamily: "Sailec, sans-serif", color: projectionColor }}
-                >
+                <span className="ff-target-value text-xs font-medium tabular-nums">
                   ({pctStr(projectionVsTarget)})
                 </span>
               )}
             </div>
             {monthlyTarget && monthlyTarget > 0 ? (
-              <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
-                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
+              <span className="flex shrink-0 items-baseline gap-1 text-xs tabular-nums text-muted-foreground">
+                <span className="ff-target-meta-label opacity-60">meta</span>
                 {fmtShort(monthlyTarget)}
               </span>
             ) : (
-              <span
-                className="text-xs text-muted-foreground italic shrink-0"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
+              <span className="shrink-0 text-xs italic text-muted-foreground">
                 sin meta
               </span>
             )}
@@ -254,43 +211,28 @@ export function StoreTargetCard({
         </div>
 
         {/* ── Línea 5: Promedio diario vs Meta diaria ───────────────────── */}
-        <div className="space-y-0.5">
-          <p
-            className="text-[10px] uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Sailec, sans-serif" }}
-          >
+        <div className={`space-y-0.5 ${dailyTone}`}>
+          <p className="ff-target-meta-label">
             Promedio diario
           </p>
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5 min-w-0">
-              <span
-                className="text-base font-semibold tabular-nums leading-none"
-                style={{ fontFamily: "Sailec, sans-serif", color: dailyColor }}
-              >
+              <span className="ff-target-value text-base font-semibold leading-none tabular-nums">
                 {fmtShort(dailyAverage)}
               </span>
               {dailyVsTarget !== null && (
-                <span
-                  className="text-xs font-medium tabular-nums"
-                  style={{ fontFamily: "Sailec, sans-serif", color: dailyColor }}
-                >
+                <span className="ff-target-value text-xs font-medium tabular-nums">
                   ({pctStr(dailyVsTarget)})
                 </span>
               )}
             </div>
             {dailyTarget !== null ? (
-              <span
-                className="text-xs text-muted-foreground tabular-nums shrink-0 flex items-baseline gap-1"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
-                <span className="text-[9px] uppercase tracking-wider opacity-60">meta</span>
+              <span className="flex shrink-0 items-baseline gap-1 text-xs tabular-nums text-muted-foreground">
+                <span className="ff-target-meta-label opacity-60">meta</span>
                 {fmtShort(dailyTarget)}
               </span>
             ) : (
-              <span
-                className="text-xs text-muted-foreground italic shrink-0"
-                style={{ fontFamily: "Sailec, sans-serif" }}
-              >
+              <span className="shrink-0 text-xs italic text-muted-foreground">
                 sin meta
               </span>
             )}

@@ -17,18 +17,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { StoreMultiSelect } from "@/components/StoreMultiSelect";
 
 type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
 type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
 
-const CHANNEL_OPTIONS: { value: SalesChannel; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: "all", label: "Todos los canales", icon: null, color: "bg-muted text-muted-foreground" },
-  { value: "presencial", label: "Presencial", icon: <Store className="h-3.5 w-3.5" />, color: "bg-[#1A6894]/10 text-[#1A6894] border-[#1A6894]/30" },
-  { value: "ecommerce", label: "eCommerce", icon: <ShoppingCart className="h-3.5 w-3.5" />, color: "bg-[#008064]/10 text-[#008064] border-[#008064]/30" },
-  { value: "rappi", label: "Rappi", icon: <Bike className="h-3.5 w-3.5" />, color: "bg-[#FF6900]/10 text-[#FF6900] border-[#FF6900]/30" },
+const CHANNEL_OPTIONS: { value: SalesChannel; label: string; icon: React.ReactNode; toneClass: string }[] = [
+  { value: "all", label: "Todos los canales", icon: null, toneClass: "ff-channel-neutral" },
+  { value: "presencial", label: "Presencial", icon: <Store className="h-3.5 w-3.5" />, toneClass: "ff-channel-presencial" },
+  { value: "ecommerce", label: "eCommerce", icon: <ShoppingCart className="h-3.5 w-3.5" />, toneClass: "ff-channel-ecommerce" },
+  { value: "rappi", label: "Rappi", icon: <Bike className="h-3.5 w-3.5" />, toneClass: "ff-channel-rappi" },
 ];
 
 export default function SalesVsTarget() {
@@ -194,15 +193,15 @@ export default function SalesVsTarget() {
       <NavigationMenu />
       <div className="container py-8 space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+            <h1 className="text-3xl font-bold tracking-tight">
               Ventas vs meta
             </h1>
-            <p className="text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+            <p className="text-muted-foreground">
               Cumplimiento de metas por tienda
               {isStoreUser && assignedStoreCode && (
-                <span className="ml-2 inline-flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded-full">
+                <span className="ml-2 inline-flex items-center gap-1 border border-border bg-muted px-2 py-0.5 text-xs">
                   <Lock className="h-3 w-3" />
                   Vista restringida a tu tienda
                 </span>
@@ -239,7 +238,7 @@ export default function SalesVsTarget() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Fecha Inicio */}
               <div className="space-y-2">
-                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Fecha Inicio</Label>
+                <Label>Fecha Inicio</Label>
                 <DatePicker
                   date={dateRange?.from}
                   onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
@@ -250,7 +249,7 @@ export default function SalesVsTarget() {
 
               {/* Fecha Fin */}
               <div className="space-y-2">
-                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Fecha Fin</Label>
+                <Label>Fecha Fin</Label>
                 <DatePicker
                   date={dateRange?.to}
                   onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
@@ -262,7 +261,7 @@ export default function SalesVsTarget() {
 
               {/* Filtro de Tiendas — bloqueado para store_user */}
               <div className="space-y-2">
-                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>
+                <Label>
                   Tiendas
                   {isStoreUser && <Lock className="inline ml-1 h-3 w-3 text-muted-foreground" />}
                 </Label>
@@ -277,7 +276,7 @@ export default function SalesVsTarget() {
 
               {/* Filtro de Canal */}
               <div className="space-y-2">
-                <Label style={{ fontFamily: 'Sailec, sans-serif' }}>Canal de Venta</Label>
+                <Label>Canal de Venta</Label>
                 <div className="flex flex-wrap gap-2">
                   {CHANNEL_OPTIONS.map((opt) => {
                     const isActive =
@@ -289,12 +288,8 @@ export default function SalesVsTarget() {
                         key={opt.value}
                         type="button"
                         onClick={() => handleChannelToggle(opt.value)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                          isActive
-                            ? opt.color + " border-current"
-                            : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
-                        }`}
-                        style={{ fontFamily: 'Sailec, sans-serif' }}
+                        aria-pressed={isActive}
+                        className={`ff-channel-filter ${opt.toneClass}`}
                       >
                         {opt.icon}
                         {opt.label}
@@ -304,13 +299,13 @@ export default function SalesVsTarget() {
                 </div>
                 {/* Nota informativa sobre el canal presencial */}
                 {selectedChannels.includes("presencial") && !selectedChannels.includes("all") && (
-                  <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                  <p className="ff-target-note">
                     La meta del canal Presencial se calcula como: 100% − % eCommerce − % Rappi definidos en la configuración de metas.
                   </p>
                 )}
                 {/* Nota cuando se combinan eCommerce + Rappi */}
                 {selectedChannels.includes("ecommerce") && selectedChannels.includes("rappi") && (
-                  <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                  <p className="ff-target-note">
                     La meta combinada usa la suma de los porcentajes eCommerce + Rappi.
                   </p>
                 )}
@@ -320,20 +315,16 @@ export default function SalesVsTarget() {
             {/* Indicador de canal activo */}
             {!effectiveChannels.includes("all") && (
               <div className="mt-4 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+                <span className="text-xs text-muted-foreground">
                   Mostrando metas ajustadas para:
                 </span>
                 {effectiveChannels.map((ch) => {
                   const opt = CHANNEL_OPTIONS.find((o) => o.value === ch);
                   return (
-                    <Badge
-                      key={ch}
-                      variant="outline"
-                      className={`text-xs ${opt?.color ?? ""}`}
-                    >
+                    <span key={ch} className={`ff-channel-chip ${opt?.toneClass ?? "ff-channel-neutral"}`}>
                       {opt?.icon && <span className="mr-1">{opt.icon}</span>}
                       {opt?.label ?? ch}
-                    </Badge>
+                    </span>
                   );
                 })}
               </div>
@@ -344,7 +335,7 @@ export default function SalesVsTarget() {
         {/* Tarjeta de Totales */}
         {!isLoading && totals && (
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
+            <h2 className="ff-section-label mb-3">
               Total Consolidado
             </h2>
             <StoreTargetCard
@@ -389,7 +380,7 @@ export default function SalesVsTarget() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-muted-foreground" style={{ fontFamily: 'Sailec, sans-serif' }}>
+            <p className="text-muted-foreground">
               No hay datos disponibles para el rango de fechas y canal seleccionados
             </p>
           </div>

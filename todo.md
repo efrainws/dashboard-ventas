@@ -2220,3 +2220,4 @@ Fecha: 1 de febrero de 2026
 - [x] Adecuar el bloque ChannelBreakdown a los tokens globales y patrones de Flora & Fauna
 - [x] Adecuar bordes y elementos gráficos de TopProducts al sistema de diseño Flora & Fauna
 - [x] Centrar verticalmente el botón señalado de la navegación compartida
+- [x] Alinear SalesVsTarget con el sistema general y documentar variantes semánticas de cumplimiento

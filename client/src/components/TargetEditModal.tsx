@@ -498,7 +498,7 @@ export function TargetEditModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] lg:max-w-[1200px] xl:max-w-[1500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Sailec, sans-serif" }}>
+            <DialogTitle className="font-heading text-lg">
               Gestión de Metas Mensuales
             </DialogTitle>
           </DialogHeader>
@@ -510,11 +510,11 @@ export function TargetEditModal({
           ) : (
             <Tabs defaultValue="manual" className="w-full">
               <TabsList className="mb-4">
-                <TabsTrigger value="manual" style={{ fontFamily: "Sailec, sans-serif" }}>
+                <TabsTrigger value="manual">
                   <FileText className="h-4 w-4 mr-2" />
                   Edición Manual
                 </TabsTrigger>
-                <TabsTrigger value="csv" style={{ fontFamily: "Sailec, sans-serif" }}>
+                <TabsTrigger value="csv">
                   <Upload className="h-4 w-4 mr-2" />
                   Carga Masiva CSV
                 </TabsTrigger>
@@ -523,12 +523,9 @@ export function TargetEditModal({
               {/* ── TAB: Edición Manual ─────────────────────────────────────── */}
               <TabsContent value="manual" className="space-y-4">
                 {/* Nota informativa sobre distribución de canales */}
-                <Alert className="border-[#1A6894]/30 bg-[#1A6894]/5">
-                  <Info className="h-4 w-4 text-[#1A6894]" />
-                  <AlertDescription
-                    className="text-sm"
-                    style={{ fontFamily: "Sailec, sans-serif" }}
-                  >
+                <Alert className="ff-target-state ff-target-state--info">
+                  <Info className="h-4 w-4 ff-target-state-text" />
+                  <AlertDescription className="text-sm">
                     Los campos <strong>% eCommerce</strong> y <strong>% Rappi</strong> definen qué
                     porcentaje de la meta total corresponde a cada canal digital. El canal{" "}
                     <strong>Presencial</strong> toma automáticamente el porcentaje restante
@@ -540,7 +537,7 @@ export function TargetEditModal({
                 {/* Filtros y Acciones */}
                 <div className="flex flex-wrap gap-4 items-end">
                   <div className="flex-1 min-w-[200px]">
-                    <Label style={{ fontFamily: "Sailec, sans-serif" }}>Buscar</Label>
+                    <Label>Buscar</Label>
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -553,7 +550,7 @@ export function TargetEditModal({
                   </div>
 
                   <div className="w-[200px]">
-                    <Label style={{ fontFamily: "Sailec, sans-serif" }}>Tienda</Label>
+                    <Label>Tienda</Label>
                     <Select value={filterStore} onValueChange={setFilterStore}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todas las tiendas" />
@@ -570,7 +567,7 @@ export function TargetEditModal({
                   </div>
 
                   <div className="w-[150px]">
-                    <Label style={{ fontFamily: "Sailec, sans-serif" }}>Período</Label>
+                    <Label>Período</Label>
                     <Select value={filterPeriod} onValueChange={setFilterPeriod}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todos" />
@@ -606,15 +603,15 @@ export function TargetEditModal({
                 </div>
 
                 {/* Tabla de Metas */}
-                <div className="border rounded-lg overflow-x-auto">
+                <div className="ff-target-table-shell">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>Período</TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>Tienda</TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>Código SAP</TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>Meta Mensual (S/)</TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Tienda</TableHead>
+                        <TableHead>Código SAP</TableHead>
+                        <TableHead>Meta Mensual (S/)</TableHead>
+                        <TableHead>
                           <div className="flex items-center gap-1">
                             % eCommerce
                             <Tooltip>
@@ -628,7 +625,7 @@ export function TargetEditModal({
                             </Tooltip>
                           </div>
                         </TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>
+                        <TableHead>
                           <div className="flex items-center gap-1">
                             % Rappi
                             <Tooltip>
@@ -642,7 +639,7 @@ export function TargetEditModal({
                             </Tooltip>
                           </div>
                         </TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>
+                        <TableHead>
                           <div className="flex items-center gap-1">
                             % Presencial
                             <Tooltip>
@@ -656,7 +653,7 @@ export function TargetEditModal({
                             </Tooltip>
                           </div>
                         </TableHead>
-                        <TableHead style={{ fontFamily: "Sailec, sans-serif" }}>Acciones</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -685,9 +682,9 @@ export function TargetEditModal({
                               key={`${target.month}-${target.store_id}-${index}`}
                               className={
                                 pctError
-                                  ? "bg-[#BC2C46]/5 dark:bg-[#BC2C46]/10"
+                                  ? "ff-target-row--error"
                                   : target.isModified
-                                  ? "bg-[#C49705]/10 dark:bg-[#C49705]/15"
+                                  ? "ff-target-row--modified"
                                   : ""
                               }
                             >
@@ -773,7 +770,6 @@ export function TargetEditModal({
                                   min="0"
                                   step="1000"
                                   className="w-28"
-                                  style={{ fontFamily: "Sailec, sans-serif" }}
                                 />
                               </TableCell>
 
@@ -830,7 +826,7 @@ export function TargetEditModal({
                                 <span
                                   className={`text-sm font-medium tabular-nums ${
                                     pctError
-                                      ? "text-[#BC2C46]"
+                                      ? "ff-target-state--error ff-target-state-text"
                                       : "text-muted-foreground"
                                   }`}
                                   style={{ fontFamily: "Sailec, sans-serif" }}
@@ -838,7 +834,7 @@ export function TargetEditModal({
                                   {pctError ? "Error" : `${presencialPct.toFixed(1)}%`}
                                 </span>
                                 {pctError && (
-                                  <p className="text-xs text-[#BC2C46] mt-0.5">{pctError}</p>
+                                  <p className="ff-target-state--error ff-target-state-text mt-0.5 text-xs">{pctError}</p>
                                 )}
                               </TableCell>
 
@@ -876,17 +872,11 @@ export function TargetEditModal({
 
               {/* ── TAB: Carga Masiva CSV ───────────────────────────────────── */}
               <TabsContent value="csv" className="space-y-6">
-                <div className="bg-muted/40 border rounded-lg p-5 space-y-3">
-                  <h3
-                    className="font-semibold text-base"
-                    style={{ fontFamily: "Sailec, sans-serif" }}
-                  >
+                <div className="ff-target-upload-guide space-y-3">
+                  <h3 className="text-base font-semibold">
                     Instrucciones para la carga masiva
                   </h3>
-                  <ol
-                    className="text-sm text-muted-foreground space-y-1 list-decimal list-inside"
-                    style={{ fontFamily: "Sailec, sans-serif" }}
-                  >
+                  <ol className="list-inside list-decimal space-y-1 text-sm text-muted-foreground">
                     <li>
                       Descarga la plantilla CSV modelo con el botón de abajo. Incluye
                       las tiendas activas como referencia.
@@ -921,10 +911,8 @@ export function TargetEditModal({
                     onClick={handleDownloadTemplate}
                     className="mt-2"
                   >
-                    <Download className="mr-2 h-4 w-4 text-[#1A6894]" />
-                    <span style={{ fontFamily: "Sailec, sans-serif" }}>
-                      Descargar Plantilla CSV
-                    </span>
+                    <Download className="mr-2 h-4 w-4 text-[var(--ff-canal-presencial)]" />
+                    Descargar Plantilla CSV
                   </Button>
                 </div>
 
@@ -949,15 +937,13 @@ export function TargetEditModal({
                       ) : (
                         <Upload className="mr-2 h-4 w-4" />
                       )}
-                      <span style={{ fontFamily: "Sailec, sans-serif" }}>
-                        Seleccionar archivo CSV
-                      </span>
+                      Seleccionar archivo CSV
                     </Button>
 
                     {csvFileName && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <FileText className="h-4 w-4" />
-                        <span style={{ fontFamily: "Sailec, sans-serif" }}>{csvFileName}</span>
+                        <span>{csvFileName}</span>
                         <button
                           onClick={() => {
                             setCsvRows([]);
@@ -974,33 +960,24 @@ export function TargetEditModal({
                   {/* Resumen de validación */}
                   {csvRows.length > 0 && (
                     <div className="flex gap-3 flex-wrap">
-                      <Badge
-                        variant="outline"
-                        className="text-[#008064] border-[#008064]/40 bg-[#008064]/10"
-                      >
+                      <span className="ff-target-state-badge ff-target-state--success">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         {csvValidRows} fila(s) válidas
-                      </Badge>
+                      </span>
                       {csvErrorRows > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="text-[#BC2C46] border-[#BC2C46]/40 bg-[#BC2C46]/10"
-                        >
+                        <span className="ff-target-state-badge ff-target-state--error">
                           <AlertCircle className="h-3 w-3 mr-1" />
                           {csvErrorRows} fila(s) con errores
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   )}
 
                   {/* Errores de validación */}
                   {csvErrorRows > 0 && (
-                    <Alert className="border-[#BC2C46]/30 bg-[#BC2C46]/5">
-                      <AlertCircle className="h-4 w-4 text-[#BC2C46]" />
-                      <AlertDescription
-                        className="text-sm"
-                        style={{ fontFamily: "Sailec, sans-serif" }}
-                      >
+                    <Alert className="ff-target-state ff-target-state--error">
+                      <AlertCircle className="h-4 w-4 ff-target-state-text" />
+                      <AlertDescription className="text-sm">
                         Las siguientes filas tienen errores y serán omitidas al importar:
                         <ul className="mt-2 space-y-1 list-disc list-inside">
                           {csvRows
@@ -1016,16 +993,13 @@ export function TargetEditModal({
                   )}
                 </div>
 
-                {/* Vista previa */}
-                {csvRows.length > 0 && (
-                  <div className="space-y-2">
-                    <h4
-                      className="font-medium text-sm"
-                      style={{ fontFamily: "Sailec, sans-serif" }}
-                    >
+                  {/* Vista previa */}
+                  {csvRows.length > 0 && (
+                    <div className="space-y-2">
+                    <h4 className="text-sm font-medium">
                       Vista previa ({csvRows.length} filas)
                     </h4>
-                    <div className="border rounded-lg max-h-[320px] overflow-y-auto overflow-x-auto">
+                    <div className="ff-target-table-shell max-h-[320px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1047,7 +1021,7 @@ export function TargetEditModal({
                             return (
                               <TableRow
                                 key={row._rowNum}
-                                className={row._error ? "bg-[#BC2C46]/5 dark:bg-[#BC2C46]/10" : ""}
+                                className={row._error ? "ff-target-row--error" : ""}
                               >
                                 <TableCell className="text-muted-foreground text-xs">
                                   {row._rowNum}
@@ -1072,12 +1046,12 @@ export function TargetEditModal({
                                 </TableCell>
                                 <TableCell>
                                   {row._error ? (
-                                    <span className="text-xs text-[#BC2C46] flex items-center gap-1">
+                                    <span className="ff-target-state-text ff-target-state--error flex items-center gap-1 text-xs">
                                       <AlertCircle className="h-3 w-3" />
                                       {row._error}
                                     </span>
                                   ) : (
-                                    <span className="text-xs text-[#008064] flex items-center gap-1">
+                                    <span className="ff-target-state-text ff-target-state--success flex items-center gap-1 text-xs">
                                       <CheckCircle2 className="h-3 w-3" />
                                       Válida
                                     </span>
@@ -1098,16 +1072,14 @@ export function TargetEditModal({
                     <Button
                       onClick={handleImportCSV}
                       disabled={bulkMutation.isPending}
-                      className="bg-[#008064] hover:bg-[#006650] text-white"
+                      className=""
                     >
                       {bulkMutation.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <Upload className="mr-2 h-4 w-4" />
                       )}
-                      <span style={{ fontFamily: "Sailec, sans-serif" }}>
-                        Importar {csvValidRows} Meta(s)
-                      </span>
+                      Importar {csvValidRows} Meta(s)
                     </Button>
                   </div>
                 )}

@@ -601,6 +601,185 @@
     }
   }
 
+  /* ── Cumplimiento de metas ─────────────────────────────────────────────
+     Variantes funcionales del dashboard, disponibles para cualquier módulo:
+     - Canal: identifica el origen comercial en filtros y etiquetas.
+     - Cumplimiento: comunica una métrica operativa, no una jerarquía visual.
+     Sólo la anchura de la barra se recibe dinámicamente desde los datos; sus
+     colores, bordes y superficies provienen siempre de estos tokens.
+  */
+  .ff-channel-neutral {
+    --channel-color: var(--text-muted);
+    --channel-surface: var(--surface-card);
+    --channel-border: var(--border-default);
+  }
+
+  .ff-channel-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    border: 1px solid var(--border-default);
+    border-radius: 0;
+    background: var(--surface-card);
+    color: var(--text-muted);
+    padding: 0.375rem 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.25;
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+
+  .ff-channel-filter:hover {
+    border-color: var(--channel-border);
+    background: var(--surface-cream);
+    color: var(--channel-color);
+  }
+
+  .ff-channel-filter[aria-pressed="true"] {
+    border-color: var(--channel-border);
+    background: var(--channel-surface);
+    color: var(--channel-color);
+  }
+
+  .ff-target-card {
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-warm-sm);
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .ff-target-card:hover {
+    border-color: var(--border-default);
+    box-shadow: var(--shadow-warm-md);
+  }
+
+  .ff-target-progress {
+    position: relative;
+    height: 0.5rem;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0;
+    background: var(--surface-beige);
+  }
+
+  .ff-target-progress-fill {
+    height: 100%;
+    width: var(--target-progress, 0%);
+    background: var(--target-color);
+    transition: width var(--dur-base) var(--ease-out);
+  }
+
+  .ff-target-tone--complete {
+    --target-color: var(--ff-esmeralda);
+  }
+
+  .ff-target-tone--on-track {
+    --target-color: var(--ff-canal-presencial);
+  }
+
+  .ff-target-tone--attention {
+    --target-color: var(--ff-mostaza);
+  }
+
+  .ff-target-tone--critical {
+    --target-color: var(--ff-granate);
+  }
+
+  .ff-target-tone--not-set {
+    --target-color: var(--text-muted);
+  }
+
+  .ff-target-value {
+    color: var(--target-color);
+  }
+
+  .ff-target-divider {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ff-target-meta-label {
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: var(--ls-caps);
+    text-transform: uppercase;
+  }
+
+  .ff-target-note {
+    border-left: 2px solid var(--border-default);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    padding-left: 0.75rem;
+  }
+
+  .ff-target-table-shell {
+    overflow: auto;
+    border: 1px solid var(--ff-table-border);
+    border-radius: 0;
+  }
+
+  .ff-target-upload-guide {
+    border: 1px solid var(--border-subtle);
+    border-left: 2px solid var(--ff-canal-presencial);
+    border-radius: 0;
+    background: var(--surface-cream);
+    padding: 1.25rem;
+  }
+
+  .ff-target-state {
+    border: 1px solid var(--state-border);
+    border-radius: 0;
+    background: var(--state-surface);
+    color: var(--state-color);
+  }
+
+  .ff-target-state--info {
+    --state-color: var(--ff-canal-presencial);
+    --state-surface: color-mix(in oklab, var(--ff-canal-presencial) 8%, var(--surface-card));
+    --state-border: color-mix(in oklab, var(--ff-canal-presencial) 30%, var(--border-subtle));
+  }
+
+  .ff-target-state--success {
+    --state-color: var(--ff-esmeralda);
+    --state-surface: color-mix(in oklab, var(--ff-esmeralda) 8%, var(--surface-card));
+    --state-border: color-mix(in oklab, var(--ff-esmeralda) 30%, var(--border-subtle));
+  }
+
+  .ff-target-state--error {
+    --state-color: var(--ff-granate);
+    --state-surface: color-mix(in oklab, var(--ff-granate) 8%, var(--surface-card));
+    --state-border: color-mix(in oklab, var(--ff-granate) 30%, var(--border-subtle));
+  }
+
+  .ff-target-state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--state-border);
+    border-radius: 0;
+    background: var(--state-surface);
+    color: var(--state-color);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .ff-target-row--error {
+    background: color-mix(in oklab, var(--ff-granate) 6%, var(--surface-card));
+  }
+
+  .ff-target-row--modified {
+    background: color-mix(in oklab, var(--ff-mostaza) 10%, var(--surface-card));
+  }
+
+  .ff-target-state-text {
+    color: var(--state-color);
+  }
+
   /* ── Tabla canónica FF ──────────────────────────────────────────────────
      Uso: <table className="ff-table"> ... </table>
      Todos los colores vienen de variables CSS semánticas definidas en :root y .dark.

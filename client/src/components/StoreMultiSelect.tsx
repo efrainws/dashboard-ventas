@@ -35,7 +35,7 @@ export function StoreMultiSelect({
 }: StoreMultiSelectProps) {
   if (locked) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground ${className ?? ""}`}>
+      <div className={`flex items-center gap-2 border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground ${className ?? ""}`}>
         <Lock className="h-3.5 w-3.5 shrink-0" />
         <span>{lockedLabel ?? placeholder}</span>
       </div>
@@ -85,7 +85,7 @@ export function StoreMultiSelect({
         <div className="space-y-1">
           {/* Opción "Todas las tiendas" */}
           <div
-            className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-accent"
             onClick={handleToggleAll}
           >
             <Checkbox
@@ -98,7 +98,7 @@ export function StoreMultiSelect({
           {stores.map((store) => (
             <div
               key={store.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
+              className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-accent"
               onClick={() => handleToggle(store.id)}
             >
               <Checkbox
