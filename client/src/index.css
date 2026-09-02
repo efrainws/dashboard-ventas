@@ -332,11 +332,11 @@
   h1, h2, h3 {
     font-family: var(--font-heading);
     @apply font-bold tracking-tight;
+    text-transform: uppercase !important;
   }
-  h1.uppercase,
-  h2.uppercase,
-  h3.uppercase {
-    text-transform: none !important;
+  .font-heading,
+  [style*="Italian Plate"] {
+    text-transform: uppercase !important;
   }
   /* H4, H5, H6 use Sailec */
   h4, h5, h6 {
@@ -529,6 +529,7 @@
     font-weight: 800;
     letter-spacing: -0.035em;
     line-height: 0.95;
+    text-transform: uppercase;
   }
 
   .ff-page-intro {

@@ -2216,3 +2216,4 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar tokens globales de color, tipografía, espaciado, bordes y foco del sistema de diseño
 - [x] Adecuar navegación, página de inicio y componentes compartidos prioritarios al lenguaje visual de Flora & Fauna
 - [x] Validar respuesta visual y accesibilidad en escritorio y móvil
+- [x] Aplicar mayúsculas a todo contenido con tipografía Italian Plate y actualizar la regla en la habilidad de diseño
