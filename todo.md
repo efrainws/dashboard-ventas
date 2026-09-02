@@ -2219,3 +2219,4 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar mayúsculas a todo contenido con tipografía Italian Plate y actualizar la regla en la habilidad de diseño
 - [x] Adecuar el bloque ChannelBreakdown a los tokens globales y patrones de Flora & Fauna
 - [x] Adecuar bordes y elementos gráficos de TopProducts al sistema de diseño Flora & Fauna
+- [x] Centrar verticalmente el botón señalado de la navegación compartida

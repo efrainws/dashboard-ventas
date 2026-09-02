@@ -282,7 +282,7 @@ export function NavigationMenu() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="ml-3 flex items-center space-x-2 border-l border-border pl-5 text-xs">
+              <Button variant="ghost" className="ml-3 flex h-9 self-center items-center justify-center space-x-2 border-l border-border pl-5 text-xs">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.name}</span>
                 <ChevronDown className="h-4 w-4" />
