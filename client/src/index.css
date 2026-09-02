@@ -513,6 +513,94 @@
     --channel-border: var(--ff-granate-light);
   }
 
+  /* ── Ranking de productos ──────────────────────────────────────────────
+     Estados operativos, iconos KPI, tabla y gráfica del ranking se derivan
+     de tokens globales para evitar bordes, radios y colores aislados.
+  */
+  .ff-coverage-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid transparent;
+    border-radius: 0;
+    padding: 0.125rem 0.5rem;
+    color: var(--text-inverse);
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .ff-coverage-chip--critical {
+    border-color: var(--ff-granate-dark);
+    background: var(--ff-granate);
+  }
+
+  .ff-coverage-chip--healthy {
+    border-color: var(--ff-esmeralda-dark);
+    background: var(--ff-esmeralda);
+  }
+
+  .ff-coverage-chip--surplus {
+    border-color: var(--ff-mostaza-dark);
+    background: var(--ff-mostaza);
+  }
+
+  .ff-top-products-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--ff-granate) 30%, var(--border-subtle));
+    background: color-mix(in oklab, var(--ff-granate) 8%, var(--surface-card));
+    padding: 0.5rem 1rem;
+    color: var(--ff-granate);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .ff-top-products-kpi-icon {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in oklab, var(--top-product-accent) 34%, var(--border-subtle));
+    border-radius: 0;
+    background: color-mix(in oklab, var(--top-product-accent) 12%, var(--surface-card));
+    color: var(--top-product-icon);
+  }
+
+  .ff-top-products-kpi-icon--products {
+    --top-product-accent: var(--ff-cobalto-dark);
+    --top-product-icon: var(--ff-cobalto-dark);
+  }
+
+  .ff-top-products-kpi-icon--quantity {
+    --top-product-accent: var(--ff-esmeralda-dark);
+    --top-product-icon: var(--ff-esmeralda-dark);
+  }
+
+  .ff-top-products-kpi-icon--amount {
+    --top-product-accent: var(--ff-mostaza-dark);
+    --top-product-icon: var(--ff-mostaza-dark);
+  }
+
+  .ff-top-products-table tbody tr {
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+
+  .ff-top-products-table tbody tr:hover {
+    background: var(--ff-table-row-hover-bg);
+  }
+
+  @media (min-width: 768px) {
+    .ff-top-products-table tbody tr {
+      cursor: default;
+    }
+  }
+
   /* ── Tabla canónica FF ──────────────────────────────────────────────────
      Uso: <table className="ff-table"> ... </table>
      Todos los colores vienen de variables CSS semánticas definidas en :root y .dark.
