@@ -416,6 +416,103 @@
     color: var(--ff-humo);
   }
 
+  /* ── Desglose por canal ────────────────────────────────────────────────
+     Las superficies, insignias y barras del análisis por canal heredan
+     exclusivamente tokens de marca; los componentes no definen colores propios.
+  */
+  .ff-channel-card {
+    border: 1px solid var(--ff-card-header-border);
+  }
+
+  .ff-channel-card-header {
+    border-bottom: 1px solid var(--ff-card-header-border);
+    background: var(--ff-card-header-bg);
+  }
+
+  .ff-chart-tooltip {
+    border: 1px solid var(--ff-table-border);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-warm-md);
+    color: var(--text-body);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .ff-chart-pie-label {
+    fill: var(--text-inverse);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .ff-chart-legend {
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+  }
+
+  .ff-channel-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--channel-border);
+    border-radius: 0;
+    background: var(--channel-surface);
+    color: var(--channel-color);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .ff-channel-text {
+    color: var(--channel-color);
+  }
+
+  .ff-channel-projection {
+    margin-top: 0.75rem;
+    border: 1px solid var(--ff-table-border);
+    background: var(--ff-table-head-bg);
+    padding: 0.75rem;
+  }
+
+  .ff-channel-meter {
+    height: 0.375rem;
+    flex: 1;
+    overflow: hidden;
+    border-radius: 0;
+    background: var(--ff-table-border);
+  }
+
+  .ff-channel-meter-fill {
+    height: 100%;
+    background: var(--channel-color);
+    transition: width var(--dur-base) var(--ease-out);
+  }
+
+  .ff-channel-presencial {
+    --channel-color: var(--ff-canal-presencial);
+    --channel-surface: var(--ff-canal-presencial-light);
+    --channel-border: var(--ff-canal-presencial-border);
+  }
+
+  .ff-channel-ecommerce {
+    --channel-color: var(--ff-canal-ecommerce);
+    --channel-surface: var(--ff-canal-ecommerce-light);
+    --channel-border: var(--ff-canal-ecommerce-border);
+  }
+
+  .ff-channel-rappi {
+    --channel-color: var(--ff-canal-rappi);
+    --channel-surface: var(--ff-canal-rappi-light);
+    --channel-border: var(--ff-canal-rappi-border);
+  }
+
+  .ff-channel-default {
+    --channel-color: var(--ff-granate);
+    --channel-surface: var(--ff-rosado);
+    --channel-border: var(--ff-granate-light);
+  }
+
   /* ── Tabla canónica FF ──────────────────────────────────────────────────
      Uso: <table className="ff-table"> ... </table>
      Todos los colores vienen de variables CSS semánticas definidas en :root y .dark.
