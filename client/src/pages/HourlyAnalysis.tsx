@@ -224,7 +224,7 @@ export default function HourlyAnalysis() {
       <div className="container py-8 space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>ANÁLISIS POR HORAS</h1>
+          <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Italian Plate No 1, serif' }}>Análisis por horas</h1>
           <p className="text-muted-foreground">
             Ventas y transacciones agregadas por hora del día
           </p>

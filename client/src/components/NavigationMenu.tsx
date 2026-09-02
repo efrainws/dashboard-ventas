@@ -76,8 +76,8 @@ export function NavigationMenu() {
 
   if (!isAuthenticated) {
     return (
-      <nav className="border-b bg-background">
-        <div className="container flex h-16 items-center justify-between">
+      <nav className="border-b border-border bg-[var(--surface-page)]">
+        <div className="container flex h-[4.5rem] items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
             <img src={logoSrc} alt="Flora & Fauna" className="h-6 w-auto" />
           </Link>
@@ -90,19 +90,19 @@ export function NavigationMenu() {
   }
 
   return (
-    <nav className="border-b bg-background sticky top-0 z-50">
-      <div className="container flex h-16 items-center justify-between">
+      <nav className="sticky top-0 z-50 border-b border-border bg-[var(--surface-page)]">
+      <div className="container flex h-[4.5rem] items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2" onClick={closeMobile}>
-          <img src={logoSrc} alt="Flora & Fauna" className="h-6 w-auto" />
+          <img src={logoSrc} alt="Flora & Fauna" className="h-7 w-auto" />
         </Link>
 
         {/* ── DESKTOP NAV (md+) ── */}
-        <div className="hidden md:flex items-center space-x-6">
+        <div className="hidden md:flex items-stretch self-stretch">
           <Link
             href="/"
-            className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-              isActive("/") ? "text-primary" : "text-muted-foreground"
+            className={`flex items-center space-x-2 border-b-2 px-4 font-heading text-xs font-bold uppercase tracking-[0.1em] transition-colors hover:text-primary ${
+              isActive("/") ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             }`}
           >
             <Home className="h-4 w-4" />
@@ -114,8 +114,8 @@ export function NavigationMenu() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className={`flex items-center space-x-1 text-sm font-medium ${
-                  isSalesActive ? "text-primary" : "text-muted-foreground"
+                className={`h-full rounded-none border-b-2 px-4 text-xs ${
+                  isSalesActive ? "border-primary text-primary" : "border-transparent text-muted-foreground"
                 }`}
               >
                 <BarChart3 className="h-4 w-4" />
@@ -179,8 +179,8 @@ export function NavigationMenu() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={`flex items-center space-x-1 text-sm font-medium ${
-                    isOpsActive ? "text-primary" : "text-muted-foreground"
+                  className={`h-full rounded-none border-b-2 px-4 text-xs ${
+                    isOpsActive ? "border-primary text-primary" : "border-transparent text-muted-foreground"
                   }`}
                 >
                   <Gauge className="h-4 w-4" />
@@ -212,8 +212,8 @@ export function NavigationMenu() {
           {/* Tickets */}
           <Link
             href="/tickets"
-            className={`relative flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
-              isActive("/tickets") ? "text-primary" : "text-muted-foreground"
+            className={`relative flex items-center space-x-2 border-b-2 px-4 font-heading text-xs font-bold uppercase tracking-[0.1em] transition-colors hover:text-primary ${
+              isActive("/tickets") ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             }`}
           >
             <Ticket className="h-4 w-4" />
@@ -231,10 +231,10 @@ export function NavigationMenu() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={`flex items-center space-x-1 text-sm font-medium ${
+                  className={`h-full rounded-none border-b-2 px-4 text-xs ${
                     isActive("/supplier") || isActive("/monitoreo-proveedores") || isActive("/afiliacion") || isActive("/marca-propia")
-                      ? "text-primary"
-                      : "text-muted-foreground"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground"
                   }`}
                 >
                   <Layers className="h-4 w-4" />
@@ -282,7 +282,7 @@ export function NavigationMenu() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2">
+              <Button variant="ghost" className="ml-3 flex items-center space-x-2 border-l border-border pl-5 text-xs">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.name}</span>
                 <ChevronDown className="h-4 w-4" />
@@ -334,7 +334,7 @@ export function NavigationMenu() {
 
         {/* ── MOBILE: hamburger button ── */}
         <button
-          className="md:hidden flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="md:hidden flex items-center justify-center h-10 w-10 rounded-none border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-secondary hover:text-foreground"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
         >
@@ -344,8 +344,8 @@ export function NavigationMenu() {
 
       {/* ── MOBILE DROPDOWN PANEL ── */}
       {mobileOpen && (
-        <div className="md:hidden border-t bg-background">
-          <div className="container py-3 flex flex-col space-y-1">
+        <div className="md:hidden border-t border-border bg-[var(--surface-cream)]">
+          <div className="container flex flex-col space-y-1 py-4">
 
             {/* Inicio */}
             <Link

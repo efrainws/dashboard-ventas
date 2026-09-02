@@ -1474,8 +1474,8 @@ export default function SalesByShelf() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-heading uppercase tracking-wide">Análisis por Góndola</h1>
-            <p className="text-sm mt-1" style={{ color: "#919291" }}>
+            <h1 className="text-2xl font-heading tracking-wide">Análisis por góndola</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Análisis de ventas por posición de góndola en tienda.
               {includeIgv ? " Con IGV." : " Sin IGV."}
             </p>

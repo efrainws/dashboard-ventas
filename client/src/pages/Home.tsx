@@ -1,20 +1,129 @@
-import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavigationMenu } from "@/components/NavigationMenu";
-import { BarChart3, Clock, Target, TrendingUp, Loader2, UserCheck, Trophy, ReceiptText, Users, LayoutGrid, FolderTree, Gauge } from "lucide-react";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Clock,
+  FolderTree,
+  Gauge,
+  LayoutGrid,
+  Loader2,
+  ReceiptText,
+  Target,
+  TrendingUp,
+  Trophy,
+  UserCheck,
+  Users,
+} from "lucide-react";
 import { getLoginUrl } from "@/const";
+
+const roleLabels: Record<string, string> = {
+  system_specialist: "Especialista de Sistemas",
+  operations_specialist: "Especialista de Operaciones",
+  cst_user: "Usuario CST",
+  commercial_specialist: "Especialista Comercial",
+  store_user: "Usuario Tienda",
+  supplier_user: "Usuario Proveedor",
+  own_brand_user: "Usuario Marca Propia",
+  admin: "Administrador",
+};
+
+type Module = {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  href: string;
+  tone: string;
+  iconColor: string;
+};
+
+function ModuleCard({ module }: { module: Module }) {
+  const Icon = module.icon;
+
+  return (
+    <Link
+      href={module.href}
+      className="group block h-full focus:outline-none"
+      aria-label={`Abrir ${module.title}`}
+    >
+      <Card className="ff-module-card h-full group-focus-visible:border-primary group-focus-visible:shadow-[var(--shadow-focus)]">
+        <CardHeader>
+          <span
+            className="ff-module-mark mb-4"
+            style={{ backgroundColor: module.tone }}
+            aria-hidden="true"
+          >
+            <Icon className="h-5 w-5" style={{ color: module.iconColor }} />
+          </span>
+          <CardTitle className="text-xl">{module.title}</CardTitle>
+          <CardDescription className="text-sm leading-relaxed">
+            {module.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <span className="flex items-center justify-between border-t border-border pt-4 font-heading text-xs font-bold uppercase tracking-[0.1em] text-primary">
+            Abrir módulo
+            <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function ModuleSection({
+  eyebrow,
+  title,
+  count,
+  icon: Icon,
+  iconClassName,
+  modules,
+  id,
+}: {
+  eyebrow: string;
+  title: string;
+  count: number;
+  icon: React.ElementType;
+  iconClassName: string;
+  modules: Module[];
+  id: string;
+}) {
+  return (
+    <section className="space-y-6" aria-labelledby={id}>
+      <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+        <div className="flex items-center gap-3">
+          <span className={`ff-module-mark ${iconClassName}`} aria-hidden="true">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="ff-eyebrow">{eyebrow}</p>
+            <h2 id={id} className="mt-1 text-2xl font-semibold tracking-tight">
+              {title}
+            </h2>
+          </div>
+        </div>
+        <span className="hidden text-sm text-muted-foreground sm:block">
+          {count} módulos
+        </span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {modules.map((module) => <ModuleCard key={module.href} module={module} />)}
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background" role="status">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Cargando" />
       </div>
     );
   }
@@ -23,221 +132,155 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-background">
         <NavigationMenu />
-        <div className="container py-16">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
-            <h1 className="text-5xl font-bold tracking-tight" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-              Dashboard de Ventas
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Sistema de análisis y visualización de datos de ventas para Flora & Fauna
+        <main className="container py-16 sm:py-24">
+          <div className="border-y border-border bg-secondary/60 px-6 py-12 sm:px-10 sm:py-16">
+            <p className="ff-eyebrow">Centro de análisis</p>
+            <h1 className="ff-page-title mt-4 max-w-3xl">Dashboard de ventas</h1>
+            <p className="ff-page-intro mt-5">
+              Consulta el desempeño comercial de Flora & Fauna por tienda, producto y período.
             </p>
-            <Button size="lg" asChild>
-              <a href={getLoginUrl()}>Iniciar Sesión para Acceder</a>
+            <Button size="lg" className="mt-8" asChild>
+              <a href={getLoginUrl()}>Iniciar sesión</a>
             </Button>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
-  const { effectiveTheme } = useTheme();
-
-  // Colores de la paleta Flora & Fauna
-  // bgColor = color sólido corporativo como fondo del ícono
-  // color = variación light del mismo color para las líneas del ícono
-  const salesModules = [
+  const salesModules: Module[] = [
     {
-      title: "Análisis General",
-      description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave",
+      title: "Análisis general",
+      description: "Visualiza ventas agregadas por fecha, tienda y departamento con métricas clave.",
       icon: BarChart3,
       href: "/sales",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#1A6894]", // Cobalto
+      tone: "var(--ff-carbon)",
+      iconColor: "var(--ff-crema)",
     },
     {
-      title: "Análisis por Horas",
-      description: "Explora patrones de ventas por hora del día y optimiza la operación",
+      title: "Análisis por horas",
+      description: "Explora patrones de ventas por hora del día y optimiza la operación.",
       icon: Clock,
       href: "/hourly",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#C49705]", // Mostaza
+      tone: "var(--ff-mostaza)",
+      iconColor: "var(--ff-carbon)",
     },
     {
-      title: "Ventas vs Meta",
-      description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores visuales",
+      title: "Ventas vs meta",
+      description: "Monitorea el cumplimiento de metas mensuales por tienda con indicadores claros.",
       icon: Target,
       href: "/sales-vs-target",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#008064]", // Esmeralda
+      tone: "var(--ff-esmeralda)",
+      iconColor: "var(--ff-blanco)",
     },
-
     {
-      title: "Top 50 Productos",
-      description: "Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas",
+      title: "Top 50 productos",
+      description: "Revisa los productos con mayor cantidad vendida y monto de ventas.",
       icon: Trophy,
       href: "/top-products",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#5BB6B7]", // Celeste
+      tone: "var(--ff-cobalto)",
+      iconColor: "var(--ff-crema)",
     },
-
     {
-      title: "Top Clientes",
-      description: "Ranking de los mejores clientes por monto de compra por tienda y período",
+      title: "Top clientes",
+      description: "Consulta a los clientes con mayor monto de compra por tienda y período.",
       icon: Users,
       href: "/top-customers",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#C49705]", // Mostaza
+      tone: "var(--ff-mostaza)",
+      iconColor: "var(--ff-carbon)",
     },
     {
-      title: "Análisis por Góndola",
-      description: "Visualiza ventas por posición de góndola en tienda con heatmap y comparación de períodos",
+      title: "Análisis por góndola",
+      description: "Analiza las ventas por posición de góndola con mapa y comparación de períodos.",
       icon: LayoutGrid,
       href: "/sales-by-shelf",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#005A47]", // Esmeralda oscuro
+      tone: "var(--ff-esmeralda)",
+      iconColor: "var(--ff-blanco)",
     },
     {
-      title: "Análisis por Categorías",
-      description: "Explora ventas por departamento, sección y familia con gráfico de líneas, distribución y detalle de artículos",
+      title: "Análisis por categorías",
+      description: "Profundiza por departamento, sección y familia con evolución y detalle de artículos.",
       icon: FolderTree,
       href: "/sales-by-category",
-      color: "text-[#EAE8E2]", // Beige
-      bgColor: "bg-[#6B3FA0]", // Púrpura
+      tone: "var(--ff-carbon)",
+      iconColor: "var(--ff-crema)",
     },
   ];
 
-  const opsModules = [
+  const opsModules: Module[] = [
     {
-      title: "Transacciones Identificadas",
-      description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período",
+      title: "Transacciones identificadas",
+      description: "Analiza el porcentaje de transacciones con cliente identificado por tienda y período.",
       icon: UserCheck,
       href: "/identified-transactions",
-      color: "text-[#EAE8E2]",
-      bgColor: "bg-[#BC2C46]", // Granate
+      tone: "var(--ff-granate)",
+      iconColor: "var(--ff-blanco)",
     },
     {
-      title: "Notas de Crédito",
-      description: "Detalle de notas de crédito emitidas por tienda con breakdown por cajero",
+      title: "Notas de crédito",
+      description: "Revisa las notas de crédito emitidas por tienda y su desglose por cajero.",
       icon: ReceiptText,
       href: "/credit-notes",
-      color: "text-[#EAE8E2]",
-      bgColor: "bg-[#BC2C46]", // Granate
+      tone: "var(--ff-granate)",
+      iconColor: "var(--ff-blanco)",
     },
   ];
 
-  // Logo según tema
-  const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
+  const moduleCount = salesModules.length + (user?.role !== "own_brand_user" ? opsModules.length : 0);
 
   return (
     <div className="min-h-screen bg-background">
       <NavigationMenu />
-      
-      <div className="container py-12 space-y-12">
-        {/* Logo y Hero Section */}
-        <div className="space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Italian Plate No 1, serif' }}>
-              Bienvenido, {user?.name}
-            </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl">
-            Accede a los diferentes módulos de análisis para obtener insights sobre el desempeño de ventas de Flora & Fauna.
+      <main className="container space-y-14 py-12 sm:space-y-16 sm:py-16">
+        <header className="border-b border-border pb-9 sm:pb-11">
+          <p className="ff-eyebrow">Centro de control comercial</p>
+          <h1 className="ff-page-title mt-4">Bienvenido, {user?.name}</h1>
+          <p className="ff-page-intro mt-5">
+            Revisa los indicadores clave y profundiza en el desempeño de ventas de Flora & Fauna.
           </p>
-          </div>
-        </div>
+        </header>
 
-        {/* Sales Modules Section */}
-        <div className="space-y-6">
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-semibold tracking-tight">Módulos de Ventas</h2>
-          </div>
+        <ModuleSection
+          eyebrow="Análisis comercial"
+          title="Módulos de ventas"
+          count={salesModules.length}
+          icon={TrendingUp}
+          iconClassName="bg-secondary text-primary"
+          modules={salesModules}
+          id="sales-modules-title"
+        />
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {salesModules.map((module) => {
-              const Icon = module.icon;
-              return (
-                <Link key={module.href} href={module.href}>
-                  <div className="block h-full">
-                    <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
-                      <CardHeader>
-                        <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
-                          <Icon className={`h-6 w-6 ${module.color}`} />
-                        </div>
-                        <CardTitle className="text-xl">{module.title}</CardTitle>
-                        <CardDescription className="text-sm">
-                          {module.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button variant="outline" className="w-full">
-                          Acceder al Módulo
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Indicadores de Operación Section — oculto para own_brand_user */}
         {user?.role !== "own_brand_user" && (
-          <div className="space-y-6">
-            <div className="flex items-center space-x-2">
-              <Gauge className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-semibold tracking-tight">Indicadores de Operación</h2>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {opsModules.map((module) => {
-                const Icon = module.icon;
-                return (
-                  <Link key={module.href} href={module.href}>
-                    <div className="block h-full">
-                      <Card className="h-full transition-all hover:shadow-lg hover:scale-105 cursor-pointer">
-                        <CardHeader>
-                          <div className={`w-12 h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-4`}>
-                            <Icon className={`h-6 w-6 ${module.color}`} />
-                          </div>
-                          <CardTitle className="text-xl">{module.title}</CardTitle>
-                          <CardDescription className="text-sm">
-                            {module.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <Button variant="outline" className="w-full">
-                            Acceder al Módulo
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+          <ModuleSection
+            eyebrow="Seguimiento operativo"
+            title="Indicadores de operación"
+            count={opsModules.length}
+            icon={Gauge}
+            iconClassName="bg-[var(--ff-rosado)] text-destructive"
+            modules={opsModules}
+            id="operations-modules-title"
+          />
         )}
 
-        {/* Quick Stats or Additional Info */}
-        <div className="bg-muted/50 rounded-lg p-8 space-y-4">
-          <h3 className="text-lg font-semibold">Información del Sistema</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Usuario</p>
-              <p className="font-medium">{user?.name}</p>
+        <section className="border-y border-border bg-secondary/60 px-5 py-6 sm:px-8" aria-labelledby="system-info-title">
+          <p className="ff-eyebrow">Tu espacio de trabajo</p>
+          <h2 id="system-info-title" className="mt-2 text-xl font-semibold tracking-tight">Información del sistema</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-3">
+            <div className="border-l-2 border-primary pl-3">
+              <p className="ff-eyebrow">Usuario</p>
+              <p className="mt-1 font-medium">{user?.name}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rol</p>
-              <p className="font-medium capitalize">{user?.role}</p>
+            <div className="border-l-2 border-primary pl-3">
+              <p className="ff-eyebrow">Rol</p>
+              <p className="mt-1 font-medium">{roleLabels[user?.role ?? ""] ?? user?.role}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Módulos Disponibles</p>
-              <p className="font-medium">{salesModules.length + (user?.role !== "own_brand_user" ? opsModules.length : 0)} módulos activos</p>
+            <div className="border-l-2 border-primary pl-3">
+              <p className="ff-eyebrow">Módulos disponibles</p>
+              <p className="mt-1 font-medium">{moduleCount} módulos activos</p>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

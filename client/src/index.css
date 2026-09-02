@@ -55,10 +55,10 @@
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: 0px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -98,17 +98,43 @@
    ========================= */
 :root {
   --ff-granate: #BC2C46;
-  --ff-esmeralda: #008064;
-  --ff-mostaza: #C49705;
-  --ff-cobalto: #1A6894;
-  --ff-rosado: #E5BAC1;
-  --ff-celeste: #5BB6B7;
+  --ff-esmeralda: #2F7A47;
+  --ff-mostaza: #C49704;
+  --ff-cobalto: #2A4D5E;
+  --ff-rosado: #F4D6DD;
+  --ff-celeste: #DBE7EC;
 
   --ff-beige: #EAE8E2;
-  --ff-hueso: #F5F4F1;
-  --ff-humo: #919291;
+  --ff-hueso: #F3F2EE;
+  --ff-crema: #F3EEE1;
+  --ff-papel: #FCFCFC;
+  --ff-humo: #847B66;
   --ff-carbon: #232523;
   --ff-blanco: #FFFFFF;
+  --ff-piedra-clara: #E3E0D8;
+  --ff-piedra-media: #CABFA7;
+
+  /* Alias semánticos del sistema de diseño Flora & Fauna */
+  --text-strong: var(--ff-carbon);
+  --text-body: #2C2E29;
+  --text-muted: var(--ff-humo);
+  --text-inverse: var(--ff-crema);
+  --surface-page: var(--ff-papel);
+  --surface-card: var(--ff-blanco);
+  --surface-cream: var(--ff-crema);
+  --surface-beige: var(--ff-beige);
+  --border-subtle: var(--ff-piedra-clara);
+  --border-default: #D9D6CD;
+  --border-strong: var(--ff-carbon);
+  --shadow-focus: 0 0 0 3px color-mix(in oklab, var(--ff-carbon) 45%, transparent);
+  --shadow-warm-sm: 0 1px 3px rgba(35, 37, 35, 0.07);
+  --shadow-warm-md: 0 4px 14px rgba(35, 37, 35, 0.09);
+  --container-max: 1240px;
+  --container-pad: clamp(1rem, 4vw, 3rem);
+  --ls-caps: 0.1em;
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Variaciones de colores para gráficos */
   /* Esmeralda */
@@ -172,10 +198,10 @@
    F&F — Light Mode (default)
    ========================= */
 :root {
-  --radius: 0.65rem;
+  --radius: 0px;
   
   /* Backgrounds */
-  --background: oklch(from var(--ff-hueso) l c h);
+  --background: oklch(from var(--ff-papel) l c h);
   --foreground: oklch(from var(--ff-carbon) l c h);
   --card: oklch(from var(--ff-blanco) l c h);
   --card-foreground: oklch(from var(--ff-carbon) l c h);
@@ -184,26 +210,26 @@
   
   /* Primary (Carbon) */
   --primary: oklch(from var(--ff-carbon) l c h);
-  --primary-foreground: oklch(from var(--ff-hueso) l c h);
+  --primary-foreground: oklch(from var(--ff-crema) l c h);
   
   /* Secondary & Muted */
   --secondary: oklch(from var(--ff-beige) l c h);
   --secondary-foreground: oklch(from var(--ff-carbon) l c h);
-  --muted: oklch(from var(--ff-beige) l c h);
+  --muted: oklch(from var(--ff-hueso) l c h);
   --muted-foreground: oklch(from var(--ff-humo) l c h);
   
-  /* Accent (Carbon para botones de acento) */
-  --accent: oklch(from var(--ff-carbon) l c h);
-  --accent-foreground: oklch(from var(--ff-blanco) l c h);
+  /* Accent suave para estados hover y controles secundarios */
+  --accent: oklch(from var(--ff-crema) l c h);
+  --accent-foreground: oklch(from var(--ff-carbon) l c h);
   
   /* Destructive */
   --destructive: oklch(from var(--ff-granate) l c h);
   --destructive-foreground: oklch(from var(--ff-hueso) l c h);
   
   /* Borders & Input */
-  --border: oklch(from var(--ff-humo) l c h / 0.3);
-  --input: oklch(from var(--ff-humo) l c h / 0.3);
-  --ring: oklch(from var(--ff-cobalto) l c h);
+  --border: oklch(from var(--ff-piedra-clara) l c h);
+  --input: oklch(from var(--ff-piedra-media) l c h);
+  --ring: oklch(from var(--ff-carbon) l c h);
   
   /* Chart Colors (Flora y Fauna palette) */
   --chart-1: oklch(from var(--ff-esmeralda) l c h);
@@ -213,14 +239,14 @@
   --chart-5: oklch(from var(--ff-rosado) l c h);
   
   /* Sidebar */
-  --sidebar: oklch(from var(--ff-hueso) l c h);
+  --sidebar: oklch(from var(--ff-papel) l c h);
   --sidebar-foreground: oklch(from var(--ff-carbon) l c h);
   --sidebar-primary: oklch(from var(--ff-carbon) l c h);
   --sidebar-primary-foreground: oklch(from var(--ff-blanco) l c h);
   --sidebar-accent: oklch(from var(--ff-blanco) l c h);
   --sidebar-accent-foreground: oklch(from var(--ff-carbon) l c h);
-  --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
-  --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
+  --sidebar-border: oklch(from var(--ff-piedra-clara) l c h);
+  --sidebar-ring: oklch(from var(--ff-carbon) l c h);
 }
 
 /* =========================
@@ -299,11 +325,18 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    min-height: 100vh;
+    font-family: var(--font-sans);
   }
-  /* H1, H2, H3 use ItalianPlateNo1 with uppercase */
+  /* La familia display se reserva para títulos; el casing queda a cargo del contenido. */
   h1, h2, h3 {
     font-family: var(--font-heading);
-    @apply font-bold tracking-tight uppercase;
+    @apply font-bold tracking-tight;
+  }
+  h1.uppercase,
+  h2.uppercase,
+  h3.uppercase {
+    text-transform: none !important;
   }
   /* H4, H5, H6 use Sailec */
   h4, h5, h6 {
@@ -330,6 +363,10 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
+
+  :focus-visible {
+    box-shadow: var(--shadow-focus);
+  }
 }
 
 @layer components {
@@ -350,8 +387,9 @@
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
+    max-width: var(--container-max);
+    padding-left: var(--container-pad);
+    padding-right: var(--container-pad);
   }
 
   .flex {
@@ -374,7 +412,7 @@
     font-size: 0.875rem;       /* 14px = text-sm */
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.1em;     /* tracking-widest */
+    letter-spacing: var(--ls-caps);
     color: var(--ff-humo);
   }
 
@@ -390,7 +428,7 @@
     font-family: var(--font-sans);
     font-size: 12px;               /* Cuerpo: Sailec 12px */
     border: 1px solid var(--ff-table-border);
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
   }
 
@@ -473,18 +511,78 @@
     color: var(--ff-carbon);
   }
 
+  /* ── Bloques compartidos de la aplicación ─────────────────────────────── */
+  .ff-eyebrow {
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: var(--ls-caps);
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+
+  .ff-page-title {
+    color: var(--text-strong);
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+  }
+
+  .ff-page-intro {
+    color: var(--text-muted);
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+    line-height: 1.6;
+    max-width: 46rem;
+  }
+
+  .ff-module-card {
+    border-color: var(--border-subtle);
+    box-shadow: none;
+    transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .ff-module-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-warm-md);
+  }
+
+  .ff-module-mark {
+    align-items: center;
+    border: 1px solid var(--border-subtle);
+    display: inline-flex;
+    height: 2.75rem;
+    justify-content: center;
+    width: 2.75rem;
+  }
+
+  .ff-ledger-rule {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
+      padding-left: var(--container-pad);
+      padding-right: var(--container-pad);
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      padding-left: var(--container-pad);
+      padding-right: var(--container-pad);
+      max-width: var(--container-max);
     }
   }
 

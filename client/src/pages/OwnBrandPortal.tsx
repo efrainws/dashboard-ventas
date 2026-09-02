@@ -143,20 +143,20 @@ function KpiCard({
   loading?: boolean;
 }) {
   return (
-    <Card className="border-border/50 shadow-sm">
+    <Card className="border-border">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="ff-eyebrow">
               {title}
             </p>
             {loading ? (
               <Skeleton className="h-8 w-28" />
             ) : (
-              <p className="text-2xl font-bold text-foreground font-heading">{value}</p>
+              <p className="font-heading text-2xl font-bold text-foreground">{value}</p>
             )}
           </div>
-          <div className={`p-2.5 rounded-lg ${color}`}>
+          <div className={`flex h-10 w-10 items-center justify-center ${color}`}>
             <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
@@ -217,8 +217,8 @@ function BrandsManager() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold tracking-wide uppercase" style={{ fontFamily: "'Italian Plate No 1', serif" }}>
-          Administración de Marcas
+        <h2 className="text-lg font-bold tracking-wide" style={{ fontFamily: "'Italian Plate No 1', serif" }}>
+          Administración de marcas
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           Configura globalmente las marcas cuyos productos se muestran en el Portal Marca Propia.
@@ -934,12 +934,12 @@ export default function OwnBrandPortal() {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Header ── */}
-      <header className="border-b border-border sticky top-0 z-40 bg-background">
-        <div className="container flex items-center justify-between h-14">
+      <header className="sticky top-0 z-40 border-b border-border bg-[var(--surface-page)]">
+        <div className="container flex h-[4.5rem] items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/Logonegro.svg" alt="Flora & Fauna" className="h-6 block dark:hidden" />
             <img src="/Logoclarochico.svg" alt="Flora & Fauna" className="h-6 hidden dark:block" />
-            <span className="text-xs text-muted-foreground border-l border-border pl-3 hidden sm:block">
+            <span className="ff-eyebrow hidden border-l border-border pl-3 sm:block">
               Portal Marca Propia
             </span>
           </div>
@@ -949,16 +949,16 @@ export default function OwnBrandPortal() {
               variant="outline"
               size="sm"
               onClick={() => window.location.href = '/sales'}
-              className="gap-1.5 border-[#1A6894] text-[#1A6894] hover:bg-[#1A6894] hover:text-white transition-colors"
+              className="gap-1.5"
               title="Volver al Portal de Ventas"
+              aria-label="Volver al portal de ventas"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Portal de Ventas</span>
             </Button>
             <div className="text-right hidden sm:block space-y-0.5">
               <p
-                className="text-xs text-muted-foreground leading-none tracking-wide"
-                style={{ fontFamily: "'Italian Plate No 1', serif", textTransform: "uppercase" }}
+                className="ff-eyebrow leading-none"
               >
                 Marca Propia
               </p>
@@ -969,7 +969,7 @@ export default function OwnBrandPortal() {
                 {user?.name?.toLowerCase()}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={logout} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={logout} className="gap-1.5" aria-label="Cerrar sesión">
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Salir</span>
             </Button>
@@ -978,7 +978,7 @@ export default function OwnBrandPortal() {
       </header>
 
       {/* ── Tabs de navegación ── */}
-      <div className="border-b border-border bg-background">
+      <div className="border-b border-border bg-[var(--surface-cream)]">
         <div className="container">
           <nav className="flex gap-0 overflow-x-auto">
             {visibleTabs.map((tab) => {
@@ -987,7 +987,7 @@ export default function OwnBrandPortal() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 border-b-2 px-4 py-3 font-heading text-xs font-bold uppercase tracking-[0.1em] transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1002,7 +1002,7 @@ export default function OwnBrandPortal() {
         </div>
       </div>
 
-      <div className="container py-6 space-y-6">
+      <main className="container space-y-8 py-8 sm:py-10">
         {/* ══════════════════════════════════════════════
             TAB: DASHBOARD
         ══════════════════════════════════════════════ */}
@@ -1050,7 +1050,7 @@ export default function OwnBrandPortal() {
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} interval="preserveStartEnd" />
                         <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `S/ ${fmt(v)}`} width={70} />
-                        <Tooltip formatter={(v: number) => [fmtCurrency(v), "Ventas"]} labelStyle={{ color: "var(--foreground)", fontWeight: 600 }} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.5rem" }} />
+                        <Tooltip formatter={(v: number) => [fmtCurrency(v), "Ventas"]} labelStyle={{ color: "var(--foreground)", fontWeight: 600 }} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 0 }} />
                         <Line type="monotone" dataKey="ventas" stroke="var(--ff-esmeralda)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -1069,8 +1069,8 @@ export default function OwnBrandPortal() {
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
                         <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `S/ ${fmt(v)}`} width={70} />
-                        <Tooltip formatter={(v: number) => [fmtCurrency(v), "Ventas"]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.5rem" }} />
-                        <Bar dataKey="ventas" fill="var(--ff-cobalto)" radius={[4, 4, 0, 0]} />
+                        <Tooltip formatter={(v: number) => [fmtCurrency(v), "Ventas"]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 0 }} />
+                        <Bar dataKey="ventas" fill="var(--ff-cobalto)" radius={[0, 0, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -1856,7 +1856,7 @@ export default function OwnBrandPortal() {
         {activeTab === "categorias" && canManageBrands && (
           <CategoriesManager />
         )}
-      </div>
+      </main>
 
       {/* ════════════════════════════════════════════
           MODAL: Detalle de ventas diarias

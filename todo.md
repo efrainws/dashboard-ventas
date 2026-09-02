@@ -2211,3 +2211,8 @@ Fecha: 1 de febrero de 2026
 - [x] Añadir el detalle de transacciones y líneas de productos al seleccionar un cajero, sin modificar la tabla actual por cajero
 - [x] Separar el segundo nivel en documentos y añadir un tercer nivel con las líneas de producto por transacción
 - [x] Mostrar order_serial y order_number unidos por un guion como identificador de transacción
+
+## Sistema de diseño Flora & Fauna
+- [x] Aplicar tokens globales de color, tipografía, espaciado, bordes y foco del sistema de diseño
+- [x] Adecuar navegación, página de inicio y componentes compartidos prioritarios al lenguaje visual de Flora & Fauna
+- [x] Validar respuesta visual y accesibilidad en escritorio y móvil

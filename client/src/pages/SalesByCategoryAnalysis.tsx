@@ -375,8 +375,8 @@ export default function SalesByCategoryAnalysis() {
         {/* ── Header ── */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight uppercase">
-              Análisis por Categorías
+            <h1 className="text-2xl font-bold tracking-tight">
+              Análisis por categorías
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Ventas desagregadas por departamento, sección y familia de producto.
