@@ -2229,3 +2229,4 @@ Fecha: 1 de febrero de 2026
 - [x] Auditar y completar el flujo de cambio de contraseña con sus permisos y validaciones
 - [x] Preparar sugerencias priorizadas de mejora técnica y funcional
 - [ ] Publicar la versión y crear la tarea diaria persistente de aviso de trial en producción
+- [x] Verificar y corregir el aviso de cambio de dominio para que use la API transaccional de Brevo

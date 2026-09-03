@@ -115,6 +115,7 @@ export const domainChangeEmailDeliveries = mysqlTable("domain_change_email_deliv
   recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
   status: mysqlEnum("status", ["pending", "sending", "sent", "failed"]).default("pending").notNull(),
   errorCode: varchar("error_code", { length: 64 }),
+  providerMessageId: varchar("provider_message_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

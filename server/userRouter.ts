@@ -360,7 +360,7 @@ export const userRouter = router({
         sentCount += 1;
         await db
           .update(domainChangeEmailDeliveries)
-          .set({ status: 'sent', errorCode: null })
+          .set({ status: 'sent', errorCode: null, providerMessageId: result.messageId })
           .where(eq(domainChangeEmailDeliveries.deliveryKey, deliveryKey));
       } else {
         failedCount += 1;

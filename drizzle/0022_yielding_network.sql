@@ -1,0 +1,1 @@
+ALTER TABLE `domain_change_email_deliveries` ADD `provider_message_id` varchar(255);

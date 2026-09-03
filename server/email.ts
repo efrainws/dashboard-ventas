@@ -35,8 +35,10 @@ const COLORS = {
 };
 
 export type DomainChangeEmailResult =
-  | { ok: true }
+  | { ok: true; messageId: string | null }
   | { ok: false; errorCode: "BREVO_NOT_CONFIGURED" | "INVALID_RECIPIENT" | "SEND_FAILED" };
+
+const BREVO_TRANSACTIONAL_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
 
 /**
  * Envía un aviso individual para mantener privados los destinatarios.
@@ -58,8 +60,14 @@ export async function sendDomainChangeEmail(params: {
   }
 
   try {
-    const client = new BrevoClient({ apiKey: ENV.brevoApiKey });
-    await client.transactionalEmails.sendTransacEmail({
+    const response = await fetch(BREVO_TRANSACTIONAL_EMAIL_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": ENV.brevoApiKey,
+      },
+      body: JSON.stringify({
       subject: params.isTest ? `[PRUEBA] ${DOMAIN_CHANGE_NOTICE_SUBJECT}` : DOMAIN_CHANGE_NOTICE_SUBJECT,
       htmlContent: buildDomainChangeNoticeHtml({
         recipientName: params.recipientName,
@@ -72,10 +80,22 @@ export async function sendDomainChangeEmail(params: {
       sender: DOMAIN_CHANGE_NOTICE_SENDER,
       replyTo: DOMAIN_CHANGE_NOTICE_REPLY_TO,
       to: [{ email: recipientEmail, name: params.recipientName?.trim() || "Usuario" }],
+      tags: ["domain-change-notice", params.isTest ? "test" : "bulk"],
+      }),
     });
-    return { ok: true };
+
+    if (!response.ok) {
+      console.error("[Email] Brevo domain-change API rejected delivery:", response.status);
+      return { ok: false, errorCode: "SEND_FAILED" };
+    }
+
+    const result = (await response.json().catch(() => null)) as { messageId?: unknown } | null;
+    return {
+      ok: true,
+      messageId: typeof result?.messageId === "string" ? result.messageId : null,
+    };
   } catch (error) {
-    console.error("[Email] Domain-change notification delivery failed:", error instanceof Error ? error.name : "unknown_error");
+    console.error("[Email] Brevo domain-change API delivery failed:", error instanceof Error ? error.name : "unknown_error");
     return { ok: false, errorCode: "SEND_FAILED" };
   }
 }
