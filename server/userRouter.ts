@@ -4,10 +4,10 @@ import { TRPCError } from '@trpc/server';
 import { getDb } from './db';
 import { domainChangeCampaigns, domainChangeEmailDeliveries, users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
 import { sendDomainChangeEmail, sendPasswordResetEmail, sendActivationEmail } from './email';
 import { pool } from './postgres';
 import { createActivationToken } from './activationRouter';
+import { hashPassword, verifyPassword } from './passwordHash';
 import {
   buildDomainChangeNoticeHtml,
   buildDomainChangeNoticeText,
@@ -540,7 +540,7 @@ export const userRouter = router({
         }
 
         // Hash de la contraseña
-        const hashedPassword = await bcrypt.hash(input.password, 10);
+        const hashedPassword = await hashPassword(input.password);
 
         // Para supplier_user: determinar estado inicial
         const supplierInitialStatus =
@@ -689,8 +689,17 @@ export const userRouter = router({
     .input(
       z.object({
         id: z.number(),
-        newPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-        notifyUser: z.boolean().default(true),
+        newPassword: z
+          .string()
+          .min(12, 'La contraseña debe tener al menos 12 caracteres')
+          .regex(/[a-z]/, 'La contraseña debe incluir una letra minúscula')
+          .regex(/[A-Z]/, 'La contraseña debe incluir una letra mayúscula')
+          .regex(/\d/, 'La contraseña debe incluir un número'),
+        confirmPassword: z.string().min(1, 'Confirma la nueva contraseña'),
+        notifyUser: z.boolean().default(false),
+      }).refine((data) => data.newPassword === data.confirmPassword, {
+        message: 'Las contraseñas no coinciden',
+        path: ['confirmPassword'],
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -726,17 +735,27 @@ export const userRouter = router({
           });
         }
 
-        const hashedPassword = await bcrypt.hash(input.newPassword, 10);
+        if (existingUser[0].password && await verifyPassword(input.newPassword, existingUser[0].password)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'La nueva contraseña debe ser diferente de la contraseña actual',
+          });
+        }
+
+        // La URL solo se resuelve cuando se solicita una notificación y desde
+        // un host HTTPS publicado; nunca se acepta desde el navegador.
+        const appUrl = input.notifyUser && existingUser[0].email
+          ? resolvePublishedDashboardUrl(ctx.req)
+          : null;
+
+        const hashedPassword = await hashPassword(input.newPassword);
         await db.update(users).set({ password: hashedPassword }).where(eq(users.id, input.id));
 
         let emailSent = false;
-        if (input.notifyUser && existingUser[0].email) {
-          const appUrl = 'https://dashboard.florayfauna.pe';
+        if (input.notifyUser && existingUser[0].email && appUrl) {
           emailSent = await sendPasswordResetEmail({
             name: existingUser[0].name ?? existingUser[0].email ?? 'Usuario',
             email: existingUser[0].email,
-            username: existingUser[0].email ?? '',
-            newPassword: input.newPassword,
             appUrl,
             changedByAdmin: true,
           });

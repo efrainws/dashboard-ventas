@@ -308,12 +308,10 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<bool
  */
 function buildPasswordResetEmailHtml(params: {
   name: string;
-  username: string;
-  newPassword: string;
   appUrl: string;
   changedByAdmin: boolean;
 }): string {
-  const { name, username, newPassword, appUrl, changedByAdmin } = params;
+  const { name, appUrl, changedByAdmin } = params;
   const year = new Date().getFullYear();
   const actionLabel = changedByAdmin
     ? "Un administrador ha restablecido tu contraseña"
@@ -371,27 +369,15 @@ function buildPasswordResetEmailHtml(params: {
                 ${actionLabel}
               </h1>
               <p style="margin:0 0 28px;font-size:15px;color:${COLORS.textMuted};line-height:1.6;text-align:center;">
-                Hola <strong style="color:${COLORS.textBody};">${name}</strong>, a continuación encontrarás tus nuevas credenciales de acceso.
+                Hola <strong style="color:${COLORS.textBody};">${name}</strong>, se registró una actualización de tu contraseña de acceso.
               </p>
 
-              <!-- Credentials card -->
+              <!-- Access notice -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};border:1px solid ${COLORS.border};border-radius:10px;margin-bottom:28px;overflow:hidden;">
                 <tr>
-                  <td style="padding:20px 24px;border-bottom:1px solid ${COLORS.border};">
+                  <td style="padding:20px 24px;">
                     <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">URL de Acceso</p>
                     <a href="${appUrl}" style="font-size:14px;color:${COLORS.accent};text-decoration:none;font-weight:500;word-break:break-all;">${appUrl}</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:20px 24px;border-bottom:1px solid ${COLORS.border};">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Usuario</p>
-                    <p style="margin:0;font-size:16px;font-weight:700;color:${COLORS.primary};font-family:'Courier New',Courier,monospace;letter-spacing:0.04em;">${username}</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:${COLORS.textMuted};letter-spacing:0.08em;text-transform:uppercase;">Nueva Contraseña</p>
-                    <p style="margin:0;font-size:16px;font-weight:700;color:${COLORS.primary};font-family:'Courier New',Courier,monospace;letter-spacing:0.08em;">${newPassword}</p>
                   </td>
                 </tr>
               </table>
@@ -415,7 +401,7 @@ function buildPasswordResetEmailHtml(params: {
                 <tr>
                   <td style="background-color:#C49705;border:1px solid #EACB82;border-radius:8px;padding:14px 18px;">
                     <p style="margin:0;font-size:13px;color:#624C02;line-height:1.5;">
-                      <strong>⚠ Seguridad:</strong> Te recomendamos cambiar esta contraseña inmediatamente después de ingresar.
+                      <strong>Seguridad:</strong> Por protección de tu cuenta, este correo no incluye contraseñas ni credenciales.
                       Si no solicitaste este cambio, contacta al administrador del sistema de inmediato.
                     </p>
                   </td>
@@ -460,10 +446,6 @@ export interface PasswordResetEmailParams {
   name: string;
   /** Recipient email address */
   email: string;
-  /** Username for login */
-  username: string;
-  /** New plain-text password */
-  newPassword: string;
   /** The app URL the user should visit */
   appUrl: string;
   /** Whether the change was made by an admin (vs the user themselves) */
@@ -483,7 +465,7 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
   }
 
   if (!params.email) {
-    console.warn("[Email] No email address for user — skipping password reset email:", params.username);
+    console.warn("[Email] No email address for user — skipping password-reset notice");
     return false;
   }
 
@@ -494,8 +476,6 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
       subject: "Tu contraseña ha sido restablecida – Flora & Fauna Dashboard",
       htmlContent: buildPasswordResetEmailHtml({
         name: params.name,
-        username: params.username,
-        newPassword: params.newPassword,
         appUrl: params.appUrl,
         changedByAdmin: params.changedByAdmin ?? true,
       }),
@@ -515,7 +495,7 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
       },
     });
 
-    console.log(`[Email] Password reset email sent to ${params.email} (user: ${params.username})`);
+    console.log("[Email] Password-reset security notice sent");
     return true;
   } catch (error: any) {
     console.error("[Email] Failed to send password reset email:", error?.message ?? error);

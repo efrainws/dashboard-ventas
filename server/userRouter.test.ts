@@ -249,9 +249,21 @@ describe('User Management Router', () => {
       const caller = appRouter.createCaller(specialistContext);
       const result = await caller.users.updatePassword({
         id: testUserId,
-        newPassword: 'newpassword123',
+        newPassword: 'NewPassword123',
+        confirmPassword: 'NewPassword123',
+        notifyUser: false,
       });
       expect(result.success).toBe(true);
+    });
+
+    it('rechaza contraseñas sin confirmación coincidente', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      await expect(caller.users.updatePassword({
+        id: testUserId,
+        newPassword: 'NewPassword123',
+        confirmPassword: 'OtraPassword123',
+        notifyUser: false,
+      })).rejects.toThrow('Las contraseñas no coinciden');
     });
   });
 

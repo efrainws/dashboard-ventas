@@ -3,32 +3,57 @@
  * Job diario que detecta proveedores con trial a 2 días de vencer
  * y les envía un correo de aviso.
  *
- * Se registra en server/_core/index.ts usando setInterval.
+ * Se ejecuta desde un callback diario autenticado por la plataforma.
  */
 import { getDb } from "./db";
-import { users } from "../drizzle/schema";
+import { supplierTrialAlertDeliveries, supplierTrialAlertSchedules, users } from "../drizzle/schema";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { sendTrialExpiryWarning } from "./email";
+
+/** 09:00 en Lima (UTC-5), con segundos como exige la plataforma. */
+export const TRIAL_EXPIRY_ALERT_CRON = "0 0 14 * * *";
+
+export type TrialAlertRunResult = {
+  checked: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+};
+
+export function getTrialExpiryWarningWindow(runAt: Date): { start: Date; end: Date } {
+  const start = new Date(runAt);
+  start.setUTCDate(start.getUTCDate() + 2);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setUTCHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+export function buildTrialAlertDeliveryKey(userId: number, trialEndDate: Date): string {
+  return `trial-expiry-warning:${userId}:${trialEndDate.toISOString().slice(0, 10)}`;
+}
 
 /**
  * Ejecuta el job de alertas de trial.
  * Envía correo a proveedores cuyo trial vence en exactamente 2 días.
  */
-export async function runTrialAlertJob(): Promise<void> {
+export async function runTrialAlertJob(scheduleTaskUid: string, runAt = new Date()): Promise<TrialAlertRunResult> {
   const db = await getDb();
   if (!db) {
-    console.warn("[TrialAlertJob] Database not available, skipping.");
-    return;
+    throw new Error("Trial alert database not available");
   }
 
-  const now = new Date();
-  // Ventana: entre 2 días 0h y 2 días 23:59 desde ahora
-  const windowStart = new Date(now);
-  windowStart.setDate(windowStart.getDate() + 2);
-  windowStart.setHours(0, 0, 0, 0);
+  const [schedule] = await db
+    .select({ taskUid: supplierTrialAlertSchedules.scheduleCronTaskUid })
+    .from(supplierTrialAlertSchedules)
+    .where(eq(supplierTrialAlertSchedules.scheduleCronTaskUid, scheduleTaskUid))
+    .limit(1);
+  if (!schedule) {
+    return { checked: 0, sent: 0, failed: 0, skipped: 1 };
+  }
 
-  const windowEnd = new Date(windowStart);
-  windowEnd.setHours(23, 59, 59, 999);
+  const { start: windowStart, end: windowEnd } = getTrialExpiryWarningWindow(runAt);
+  const result: TrialAlertRunResult = { checked: 0, sent: 0, failed: 0, skipped: 0 };
 
   try {
     const candidates = await db
@@ -45,43 +70,66 @@ export async function runTrialAlertJob(): Promise<void> {
 
     if (!candidates.length) {
       console.log(`[TrialAlertJob] No providers with trial expiring in 2 days.`);
-      return;
+      return result;
     }
 
-    console.log(`[TrialAlertJob] Sending expiry warnings to ${candidates.length} provider(s).`);
+    result.checked = candidates.length;
+    console.log(`[TrialAlertJob] Processing ${candidates.length} provider(s) expiring in 2 days.`);
 
     for (const user of candidates) {
-      if (!user.email || !user.trialEndDate) continue;
+      if (!user.email || !user.trialEndDate) {
+        result.skipped += 1;
+        continue;
+      }
+      const deliveryKey = buildTrialAlertDeliveryKey(user.id, new Date(user.trialEndDate));
       try {
-        await sendTrialExpiryWarning({
+        const [existing] = await db
+          .select({ id: supplierTrialAlertDeliveries.id })
+          .from(supplierTrialAlertDeliveries)
+          .where(eq(supplierTrialAlertDeliveries.deliveryKey, deliveryKey))
+          .limit(1);
+        if (existing) {
+          result.skipped += 1;
+          continue;
+        }
+
+        await db.insert(supplierTrialAlertDeliveries).values({
+          deliveryKey,
+          scheduleCronTaskUid: schedule.taskUid,
+          userId: user.id,
+          recipientEmail: user.email.trim().toLowerCase(),
+          trialEndDate: new Date(user.trialEndDate),
+          status: "sending",
+        });
+
+        const delivered = await sendTrialExpiryWarning({
           to: user.email,
           name: user.name ?? "Proveedor",
           trialEndDate: new Date(user.trialEndDate),
         });
-        console.log(`[TrialAlertJob] Warning sent to ${user.email}`);
+        if (delivered) {
+          await db
+            .update(supplierTrialAlertDeliveries)
+            .set({ status: "sent", sentAt: new Date(), errorCode: null })
+            .where(eq(supplierTrialAlertDeliveries.deliveryKey, deliveryKey));
+          result.sent += 1;
+        } else {
+          await db
+            .update(supplierTrialAlertDeliveries)
+            .set({ status: "failed", errorCode: "SEND_FAILED" })
+            .where(eq(supplierTrialAlertDeliveries.deliveryKey, deliveryKey));
+          result.failed += 1;
+        }
       } catch (e) {
-        console.error(`[TrialAlertJob] Failed to send to ${user.email}:`, e);
+        // La restricción única de deliveryKey gana ante reintentos simultáneos.
+        // En ese caso no se vuelve a enviar el correo.
+        result.skipped += 1;
+        console.error("[TrialAlertJob] Delivery was skipped or failed.", e instanceof Error ? e.name : "unknown_error");
       }
     }
+    return result;
   } catch (e) {
     console.error("[TrialAlertJob] Error running job:", e);
+    throw e;
   }
-}
-
-/**
- * Registra el job para ejecutarse cada 24 horas.
- * Llama a esta función desde server/_core/index.ts al arrancar el servidor.
- */
-export function scheduleTrialAlertJob(): void {
-  const INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
-
-  // Ejecutar inmediatamente al arrancar (para no perder el primer día)
-  runTrialAlertJob().catch((e) => console.error("[TrialAlertJob] Initial run failed:", e));
-
-  // Luego cada 24 horas
-  setInterval(() => {
-    runTrialAlertJob().catch((e) => console.error("[TrialAlertJob] Scheduled run failed:", e));
-  }, INTERVAL_MS);
-
-  console.log("[TrialAlertJob] Scheduled — runs every 24 hours.");
 }

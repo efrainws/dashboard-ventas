@@ -148,6 +148,13 @@
       "when": 1788450890890,
       "tag": "0020_late_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1788454058680,
+      "tag": "0021_chief_killmonger",
+      "breakpoints": true
     }
   ]
 }

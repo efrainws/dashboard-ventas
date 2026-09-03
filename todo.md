@@ -2007,11 +2007,11 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar sección de mapa de calor en HourlyAnalysis.tsx
 
 ## Categorías Internas de Marca Propia
-- [ ] Crear tablas ownBrandCategories y ownBrandProductCategories en drizzle/schema.ts
-- [ ] Ejecutar migración de BD (pnpm db:push)
-- [ ] Crear ownBrandCategoriesRouter.ts con procedimientos CRUD
-- [ ] Agregar pestaña "Categorías" en OwnBrandPortal con UI de asignación de productos
-- [ ] Verificar TypeScript sin errores
+- [x] Crear tablas ownBrandCategories y ownBrandProductCategories en drizzle/schema.ts
+- [x] Ejecutar migración de BD (pnpm db:push)
+- [x] Crear ownBrandCategoriesRouter.ts con procedimientos CRUD
+- [x] Agregar pestaña "Categorías" en OwnBrandPortal con UI de asignación de productos
+- [x] Verificar TypeScript sin errores
 
 ## Categorías Internas de Marca Propia
 - [x] Crear tablas en Drizzle schema (ownBrandCategories, ownBrandProductCategories)
@@ -2058,9 +2058,9 @@ Fecha: 1 de febrero de 2026
 - [x] Preferencia persiste en sessionStorage durante toda la sesión
 
 ## Reubicación IgvToggle y Queries IGV en HourlyAnalysis
-- [ ] Mover IgvToggle dentro del panel de filtros en Análisis General (SalesByCategory)
-- [ ] Mover IgvToggle dentro del panel de filtros en Top 50 Productos
-- [ ] Actualizar queries de HourlyAnalysis que aún no soportan include_igv (comparación horaria, heatmap day comparison)
+- [x] Mover IgvToggle dentro del panel de filtros en Análisis General (SalesByCategory)
+- [x] Mover IgvToggle dentro del panel de filtros en Top 50 Productos
+- [x] Actualizar queries de HourlyAnalysis que aún no soportan include_igv (comparación horaria, heatmap day comparison)
 
 ## Reubicación IgvToggle y Queries IGV en HourlyAnalysis
 - [x] Agregar prop showIgvToggle a DashboardFilters para renderizar IgvToggle dentro del panel
@@ -2071,11 +2071,11 @@ Fecha: 1 de febrero de 2026
 - [x] Pasar includeIgv al HeatmapChart desde HourlyAnalysis
 
 ## Tabla de Evolución Temporal en Portales
-- [ ] Agregar endpoint getSalesEvolution en supplierPortalRouter (día/semana/mes)
-- [ ] Agregar endpoint getSalesEvolution en ownBrandRouter (día/semana/mes)
-- [ ] Crear componente SalesEvolutionTable con dropdown día/semana/mes, toggle monto/cantidad, toggle columnas artículo/tienda
-- [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Proveedores
-- [ ] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Marca Propia
+- [x] Agregar endpoint getSalesEvolution en supplierPortalRouter (día/semana/mes)
+- [x] Agregar endpoint getSalesEvolution en ownBrandRouter (día/semana/mes)
+- [x] Crear componente SalesEvolutionTable con dropdown día/semana/mes, toggle monto/cantidad, toggle columnas artículo/tienda
+- [x] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Proveedores
+- [x] Integrar SalesEvolutionTable en pestaña Ventas del Portal de Marca Propia
 
 ## Módulo Notas de Crédito
 - [x] Agregar procedimiento tRPC getCreditNotes (resumen por tienda y día)
@@ -2116,12 +2116,12 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar TypeScript y guardar checkpoint
 
 ## Modal de transacciones del cliente en Top Clientes
-- [ ] Agregar procedimiento tRPC getCustomerTransactions (transacciones del cliente en el período)
-- [ ] Agregar procedimiento tRPC getTransactionDetail (artículos de una transacción)
-- [ ] Implementar modal de transacciones (doc_date, tienda, monto IGV) en TopCustomers.tsx
-- [ ] Implementar sub-modal de detalle de transacción (artículos, cantidad, monto por línea)
-- [ ] Hacer clic en cliente en tarjetas y tabla general abra el modal
-- [ ] Verificar TypeScript y guardar checkpoint
+- [x] Agregar procedimiento tRPC getCustomerTransactions (transacciones del cliente en el período)
+- [x] Agregar procedimiento tRPC getTransactionDetail (artículos de una transacción)
+- [x] Implementar modal de transacciones (doc_date, tienda, monto IGV) en TopCustomers.tsx
+- [x] Implementar sub-modal de detalle de transacción (artículos, cantidad, monto por línea)
+- [x] Hacer clic en cliente en tarjetas y tabla general abra el modal
+- [x] Verificar TypeScript y guardar checkpoint
 
 ## Corrección: Filtro de categorías en Portal Marca Propia
 - [x] Diagnosticar error TRPCClientError: Failed to fetch al aplicar filtros de categoría
@@ -2131,15 +2131,15 @@ Fecha: 1 de febrero de 2026
 - [x] Poblar tabla own_brand_category_brands: FLORA & FAUNA → Marca Propia, FLORA & FAUNA EL HUERTO → El Huerto
 
 ## Optimización de Queries y Cachés - Portal Proveedores y Marca Propia
-- [ ] Crear server/queryCache.ts: módulo de caché centralizado con TTL, thundering herd protection y métricas
-- [ ] Optimizar server/postgres.ts: aumentar pool max, agregar statement_timeout y query_timeout
-- [ ] Optimizar supplierPortalRouter: cachear getProductsForSupplier, getBranchesForStock, getBranchesForSales, getMonthlySales, getMySupplier
-- [ ] Optimizar supplierPortalRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
-- [ ] Optimizar supplierPortalRouter: cachear getProductCatalog (sin búsqueda)
-- [ ] Optimizar ownBrandRouter: cachear getProductsForBrand, getBranchesForStock, getBranchesForSales, getMonthlySales
-- [ ] Optimizar ownBrandRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
-- [ ] Optimizar ownBrandRouter: cachear getProductCatalog (sin búsqueda)
-- [ ] Verificar TypeScript y guardar checkpoint
+- [x] Crear server/queryCache.ts: módulo de caché centralizado con TTL, thundering herd protection y métricas
+- [x] Optimizar server/postgres.ts: aumentar pool max, agregar statement_timeout y query_timeout
+- [x] Optimizar supplierPortalRouter: cachear getProductsForSupplier, getBranchesForStock, getBranchesForSales, getMonthlySales, getMySupplier
+- [x] Optimizar supplierPortalRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
+- [x] Optimizar supplierPortalRouter: cachear getProductCatalog (sin búsqueda)
+- [x] Optimizar ownBrandRouter: cachear getProductsForBrand, getBranchesForStock, getBranchesForSales, getMonthlySales
+- [x] Optimizar ownBrandRouter: consolidar getSalesByProductBranch (3 queries → 1 CTE)
+- [x] Optimizar ownBrandRouter: cachear getProductCatalog (sin búsqueda)
+- [x] Verificar TypeScript y guardar checkpoint
 
 ## Optimización de rendimiento de portales (2026-06-15)
 - [x] Crear módulo de caché centralizado server/queryCache.ts con TTL configurable y thundering herd protection
@@ -2224,3 +2224,8 @@ Fecha: 1 de febrero de 2026
 - [x] Documentar el origen y los filtros de la tabla de entregas de mercadería del portal de Marca Propia
 - [x] Añadir aviso masivo de cambio de dominio en el módulo de usuarios con previsualización, prueba y confirmación explícita
 - [x] Resolver el dominio público oficial en backend y usar notificaciones@florayfauna.pe como remitente del aviso
+- [ ] Auditar y completar los flujos históricos de trial de proveedores con sus permisos y avisos
+- [x] Sustituir el temporizador interno por un aviso diario persistente de trial próximo a vencer; falta crear la tarea tras publicar
+- [x] Auditar y completar el flujo de cambio de contraseña con sus permisos y validaciones
+- [x] Preparar sugerencias priorizadas de mejora técnica y funcional
+- [ ] Publicar la versión y crear la tarea diaria persistente de aviso de trial en producción

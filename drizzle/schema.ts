@@ -20,7 +20,7 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).unique(),
   /** Username for local authentication (optional, kept for backward compatibility) */
   username: varchar("username", { length: 64 }),
-  /** Hashed password for local authentication (bcrypt) */
+  /** Hash de contraseña local (Argon2id; bcrypt se mantiene solo para verificación heredada) */
   password: varchar("password", { length: 255 }),
   name: text("name"),
   email: varchar("email", { length: 320 }).unique(),
@@ -120,6 +120,39 @@ export const domainChangeEmailDeliveries = mysqlTable("domain_change_email_deliv
 });
 
 export type DomainChangeEmailDelivery = typeof domainChangeEmailDeliveries.$inferSelect;
+
+/**
+ * Configuración persistente del aviso diario de vencimiento de trial. El handler
+ * programado solo se ejecuta cuando su task UID coincide con esta fila.
+ */
+export const supplierTrialAlertSchedules = mysqlTable("supplier_trial_alert_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupplierTrialAlertSchedule = typeof supplierTrialAlertSchedules.$inferSelect;
+
+/**
+ * Entrega única del aviso de vencimiento por proveedor y fecha de vencimiento.
+ * La clave única mantiene el handler idempotente ante reintentos de la plataforma.
+ */
+export const supplierTrialAlertDeliveries = mysqlTable("supplier_trial_alert_deliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryKey: varchar("delivery_key", { length: 96 }).notNull().unique(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).notNull(),
+  userId: int("user_id").notNull(),
+  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+  trialEndDate: timestamp("trial_end_date").notNull(),
+  status: mysqlEnum("status", ["sending", "sent", "failed"]).notNull(),
+  errorCode: varchar("error_code", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  sentAt: timestamp("sent_at"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupplierTrialAlertDelivery = typeof supplierTrialAlertDeliveries.$inferSelect;
 
 /**
  * Store monthly sales targets for tracking performance vs goals.

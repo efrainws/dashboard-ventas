@@ -27,6 +27,42 @@ export type SessionPayload = {
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
+const CRON_OPEN_ID_PREFIX = "cron_";
+
+export type AuthenticatedUser = User & {
+  taskUid?: string;
+  isCron?: boolean;
+};
+
+function buildCronUser(userInfo: GetUserInfoWithJwtResponse): AuthenticatedUser {
+  const now = new Date();
+  return {
+    id: -1,
+    openId: userInfo.openId,
+    username: null,
+    password: null,
+    name: userInfo.name || "Tarea programada",
+    email: userInfo.email ?? null,
+    loginMethod: null,
+    role: "cst_user",
+    assignedStoreCode: null,
+    assignedSupplierId: null,
+    createdAt: now,
+    updatedAt: now,
+    lastSignedIn: now,
+    supplierStatus: null,
+    activationDate: null,
+    trialEndDate: null,
+    subscriptionStartDate: null,
+    termsVersionId: null,
+    termsAcceptedAt: null,
+    termsAcceptedIp: null,
+    approvedById: null,
+    approvedAt: null,
+    taskUid: userInfo.taskUid ?? undefined,
+    isCron: true,
+  };
+}
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
@@ -256,7 +292,7 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<User> {
+  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
 
@@ -285,6 +321,16 @@ class SDKServer {
         throw ForbiddenError("User not found");
       }
       return user;
+    }
+
+    // Las tareas programadas se autentican con una identidad cron y no deben
+    // intentar sincronizarse con la tabla local de usuarios.
+    if (payload.openId && typeof payload.openId === "string" && payload.openId.startsWith(CRON_OPEN_ID_PREFIX)) {
+      const userInfo = await this.getUserInfoWithJwt(sessionCookie);
+      if (!userInfo.taskUid) {
+        throw ForbiddenError("Cron session missing task UID");
+      }
+      return buildCronUser(userInfo);
     }
 
     // Si tiene openId, es un JWT de Manus OAuth

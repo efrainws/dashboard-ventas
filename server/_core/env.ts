@@ -11,4 +11,5 @@ export const ENV = {
   ffApiUsername: process.env.FF_API_USERNAME ?? "",
   ffApiPassword: process.env.FF_API_PASSWORD ?? "",
   ffApiSite:     process.env.FF_API_SITE ?? "",
+  passwordPepper: process.env.PASSWORD_PEPPER ?? "",
 };

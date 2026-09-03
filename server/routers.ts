@@ -3,10 +3,10 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { getUserByEmail, updateUserLastSignIn } from "./db";
-import bcrypt from "bcrypt";
 import { z } from "zod";
 import { SignJWT } from "jose";
 import { ENV } from "./_core/env";
+import { verifyPassword } from "./passwordHash";
 import { salesRouter } from "./salesRouter";
 import { userRouter } from "./userRouter";
 import { targetsRouter } from "./targetsRouter";
@@ -61,7 +61,7 @@ export const appRouter = router({
         }
 
         // Verificar contraseña
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await verifyPassword(password, user.password);
 
         if (!isPasswordValid) {
           throw new Error("Credenciales inválidas");

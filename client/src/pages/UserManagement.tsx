@@ -124,6 +124,7 @@ export default function UserManagement() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
+    confirmPassword: '',
     name: '',
     email: '',
     role: 'store_user' as UserRole,
@@ -187,7 +188,7 @@ export default function UserManagement() {
     onSuccess: (data) => {
       if (data.emailSent) {
         showToast.success('Contraseña actualizada y notificación enviada', {
-          description: 'El usuario recibió sus nuevas credenciales por email.',
+          description: 'El usuario recibió un aviso de seguridad sin credenciales.',
           icon: '✉️',
         });
       } else {
@@ -302,6 +303,7 @@ export default function UserManagement() {
     setFormData({
       username: '',
       password: '',
+      confirmPassword: '',
       name: '',
       email: '',
       role: defaultRole,
@@ -320,6 +322,7 @@ export default function UserManagement() {
     setFormData({
       username: user.username || '',
       password: '',
+      confirmPassword: '',
       name: user.name || '',
       email: user.email || '',
       role: user.role,
@@ -338,7 +341,8 @@ export default function UserManagement() {
     setFormData({
       ...formData,
       password: '',
-      notifyUser: !!user.email,
+      confirmPassword: '',
+      notifyUser: false,
     });
     setDialogMode('password');
   };
@@ -351,6 +355,7 @@ export default function UserManagement() {
     setFormData({
       username: '',
       password: '',
+      confirmPassword: '',
       name: '',
       email: '',
       role: getDefaultRole(),
@@ -392,9 +397,14 @@ export default function UserManagement() {
         assignedSupplierId: formData.role === 'supplier_user' ? (formData.assignedSupplierId || null) : null,
       });
     } else if (dialogMode === 'password' && selectedUser) {
+      if (formData.password !== formData.confirmPassword) {
+        showToast.error('Las contraseñas no coinciden');
+        return;
+      }
       updatePasswordMutation.mutate({
         id: selectedUser.id,
         newPassword: formData.password,
+        confirmPassword: formData.confirmPassword,
         notifyUser: formData.notifyUser,
       });
     }
@@ -944,7 +954,21 @@ export default function UserManagement() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  minLength={6}
+                  minLength={12}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 12 caracteres, con mayúscula, minúscula y número.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Confirmar nueva contraseña</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  required
+                  minLength={12}
                 />
               </div>
               <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3">
@@ -967,7 +991,7 @@ export default function UserManagement() {
                   </label>
                   <p className="text-xs text-muted-foreground">
                     {selectedUser?.email
-                      ? `Se enviará la nueva contraseña a ${selectedUser.email}`
+                      ? `Se enviará un aviso de seguridad a ${selectedUser.email}; la contraseña no se incluirá.`
                       : 'El usuario no tiene email registrado.'}
                   </p>
                 </div>

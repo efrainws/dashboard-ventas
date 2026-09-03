@@ -66,4 +66,6 @@ export interface GetUserInfoWithJwtResponse {
   email?: string | null;
   platform?: string | null;
   loginMethod?: string | null;
+  /** Identificador inmutable de la tarea, presente únicamente en ejecuciones programadas. */
+  taskUid?: string | null;
 }

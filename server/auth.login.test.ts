@@ -35,6 +35,7 @@ function createPublicContext(): { ctx: TrpcContext; setCookies: CookieCall[] } {
 
 describe("auth.login", () => {
   const TEST_USERNAME = "test_login_specialist";
+  const TEST_EMAIL = "logintest@test.com";
   const TEST_PASSWORD = "testpass123";
 
   beforeAll(async () => {
@@ -50,7 +51,7 @@ describe("auth.login", () => {
       username: TEST_USERNAME,
       password: hashedPassword,
       name: "Test Login Specialist",
-      email: "logintest@test.com",
+      email: TEST_EMAIL,
       role: "system_specialist",
       loginMethod: "local",
     });
@@ -67,7 +68,7 @@ describe("auth.login", () => {
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.login({
-      username: TEST_USERNAME,
+      email: TEST_EMAIL,
       password: TEST_PASSWORD,
     });
 
@@ -92,7 +93,7 @@ describe("auth.login", () => {
 
     await expect(
       caller.auth.login({
-        username: TEST_USERNAME,
+        email: TEST_EMAIL,
         password: "wrongpassword",
       })
     ).rejects.toThrow("Credenciales inválidas");
@@ -104,18 +105,18 @@ describe("auth.login", () => {
 
     await expect(
       caller.auth.login({
-        username: "nonexistent_xyz",
+        email: "nonexistent_xyz@example.com",
         password: "anypassword",
       })
     ).rejects.toThrow("Credenciales inválidas");
   });
 
-  it("falla con username vacío", async () => {
+  it("falla con email vacío", async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.auth.login({ username: "", password: TEST_PASSWORD })
+      caller.auth.login({ email: "", password: TEST_PASSWORD })
     ).rejects.toThrow();
   });
 
@@ -124,7 +125,7 @@ describe("auth.login", () => {
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.auth.login({ username: TEST_USERNAME, password: "" })
+      caller.auth.login({ email: TEST_EMAIL, password: "" })
     ).rejects.toThrow();
   });
 });

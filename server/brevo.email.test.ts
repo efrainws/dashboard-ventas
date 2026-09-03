@@ -80,8 +80,6 @@ describe("Brevo Password Reset Email", () => {
     const result = await sendPasswordResetEmail({
       name: "Test User",
       email: "", // empty — should skip
-      username: "testuser",
-      newPassword: "NewPass123!",
       appUrl: "https://ventasdash-ftg2qpku.manus.space",
       changedByAdmin: true,
     });
@@ -93,16 +91,12 @@ describe("Brevo Password Reset Email", () => {
     const params = {
       name: "María López",
       email: "maria@florayfauna.pe",
-      username: "mlopez",
-      newPassword: "NuevaClave456!",
       appUrl: "https://ventasdash-ftg2qpku.manus.space",
       changedByAdmin: true,
     };
 
     expect(params.name).toBeTruthy();
     expect(params.email).toContain("@");
-    expect(params.username.length).toBeGreaterThanOrEqual(3);
-    expect(params.newPassword.length).toBeGreaterThanOrEqual(6);
     expect(params.appUrl).toMatch(/^https?:\/\//);
     expect(typeof params.changedByAdmin).toBe("boolean");
   });

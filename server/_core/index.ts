@@ -7,7 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { scheduleTrialAlertJob } from "../trialAlertJob";
+import { sdk } from "./sdk";
+import { runTrialAlertJob } from "../trialAlertJob";
 import { initPool } from "../postgres";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -50,6 +51,24 @@ async function startServer() {
       createContext,
     })
   );
+  // Callback exclusivo de la tarea diaria de aviso de vencimiento de trial.
+  // El UID de cron autenticado se valida contra la configuración persistida.
+  app.post("/api/scheduled/supplier-trial-expiry-alert", async (req, res) => {
+    try {
+      const cronUser = await sdk.authenticateRequest(req);
+      if (!cronUser.isCron || !cronUser.taskUid) {
+        return res.status(403).json({ error: "cron-only" });
+      }
+      const result = await runTrialAlertJob(cronUser.taskUid);
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      console.error("[TrialAlertJob] Scheduled callback failed:", error instanceof Error ? error.message : "unknown_error");
+      return res.status(500).json({
+        error: "supplier-trial-expiry-alert-failed",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
   // ── Error handler global: garantiza que /api/* siempre devuelva JSON ──────
   // Esto evita que Express devuelva HTML cuando un middleware lanza una excepción
   // no capturada (p.ej. durante el warm-up del pool de PostgreSQL al reiniciar).
@@ -78,8 +97,6 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    // Iniciar job de alertas de trial (corre cada 24h)
-    scheduleTrialAlertJob();
     // Inicializar pool de PostgreSQL con warm-up y keep-alive del caché
     initPool().catch(console.error);
   });

@@ -19,10 +19,10 @@ import { getDb } from "./db";
 import { acceptTerms, recordTermsAcceptanceOnly, getActiveTermsVersion } from "./db";
 import { activationTokens, users } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
 import { sendActivationEmail } from "./email";
+import { hashPassword, verifyPassword } from "./passwordHash";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -237,7 +237,7 @@ export const activationRouter = router({
         });
       }
 
-      const tempPasswordValid = await bcrypt.compare(temporaryPassword, user.password);
+      const tempPasswordValid = await verifyPassword(temporaryPassword, user.password);
       if (!tempPasswordValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -246,7 +246,7 @@ export const activationRouter = router({
       }
 
       // 5. New password must differ from the temporary one
-      const sameAsTemp = await bcrypt.compare(newPassword, user.password);
+      const sameAsTemp = await verifyPassword(newPassword, user.password);
       if (sameAsTemp) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -255,7 +255,7 @@ export const activationRouter = router({
       }
 
       // 6. Hash and save the new password
-      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      const hashedNewPassword = await hashPassword(newPassword);
 
       const now = new Date();
 

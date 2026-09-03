@@ -49,14 +49,14 @@ beforeAll(async () => {
   testUserId = (result as any).insertId as number;
 
   // Create a valid token
-  validToken = await createActivationToken(testUserId, TEST_USERNAME);
+  validToken = await createActivationToken(testUserId, "activation_test@example.com");
 
   // Create an expired token (set expiresAt in the past)
   const expiredTokenValue = "expired_" + Date.now().toString(16);
   await db.insert(activationTokens).values({
     token: expiredTokenValue,
     userId: testUserId,
-    username: TEST_USERNAME,
+    email: "activation_test@example.com",
     expiresAt: new Date(Date.now() - 1000), // already expired
     used: 0,
   });
@@ -67,7 +67,7 @@ beforeAll(async () => {
   await db.insert(activationTokens).values({
     token: usedTokenValue,
     userId: testUserId,
-    username: TEST_USERNAME,
+    email: "activation_test@example.com",
     expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
     used: 1,
   });
@@ -85,11 +85,11 @@ afterAll(async () => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("Activation Flow — validateToken", () => {
-  it("returns valid=true and username for a valid token", async () => {
+  it("returns valid=true and email for a valid token", async () => {
     const caller = appRouter.createCaller(makeCtx());
     const result = await caller.activation.validateToken({ token: validToken });
     expect(result.valid).toBe(true);
-    expect(result.username).toBe(TEST_USERNAME);
+    expect(result.email).toBe("activation_test@example.com");
     expect(result.expiresAt).toBeInstanceOf(Date);
   });
 
@@ -161,7 +161,7 @@ describe("Activation Flow — activateAccount", () => {
       confirmPassword: "NewSecurePass456!",
     });
     expect(result.success).toBe(true);
-    expect(result.username).toBe(TEST_USERNAME);
+    expect(result.email).toBe("activation_test@example.com");
   });
 
   it("throws BAD_REQUEST when trying to reuse the same token", async () => {
