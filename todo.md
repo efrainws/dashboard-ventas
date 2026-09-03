@@ -2232,6 +2232,7 @@ Fecha: 1 de febrero de 2026
 - [x] Verificar y corregir el aviso de cambio de dominio para que use la API transaccional de Brevo
 - [x] Permitir nuevas campañas auditables para una misma URL de cambio de dominio
 - [x] Ajustar el modal de aviso de dominio al viewport con desplazamiento interno y acciones siempre visibles
+- [x] Corregir la validación de entrada al continuar la confirmación del aviso de dominio
 - [x] Corregir y validar RLS, filtros y resultados para usuarios de tienda
 - [x] Completar selector de proveedores, etiquetas SAP y cobertura de stock del Portal de Proveedores
 - [x] Corregir promedios diarios y variaciones comparativas en las vistas analíticas

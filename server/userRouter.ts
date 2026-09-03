@@ -268,8 +268,15 @@ export const userRouter = router({
    * identifica la campaña creada por su prueba; la URL y destinatarios se validan en backend.
    */
   sendDomainChangeNotice: systemSpecialistProcedure
-    .input(z.object({ campaignId: z.number().int().positive() }))
+    .input(z.object({ campaignId: z.number().int().positive() }).optional())
     .mutation(async ({ ctx, input }) => {
+    if (!input?.campaignId) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Envía y verifica una prueba antes de continuar a la confirmación.',
+      });
+    }
+
     let publicUrl: string;
     try {
       publicUrl = resolvePublishedDashboardUrl(ctx.req);

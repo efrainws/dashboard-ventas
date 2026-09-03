@@ -596,6 +596,7 @@ export default function UserManagement() {
                 Cancelar
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => testDomainNoticeMutation.mutate()}
                 disabled={!domainNoticePreview.data?.canSend || domainNoticeTested || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
@@ -604,6 +605,7 @@ export default function UserManagement() {
                 {domainNoticeTested ? 'Prueba enviada' : 'Enviar prueba'}
               </Button>
               <Button
+                type="button"
                 onClick={() => setConfirmDomainNotice(true)}
                 disabled={!domainNoticePreview.data?.canSend || !domainNoticeTested || !domainNoticeCampaignId || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
               >

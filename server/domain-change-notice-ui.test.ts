@@ -25,6 +25,7 @@ describe("Aviso de cambio de dominio en Usuarios", () => {
     expect(source).toContain("¿Enviar aviso a todos los usuarios con correo válido?");
     expect(source).toContain("domainNoticeTested");
     expect(source).toContain("sendDomainNoticeMutation.mutate({ campaignId: domainNoticeCampaignId })");
+    expect(source).toContain('type="button"');
     expect(source).toContain("Puedes crear otra campaña para el mismo dominio");
     expect(source).not.toContain("una sola vez para este dominio");
     expect(source).not.toContain("no se podrá repetir para el mismo dominio");
