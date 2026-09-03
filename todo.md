@@ -108,7 +108,7 @@
 - [x] Crear FiltersContext para compartir estado de filtros
 - [x] Agregar parámetros de filtro a getSalesByGrandparentCategory (branch, paymentMethod, startDate, endDate)
 - [x] Crear hook useCategorySales que convierte filtros del frontend a formato del backend
-- [ ] Probar que ambas vistas muestren datos consistentes con los mismos filtros aplicados
+- [x] Probar que ambas vistas muestren datos consistentes con los mismos filtros aplicados
 
 
 ## Resultado de Pruebas - Sincronización de Filtros
@@ -440,10 +440,10 @@ Fecha: 1 de febrero de 2026
 
 ### Frontend
 - [x] Home.tsx: Cambiar "categoría abuelo" por "departamento" en descripción (3 referencias)
-- [ ] DashboardFilters.tsx: Cambiar etiqueta "Categoría" por "Departamento"
+- [x] DashboardFilters.tsx: Cambiar etiqueta "Categoría" por "Departamento"
 - [x] CategoryPieChart.tsx: Cambiar descripción por defecto
-- [ ] BranchBarChart.tsx: Verificar referencias (no encontradas en grep)
-- [ ] SalesLineChart.tsx: Verificar referencias (no encontradas en grep)
+- [x] BranchBarChart.tsx: Verificar referencias (no encontradas en grep)
+- [x] SalesLineChart.tsx: Verificar referencias (no encontradas en grep)
 - [x] useAggregatedSales.ts: Actualizar comentario del hook
 
 ### Backend
@@ -505,7 +505,7 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar interface DashboardFiltersProps (dateRange + onDateRangeChange)
 - [x] Home.tsx: Actualizar estado y lógica de filtros para usar DateRange
 - [x] Actualizar handleClearFilters y dateRangeText
-- [ ] Verificar que filtros funcionen correctamente
+- [x] Verificar que filtros funcionen correctamente
 
 ### Reorganización del Header
 - [x] Home.tsx: Mover botón "Ver Análisis por Horas" a la línea del título
@@ -794,8 +794,8 @@ Fecha: 1 de febrero de 2026
 ### Problema Identificado
 - [x] El cálculo actual suma los promedios individuales de cada sucursal
 - [x] Debe calcular: Total de ventas ÷ Cantidad de días calendario completos en el análisis
-- [ ] Ejemplo: S/ 393,855 (2 días) → S/ 196,927.50 por día
-- [ ] Ejemplo: S/ 198,479 (1 día) → S/ 198,479 por día
+- [x] Ejemplo: S/ 393,855 (2 días) → S/ 196,927.50 por día
+- [x] Ejemplo: S/ 198,479 (1 día) → S/ 198,479 por día
 
 ### Solución
 - [x] Modificar BranchBarChart para calcular días calendario completos del rango activo
@@ -892,7 +892,7 @@ Fecha: 1 de febrero de 2026
 ### Ordenamiento de Sucursales
 - [x] Modificar análisis por horas para ordenar sucursales por branch_sap_id
 - [x] Implementar ordenamiento numérico (extrae números de SAP ID)
-- [ ] Probar que el dropdown muestre sucursales en orden correcto
+- [x] Probar que el dropdown muestre sucursales en orden correcto
 
 ### Testing
 - [x] Aplicar filtro de fecha en análisis por categorías (1-5 feb), cambiar a análisis por horas ✓
@@ -1426,8 +1426,8 @@ Fecha: 1 de febrero de 2026
 - [x] Guardar checkpoint
 
 ## Bug: Filtro de tienda para store_user falla con sap_id
-- [ ] Corregir 5 endpoints del salesRouter para filtrar por b.sap_id en lugar de UUID
-- [ ] Corregir DashboardFilters para usar sap_id como valor del selector de tienda
+- [x] Corregir 5 endpoints del salesRouter para filtrar por b.sap_id en lugar de UUID
+- [x] Corregir DashboardFilters para usar sap_id como valor del selector de tienda
 - [ ] Verificar que todos los dashboards funcionan correctamente para store_user
 - [x] Permitir que cst_user edite metas: actualizar permisos en backend (upsertStoreTarget, deleteStoreTarget, bulkUpsertFromCSV) y frontend (canEdit, botón Editar Metas, StoreTargetCard)
 - [x] Flujo de activación de cuenta: tabla activation_tokens en DB con token único, expiración y estado
@@ -2224,12 +2224,14 @@ Fecha: 1 de febrero de 2026
 - [x] Documentar el origen y los filtros de la tabla de entregas de mercadería del portal de Marca Propia
 - [x] Añadir aviso masivo de cambio de dominio en el módulo de usuarios con previsualización, prueba y confirmación explícita
 - [x] Resolver el dominio público oficial en backend y usar notificaciones@florayfauna.pe como remitente del aviso
-- [ ] Auditar y completar los flujos históricos de trial de proveedores con sus permisos y avisos
+- [x] Auditar y completar los flujos históricos de trial de proveedores con sus permisos y avisos
 - [x] Sustituir el temporizador interno por un aviso diario persistente de trial próximo a vencer; falta crear la tarea tras publicar
 - [x] Auditar y completar el flujo de cambio de contraseña con sus permisos y validaciones
 - [x] Preparar sugerencias priorizadas de mejora técnica y funcional
-- [ ] Publicar la versión y crear la tarea diaria persistente de aviso de trial en producción
+- [x] Publicar la versión y crear la tarea diaria persistente de aviso de trial en producción
 - [x] Verificar y corregir el aviso de cambio de dominio para que use la API transaccional de Brevo
+- [x] Permitir nuevas campañas auditables para una misma URL de cambio de dominio
+- [x] Ajustar el modal de aviso de dominio al viewport con desplazamiento interno y acciones siempre visibles
 - [x] Corregir y validar RLS, filtros y resultados para usuarios de tienda
 - [x] Completar selector de proveedores, etiquetas SAP y cobertura de stock del Portal de Proveedores
 - [x] Corregir promedios diarios y variaciones comparativas en las vistas analíticas

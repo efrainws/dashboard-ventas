@@ -30,11 +30,11 @@ La interfaz no recibe ni envía direcciones de correo ni URL como parámetros de
 
 ## Auditoría e idempotencia
 
-Cada URL publicada genera una campaña identificada por `SHA-256("domain-change:" + publicUrl)`. La tabla `domain_change_campaigns` registra el creador, prueba, destinatario de prueba, fecha, conteos y resultado. La tabla `domain_change_email_deliveries` registra el estado de cada usuario.
+Cada ejecución del aviso genera una **nueva campaña auditable**, incluso cuando se mantiene la misma URL pública. La clave de campaña se calcula como `SHA-256("domain-change:" + publicUrl + ":" + executionNonce)`, por lo que una nueva prueba abre una nueva ejecución trazable. La tabla `domain_change_campaigns` registra el creador, prueba, destinatario de prueba, fecha, conteos y resultado. La tabla `domain_change_email_deliveries` mantiene una única entrega por usuario dentro de cada campaña.
 
 > Una campaña no puede llegar a envío masivo sin estado `tested` y sin que la prueba haya sido realizada por el mismo `system_specialist` que confirma la acción.
 
-Los estados de campaña son `draft`, `tested`, `sending`, `sent`, `partial` y `failed`. Los estados de entrega son `pending`, `sending`, `sent` y `failed`. El estado `sending` se registra antes de llamar al proveedor para reducir el riesgo de reintentos duplicados.
+Los estados de campaña son `draft`, `tested`, `sending`, `sent`, `partial` y `failed`. Los estados de entrega son `pending`, `sending`, `sent` y `failed`. El estado `sending` se registra antes de llamar al proveedor para reducir el riesgo de reintentos duplicados. Repetir el aviso requiere iniciar otra campaña, enviar su prueba al mismo especialista y confirmar explícitamente su envío masivo.
 
 ## Previsualización y seguridad
 

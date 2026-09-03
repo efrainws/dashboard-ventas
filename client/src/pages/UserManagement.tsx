@@ -117,6 +117,7 @@ export default function UserManagement() {
   const [showDomainNoticePreview, setShowDomainNoticePreview] = useState(false);
   const [confirmDomainNotice, setConfirmDomainNotice] = useState(false);
   const [domainNoticeTested, setDomainNoticeTested] = useState(false);
+  const [domainNoticeCampaignId, setDomainNoticeCampaignId] = useState<number | null>(null);
   const [domainNoticeViewport, setDomainNoticeViewport] = useState<'desktop' | 'mobile'>('desktop');
 
   const currentRole = currentUser?.role as UserRole | undefined;
@@ -241,6 +242,7 @@ export default function UserManagement() {
       }
       setConfirmDomainNotice(false);
       setShowDomainNoticePreview(false);
+      setDomainNoticeCampaignId(null);
     },
     onError: (error) => {
       showToast.error(error.message);
@@ -251,6 +253,7 @@ export default function UserManagement() {
   const testDomainNoticeMutation = trpc.users.testDomainChangeNotice.useMutation({
     onSuccess: (data) => {
       setDomainNoticeTested(true);
+      setDomainNoticeCampaignId(data.campaignId);
       showToast.success('Correo de prueba enviado', {
         description: `La prueba se envió a ${data.testRecipientEmail}. Revisa el contenido antes de continuar.`,
       });
@@ -480,6 +483,7 @@ export default function UserManagement() {
             {currentRole === 'system_specialist' && (
               <Button variant="outline" onClick={() => {
                 setDomainNoticeTested(false);
+                setDomainNoticeCampaignId(null);
                 setDomainNoticeViewport('desktop');
                 setShowDomainNoticePreview(true);
               }}>
@@ -507,34 +511,36 @@ export default function UserManagement() {
               if (!open) {
                 setConfirmDomainNotice(false);
                 setDomainNoticeTested(false);
+                setDomainNoticeCampaignId(null);
               }
             }
           }}
         >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
+          <DialogContent className="ff-dialog-viewport !w-[calc(100vw-1rem)] !max-w-6xl sm:!max-w-6xl">
+            <DialogHeader className="ff-dialog-fixed-header">
               <DialogTitle>Previsualizar aviso de cambio de dominio</DialogTitle>
               <DialogDescription>
                 Revisa el dominio, contenido y cantidad de destinatarios antes de confirmar el envío.
               </DialogDescription>
             </DialogHeader>
 
-            {domainNoticePreview.isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            )}
+            <div className="ff-dialog-scroll-body">
+              {domainNoticePreview.isLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              )}
 
-            {domainNoticePreview.error && (
-              <AlertBanner variant="error" title="No pudimos generar la previsualización">
-                {domainNoticePreview.error.message}
-              </AlertBanner>
-            )}
+              {domainNoticePreview.error && (
+                <AlertBanner variant="error" title="No pudimos generar la previsualización">
+                  {domainNoticePreview.error.message}
+                </AlertBanner>
+              )}
 
-            {domainNoticePreview.data && (
-              <div className="space-y-4">
+              {domainNoticePreview.data && (
+                <div className="space-y-4">
                 <AlertBanner variant="info" title="Envío manual y protegido">
-                  Los destinatarios y la URL se resuelven desde el backend. Primero envía una prueba a tu correo autorizado; después podrás confirmar el aviso masivo una sola vez para este dominio.
+                  Los destinatarios y la URL se resuelven desde el backend. Primero envía una prueba a tu correo autorizado; después podrás confirmar esta campaña. Puedes crear otra campaña para el mismo dominio, siempre con una nueva prueba y confirmación.
                 </AlertBanner>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -581,10 +587,11 @@ export default function UserManagement() {
                     <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-foreground">{domainNoticePreview.data.textContent}</pre>
                   </details>
                 </div>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
-            <DialogFooter>
+            <DialogFooter className="ff-dialog-fixed-footer">
               <Button variant="outline" onClick={() => setShowDomainNoticePreview(false)} disabled={sendDomainNoticeMutation.isPending}>
                 Cancelar
               </Button>
@@ -598,7 +605,7 @@ export default function UserManagement() {
               </Button>
               <Button
                 onClick={() => setConfirmDomainNotice(true)}
-                disabled={!domainNoticePreview.data?.canSend || !domainNoticeTested || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
+                disabled={!domainNoticePreview.data?.canSend || !domainNoticeTested || !domainNoticeCampaignId || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
               >
                 <Send className="mr-2 h-4 w-4" />
                 Continuar a confirmación
@@ -612,7 +619,7 @@ export default function UserManagement() {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Enviar aviso a todos los usuarios con correo válido?</AlertDialogTitle>
               <AlertDialogDescription>
-                Ya se envió una prueba a tu correo autorizado. Al confirmar, el aviso se enviará a {domainNoticePreview.data?.recipientCount ?? 0} usuario(s) desde {domainNoticePreview.data?.sender.email ?? 'notificaciones@florayfauna.pe'} con la URL {domainNoticePreview.data?.publicUrl ?? 'publicada'}. La acción queda registrada y no se podrá repetir para el mismo dominio.
+                Ya se envió una prueba a tu correo autorizado. Al confirmar, el aviso se enviará a {domainNoticePreview.data?.recipientCount ?? 0} usuario(s) desde {domainNoticePreview.data?.sender.email ?? 'notificaciones@florayfauna.pe'} con la URL {domainNoticePreview.data?.publicUrl ?? 'publicada'}. Esta campaña queda registrada; podrás iniciar otra campaña para el mismo dominio con una nueva prueba y confirmación.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -620,9 +627,11 @@ export default function UserManagement() {
               <AlertDialogAction
                 onClick={(event) => {
                   event.preventDefault();
-                  sendDomainNoticeMutation.mutate();
+                  if (domainNoticeCampaignId) {
+                    sendDomainNoticeMutation.mutate({ campaignId: domainNoticeCampaignId });
+                  }
                 }}
-                disabled={sendDomainNoticeMutation.isPending}
+                disabled={sendDomainNoticeMutation.isPending || !domainNoticeCampaignId}
               >
                 {sendDomainNoticeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Confirmar envío

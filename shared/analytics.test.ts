@@ -7,6 +7,16 @@ describe('métricas analíticas', () => {
     expect(inclusiveCalendarDays('2026-08-03', '2026-08-03')).toBe(1);
   });
 
+  it('calcula los ejemplos de promedio diario usando el período calendario completo', () => {
+    const totalDosDias = 393_855;
+    const diasDosDias = inclusiveCalendarDays('2026-07-20', '2026-07-21');
+    expect(totalDosDias / diasDosDias).toBe(196_927.5);
+
+    const totalUnDia = 198_479;
+    const diasUnDia = inclusiveCalendarDays('2026-07-20', '2026-07-20');
+    expect(totalUnDia / diasUnDia).toBe(198_479);
+  });
+
   it('maneja la variación frente a un período anterior sin ventas', () => {
     expect(percentageVariation(120, 100)).toBe(20);
     expect(percentageVariation(0, 0)).toBe(0);

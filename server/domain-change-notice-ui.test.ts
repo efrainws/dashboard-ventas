@@ -14,12 +14,19 @@ describe("Aviso de cambio de dominio en Usuarios", () => {
     expect(source).toContain('sandbox=""');
     expect(source).toContain('srcDoc={domainNoticePreview.data.htmlContent}');
     expect(source).toContain("domainNoticeViewport");
+    expect(source).toContain("domainNoticeCampaignId");
+    expect(source).toContain("ff-dialog-viewport");
+    expect(source).toContain("ff-dialog-scroll-body");
+    expect(source).toContain("ff-dialog-fixed-footer");
     expect(source).toContain("Continuar a confirmación");
   });
 
   it("solicita confirmación explícita antes de invocar el envío", () => {
     expect(source).toContain("¿Enviar aviso a todos los usuarios con correo válido?");
     expect(source).toContain("domainNoticeTested");
-    expect(source).toContain("sendDomainNoticeMutation.mutate()");
+    expect(source).toContain("sendDomainNoticeMutation.mutate({ campaignId: domainNoticeCampaignId })");
+    expect(source).toContain("Puedes crear otra campaña para el mismo dominio");
+    expect(source).not.toContain("una sola vez para este dominio");
+    expect(source).not.toContain("no se podrá repetir para el mismo dominio");
   });
 });

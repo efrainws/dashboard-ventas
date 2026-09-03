@@ -224,33 +224,17 @@ export const userRouter = router({
       });
     }
 
-    const idempotencyKey = createDomainChangeIdempotencyKey(publicUrl);
-    const campaigns = await db
-      .select({ id: domainChangeCampaigns.id, status: domainChangeCampaigns.status, testedById: domainChangeCampaigns.testedById })
-      .from(domainChangeCampaigns)
-      .where(eq(domainChangeCampaigns.idempotencyKey, idempotencyKey))
-      .limit(1);
-
-    let campaignId: number;
-    if (campaigns[0]) {
-      if (campaigns[0].status !== 'draft') {
-        throw new TRPCError({
-          code: 'CONFLICT',
-          message: 'La campaña para este dominio ya fue probada o enviada. No se duplicará la prueba.',
-        });
-      }
-      campaignId = campaigns[0].id;
-    } else {
-      const [result] = await db.insert(domainChangeCampaigns).values({
-        idempotencyKey,
-        publicUrl,
-        senderEmail: DOMAIN_CHANGE_NOTICE_SENDER.email,
-        subject: DOMAIN_CHANGE_NOTICE_SUBJECT,
-        recipientCount: recipients.length,
-        createdById: ctx.user.id,
-      });
-      campaignId = (result as { insertId: number }).insertId;
-    }
+    // Cada prueba inicia una ejecución independiente y auditable para el mismo
+    // dominio. La idempotencia permanece a nivel de entrega (campaña + usuario).
+    const [campaignInsert] = await db.insert(domainChangeCampaigns).values({
+      idempotencyKey: createDomainChangeIdempotencyKey(publicUrl),
+      publicUrl,
+      senderEmail: DOMAIN_CHANGE_NOTICE_SENDER.email,
+      subject: DOMAIN_CHANGE_NOTICE_SUBJECT,
+      recipientCount: recipients.length,
+      createdById: ctx.user.id,
+    });
+    const campaignId = (campaignInsert as { insertId: number }).insertId;
 
     const result = await sendDomainChangeEmail({
       recipientName: testRecipient.name,
@@ -280,10 +264,12 @@ export const userRouter = router({
   }),
 
   /**
-   * Ejecuta una campaña única para el dominio publicado actual. El navegador no puede
-   * aportar URL ni destinatarios: ambos valores se resuelven en el backend.
+   * Ejecuta una campaña probada para el dominio publicado actual. El navegador solo
+   * identifica la campaña creada por su prueba; la URL y destinatarios se validan en backend.
    */
-  sendDomainChangeNotice: systemSpecialistProcedure.mutation(async ({ ctx }) => {
+  sendDomainChangeNotice: systemSpecialistProcedure
+    .input(z.object({ campaignId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
     let publicUrl: string;
     try {
       publicUrl = resolvePublishedDashboardUrl(ctx.req);
@@ -299,32 +285,34 @@ export const userRouter = router({
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'No hay usuarios con correo válido para notificar' });
     }
 
-    const idempotencyKey = createDomainChangeIdempotencyKey(publicUrl);
-    const existingCampaign = await db
+    const campaigns = await db
       .select({
         id: domainChangeCampaigns.id,
         status: domainChangeCampaigns.status,
         testedById: domainChangeCampaigns.testedById,
+        createdById: domainChangeCampaigns.createdById,
+        publicUrl: domainChangeCampaigns.publicUrl,
       })
       .from(domainChangeCampaigns)
-      .where(eq(domainChangeCampaigns.idempotencyKey, idempotencyKey))
+      .where(eq(domainChangeCampaigns.id, input.campaignId))
       .limit(1);
+    const campaign = campaigns[0];
 
-    if (!existingCampaign[0]) {
+    if (!campaign || campaign.publicUrl !== publicUrl) {
       throw new TRPCError({
         code: 'PRECONDITION_FAILED',
-        message: 'Envía y verifica primero la prueba autorizada antes de notificar a todos los usuarios.',
+        message: 'La campaña no pertenece al dominio público actual. Genera una nueva prueba antes de notificar.',
       });
     }
 
-    if (existingCampaign[0].status !== 'tested' || existingCampaign[0].testedById !== ctx.user.id) {
+    if (campaign.status !== 'tested' || campaign.testedById !== ctx.user.id || campaign.createdById !== ctx.user.id) {
       throw new TRPCError({
         code: 'PRECONDITION_FAILED',
         message: 'La prueba debe haber sido enviada y aprobada por el mismo Especialista de Sistemas antes del envío masivo.',
       });
     }
 
-    const campaignId = existingCampaign[0].id;
+    const campaignId = campaign.id;
 
     await db
       .update(domainChangeCampaigns)

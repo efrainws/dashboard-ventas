@@ -43,8 +43,16 @@ export function resolvePublishedDashboardUrl(req: RequestOrigin): string {
   return `https://${host}`;
 }
 
-export function createDomainChangeIdempotencyKey(publicUrl: string): string {
-  return crypto.createHash("sha256").update(`domain-change:${publicUrl}`).digest("hex");
+/**
+ * Genera una clave única por ejecución de campaña. Mantener un nonce por campaña
+ * permite reenviar un aviso para la misma URL en una nueva campaña auditada, sin
+ * eliminar la idempotencia de las entregas dentro de esa campaña.
+ */
+export function createDomainChangeIdempotencyKey(publicUrl: string, executionNonce = crypto.randomUUID()): string {
+  return crypto
+    .createHash("sha256")
+    .update(`domain-change:${publicUrl}:${executionNonce}`)
+    .digest("hex");
 }
 
 function escapeHtml(value: string): string {

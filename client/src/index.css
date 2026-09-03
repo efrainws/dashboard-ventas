@@ -402,6 +402,58 @@
     font-family: var(--font-heading);
   }
 
+  /* ── Modal de confirmación operativa ───────────────────────────────────
+     El encabezado y las acciones se mantienen visibles; solo el contenido
+     variable se desplaza. Úsalo para previsualizaciones o procesos masivos.
+  */
+  .ff-dialog-viewport {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0 !important;
+    max-height: calc(100dvh - var(--space-4));
+    padding: 0 !important;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0;
+    background: var(--surface-card);
+    box-shadow: var(--shadow-warm-lg);
+  }
+
+  .ff-dialog-fixed-header,
+  .ff-dialog-fixed-footer {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    background: var(--surface-card);
+  }
+
+  .ff-dialog-fixed-header {
+    padding: var(--space-5) var(--space-6);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .ff-dialog-scroll-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .ff-dialog-fixed-footer {
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  @media (max-width: 639px) {
+    .ff-dialog-fixed-header,
+    .ff-dialog-scroll-body,
+    .ff-dialog-fixed-footer {
+      padding-left: var(--space-4);
+      padding-right: var(--space-4);
+    }
+  }
+
   /* ── Labels de sección interna (dentro de cards) ──────────────────────
      Uso: <p className="ff-section-label">Participación en Ventas</p>
      Equivale a: text-sm font-semibold uppercase tracking-widest

@@ -33,7 +33,7 @@ describe("domainChangeAnnouncement", () => {
     ).toThrow("dominio público HTTPS publicado");
   });
 
-  it("construye un correo con la URL oficial y una clave idempotente estable", () => {
+  it("construye un correo con URL oficial y una clave única por ejecución de campaña", () => {
     const publicUrl = "https://portalventas.florayfauna.pe";
     const html = buildDomainChangeNoticeHtml({ recipientName: "Ana", publicUrl });
     const text = buildDomainChangeNoticeText({ recipientName: "Ana", publicUrl });
@@ -41,9 +41,11 @@ describe("domainChangeAnnouncement", () => {
     expect(DOMAIN_CHANGE_NOTICE_SENDER.email).toBe("notificaciones@florayfauna.pe");
     expect(html).toContain(publicUrl);
     expect(text).toContain(publicUrl);
-    expect(createDomainChangeIdempotencyKey(publicUrl)).toBe(createDomainChangeIdempotencyKey(publicUrl));
-    expect(createDomainChangeIdempotencyKey(publicUrl)).not.toBe(
-      createDomainChangeIdempotencyKey("https://otro-dominio.example")
+    expect(createDomainChangeIdempotencyKey(publicUrl, "campaign-a")).toBe(
+      createDomainChangeIdempotencyKey(publicUrl, "campaign-a")
+    );
+    expect(createDomainChangeIdempotencyKey(publicUrl, "campaign-a")).not.toBe(
+      createDomainChangeIdempotencyKey(publicUrl, "campaign-b")
     );
   });
 });
