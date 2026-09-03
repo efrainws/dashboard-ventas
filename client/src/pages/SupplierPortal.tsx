@@ -107,6 +107,11 @@ function fmtCurrency(val: string | number | null | undefined): string {
   }).format(n);
 }
 
+function formatStoreLabel(name: string | null | undefined, sapId: string | null | undefined): string {
+  const resolvedName = name?.trim() || "Tienda sin nombre";
+  return sapId?.trim() ? `${resolvedName} (${sapId})` : resolvedName;
+}
+
 function defaultFrom() {
   return format(startOfMonth(new Date()), "yyyy-MM-dd");
 }
@@ -394,12 +399,11 @@ export default function SupplierPortal() {
       if (rows.length === 0) return;
 
       const wsData = [
-        ["Producto", "SKU", "Tienda", "Cód. SAP", "Cantidad", "Monto (S/)", "Tickets"],
+        ["Producto", "SKU", "Tienda (SAP)", "Cantidad", "Monto (S/)", "Tickets"],
         ...rows.map((r) => [
           r.producto,
           r.sku,
-          r.tienda,
-          r.sap_id ?? "",
+          formatStoreLabel(r.tienda, r.sap_id),
           parseFloat(r.cantidad),
           parseFloat(r.monto),
           r.tickets,
@@ -430,12 +434,11 @@ export default function SupplierPortal() {
       if (rows.length === 0) return;
 
       const wsData = [
-        ["Producto", "SKU", "Tienda", "Cód. SAP", "Stock Actual", "Stock Mínimo"],
+        ["Producto", "SKU", "Tienda (SAP)", "Stock Actual", "Stock Mínimo"],
         ...rows.map((r) => [
           r.producto,
           r.int_sku,
-          r.tienda,
-          r.sap_id ?? "",
+          formatStoreLabel(r.tienda, r.sap_id),
           r.stock_actual,
           r.min_stock ?? "",
         ]),
@@ -974,7 +977,7 @@ export default function SupplierPortal() {
                     <ResponsiveContainer width="100%" height={520}>
                       <BarChart
                         data={salesByBranch.slice(0, 20).map((b) => ({
-                          tienda: b.sap_id ? `${b.tienda} (${b.sap_id})` : b.tienda,
+                          tienda: formatStoreLabel(b.tienda, b.sap_id),
                           ventas: parseFloat(b.total_ventas),
                         }))}
                         layout="vertical"
@@ -1290,8 +1293,7 @@ export default function SupplierPortal() {
                       <TableRow>
                         <TableHead>Producto</TableHead>
                         <TableHead>SKU</TableHead>
-                        <TableHead>Tienda</TableHead>
-                        <TableHead>Cód. SAP</TableHead>
+                        <TableHead>Tienda (SAP)</TableHead>
                         <TableHead className="text-right">Stock Actual</TableHead>
                         <TableHead className="text-right">Stock Mín.</TableHead>
                         <TableHead>Alerta</TableHead>
@@ -1301,7 +1303,7 @@ export default function SupplierPortal() {
                       {stockLoading
                         ? Array.from({ length: 8 }).map((_, i) => (
                             <TableRow key={i}>
-                              <TableCell colSpan={7}>
+                              <TableCell colSpan={6}>
                                 <Skeleton className="h-5 w-full" />
                               </TableCell>
                             </TableRow>
@@ -1314,8 +1316,7 @@ export default function SupplierPortal() {
                               <TableCell className="text-xs text-muted-foreground tabular-nums tracking-tight">
                                 {s.int_sku}
                               </TableCell>
-                              <TableCell className="text-sm">{s.tienda}</TableCell>
-                              <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{s.sap_id ?? "—"}</TableCell>
+                              <TableCell className="text-sm">{formatStoreLabel(s.tienda, s.sap_id)}</TableCell>
                               <TableCell className="text-right font-medium">
                                 {s.stock_actual === 0
                                   ? <span className="text-muted-foreground">0</span>
@@ -1398,7 +1399,7 @@ export default function SupplierPortal() {
                       <TableRow>
                         <TableHead>N° OC</TableHead>
                         <TableHead>Fecha</TableHead>
-                        <TableHead>Tienda</TableHead>
+                        <TableHead>Tienda (SAP)</TableHead>
                         <TableHead>Producto</TableHead>
                         <TableHead className="text-right">Cant. Ordenada</TableHead>
                         <TableHead className="text-right">Cant. Recibida</TableHead>
@@ -1424,7 +1425,7 @@ export default function SupplierPortal() {
                                   ? format(new Date(r.fecha), "dd/MM/yyyy")
                                   : "—"}
                               </TableCell>
-                              <TableCell className="text-sm">{r.tienda}</TableCell>
+                              <TableCell className="text-sm">{formatStoreLabel(r.tienda, r.sap_id)}</TableCell>
                               <TableCell className="text-sm max-w-[180px]">
                                 <p className="truncate">{r.producto}</p>
                                 <p className="text-xs text-muted-foreground">{r.int_sku}</p>
@@ -1607,8 +1608,7 @@ export default function SupplierPortal() {
                       <TableRow className="border-border/50">
                         {showProduct && <SortableTableHead label="Producto" col="producto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} className="pl-4" />}
                         {showProduct && <SortableTableHead label="SKU" col="sku" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
-                        {showStore && <SortableTableHead label="Tienda" col="tienda" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
-                        {showStore && <SortableTableHead label="Cód. SAP" col="sap_id" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showStore && <SortableTableHead label="Tienda (SAP)" col="tienda" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
                         <SortableTableHead label="Cantidad" col="cantidad" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         <SortableTableHead label="Monto (S/)" col="monto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         <SortableTableHead label="Tickets" col="tickets" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
@@ -1619,7 +1619,7 @@ export default function SupplierPortal() {
                       {salesPBLoading && (
                         [...Array(8)].map((_, i) => (
                           <TableRow key={i}>
-                            {[...Array((showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3)].map((_, j) => (
+                            {[...Array((showProduct ? 2 : 0) + (showStore ? 1 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3)].map((_, j) => (
                               <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                             ))}
                           </TableRow>
@@ -1666,12 +1666,9 @@ export default function SupplierPortal() {
                               <TableCell className="text-sm">
                                 <div className="flex items-center gap-1.5">
                                   <Store className="h-3 w-3 shrink-0" style={{ color: "var(--muted-foreground)" }} />
-                                  <span className="truncate max-w-[140px]">{row.tienda}</span>
+                                  <span className="truncate max-w-[180px]">{formatStoreLabel(row.tienda, row.sap_id)}</span>
                                 </div>
                               </TableCell>
-                            )}
-                            {showStore && (
-                              <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
                             )}
                             <TableCell className="text-right tabular-nums">{fmt(row.cantidad)}</TableCell>
                             <TableCell className="text-right tabular-nums" style={{ color: "#008064" }}>
@@ -1690,7 +1687,7 @@ export default function SupplierPortal() {
                       {!salesPBLoading && !salesByPB?.rows.length && (
                         <TableRow>
                           <TableCell
-                            colSpan={(showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3}
+                            colSpan={(showProduct ? 2 : 0) + (showStore ? 1 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3}
                             className="text-center text-sm text-muted-foreground py-12"
                           >
                             No hay ventas en el período y filtros seleccionados
@@ -1699,7 +1696,7 @@ export default function SupplierPortal() {
                       )}
                       {/* Fila de totales globales */}
                       {!salesPBLoading && salesByPB?.totals && salesByPB.rows.length > 0 && (() => {
-                        const labelColSpan = (showProduct ? 2 : 0) + (showStore ? 2 : 0) || 1;
+                        const labelColSpan = (showProduct ? 2 : 0) + (showStore ? 1 : 0) || 1;
                         return (
                           <TableRow className="border-t-2 border-border font-semibold bg-muted/30">
                             <TableCell className="pl-4 text-sm" colSpan={labelColSpan}>Total General</TableCell>

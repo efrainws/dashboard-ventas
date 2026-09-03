@@ -233,12 +233,7 @@ export function SalesEvolutionTable({
                   <th className="whitespace-nowrap">SKU</th>
                 </>
               )}
-              {showStore && (
-                <>
-                  <th className="whitespace-nowrap">Tienda</th>
-                  <th className="whitespace-nowrap">Cód. SAP</th>
-                </>
-              )}
+              {showStore && <th className="whitespace-nowrap">Tienda (SAP)</th>}
               {/* Una columna por período */}
               {periods.map(p => (
                 <th key={p} className="text-right whitespace-nowrap">
@@ -274,10 +269,9 @@ export function SalesEvolutionTable({
                     </>
                   )}
                   {showStore && (
-                    <>
-                      <td className="whitespace-nowrap">{row.tienda}</td>
-                      <td className="font-mono text-xs">{row.sap_id ?? "—"}</td>
-                    </>
+                    <td className="whitespace-nowrap">
+                      {row.sap_id ? `${row.tienda} (${row.sap_id})` : row.tienda}
+                    </td>
                   )}
                   {periods.map(p => (
                     <td key={p} className="text-right tabular-nums">

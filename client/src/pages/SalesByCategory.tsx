@@ -183,6 +183,7 @@ export default function SalesByCategory() {
       ? {
           fecha_min: filters.fecha_min,
           fecha_max: filters.fecha_max,
+          branch_id: filters.branch_id,
           category_id: filters.category_id,
         }
       : {
@@ -378,6 +379,7 @@ export default function SalesByCategory() {
                 <BranchBarChart 
                   data={data} 
                   comparisonData={branchComparisonQuery.data?.data}
+                  analysisDays={numberOfDays}
                   daysInMonth={daysInMonth}
                 />
               )}

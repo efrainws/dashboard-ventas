@@ -105,46 +105,53 @@ async function warmupCache(label: string): Promise<void> {
       // Paso 1: Cargar products + brands en caché (tabla pequeña, carga rápida)
       // Crítico para portal de marca propia: filtra por brand_id
       await client.query(`
-        SELECT p.id, p.name, p.sku, p.brand_id, b.name AS brand_name
+        SELECT COUNT(*)
         FROM products p
         LEFT JOIN brands b ON b.id = p.brand_id
       `);
 
-      // Paso 2: Cargar sales_header de los últimos 6 meses (para getMonthlySales)
+      // Paso 2: Recorrer sales_header sin transferir filas al proceso Node.
+      // COUNT mantiene el efecto de precalentamiento en PostgreSQL y evita
+      // materializar cientos de miles de objetos JavaScript en cada arranque.
       await client.query(`
-        SELECT id, doc_date, branch_id, total, subtotal
+        SELECT COUNT(*)
         FROM sales_header
         WHERE doc_date >= $1::date
       `, [dateStr(sixMonthsAgo)]);
 
-      // Paso 3: Cargar sales_detail de los últimos 14 días con JOIN a products
+      // Paso 3: Recorrer sales_detail reciente con JOIN a products.
       // Toca idx_sales_detail_header_id + idx_sales_detail_product_id + index_products_on_brand_id
       await client.query(`
-        SELECT sd.id, sd.header_id, sd.product_id, sd.total, sd.subtotal, sd.quantity,
-               p.brand_id
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        JOIN products p ON p.id = sd.product_id
-        WHERE sh.doc_date >= $1::date
-          AND sh.doc_date < ($2::date + INTERVAL '1 day')
-        LIMIT 200000
+        SELECT COUNT(*)
+        FROM (
+          SELECT 1
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          JOIN products p ON p.id = sd.product_id
+          WHERE sh.doc_date >= $1::date
+            AND sh.doc_date < ($2::date + INTERVAL '1 day')
+          LIMIT 200000
+        ) AS warmup_rows
       `, [dateStr(fourteenDaysAgo), dateStr(today)]);
 
       // Paso 4: Cargar branches y categories
       await client.query(`SELECT id, name, sap_id FROM branches`);
       await client.query(`SELECT id, name, parent_category_id FROM categories LIMIT 5000`);
 
-      console.log('[PostgreSQL] Cache warm-up completado — 6 meses de sales_header + 14 días de sales_detail + products cargados en memoria');
+      console.log('[PostgreSQL] Cache warm-up completado — páginas consultadas sin transferir filas masivas al proceso');
     } else {
       // Keep-alive: mantener los últimos 3 días calientes con JOIN que toca sales_detail + products
       await client.query(`
-        SELECT sh.id, sh.doc_date, sd.product_id, p.brand_id
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        JOIN products p ON p.id = sd.product_id
-        WHERE sh.doc_date >= $1::date
-          AND sh.doc_date < ($2::date + INTERVAL '1 day')
-        LIMIT 50000
+        SELECT COUNT(*)
+        FROM (
+          SELECT 1
+          FROM sales_header sh
+          JOIN sales_detail sd ON sd.header_id = sh.id
+          JOIN products p ON p.id = sd.product_id
+          WHERE sh.doc_date >= $1::date
+            AND sh.doc_date < ($2::date + INTERVAL '1 day')
+          LIMIT 50000
+        ) AS warmup_rows
       `, [dateStr(threeDaysAgo), dateStr(today)]);
     }
   } catch (err) {

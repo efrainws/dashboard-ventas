@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { percentageVariation } from "@shared/analytics";
 
 export interface SalesDataPoint {
   branch_id: string;
@@ -43,6 +44,8 @@ interface BranchBarChartProps {
   description?: string;
   /** Número de días del mes para calcular la proyección mensual */
   daysInMonth?: number;
+  /** Días calendario inclusivos del filtro activo; evita promediar solo días con ventas. */
+  analysisDays?: number;
 }
 
 // Colores para las barras (paleta ampliada Flora y Fauna)
@@ -95,7 +98,7 @@ function TrendIconWithTooltip({ change, prevValue, formatFn, periodLabel }: Tren
   );
 }
 
-export function BranchBarChart({ data, comparisonData, title, description, daysInMonth }: BranchBarChartProps) {
+export function BranchBarChart({ data, comparisonData, title, description, daysInMonth, analysisDays }: BranchBarChartProps) {
   // Calcular días del mes actual si no se pasa como prop
   const resolvedDaysInMonth = daysInMonth ?? (() => {
     const now = new Date();
@@ -147,7 +150,7 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
     });
 
     // Cantidad de días únicos en el análisis completo
-    const globalDaysCount = globalDates.size;
+    const globalDaysCount = Math.max(1, analysisDays ?? globalDates.size);
 
     // Convertir a array y ordenar por ventas (mayor a menor)
     const result = Array.from(grouped.values())
@@ -286,8 +289,8 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                             {comparisonData && (() => {
                               const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
                               if (cmp && cmp.previous.total_sales > 0) {
-                                const change = ((cmp.current.total_sales - cmp.previous.total_sales) / cmp.previous.total_sales) * 100;
-                                if (Math.abs(change) >= 0.1) {
+                                const change = percentageVariation(cmp.current.total_sales, cmp.previous.total_sales);
+                                if (change !== null && Math.abs(change) >= 0.1) {
                                   return (
                                     <TrendIconWithTooltip
                                       change={change}
@@ -309,8 +312,8 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                             {comparisonData && (() => {
                               const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
                               if (cmp && cmp.previous.total_tickets > 0) {
-                                const change = ((cmp.current.total_tickets - cmp.previous.total_tickets) / cmp.previous.total_tickets) * 100;
-                                if (Math.abs(change) >= 0.1) {
+                                const change = percentageVariation(cmp.current.total_tickets, cmp.previous.total_tickets);
+                                if (change !== null && Math.abs(change) >= 0.1) {
                                   return (
                                     <TrendIconWithTooltip
                                       change={change}
@@ -332,8 +335,8 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                             {comparisonData && (() => {
                               const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
                               if (cmp && cmp.previous.avg_ticket > 0) {
-                                const change = ((cmp.current.avg_ticket - cmp.previous.avg_ticket) / cmp.previous.avg_ticket) * 100;
-                                if (Math.abs(change) >= 0.1) {
+                                const change = percentageVariation(cmp.current.avg_ticket, cmp.previous.avg_ticket);
+                                if (change !== null && Math.abs(change) >= 0.1) {
                                   return (
                                     <TrendIconWithTooltip
                                       change={change}
@@ -355,8 +358,8 @@ export function BranchBarChart({ data, comparisonData, title, description, daysI
                             {comparisonData && (() => {
                               const cmp = comparisonData.find(c => c.branch_sap_id === item.sapId);
                               if (cmp && cmp.previous.avg_sales_per_day > 0) {
-                                const change = ((cmp.current.avg_sales_per_day - cmp.previous.avg_sales_per_day) / cmp.previous.avg_sales_per_day) * 100;
-                                if (Math.abs(change) >= 0.1) {
+                                const change = percentageVariation(cmp.current.avg_sales_per_day, cmp.previous.avg_sales_per_day);
+                                if (change !== null && Math.abs(change) >= 0.1) {
                                   return (
                                     <TrendIconWithTooltip
                                       change={change}

@@ -22,6 +22,8 @@ export interface CacheMetrics {
   evictions: number;
 }
 
+export const MAX_CACHE_ENTRIES = 500;
+
 const _store = new Map<string, CacheEntry<unknown>>();
 const _inflight = new Map<string, Promise<unknown>>();
 
@@ -61,6 +63,16 @@ export async function cached<T>(
   const promise = (async () => {
     try {
       const value = await factory();
+      // Evitar crecimiento sin límite cuando los filtros de fecha y dimensión
+      // generan muchas claves distintas. Map conserva orden de inserción, por lo
+      // que se evacúa la entrada más antigua antes de agregar una nueva.
+      if (!_store.has(key) && _store.size >= MAX_CACHE_ENTRIES) {
+        const oldestKey = _store.keys().next().value;
+        if (oldestKey) {
+          _store.delete(oldestKey);
+          cacheMetrics.evictions++;
+        }
+      }
       _store.set(key, { value, expiresAt: Date.now() + ttlMs });
       return value;
     } finally {
@@ -102,6 +114,25 @@ export function evictExpired(): void {
   });
   keysToDelete.forEach((k) => _store.delete(k));
   cacheMetrics.evictions += keysToDelete.length;
+}
+
+/** Métricas de observabilidad sin exponer valores ni claves almacenadas. */
+export function getCacheSnapshot(): CacheMetrics & { size: number; capacity: number } {
+  return {
+    ...cacheMetrics,
+    size: _store.size,
+    capacity: MAX_CACHE_ENTRIES,
+  };
+}
+
+/** Exclusivo para pruebas deterministas. */
+export function resetCacheForTests(): void {
+  _store.clear();
+  _inflight.clear();
+  cacheMetrics.hits = 0;
+  cacheMetrics.misses = 0;
+  cacheMetrics.inflight = 0;
+  cacheMetrics.evictions = 0;
 }
 
 // Limpiar entradas expiradas cada 5 minutos

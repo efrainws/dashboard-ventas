@@ -1,4 +1,4 @@
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router, salesDataProcedure } from "./_core/trpc";
 import { pool } from "./postgres";
 import { z } from "zod";
 import { getDb } from "./db";
@@ -24,7 +24,7 @@ export const targetsRouter = router({
    * Obtiene ventas por tienda vs meta prorrateada para un rango de fechas.
    * Soporta filtro de canal: all | presencial | ecommerce | rappi | ecommerce+rappi
    */
-  getSalesVsTarget: publicProcedure
+  getSalesVsTarget: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -184,14 +184,14 @@ export const targetsRouter = router({
   /**
    * Obtiene todas las metas configuradas (para visualización/edición)
    */
-  getStoreTargets: publicProcedure
+  getStoreTargets: salesDataProcedure
     .input(
       z.object({
         month: z.string().optional(),
         store_id: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { month, store_id } = input;
 
       try {
@@ -207,7 +207,22 @@ export const targetsRouter = router({
 
         const conditions: any[] = [];
         if (month) conditions.push(eq(storeMonthlyTargets.month, month));
-        if (store_id) conditions.push(eq(storeMonthlyTargets.storeId, store_id));
+        if (ctx.user.role === 'store_user') {
+          const assignedStore = await pool.query(
+            'SELECT id FROM branches WHERE sap_id = $1 LIMIT 1',
+            [ctx.user.assignedStoreCode]
+          );
+          const assignedStoreId = assignedStore.rows[0]?.id;
+          if (!assignedStoreId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'La sucursal asignada no es válida.',
+            });
+          }
+          conditions.push(eq(storeMonthlyTargets.storeId, assignedStoreId));
+        } else if (store_id) {
+          conditions.push(eq(storeMonthlyTargets.storeId, store_id));
+        }
 
         if (conditions.length > 0) {
           query = query.where(and(...conditions)) as any;
@@ -509,7 +524,7 @@ export const targetsRouter = router({
   /**
    * Obtiene todas las tiendas desde la tabla branches de PostgreSQL
    */
-  getAllStores: publicProcedure.query(async () => {
+  getAllStores: salesDataProcedure.query(async ({ ctx }) => {
     try {
       const query = `
         SELECT
@@ -517,10 +532,13 @@ export const targetsRouter = router({
           INITCAP(LOWER(COALESCE(name, ''))) AS store_name,
           COALESCE(sap_id, '') AS store_sap_id
         FROM branches
+        WHERE $1::text IS NULL OR sap_id = $1
         ORDER BY sap_id;
       `;
 
-      const result = await pool.query(query);
+      const result = await pool.query(query, [
+        ctx.user.role === 'store_user' ? ctx.user.assignedStoreCode : null,
+      ]);
 
       return {
         success: true,

@@ -1,0 +1,119 @@
+{
+  "indexes": {
+    "sales_header": [
+      {
+        "table": "sales_header",
+        "index": "idx_sales_header_customer_id",
+        "definition": "CREATE INDEX idx_sales_header_customer_id ON public.sales_header USING btree (customer_id)"
+      },
+      {
+        "table": "sales_header",
+        "index": "idx_sales_header_source_system_id",
+        "definition": "CREATE INDEX idx_sales_header_source_system_id ON public.sales_header USING btree (source_system_id)"
+      },
+      {
+        "table": "sales_header",
+        "index": "sales_header_pkey",
+        "definition": "CREATE UNIQUE INDEX sales_header_pkey ON public.sales_header USING btree (id)"
+      },
+      {
+        "table": "sales_header",
+        "index": "unique_order_serial_number",
+        "definition": "CREATE UNIQUE INDEX unique_order_serial_number ON public.sales_header USING btree (order_serial, order_number)"
+      }
+    ],
+    "sales_detail": [
+      {
+        "table": "sales_detail",
+        "index": "idx_sales_detail_header_id",
+        "definition": "CREATE INDEX idx_sales_detail_header_id ON public.sales_detail USING btree (header_id)"
+      },
+      {
+        "table": "sales_detail",
+        "index": "idx_sales_detail_product_id",
+        "definition": "CREATE INDEX idx_sales_detail_product_id ON public.sales_detail USING btree (product_id)"
+      },
+      {
+        "table": "sales_detail",
+        "index": "sales_detail_pkey",
+        "definition": "CREATE UNIQUE INDEX sales_detail_pkey ON public.sales_detail USING btree (id)"
+      }
+    ],
+    "stocks": [
+      {
+        "table": "stocks",
+        "index": "index_stocks_on_branch_id",
+        "definition": "CREATE INDEX index_stocks_on_branch_id ON public.stocks USING btree (branch_id)"
+      },
+      {
+        "table": "stocks",
+        "index": "index_stocks_on_product_id",
+        "definition": "CREATE INDEX index_stocks_on_product_id ON public.stocks USING btree (product_id)"
+      },
+      {
+        "table": "stocks",
+        "index": "stocks_pkey",
+        "definition": "CREATE UNIQUE INDEX stocks_pkey ON public.stocks USING btree (id)"
+      }
+    ],
+    "products": [
+      {
+        "table": "products",
+        "index": "index_products_on_brand_id",
+        "definition": "CREATE INDEX index_products_on_brand_id ON public.products USING btree (brand_id)"
+      },
+      {
+        "table": "products",
+        "index": "index_products_on_has_warnings",
+        "definition": "CREATE INDEX index_products_on_has_warnings ON public.products USING btree (has_warnings)"
+      },
+      {
+        "table": "products",
+        "index": "index_products_on_int_sku",
+        "definition": "CREATE INDEX index_products_on_int_sku ON public.products USING btree (int_sku)"
+      },
+      {
+        "table": "products",
+        "index": "index_products_on_sku",
+        "definition": "CREATE INDEX index_products_on_sku ON public.products USING btree (sku)"
+      },
+      {
+        "table": "products",
+        "index": "products_pkey",
+        "definition": "CREATE UNIQUE INDEX products_pkey ON public.products USING btree (id)"
+      }
+    ],
+    "categories_products": [
+      {
+        "table": "categories_products",
+        "index": "categories_products_pkey",
+        "definition": "CREATE UNIQUE INDEX categories_products_pkey ON public.categories_products USING btree (id)"
+      },
+      {
+        "table": "categories_products",
+        "index": "index_categories_products_on_category_group_id",
+        "definition": "CREATE INDEX index_categories_products_on_category_group_id ON public.categories_products USING btree (category_group_id)"
+      },
+      {
+        "table": "categories_products",
+        "index": "index_categories_products_on_category_id",
+        "definition": "CREATE INDEX index_categories_products_on_category_id ON public.categories_products USING btree (category_id)"
+      },
+      {
+        "table": "categories_products",
+        "index": "index_categories_products_on_product_id",
+        "definition": "CREATE INDEX index_categories_products_on_product_id ON public.categories_products USING btree (product_id)"
+      }
+    ]
+  },
+  "recommendations": [
+    {
+      "table": "sales_header",
+      "missing_columns": [
+        "doc_date",
+        "branch_id"
+      ],
+      "recommendation": "Validar con EXPLAIN antes de solicitar un índice al DBA."
+    }
+  ]
+}

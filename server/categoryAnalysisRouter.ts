@@ -10,7 +10,7 @@
  * Los productos se vinculan a categorías vía `categories_products`
  * con category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'.
  */
-import { publicProcedure, router } from "./_core/trpc";
+import { router, salesDataProcedure } from "./_core/trpc";
 import { pool, queryWithRetry } from "./postgres";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
@@ -97,7 +97,7 @@ export const categoryAnalysisRouter = router({
    * departments → sections → families
    * Used to populate the cascading filter dropdowns.
    */
-  getCategoryTree: publicProcedure.query(async () => {
+  getCategoryTree: salesDataProcedure.query(async () => {
     return cached("cat:tree:v1", TTL.STATIC, async () => {
       // Fetch all categories that have at least one product assigned
       const res = await queryWithRetry(
@@ -180,7 +180,7 @@ export const categoryAnalysisRouter = router({
    * Returns daily/weekly/monthly sales (amount + quantity) for the selected
    * category (at any level). Used for the line chart.
    */
-  getCategoryLineChart: publicProcedure
+  getCategoryLineChart: salesDataProcedure
     .input(
       dateRangeSchema.extend({
         dept_id: z.string().optional(),
@@ -254,7 +254,7 @@ export const categoryAnalysisRouter = router({
    * - If Sección selected → group by Familia
    * - If Familia selected → group by Familia (same level, no deeper)
    */
-  getCategoryPieBreakdown: publicProcedure
+  getCategoryPieBreakdown: salesDataProcedure
     .input(
       dateRangeSchema.extend({
         dept_id: z.string().optional(),
@@ -339,7 +339,7 @@ export const categoryAnalysisRouter = router({
    * Returns rows compatible with SalesEvolutionTable:
    * { period, product_id, producto, sku, branch_id, tienda, sap_id, amount, quantity }
    */
-  getCategoryEvolution: publicProcedure
+  getCategoryEvolution: salesDataProcedure
     .input(
       dateRangeSchema.extend({
         dept_id: z.string().optional(),
@@ -439,8 +439,11 @@ export const categoryAnalysisRouter = router({
    * Catálogo ligero de tiendas — se carga al abrir la página,
    * sin necesidad de ejecutar ninguna consulta de ventas.
    */
-  getBranchCatalog: publicProcedure.query(async () => {
-    return cached("branch_catalog", TTL.STATIC, async () => {
+  getBranchCatalog: salesDataProcedure.query(async ({ ctx }) => {
+    const assignedStoreCode = ctx.user.role === 'store_user'
+      ? ctx.user.assignedStoreCode
+      : null;
+    return cached(`branch_catalog:${assignedStoreCode ?? 'all'}`, TTL.STATIC, async () => {
       const res = await queryWithRetry(
         `SELECT
            id,
@@ -448,10 +451,11 @@ export const categoryAnalysisRouter = router({
            sap_id,
            address
          FROM branches
+         WHERE $1::text IS NULL OR sap_id = $1
          ORDER BY
            NULLIF(regexp_replace(sap_id, '[^0-9]', '', 'g'), '')::int NULLS LAST,
            name ASC`,
-        []
+        [assignedStoreCode]
       );
       return res.rows as Array<{
         id: string;

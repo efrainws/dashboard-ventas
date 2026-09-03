@@ -30,6 +30,7 @@ import { ChevronDown } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { DateRange } from "react-day-picker";
 import { HeatmapChart } from "@/components/HeatmapChart";
+import { inclusiveCalendarDays } from "@shared/analytics";
 
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
@@ -124,7 +125,9 @@ export default function HourlyAnalysis() {
       fecha_min: filters.fecha_min || '',
       fecha_max: filters.fecha_max || '',
       branch_id: filters.branch_id,
-      sales_channel: selectedChannels.length === 1 ? selectedChannels[0] : undefined,
+      sales_channels: selectedChannels.length === 3
+        ? undefined
+        : selectedChannels as ("Presencial" | "eCommerce" | "Rappi")[],
       include_igv: includeIgv,
     },
     {
@@ -149,17 +152,11 @@ export default function HourlyAnalysis() {
     const totalTickets = filteredData.reduce((sum, row) => sum + parseInt(row.tickets_count || '0'), 0);
     const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
     
-    // Calcular cantidad de días únicos en el rango
-    // Importante: Extraer fecha local (UTC-5) para evitar contar días adicionales por diferencia horaria
-    const uniqueDates = new Set(filteredData.map(row => {
-      const date = typeof row.hour_ts === 'string' ? new Date(row.hour_ts) : row.hour_ts;
-      // Ajustar a UTC-5 (zona horaria de Colombia/Perú)
-      const localDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
-      // Extraer solo la fecha en formato YYYY-MM-DD
-      const dateStr = localDate.toISOString().split('T')[0];
-      return dateStr;
-    }));
-    const daysCount = uniqueDates.size;
+    // El promedio se calcula sobre todos los días solicitados —incluso sin ventas—
+    // para que el valor actual y el período de comparación sean equivalentes.
+    const daysCount = filters.fecha_min && filters.fecha_max
+      ? inclusiveCalendarDays(filters.fecha_min, filters.fecha_max)
+      : 1;
     const avgSalesPerDay = daysCount > 0 ? totalSales / daysCount : 0;
     
     return {
@@ -170,7 +167,7 @@ export default function HourlyAnalysis() {
       avgSalesPerDay,
       daysCount,
     };
-  }, [filteredData, metrics]);
+  }, [filteredData, metrics, filters.fecha_min, filters.fecha_max]);
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();

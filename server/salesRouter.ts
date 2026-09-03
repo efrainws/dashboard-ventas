@@ -1,10 +1,11 @@
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router, salesDataProcedure } from "./_core/trpc";
 import * as XLSX from "xlsx";
 import { pool, queryWithRetry } from "./postgres";
 import { buildCreditNoteTransactionsByCashierQuery } from "./creditNoteQueries";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
 import { ENV } from "./_core/env";
+import { inclusiveCalendarDays } from "../shared/analytics";
 
 export const salesRouter = router({
   /**
@@ -12,7 +13,7 @@ export const salesRouter = router({
    * Consulta optimizada para Gerencia de Operaciones y Jefes de Tienda
    * Soporta filtros opcionales de sucursal y categoría
    */
-  getAggregatedSales: publicProcedure
+  getAggregatedSales: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
@@ -159,7 +160,7 @@ export const salesRouter = router({
    * Incluye métricas de transacciones para análisis de patrones horarios
    * Soporta filtro opcional de sucursal
    */
-  getHourlySales: publicProcedure
+  getHourlySales: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
@@ -258,7 +259,7 @@ export const salesRouter = router({
    * Obtiene métricas resumidas del período actual y anterior para comparación
    * Calcula automáticamente el período anterior basado en la duración del período actual
    */
-  getAggregatedComparison: publicProcedure
+  getAggregatedComparison: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
@@ -389,18 +390,19 @@ export const salesRouter = router({
   /**
    * Obtiene métricas resumidas del período actual y anterior para análisis por horas
    */
-  getHourlyComparison: publicProcedure
+  getHourlyComparison: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         branch_id: z.string().optional(),
         sales_channel: z.string().optional(),
+        sales_channels: z.array(z.enum(['Presencial', 'eCommerce', 'Rappi'])).optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, sales_channel, include_igv } = input;
+      const { fecha_min, fecha_max, branch_id, sales_channel, sales_channels, include_igv } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
@@ -429,9 +431,16 @@ export const salesRouter = router({
         paramIndex++;
       }
 
-      // Construir filtro de sales_channel para aplicar después del CTE
-      const channelFilter = (sales_channel && sales_channel !== 'all') 
-        ? `AND sales_channel = '${sales_channel}'` 
+      // Los canales seleccionados se enlazan como parámetro: la comparación debe
+      // usar exactamente el mismo conjunto que el análisis mostrado en pantalla.
+      const selectedChannels = sales_channels ?? (sales_channel && sales_channel !== 'all'
+        ? [sales_channel]
+        : undefined);
+      const channelFilter = selectedChannels
+        ? (() => {
+            queryParams.push(selectedChannels);
+            return `AND sales_channel = ANY($${paramIndex++}::text[])`;
+          })()
         : '';
 
       const query = `
@@ -508,17 +517,18 @@ export const salesRouter = router({
   /**
    * Obtiene comparación detallada por sucursal entre período actual y anterior
    */
-  getBranchComparison: publicProcedure
+  getBranchComparison: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
         fecha_max: z.string(),
         category_id: z.string().optional(),
+        branch_id: z.string().optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, category_id, include_igv } = input;
+      const { fecha_min, fecha_max, category_id, branch_id, include_igv } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
@@ -535,11 +545,19 @@ export const salesRouter = router({
       prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
       const prevStartStr = prevStartDate.toISOString().substring(0, 10);
       const prevEndStr = prevEndDate.toISOString().substring(0, 10);
+      const daysInAnalysisPeriod = inclusiveCalendarDays(fechaMinDate, fechaMaxDate);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
       const queryParams: any[] = [];
       let paramIndex = 1;
+
+      const branchFilter = branch_id && branch_id !== 'all'
+        ? (() => {
+            queryParams.push(branch_id);
+            return `AND b.sap_id = $${paramIndex++}`;
+          })()
+        : '';
 
       // Construir filtro de categoría para el JOIN con sales_detail (si aplica)
       let categoryJoin = '';
@@ -579,6 +597,7 @@ export const salesRouter = router({
               (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
               OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
             )
+            ${branchFilter}
         ),
         agg_detail AS (
           SELECT sd.header_id, SUM(${amtCol}) AS line_total
@@ -604,7 +623,7 @@ export const salesRouter = router({
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${category_id ?? 'all'}:${igvKey}`;
+      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
@@ -624,9 +643,8 @@ export const salesRouter = router({
             const branch = branchMap.get(branchId);
             const totalSales = parseFloat(row.total_sales || 0);
             const totalTickets = parseInt(row.total_tickets || 0, 10);
-            const totalDays = parseInt(row.total_days || 1, 10);
             const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
-            const avgSalesPerDay = totalDays > 0 ? totalSales / totalDays : 0;
+            const avgSalesPerDay = totalSales / daysInAnalysisPeriod;
             if (row.period === 'current') {
               branch.current = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
             } else if (row.period === 'previous') {
@@ -651,7 +669,7 @@ export const salesRouter = router({
   /**
    * Obtiene comparación detallada por categoría entre período actual y anterior
    */
-  getCategoryComparison: publicProcedure
+  getCategoryComparison: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -791,7 +809,7 @@ export const salesRouter = router({
    * Obtiene el Top 50 productos por cantidad vendida y por monto de ventas
    * Soporta filtros de fecha, sucursal y categoría (igual que las otras páginas)
    */
-  getTopProducts: publicProcedure
+  getTopProducts: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1036,7 +1054,7 @@ export const salesRouter = router({
    * Calcula total de transacciones, identificadas y porcentaje de identificación
    * Soporta filtros de fecha y sucursal
    */
-  getIdentifiedTransactions: publicProcedure
+  getIdentifiedTransactions: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD
@@ -1133,7 +1151,7 @@ export const salesRouter = router({
    * Por lo tanto, el heatmap también debe extraer EXTRACT(HOUR FROM doc_date)
    * (que es UTC) para que ambos gráficos muestren los mismos valores por hora.
    */
-  getHeatmapData: publicProcedure
+  getHeatmapData: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1211,7 +1229,7 @@ export const salesRouter = router({
    * Devuelve filas con: date_label (YYYY-MM-DD), hour_of_day, value.
    * Preparado para ampliar a 8, 12 o 16 semanas cambiando weeks_back.
    */
-  getHeatmapDayComparison: publicProcedure
+  getHeatmapDayComparison: salesDataProcedure
     .input(
       z.object({
         base_date: z.string(),                              // YYYY-MM-DD: fecha de referencia
@@ -1324,7 +1342,7 @@ export const salesRouter = router({
    * Retorna el breakdown de total / identificadas / % por cajero,
    * junto con el nombre y num_doc del cajero (num_doc solo para tooltip).
    */
-  getIdentifiedTransactionsByCashier: publicProcedure
+  getIdentifiedTransactionsByCashier: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1389,7 +1407,7 @@ export const salesRouter = router({
    * Resumen de Notas de Crédito por tienda y día.
    * Identifica las NC usando sales_header.order_serial → pos_by_branch.serie WHERE is_nc = TRUE.
    */
-  getCreditNotes: publicProcedure
+  getCreditNotes: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1500,7 +1518,7 @@ export const salesRouter = router({
   /**
    * Detalle de Notas de Crédito por cajero para una tienda y período dados.
    */
-  getCreditNotesByCashier: publicProcedure
+  getCreditNotesByCashier: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1557,7 +1575,7 @@ export const salesRouter = router({
    * Segundo nivel de detalle de Notas de Crédito. Lista los documentos emitidos
    * por un cajero en una tienda y período dados.
    */
-  getCreditNoteTransactionsByCashier: publicProcedure
+  getCreditNoteTransactionsByCashier: salesDataProcedure
     .input(
       z.object({
         fecha_min: z.string(),
@@ -1607,7 +1625,7 @@ export const salesRouter = router({
    * junto con el porcentaje que representan sobre el total de ventas de la tienda.
    * UUID excluido: 8572af00-5600-46ff-958c-9f4ff701a4a2 (cliente genérico / sin identificar)
    */
-  getTopCustomersByBranch: publicProcedure
+  getTopCustomersByBranch: salesDataProcedure
     .input(
       z.object({
         fecha_min:     z.string(),
@@ -1729,7 +1747,7 @@ export const salesRouter = router({
    * Tabla general de clientes: métricas agregadas de todo el período.
    * Incluye monto total, transacciones, promedios mensuales y lista de tiendas.
    */
-  getTopCustomersGeneral: publicProcedure
+  getTopCustomersGeneral: salesDataProcedure
     .input(
       z.object({
         fecha_min:     z.string(),
@@ -1827,7 +1845,7 @@ export const salesRouter = router({
    * Transacciones de un cliente específico en el período filtrado.
    * Devuelve: número de comprobante (order_serial), fecha (doc_date), tienda, monto con IGV.
    */
-  getCustomerTransactions: publicProcedure
+  getCustomerTransactions: salesDataProcedure
     .input(
       z.object({
         customer_id:   z.string(),
@@ -1911,7 +1929,7 @@ export const salesRouter = router({
    * Agrupa ventas por tienda + producto + estado de shelf (con o sin asignación en stocks)
    * Filtros: fecha, sucursal, categoría, IGV. Sin filtro de canal.
    */
-  getSalesByShelf: publicProcedure
+  getSalesByShelf: salesDataProcedure
     .input(
       z.object({
         fecha_min:   z.string(),
@@ -2040,7 +2058,7 @@ export const salesRouter = router({
    * Ventas por góndola AGREGADAS: agrupa por góndola (no por producto).
    * Devuelve una fila por góndola/tienda con el total de ventas y conteo de productos.
    */
-  getSalesByShelfAggregated: publicProcedure
+  getSalesByShelfAggregated: salesDataProcedure
     .input(
       z.object({
         fecha_min:    z.string(),
@@ -2143,15 +2161,16 @@ export const salesRouter = router({
       }
     }),
 
-  getTransactionDetail: publicProcedure
+  getTransactionDetail: salesDataProcedure
     .input(
       z.object({
         header_id:   z.string(),
         include_igv: z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      const { header_id, include_igv } = input;
+      const { header_id, include_igv, branch_sap_id } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
       const priceCol = include_igv ? 'sd.price_tax' : 'sd.price_no_tax';
 
@@ -2163,8 +2182,11 @@ export const salesRouter = router({
           ${priceCol}               AS precio_unitario,
           ${amtCol}                 AS monto_linea
         FROM public.sales_detail sd
+        INNER JOIN public.sales_header sh ON sh.id = sd.header_id
+        INNER JOIN public.branches b ON b.id = sh.branch_id
         LEFT JOIN public.products p ON p.id = sd.product_id
         WHERE sd.header_id = '${header_id.replace(/'/g, "''")}'
+          ${branch_sap_id && branch_sap_id !== 'all' ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'` : ''}
         ORDER BY ${amtCol} DESC NULLS LAST;
       `;
 
@@ -2191,7 +2213,7 @@ export const salesRouter = router({
    * Devuelve para cada góndola: monto_total, cantidad_vendida, productos_distintos
    * tanto del período actual como del anterior, para calcular variaciones.
    */
-  getSalesByShelfComparison: publicProcedure
+  getSalesByShelfComparison: salesDataProcedure
     .input(
       z.object({
         fecha_min:    z.string(), // YYYY-MM-DD
@@ -2349,7 +2371,7 @@ export const salesRouter = router({
       }
     }),
   // ─── Artículos por tienda + góndola (para modal de reasignación) ────────────
-  getProductsByShelfAndBranch: publicProcedure
+  getProductsByShelfAndBranch: salesDataProcedure
     .input(z.object({
       branch_sap_id: z.string(),
       shelf_id:      z.string().nullable(),   // null → productos sin góndola asignada
@@ -2426,7 +2448,7 @@ export const salesRouter = router({
     }),
 
   // ─── Lista de góndolas por tienda (para selector de reasignación) ────────────
-  getShelfsByBranch: publicProcedure
+  getShelfsByBranch: salesDataProcedure
     .input(z.object({
       branch_sap_id: z.string().optional(),
     }))
@@ -2459,13 +2481,17 @@ export const salesRouter = router({
     }),
 
   // ─── Reasignar producto a góndola (proxy server-side para evitar CORS) ────────
-  reassignProductShelf: publicProcedure
+  reassignProductShelf: salesDataProcedure
     .input(z.object({
       branchSapId: z.string(),
       intSku:      z.number().int(),
       shelfId:     z.string().uuid(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const allowedRoles = ['cst_user', 'commercial_specialist', 'system_specialist'];
+      if (!allowedRoles.includes(ctx.user.role)) {
+        throw new Error('No tienes permisos para reasignar productos a góndolas.');
+      }
       const { branchSapId, intSku, shelfId } = input;
       const FF_BASE = 'https://server.florayfauna.pe';
 
@@ -2531,7 +2557,7 @@ export const salesRouter = router({
    * Catálogo de góndolas activas para la plantilla de carga masiva
    * Devuelve id y nombre de todas las góndolas con status=true
    */
-  getShelfCatalog: publicProcedure
+  getShelfCatalog: salesDataProcedure
     .query(async () => {
       const query = `
         SELECT id AS shelf_id, name AS shelf_name

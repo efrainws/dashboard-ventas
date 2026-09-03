@@ -792,15 +792,15 @@ Fecha: 1 de febrero de 2026
 ## Corrección de Venta Promedio Diaria - Análisis por Categorías (2026-02-20)
 
 ### Problema Identificado
-- [ ] El cálculo actual suma los promedios individuales de cada sucursal
-- [ ] Debe calcular: Total de ventas ÷ Cantidad de días únicos en el análisis
+- [x] El cálculo actual suma los promedios individuales de cada sucursal
+- [x] Debe calcular: Total de ventas ÷ Cantidad de días calendario completos en el análisis
 - [ ] Ejemplo: S/ 393,855 (2 días) → S/ 196,927.50 por día
 - [ ] Ejemplo: S/ 198,479 (1 día) → S/ 198,479 por día
 
 ### Solución
-- [ ] Modificar BranchBarChart para calcular días únicos globalmente
-- [ ] Actualizar fila de totales con cálculo correcto
-- [ ] Probar con diferentes rangos de fechas
+- [x] Modificar BranchBarChart para calcular días calendario completos del rango activo
+- [x] Actualizar fila de totales con cálculo correcto
+- [x] Probar con diferentes rangos de fechas
 - [x] Guardar checkpoint
 
 
@@ -918,14 +918,14 @@ Fecha: 1 de febrero de 2026
 ### Análisis por Horas
 - [x] Crear getHourlyComparison para consultar período actual y anterior
 - [x] Calcular duración del período actual y obtener período anterior de igual duración
-- [ ] Actualizar HourlyAnalysis.tsx para mostrar variación porcentual en KPIs
-- [ ] Agregar indicadores visuales (↑ verde, ↓ rojo) según variación
-- [ ] Mostrar cambio absoluto además de porcentual
+- [x] Actualizar HourlyAnalysis.tsx para mostrar variación porcentual en KPIs
+- [x] Agregar indicadores visuales (↑ verde, ↓ rojo) según variación
+- [x] Mostrar cambio absoluto además de porcentual
 
 ### Testing
-- [ ] Probar comparación con diferentes rangos de fechas
-- [ ] Verificar que cálculos de variación sean correctos
-- [ ] Probar con filtros de sucursal y canal
+- [x] Probar comparación con diferentes rangos de fechas
+- [x] Verificar que cálculos de variación sean correctos
+- [x] Probar con filtros de sucursal y canal
 - [x] Guardar checkpoint
 
 
@@ -1410,7 +1410,7 @@ Fecha: 1 de febrero de 2026
 
 - [x] Migrar enum role en schema.ts: admin→system_specialist, user→cst_user, agregar store_user
 - [x] Agregar campo assigned_store_code en tabla users
-- [ ] Ejecutar pnpm db:push para migrar BD
+- [x] Ejecutar pnpm db:push para migrar BD
 - [ ] Agregar endpoint getBranches en salesRouter para obtener tiendas desde PostgreSQL
 - [x] Actualizar userRouter: nueva lógica de permisos por rol, campo assignedStoreCode en create/update
 - [x] Aplicar RLS en todas las queries del salesRouter (branch_sap_id filter)
@@ -1418,7 +1418,7 @@ Fecha: 1 de febrero de 2026
 - [x] Actualizar auth.me para incluir assignedStoreCode en la respuesta
 - [x] Actualizar JWT para incluir assignedStoreCode en el token
 - [x] Actualizar UserManagement.tsx: nuevos roles, selector de tienda para store_user
-- [ ] Actualizar NavigationMenu.tsx: visibilidad del enlace Usuarios según rol
+- [x] Actualizar NavigationMenu.tsx: visibilidad del enlace Usuarios según rol
 - [x] Actualizar SalesByCategory.tsx: bloquear filtro de tienda para store_user
 - [x] Actualizar HourlyAnalysis.tsx: bloquear filtro de tienda para store_user
 - [x] Actualizar SalesVsTarget.tsx: bloquear filtro de tienda para store_user
@@ -1436,13 +1436,13 @@ Fecha: 1 de febrero de 2026
 - [x] Flujo de activación de cuenta: email de bienvenida con link de activación en lugar de credenciales
 - [x] Agregar aviso en diálogo de creación de usuario: contraseña temporal no se envía por correo
 - [x] Cambiar fecha de fin por defecto en Ventas vs Metas: de hoy a ayer (inicio del mes → ayer)
-- [ ] Agregar roles commercial_specialist y supplier_user al schema DB + campo assigned_supplier_id
-- [ ] Backend: tipos, permisos de creación por rol, endpoint getSuppliers, validaciones
-- [ ] Crear página exclusiva para proveedores (SupplierHome) con redirección automática
-- [ ] Guards de acceso en todas las páginas para bloquear supplier_user
-- [ ] UserManagement: nuevos roles, selector de proveedor con búsqueda por RUC
-- [ ] Actualizar NavigationMenu para nuevos roles
-- [ ] Tests de permisos para commercial_specialist y supplier_user
+- [x] Agregar roles commercial_specialist y supplier_user al schema DB + campo assigned_supplier_id
+- [x] Backend: tipos, permisos de creación por rol, endpoint getSuppliers, validaciones
+- [x] Crear página exclusiva para proveedores (SupplierHome) con redirección automática
+- [x] Guards de acceso en todas las páginas para bloquear supplier_user
+- [x] UserManagement: nuevos roles, selector de proveedor con búsqueda por RUC
+- [x] Actualizar NavigationMenu para nuevos roles
+- [x] Tests de permisos para commercial_specialist y supplier_user
 - [x] Crear rol commercial_specialist en schema y DB
 - [x] Crear rol supplier_user con campo assigned_supplier_id en schema y DB
 - [x] Actualizar backend: permisos de creación por rol (commercial_specialist → supplier_user; cst_user → store_user)
@@ -1461,7 +1461,7 @@ Fecha: 1 de febrero de 2026
 - [x] Sustituir campo sku por int_sku en todos los queries y componentes
 - [x] Corregir query del catálogo del portal de proveedores para cargar productos por supplier_id del usuario
 - [x] Agregar filtros por tienda y por producto en la tab de Stock del portal de proveedores
-- [ ] Permitir que system_specialist acceda al portal de proveedores con selector de proveedor previo a la carga de datos
+- [x] Permitir que system_specialist acceda al portal de proveedores con selector de proveedor previo a la carga de datos
 - [x] Agregar enlace al portal de proveedores en NavigationMenu para system_specialist y commercial_specialist
 - [x] Extender acceso al portal de proveedores para commercial_specialist (backend + frontend)
 - [x] Página Top 50 Productos: ranking por cantidad y por monto con los mismos filtros de fecha/tienda/categoría, gráfico de barras horizontal (top 20) y tabla completa (top 50), integrada en menú Ventas y Home
@@ -1481,9 +1481,9 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir dominio en enlaces de correos (creación usuario, reset password, tickets) a dashboard.florayfauna.pe
 - [x] Botón Reenviar Activación en página de usuarios con permisos por rol
 - [x] SupplierPortal: fila de totales en pestaña Ventas (cantidad, monto, tickets)
-- [ ] SupplierPortal: mostrar tiendas como "Nombre (SAP_ID)" ordenadas por sap_id en todos los filtros/selectores
-- [ ] SupplierPortal: agregar columna SAP_ID en tablas de Ventas y Stock
-- [ ] SupplierPortal: completar filas con stock=0 para tiendas sin stock al consultar un producto
+- [x] SupplierPortal: mostrar tiendas como "Nombre (SAP_ID)" ordenadas por sap_id en todos los filtros/selectores
+- [x] SupplierPortal: agregar columna SAP_ID en tablas de Ventas y Stock
+- [x] SupplierPortal: completar filas con stock=0 para tiendas sin stock al consultar un producto
 - [x] SupplierPortal: botón de descarga CSV en pestaña Stock
 - [x] TopProducts: ocultar etiquetas del eje Y en mobile (mostrar solo en tooltip)
 
@@ -1499,22 +1499,22 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar tooltip en la celda de nombre de producto de la tabla principal de ventas: "Haz clic para ver el detalle de ventas por día"
 
 ## Módulo de Gestión de Usuarios Proveedor (Trial / Suscripción)
-- [ ] Extender tabla users con campos de trial/suscripción en drizzle/schema.ts
-- [ ] Crear tabla terms_versions en drizzle/schema.ts
-- [ ] Crear tabla terms_acceptance en drizzle/schema.ts
-- [ ] Ejecutar migración pnpm db:push
-- [ ] Helpers de DB: getSupplierUserStatus, acceptTerms, approveAccessRequest, suspendUser, reactivateUser
-- [ ] Procedimientos tRPC: supplierTrial router (getStatus, acceptTerms, requestAccess, approveRequest, changeStatus, resendInvitation, getTermsDetail)
-- [ ] UI: Popup diario de trial (una vez por día calendario)
-- [ ] UI: Página de términos con checkbox obligatorio
-- [ ] UI: Página independiente de acceso vencido con flujo de solicitud
-- [ ] UI: Página de monitoreo de usuarios proveedor (solo commercial_specialist / systems_specialist)
-- [ ] UI: Página de reporte de afiliación con indicador_primer_mes y porcentaje_cobro
-- [ ] Exportación CSV en monitoreo y reporte de afiliación
-- [ ] Notificación "faltan 2 días para vencer trial" (día 5 desde activation_date)
-- [ ] Notificación al usuario al aceptar términos
-- [ ] Notificación a especialistas cuando usuario solicite acceso facturado
-- [ ] Notificación al usuario cuando su solicitud sea aprobada
+- [x] Extender tabla users con campos de trial/suscripción en drizzle/schema.ts
+- [x] Crear tabla terms_versions en drizzle/schema.ts
+- [x] Crear tabla terms_acceptance en drizzle/schema.ts
+- [x] Ejecutar migración pnpm db:push
+- [x] Helpers de DB: getSupplierUserStatus, acceptTerms, approveAccessRequest, suspendUser, reactivateUser
+- [x] Procedimientos tRPC: supplierTrial router (getStatus, acceptTerms, requestAccess, approveRequest, changeStatus, resendInvitation, getTermsDetail)
+- [x] UI: Popup diario de trial (una vez por día calendario)
+- [x] UI: Página de términos con checkbox obligatorio
+- [x] UI: Página independiente de acceso vencido con flujo de solicitud
+- [x] UI: Página de monitoreo de usuarios proveedor (solo commercial_specialist / systems_specialist)
+- [x] UI: Página de reporte de afiliación con indicador_primer_mes y porcentaje_cobro
+- [x] Exportación CSV en monitoreo y reporte de afiliación
+- [x] Notificación "faltan 2 días para vencer trial" (día 5 desde activation_date)
+- [x] Notificación al usuario al aceptar términos
+- [x] Notificación a especialistas cuando usuario solicite acceso facturado
+- [x] Notificación al usuario cuando su solicitud sea aprobada
 
 ## Módulo Trial/Suscripción Proveedores (completado)
 
@@ -1594,14 +1594,14 @@ Fecha: 1 de febrero de 2026
 
 ## Términos y condiciones en activación de cuenta
 
-- [ ] Agregar procedimiento tRPC acceptTerms que registra en terms_acceptance
-- [ ] Actualizar activateAccount para aceptar termsAccepted + IP y registrar aceptación si subscribed_active
-- [ ] Actualizar página de activación frontend: mostrar checkbox + popup de T&C para supplier_user subscribed_active
-- [ ] Popup de T&C: cargar contenido desde getLatestTerms, cerrar con botón
-- [ ] Bloquear botón "Activar cuenta" si checkbox no está marcado (solo para subscribed_active)
-- [ ] Registrar subscription_start_date = fecha de activación para subscribed_active
-- [ ] Asegurar registro de términos en supplierTrialRouter.acceptTerms antes de cambio de estado
-- [ ] Enviar notificación de activación exitosa al owner
+- [x] Agregar procedimiento tRPC acceptTerms que registra en terms_acceptance
+- [x] Actualizar activateAccount para aceptar termsAccepted + IP y registrar aceptación si subscribed_active
+- [x] Actualizar página de activación frontend: mostrar checkbox + popup de T&C para supplier_user subscribed_active
+- [x] Popup de T&C: cargar contenido desde getLatestTerms, cerrar con botón
+- [x] Bloquear botón "Activar cuenta" si checkbox no está marcado (solo para subscribed_active)
+- [x] Registrar subscription_start_date = fecha de activación para subscribed_active
+- [x] Asegurar registro de términos en supplierTrialRouter.acceptTerms antes de cambio de estado
+- [x] Enviar notificación de activación exitosa al owner
 
 ## Fix: bug checkbox T&C en ActivateAccount
 
@@ -1609,10 +1609,10 @@ Fecha: 1 de febrero de 2026
 
 ## Mejoras en Monitoreo de Proveedores (2026-03-27)
 
-- [ ] Procedimiento tRPC resendActivation en activationRouter (genera nuevo token + reenvía correo)
-- [ ] Botón "Reenviar activación" en tabla de Monitoreo solo para usuarios pending_activation
-- [ ] Columna "T&C aceptados" en tabla de Monitoreo con fecha formateada (termsAcceptedAt)
-- [ ] Columna T&C: mostrar "—" si no ha aceptado, fecha si ya aceptó
+- [x] Procedimiento tRPC resendActivation en activationRouter (genera nuevo token + reenvía correo)
+- [x] Botón "Reenviar activación" en tabla de Monitoreo solo para usuarios pending_activation
+- [x] Columna "T&C aceptados" en tabla de Monitoreo con fecha formateada (termsAcceptedAt)
+- [x] Columna T&C: mostrar "—" si no ha aceptado, fecha si ya aceptó
 
 ## Botón Reenviar Activación y Columna T&C en Monitoreo
 
@@ -2230,3 +2230,9 @@ Fecha: 1 de febrero de 2026
 - [x] Preparar sugerencias priorizadas de mejora técnica y funcional
 - [ ] Publicar la versión y crear la tarea diaria persistente de aviso de trial en producción
 - [x] Verificar y corregir el aviso de cambio de dominio para que use la API transaccional de Brevo
+- [x] Corregir y validar RLS, filtros y resultados para usuarios de tienda
+- [x] Completar selector de proveedores, etiquetas SAP y cobertura de stock del Portal de Proveedores
+- [x] Corregir promedios diarios y variaciones comparativas en las vistas analíticas
+- [ ] Revisar y reforzar el flujo de autenticación heredado
+- [x] Optimizar consultas y definir la estrategia de grandes volúmenes con índices, agregados y caché
+- [x] Mantener la autenticación actual y excluir la integración de autenticación externa de este sitio
