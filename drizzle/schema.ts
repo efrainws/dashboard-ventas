@@ -80,6 +80,48 @@ export type InsertUser = typeof users.$inferInsert;
 export type SupplierStatus = "pending_activation" | "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
 /**
+ * Campañas manuales de comunicación por cambio de dominio.
+ * La clave de idempotencia evita reenviar accidentalmente el mismo aviso para una URL pública.
+ */
+export const domainChangeCampaigns = mysqlTable("domain_change_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  idempotencyKey: varchar("idempotency_key", { length: 64 }).notNull().unique(),
+  publicUrl: varchar("public_url", { length: 512 }).notNull(),
+  senderEmail: varchar("sender_email", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["draft", "tested", "sending", "sent", "partial", "failed"]).default("draft").notNull(),
+  recipientCount: int("recipient_count").default(0).notNull(),
+  sentCount: int("sent_count").default(0).notNull(),
+  failedCount: int("failed_count").default(0).notNull(),
+  createdById: int("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  testedById: int("tested_by_id"),
+  testRecipientEmail: varchar("test_recipient_email", { length: 320 }),
+  testedAt: timestamp("tested_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export type DomainChangeCampaign = typeof domainChangeCampaigns.$inferSelect;
+
+/**
+ * Resultado de un destinatario dentro de una campaña. La clave por campaña y usuario
+ * preserva una única tentativa por destinatario y evita duplicados al reintentar la acción.
+ */
+export const domainChangeEmailDeliveries = mysqlTable("domain_change_email_deliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryKey: varchar("delivery_key", { length: 96 }).notNull().unique(),
+  campaignId: int("campaign_id").notNull(),
+  userId: int("user_id").notNull(),
+  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+  status: mysqlEnum("status", ["pending", "sending", "sent", "failed"]).default("pending").notNull(),
+  errorCode: varchar("error_code", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DomainChangeEmailDelivery = typeof domainChangeEmailDeliveries.$inferSelect;
+
+/**
  * Store monthly sales targets for tracking performance vs goals.
  * Each row represents a target for a specific store in a specific month.
  */

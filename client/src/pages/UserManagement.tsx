@@ -114,6 +114,10 @@ export default function UserManagement() {
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [supplierSearchInput, setSupplierSearchInput] = useState('');
+  const [showDomainNoticePreview, setShowDomainNoticePreview] = useState(false);
+  const [confirmDomainNotice, setConfirmDomainNotice] = useState(false);
+  const [domainNoticeTested, setDomainNoticeTested] = useState(false);
+  const [domainNoticeViewport, setDomainNoticeViewport] = useState<'desktop' | 'mobile'>('desktop');
 
   const currentRole = currentUser?.role as UserRole | undefined;
 
@@ -136,6 +140,10 @@ export default function UserManagement() {
     { search: supplierSearch },
     { enabled: formData.role === 'supplier_user' }
   );
+  const domainNoticePreview = trpc.users.previewDomainChangeNotice.useQuery(undefined, {
+    enabled: showDomainNoticePreview && currentRole === 'system_specialist',
+    retry: false,
+  });
 
   // Debounce supplier search
   useEffect(() => {
@@ -217,6 +225,36 @@ export default function UserManagement() {
       showToast.error(error.message);
       setResendingUserId(null);
     },
+  });
+
+  const sendDomainNoticeMutation = trpc.users.sendDomainChangeNotice.useMutation({
+    onSuccess: (data) => {
+      if (data.failedCount === 0) {
+        showToast.success('Aviso de cambio de dominio enviado', {
+          description: `Se enviaron ${data.sentCount} correos a usuarios con email válido.`,
+        });
+      } else {
+        showToast.warning('El aviso se completó con incidencias', {
+          description: `${data.sentCount} enviados y ${data.failedCount} sin entregar.`,
+        });
+      }
+      setConfirmDomainNotice(false);
+      setShowDomainNoticePreview(false);
+    },
+    onError: (error) => {
+      showToast.error(error.message);
+      setConfirmDomainNotice(false);
+    },
+  });
+
+  const testDomainNoticeMutation = trpc.users.testDomainChangeNotice.useMutation({
+    onSuccess: (data) => {
+      setDomainNoticeTested(true);
+      showToast.success('Correo de prueba enviado', {
+        description: `La prueba se envió a ${data.testRecipientEmail}. Revisa el contenido antes de continuar.`,
+      });
+    },
+    onError: (error) => showToast.error(error.message),
   });
 
   /**
@@ -428,16 +466,160 @@ export default function UserManagement() {
               )}
             </p>
           </div>
-          {canCreateUsers && (
-            <Button
-              onClick={openCreateDialog}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Nuevo Usuario
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {currentRole === 'system_specialist' && (
+              <Button variant="outline" onClick={() => {
+                setDomainNoticeTested(false);
+                setDomainNoticeViewport('desktop');
+                setShowDomainNoticePreview(true);
+              }}>
+                <Mail className="mr-2 h-4 w-4" />
+                Avisar cambio de dominio
+              </Button>
+            )}
+            {canCreateUsers && (
+              <Button
+                onClick={openCreateDialog}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Nuevo Usuario
+              </Button>
+            )}
+          </div>
         </div>
+
+        <Dialog
+          open={showDomainNoticePreview}
+          onOpenChange={(open) => {
+            if (!sendDomainNoticeMutation.isPending) {
+              setShowDomainNoticePreview(open);
+              if (!open) {
+                setConfirmDomainNotice(false);
+                setDomainNoticeTested(false);
+              }
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Previsualizar aviso de cambio de dominio</DialogTitle>
+              <DialogDescription>
+                Revisa el dominio, contenido y cantidad de destinatarios antes de confirmar el envío.
+              </DialogDescription>
+            </DialogHeader>
+
+            {domainNoticePreview.isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
+
+            {domainNoticePreview.error && (
+              <AlertBanner variant="error" title="No pudimos generar la previsualización">
+                {domainNoticePreview.error.message}
+              </AlertBanner>
+            )}
+
+            {domainNoticePreview.data && (
+              <div className="space-y-4">
+                <AlertBanner variant="info" title="Envío manual y protegido">
+                  Los destinatarios y la URL se resuelven desde el backend. Primero envía una prueba a tu correo autorizado; después podrás confirmar el aviso masivo una sola vez para este dominio.
+                </AlertBanner>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Dominio público</p>
+                    <p className="mt-1 break-all text-sm font-medium">{domainNoticePreview.data.publicUrl}</p>
+                  </div>
+                  <div className="border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Destinatarios válidos</p>
+                    <p className="mt-1 text-sm font-medium">{domainNoticePreview.data.recipientCount} usuarios</p>
+                    {domainNoticePreview.data.excludedCount > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">{domainNoticePreview.data.excludedCount} registro(s) sin correo válido no recibirán el aviso.</p>
+                    )}
+                  </div>
+                  <div className="border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Remitente</p>
+                    <p className="mt-1 text-sm font-medium">{domainNoticePreview.data.sender.name}</p>
+                    <p className="text-xs text-muted-foreground">{domainNoticePreview.data.sender.email}</p>
+                  </div>
+                  <div className="border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Asunto</p>
+                    <p className="mt-1 text-sm font-medium">{domainNoticePreview.data.subject}</p>
+                  </div>
+                </div>
+
+                <div className="border border-border bg-background p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">Vista aislada del correo</p>
+                    <div className="flex gap-1" role="group" aria-label="Tamaño de previsualización">
+                      <Button size="sm" variant={domainNoticeViewport === 'desktop' ? 'default' : 'outline'} onClick={() => setDomainNoticeViewport('desktop')}>Escritorio</Button>
+                      <Button size="sm" variant={domainNoticeViewport === 'mobile' ? 'default' : 'outline'} onClick={() => setDomainNoticeViewport('mobile')}>Móvil</Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 overflow-auto border border-border bg-muted/20 p-3">
+                    <iframe
+                      title="Previsualización del aviso de cambio de dominio"
+                      sandbox=""
+                      srcDoc={domainNoticePreview.data.htmlContent}
+                      className={`mx-auto block min-h-[470px] border border-border bg-white ${domainNoticeViewport === 'mobile' ? 'w-[360px]' : 'w-[600px] max-w-full'}`}
+                    />
+                  </div>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Ver versión de texto</summary>
+                    <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-foreground">{domainNoticePreview.data.textContent}</pre>
+                  </details>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDomainNoticePreview(false)} disabled={sendDomainNoticeMutation.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => testDomainNoticeMutation.mutate()}
+                disabled={!domainNoticePreview.data?.canSend || domainNoticeTested || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
+              >
+                {testDomainNoticeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                {domainNoticeTested ? 'Prueba enviada' : 'Enviar prueba'}
+              </Button>
+              <Button
+                onClick={() => setConfirmDomainNotice(true)}
+                disabled={!domainNoticePreview.data?.canSend || !domainNoticeTested || testDomainNoticeMutation.isPending || sendDomainNoticeMutation.isPending}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Continuar a confirmación
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={confirmDomainNotice} onOpenChange={setConfirmDomainNotice}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Enviar aviso a todos los usuarios con correo válido?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Ya se envió una prueba a tu correo autorizado. Al confirmar, el aviso se enviará a {domainNoticePreview.data?.recipientCount ?? 0} usuario(s) desde {domainNoticePreview.data?.sender.email ?? 'notificaciones@florayfauna.pe'} con la URL {domainNoticePreview.data?.publicUrl ?? 'publicada'}. La acción queda registrada y no se podrá repetir para el mismo dominio.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={sendDomainNoticeMutation.isPending}>Volver</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  sendDomainNoticeMutation.mutate();
+                }}
+                disabled={sendDomainNoticeMutation.isPending}
+              >
+                {sendDomainNoticeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Confirmar envío
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Tabla de Usuarios */}
         <div className="bg-card rounded-lg shadow-sm border border-border">

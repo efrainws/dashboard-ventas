@@ -4,6 +4,13 @@
  */
 import { BrevoClient } from "@getbrevo/brevo";
 import { ENV } from "./_core/env";
+import {
+  buildDomainChangeNoticeHtml,
+  buildDomainChangeNoticeText,
+  DOMAIN_CHANGE_NOTICE_REPLY_TO,
+  DOMAIN_CHANGE_NOTICE_SENDER,
+  DOMAIN_CHANGE_NOTICE_SUBJECT,
+} from "./domainChangeAnnouncement";
 
 // CDN URLs for Flora & Fauna logos
 const LOGO_DARK_URL =
@@ -26,6 +33,52 @@ const COLORS = {
   textMuted: "#919291",    // Humo
   textBody: "#232523",     // Carbón
 };
+
+export type DomainChangeEmailResult =
+  | { ok: true }
+  | { ok: false; errorCode: "BREVO_NOT_CONFIGURED" | "INVALID_RECIPIENT" | "SEND_FAILED" };
+
+/**
+ * Envía un aviso individual para mantener privados los destinatarios.
+ * La resolución de usuarios e idempotencia permanece en el backend del router.
+ */
+export async function sendDomainChangeEmail(params: {
+  recipientName: string | null;
+  recipientEmail: string;
+  publicUrl: string;
+  isTest?: boolean;
+}): Promise<DomainChangeEmailResult> {
+  const recipientEmail = params.recipientEmail.trim().toLowerCase();
+  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    return { ok: false, errorCode: "INVALID_RECIPIENT" };
+  }
+
+  if (!ENV.brevoApiKey) {
+    return { ok: false, errorCode: "BREVO_NOT_CONFIGURED" };
+  }
+
+  try {
+    const client = new BrevoClient({ apiKey: ENV.brevoApiKey });
+    await client.transactionalEmails.sendTransacEmail({
+      subject: params.isTest ? `[PRUEBA] ${DOMAIN_CHANGE_NOTICE_SUBJECT}` : DOMAIN_CHANGE_NOTICE_SUBJECT,
+      htmlContent: buildDomainChangeNoticeHtml({
+        recipientName: params.recipientName,
+        publicUrl: params.publicUrl,
+      }),
+      textContent: buildDomainChangeNoticeText({
+        recipientName: params.recipientName,
+        publicUrl: params.publicUrl,
+      }),
+      sender: DOMAIN_CHANGE_NOTICE_SENDER,
+      replyTo: DOMAIN_CHANGE_NOTICE_REPLY_TO,
+      to: [{ email: recipientEmail, name: params.recipientName?.trim() || "Usuario" }],
+    });
+    return { ok: true };
+  } catch (error) {
+    console.error("[Email] Domain-change notification delivery failed:", error instanceof Error ? error.name : "unknown_error");
+    return { ok: false, errorCode: "SEND_FAILED" };
+  }
+}
 
 /**
  * Generates the welcome email HTML with Flora & Fauna branding.

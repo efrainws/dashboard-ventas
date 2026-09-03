@@ -2,12 +2,21 @@ import { z } from 'zod';
 import { router, protectedProcedure } from './_core/trpc';
 import { TRPCError } from '@trpc/server';
 import { getDb } from './db';
-import { users } from '../drizzle/schema';
+import { domainChangeCampaigns, domainChangeEmailDeliveries, users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { sendPasswordResetEmail, sendActivationEmail } from './email';
+import { sendDomainChangeEmail, sendPasswordResetEmail, sendActivationEmail } from './email';
 import { pool } from './postgres';
 import { createActivationToken } from './activationRouter';
+import {
+  buildDomainChangeNoticeHtml,
+  buildDomainChangeNoticeText,
+  createDomainChangeIdempotencyKey,
+  DOMAIN_CHANGE_NOTICE_REPLY_TO,
+  DOMAIN_CHANGE_NOTICE_SENDER,
+  DOMAIN_CHANGE_NOTICE_SUBJECT,
+  resolvePublishedDashboardUrl,
+} from './domainChangeAnnouncement';
 
 // --- Tipos de rol ---
 export type UserRole =
@@ -66,6 +75,26 @@ const systemSpecialistProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function getDomainNoticeRecipients() {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
+  }
+
+  const allUsers = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users);
+
+  const recipients = allUsers.flatMap((user) => {
+    const email = user.email?.trim().toLowerCase() ?? '';
+    return EMAIL_PATTERN.test(email) ? [{ id: user.id, name: user.name, email }] : [];
+  });
+
+  return { db, recipients, excludedCount: allUsers.length - recipients.length };
+}
 
 export const userRouter = router({
   /**
@@ -146,6 +175,209 @@ export const userRouter = router({
       console.error('[User Management] Error listing users:', error);
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Error al listar usuarios' });
     }
+  }),
+
+  /** Construye el payload real sin realizar una llamada de envío a Brevo. */
+  previewDomainChangeNotice: systemSpecialistProcedure.query(async ({ ctx }) => {
+    let publicUrl: string;
+    try {
+      publicUrl = resolvePublishedDashboardUrl(ctx.req);
+    } catch (error) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: error instanceof Error ? error.message : 'No se pudo resolver el dominio público',
+      });
+    }
+
+    const { recipients, excludedCount } = await getDomainNoticeRecipients();
+    return {
+      publicUrl,
+      sender: DOMAIN_CHANGE_NOTICE_SENDER,
+      replyTo: DOMAIN_CHANGE_NOTICE_REPLY_TO,
+      subject: DOMAIN_CHANGE_NOTICE_SUBJECT,
+      recipientCount: recipients.length,
+      excludedCount,
+      htmlContent: buildDomainChangeNoticeHtml({ recipientName: null, publicUrl }),
+      textContent: buildDomainChangeNoticeText({ recipientName: null, publicUrl }),
+      canSend: recipients.length > 0,
+    };
+  }),
+
+  /** Envía una prueba solo al correo validado del especialista que ejecuta la acción. */
+  testDomainChangeNotice: systemSpecialistProcedure.mutation(async ({ ctx }) => {
+    let publicUrl: string;
+    try {
+      publicUrl = resolvePublishedDashboardUrl(ctx.req);
+    } catch (error) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: error instanceof Error ? error.message : 'No se pudo resolver el dominio público',
+      });
+    }
+
+    const { db, recipients } = await getDomainNoticeRecipients();
+    const testRecipient = recipients.find((recipient) => recipient.id === ctx.user.id);
+    if (!testRecipient) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Tu usuario debe tener un correo válido para recibir la prueba autorizada.',
+      });
+    }
+
+    const idempotencyKey = createDomainChangeIdempotencyKey(publicUrl);
+    const campaigns = await db
+      .select({ id: domainChangeCampaigns.id, status: domainChangeCampaigns.status, testedById: domainChangeCampaigns.testedById })
+      .from(domainChangeCampaigns)
+      .where(eq(domainChangeCampaigns.idempotencyKey, idempotencyKey))
+      .limit(1);
+
+    let campaignId: number;
+    if (campaigns[0]) {
+      if (campaigns[0].status !== 'draft') {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'La campaña para este dominio ya fue probada o enviada. No se duplicará la prueba.',
+        });
+      }
+      campaignId = campaigns[0].id;
+    } else {
+      const [result] = await db.insert(domainChangeCampaigns).values({
+        idempotencyKey,
+        publicUrl,
+        senderEmail: DOMAIN_CHANGE_NOTICE_SENDER.email,
+        subject: DOMAIN_CHANGE_NOTICE_SUBJECT,
+        recipientCount: recipients.length,
+        createdById: ctx.user.id,
+      });
+      campaignId = (result as { insertId: number }).insertId;
+    }
+
+    const result = await sendDomainChangeEmail({
+      recipientName: testRecipient.name,
+      recipientEmail: testRecipient.email,
+      publicUrl,
+      isTest: true,
+    });
+
+    if (!result.ok) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'No se pudo enviar la prueba. Revisa la configuración de correo e inténtalo nuevamente.',
+      });
+    }
+
+    await db
+      .update(domainChangeCampaigns)
+      .set({
+        status: 'tested',
+        testedById: ctx.user.id,
+        testRecipientEmail: testRecipient.email,
+        testedAt: new Date(),
+      })
+      .where(eq(domainChangeCampaigns.id, campaignId));
+
+    return { campaignId, publicUrl, testRecipientEmail: testRecipient.email };
+  }),
+
+  /**
+   * Ejecuta una campaña única para el dominio publicado actual. El navegador no puede
+   * aportar URL ni destinatarios: ambos valores se resuelven en el backend.
+   */
+  sendDomainChangeNotice: systemSpecialistProcedure.mutation(async ({ ctx }) => {
+    let publicUrl: string;
+    try {
+      publicUrl = resolvePublishedDashboardUrl(ctx.req);
+    } catch (error) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: error instanceof Error ? error.message : 'No se pudo resolver el dominio público',
+      });
+    }
+
+    const { db, recipients } = await getDomainNoticeRecipients();
+    if (recipients.length === 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'No hay usuarios con correo válido para notificar' });
+    }
+
+    const idempotencyKey = createDomainChangeIdempotencyKey(publicUrl);
+    const existingCampaign = await db
+      .select({
+        id: domainChangeCampaigns.id,
+        status: domainChangeCampaigns.status,
+        testedById: domainChangeCampaigns.testedById,
+      })
+      .from(domainChangeCampaigns)
+      .where(eq(domainChangeCampaigns.idempotencyKey, idempotencyKey))
+      .limit(1);
+
+    if (!existingCampaign[0]) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Envía y verifica primero la prueba autorizada antes de notificar a todos los usuarios.',
+      });
+    }
+
+    if (existingCampaign[0].status !== 'tested' || existingCampaign[0].testedById !== ctx.user.id) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'La prueba debe haber sido enviada y aprobada por el mismo Especialista de Sistemas antes del envío masivo.',
+      });
+    }
+
+    const campaignId = existingCampaign[0].id;
+
+    await db
+      .update(domainChangeCampaigns)
+      .set({ status: 'sending', recipientCount: recipients.length })
+      .where(eq(domainChangeCampaigns.id, campaignId));
+
+    await db.insert(domainChangeEmailDeliveries).values(
+      recipients.map((recipient) => ({
+        deliveryKey: `${campaignId}:${recipient.id}`,
+        campaignId,
+        userId: recipient.id,
+        recipientEmail: recipient.email,
+      }))
+    );
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const recipient of recipients) {
+      const deliveryKey = `${campaignId}:${recipient.id}`;
+      await db
+        .update(domainChangeEmailDeliveries)
+        .set({ status: 'sending' })
+        .where(eq(domainChangeEmailDeliveries.deliveryKey, deliveryKey));
+
+      const result = await sendDomainChangeEmail({
+        recipientName: recipient.name,
+        recipientEmail: recipient.email,
+        publicUrl,
+      });
+
+      if (result.ok) {
+        sentCount += 1;
+        await db
+          .update(domainChangeEmailDeliveries)
+          .set({ status: 'sent', errorCode: null })
+          .where(eq(domainChangeEmailDeliveries.deliveryKey, deliveryKey));
+      } else {
+        failedCount += 1;
+        await db
+          .update(domainChangeEmailDeliveries)
+          .set({ status: 'failed', errorCode: result.errorCode })
+          .where(eq(domainChangeEmailDeliveries.deliveryKey, deliveryKey));
+      }
+    }
+
+    const status = failedCount === 0 ? 'sent' : sentCount === 0 ? 'failed' : 'partial';
+    await db
+      .update(domainChangeCampaigns)
+      .set({ status, sentCount, failedCount, completedAt: new Date() })
+      .where(eq(domainChangeCampaigns.id, campaignId));
+
+    return { campaignId, publicUrl, recipientCount: recipients.length, sentCount, failedCount, status };
   }),
 
   /**
@@ -281,6 +513,19 @@ export const userRouter = router({
         const db = await getDb();
         if (!db) {
           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
+        }
+
+        // Verificar si el nombre de usuario ya existe cuando se proporciona.
+        if (input.username) {
+          const existingUsername = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.username, input.username))
+            .limit(1);
+
+          if (existingUsername.length > 0) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'El nombre de usuario ya existe' });
+          }
         }
 
         // Verificar si el email ya existe

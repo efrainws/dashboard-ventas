@@ -4,6 +4,13 @@ import { getDb } from './db';
 import { users } from '../drizzle/schema';
 import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { vi } from 'vitest';
+
+vi.mock('./email', () => ({
+  sendActivationEmail: vi.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
+  sendDomainChangeEmail: vi.fn().mockResolvedValue({ ok: true }),
+}));
 
 /**
  * Tests de integración para userRouter.
@@ -133,12 +140,18 @@ describe('User Management Router', () => {
     it('cst_user puede crear un store_user', async () => {
       const db = await getDb();
       // Limpiar si existe
-      await db?.delete(users).where(eq(users.username, 'cst_created_store'));
+      await db?.delete(users).where(
+        or(
+          eq(users.username, 'cst_created_store'),
+          eq(users.email, 'cst-created-store-domain-notice@test.com')
+        )
+      );
       const caller = appRouter.createCaller(cstContext);
       const result = await caller.users.createUser({
         username: 'cst_created_store',
         password: 'password123',
         name: 'CST Created Store',
+        email: 'cst-created-store-domain-notice@test.com',
         role: 'store_user',
         assignedStoreCode: 'T010',
       });
@@ -154,6 +167,7 @@ describe('User Management Router', () => {
           username: 'forbidden_spec',
           password: 'password123',
           name: 'Forbidden Specialist',
+          email: 'forbidden-specialist@test.com',
           role: 'system_specialist',
         })
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -166,6 +180,7 @@ describe('User Management Router', () => {
           username: 'forbidden_cst',
           password: 'password123',
           name: 'Forbidden CST',
+          email: 'forbidden-cst@test.com',
           role: 'cst_user',
         })
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -178,6 +193,7 @@ describe('User Management Router', () => {
           username: 'forbidden_user',
           password: 'password123',
           name: 'Forbidden User',
+          email: 'forbidden-user@test.com',
           role: 'store_user',
         })
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -185,14 +201,23 @@ describe('User Management Router', () => {
 
     it('rechaza usernames duplicados', async () => {
       const caller = appRouter.createCaller(specialistContext);
+      const unusedEmail = `duplicate-username-${Date.now()}@test.com`;
       await expect(
         caller.users.createUser({
           username: 'test_specialist',
           password: 'password123',
           name: 'Duplicate User',
+          email: unusedEmail,
           role: 'cst_user',
         })
       ).rejects.toThrow('El nombre de usuario ya existe');
+    });
+  });
+
+  describe('domain change notice', () => {
+    it('rechaza la previsualización para roles que no son system_specialist', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      await expect(caller.users.previewDomainChangeNotice()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
   });
 

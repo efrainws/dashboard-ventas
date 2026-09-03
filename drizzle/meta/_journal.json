@@ -127,6 +127,27 @@
       "when": 1782160231302,
       "tag": "0017_high_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1788450344526,
+      "tag": "0018_lethal_grim_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1788450514857,
+      "tag": "0019_amusing_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1788450890890,
+      "tag": "0020_late_talos",
+      "breakpoints": true
     }
   ]
 }

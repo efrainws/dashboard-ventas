@@ -2221,3 +2221,6 @@ Fecha: 1 de febrero de 2026
 - [x] Adecuar bordes y elementos gráficos de TopProducts al sistema de diseño Flora & Fauna
 - [x] Centrar verticalmente el botón señalado de la navegación compartida
 - [x] Alinear SalesVsTarget con el sistema general y documentar variantes semánticas de cumplimiento
+- [x] Documentar el origen y los filtros de la tabla de entregas de mercadería del portal de Marca Propia
+- [x] Añadir aviso masivo de cambio de dominio en el módulo de usuarios con previsualización, prueba y confirmación explícita
+- [x] Resolver el dominio público oficial en backend y usar notificaciones@florayfauna.pe como remitente del aviso

@@ -1,0 +1,1 @@
+ALTER TABLE `domain_change_email_deliveries` MODIFY COLUMN `status` enum('pending','sending','sent','failed') NOT NULL DEFAULT 'pending';
