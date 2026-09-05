@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { router, protectedProcedure } from './_core/trpc';
 import { TRPCError } from '@trpc/server';
 import { getDb } from './db';
-import { domainChangeCampaigns, domainChangeEmailDeliveries, users } from '../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { activationTokens, domainChangeCampaigns, domainChangeEmailDeliveries, users } from '../drizzle/schema';
+import { and, eq, ne } from 'drizzle-orm';
 import { sendDomainChangeEmail, sendPasswordResetEmail, sendActivationEmail } from './email';
 import { pool } from './postgres';
-import { createActivationToken } from './activationRouter';
+import { createActivationToken, resetPasswordForActivation } from './activationRouter';
 import { hashPassword, verifyPassword } from './passwordHash';
 import {
   buildDomainChangeNoticeHtml,
@@ -567,7 +567,7 @@ export const userRouter = router({
         let emailSent = false;
         if (input.sendWelcomeEmail) {
           const activationToken = await createActivationToken(userId, input.email);
-          const appUrl = 'https://dashboard.florayfauna.pe';
+          const appUrl = resolvePublishedDashboardUrl(ctx.req);
           const activationUrl = `${appUrl}/activate/${activationToken}`;
           emailSent = await sendActivationEmail({
             name: input.name,
@@ -778,7 +778,7 @@ export const userRouter = router({
    * - commercial_specialist: solo puede reenviar a supplier_user
    */
   resendActivationEmail: canManageUsersProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), resetPassword: z.boolean().default(false) }))
     .mutation(async ({ input, ctx }) => {
       try {
         const currentRole = ctx.user.role as UserRole;
@@ -821,27 +821,47 @@ export const userRouter = router({
           });
         }
 
-        // Generar nuevo token y enviar correo
-        const appUrl = 'https://dashboard.florayfauna.pe';        const activationToken = await createActivationToken(targetUser.id, targetUser.email ?? '');
+        const appUrl = resolvePublishedDashboardUrl(ctx.req);
+        const activationToken = await createActivationToken(targetUser.id, targetUser.email ?? '', {
+          requiresPasswordReset: input.resetPassword,
+        });
         const activationUrl = `${appUrl}/activate/${activationToken}`;
 
         const emailSent = await sendActivationEmail({
-  
           name: targetUser.name ?? targetUser.email ?? 'Usuario',
           email: targetUser.email,
           username: targetUser.email ?? '',
           activationUrl,
           role: targetUser.role ?? 'store_user',
+          requiresPasswordReset: input.resetPassword,
         });
 
         if (!emailSent) {
+          await db.update(activationTokens).set({ used: 1 }).where(eq(activationTokens.token, activationToken));
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'No se pudo enviar el correo. Verifica la configuración de Brevo.',
           });
         }
 
-        return { success: true, message: 'Correo de activación reenviado exitosamente' };
+        // Solo un correo entregado revoca los enlaces previos; así un fallo de Brevo no bloquea al usuario.
+        await db
+          .update(activationTokens)
+          .set({ used: 1 })
+          .where(and(
+            eq(activationTokens.userId, targetUser.id),
+            eq(activationTokens.used, 0),
+            ne(activationTokens.token, activationToken),
+          ));
+
+        if (input.resetPassword) await resetPasswordForActivation(targetUser.id);
+
+        return {
+          success: true,
+          message: input.resetPassword
+            ? 'Enlace de reinicio de contraseña enviado exitosamente'
+            : 'Correo de activación reenviado exitosamente',
+        };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         console.error('[User Management] Error resending activation email:', error);

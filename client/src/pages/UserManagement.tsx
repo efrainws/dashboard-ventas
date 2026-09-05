@@ -119,6 +119,8 @@ export default function UserManagement() {
   const [domainNoticeTested, setDomainNoticeTested] = useState(false);
   const [domainNoticeCampaignId, setDomainNoticeCampaignId] = useState<number | null>(null);
   const [domainNoticeViewport, setDomainNoticeViewport] = useState<'desktop' | 'mobile'>('desktop');
+  const [activationResendTarget, setActivationResendTarget] = useState<User | null>(null);
+  const [resetPasswordOnActivation, setResetPasswordOnActivation] = useState(false);
 
   const currentRole = currentUser?.role as UserRole | undefined;
 
@@ -222,6 +224,8 @@ export default function UserManagement() {
         icon: '✉️',
       });
       setResendingUserId(null);
+      setActivationResendTarget(null);
+      setResetPasswordOnActivation(false);
     },
     onError: (error) => {
       showToast.error(error.message);
@@ -703,8 +707,8 @@ export default function UserManagement() {
                             size="icon"
                             title="Reenviar correo de activación"
                             onClick={() => {
-                              setResendingUserId(user.id);
-                              resendActivationMutation.mutate({ id: user.id });
+                              setActivationResendTarget(user as User);
+                              setResetPasswordOnActivation(false);
                             }}
                             disabled={resendingUserId === user.id}
                             className="hover:bg-[#1A6894]/10"
@@ -734,6 +738,62 @@ export default function UserManagement() {
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={!!activationResendTarget}
+        onOpenChange={(open) => {
+          if (!open && !resendActivationMutation.isPending) {
+            setActivationResendTarget(null);
+            setResetPasswordOnActivation(false);
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-[520px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reenviar activación</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se enviará un nuevo enlace de activación a {activationResendTarget?.email}. Los enlaces anteriores quedarán invalidados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <label htmlFor="reset-password-on-activation" className="flex cursor-pointer items-start gap-3 rounded-none border border-border bg-muted/30 p-3">
+              <Checkbox
+                id="reset-password-on-activation"
+                checked={resetPasswordOnActivation}
+                onCheckedChange={(checked) => setResetPasswordOnActivation(checked === true)}
+                disabled={resendActivationMutation.isPending}
+              />
+              <span className="space-y-1 text-sm leading-relaxed">
+                <span className="block font-semibold text-foreground">Reiniciar contraseña</span>
+                <span className="block text-muted-foreground">Invalida la contraseña actual y permite crear una nueva mediante el enlace de activación.</span>
+              </span>
+            </label>
+            {resetPasswordOnActivation && (
+              <AlertBanner variant="warning">
+                Por seguridad, no se envía una contraseña temporal por correo. El enlace de un solo uso permitirá establecer una contraseña nueva.
+              </AlertBanner>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resendActivationMutation.isPending}>Cancelar</AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={!activationResendTarget || resendActivationMutation.isPending}
+              onClick={() => {
+                if (!activationResendTarget) return;
+                setResendingUserId(activationResendTarget.id);
+                resendActivationMutation.mutate({
+                  id: activationResendTarget.id,
+                  resetPassword: resetPasswordOnActivation,
+                });
+              }}
+            >
+              {resendActivationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enviar enlace
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog para Crear/Editar Usuario */}
       <Dialog open={dialogMode === 'create' || dialogMode === 'edit'} onOpenChange={closeDialog}>

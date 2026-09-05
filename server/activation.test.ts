@@ -28,6 +28,7 @@ let testUserId: number;
 let validToken: string;
 let expiredToken: string;
 let usedToken: string;
+let passwordResetToken: string;
 
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
@@ -50,6 +51,11 @@ beforeAll(async () => {
 
   // Create a valid token
   validToken = await createActivationToken(testUserId, "activation_test@example.com");
+
+  // Token de un solo uso que permite definir una contraseña sin revelar una temporal por correo.
+  passwordResetToken = await createActivationToken(testUserId, "activation_test@example.com", {
+    requiresPasswordReset: true,
+  });
 
   // Create an expired token (set expiresAt in the past)
   const expiredTokenValue = "expired_" + Date.now().toString(16);
@@ -91,6 +97,14 @@ describe("Activation Flow — validateToken", () => {
     expect(result.valid).toBe(true);
     expect(result.email).toBe("activation_test@example.com");
     expect(result.expiresAt).toBeInstanceOf(Date);
+    expect(result.requiresPasswordReset).toBe(false);
+  });
+
+  it("identifies a token configured for a secure password reset", async () => {
+    const caller = appRouter.createCaller(makeCtx());
+    const result = await caller.activation.validateToken({ token: passwordResetToken });
+    expect(result.valid).toBe(true);
+    expect(result.requiresPasswordReset).toBe(true);
   });
 
   it("throws NOT_FOUND for an unknown token", async () => {
@@ -199,5 +213,16 @@ describe("Activation Flow — activateAccount", () => {
         confirmPassword: "NewPass123!",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("allows a password-reset token to activate without a temporary password", async () => {
+    const caller = appRouter.createCaller(makeCtx());
+    const result = await caller.activation.activateAccount({
+      token: passwordResetToken,
+      newPassword: "ResetSecurePass456!",
+      confirmPassword: "ResetSecurePass456!",
+    });
+    expect(result.success).toBe(true);
+    expect(result.email).toBe("activation_test@example.com");
   });
 });

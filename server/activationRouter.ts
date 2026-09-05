@@ -18,11 +18,12 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { acceptTerms, recordTermsAcceptanceOnly, getActiveTermsVersion } from "./db";
 import { activationTokens, users } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
 import { sendActivationEmail } from "./email";
 import { hashPassword, verifyPassword } from "./passwordHash";
+import { resolvePublishedDashboardUrl } from "./domainChangeAnnouncement";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,8 @@ function expiresIn48h(): Date {
  */
 export async function createActivationToken(
   userId: number,
-  email: string
+  email: string,
+  options: { requiresPasswordReset?: boolean } = {}
 ): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Base de datos no disponible");
@@ -65,9 +67,25 @@ export async function createActivationToken(
     email,
     expiresAt,
     used: 0,
+    requiresPasswordReset: options.requiresPasswordReset ? 1 : 0,
   });
 
   return token;
+}
+
+/**
+ * Invalidates the prior credential without exposing a replacement by email.
+ * The accompanying one-time activation link is the only path to set a new password.
+ */
+export async function resetPasswordForActivation(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Base de datos no disponible");
+
+  const randomReplacement = crypto.randomBytes(48).toString("base64url");
+  await db
+    .update(users)
+    .set({ password: await hashPassword(randomReplacement), updatedAt: new Date() })
+    .where(eq(users.id, userId));
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -134,6 +152,7 @@ export const activationRouter = router({
         valid: true,
         email: record.email,
         expiresAt: record.expiresAt,
+        requiresPasswordReset: record.requiresPasswordReset === 1,
         supplierStatus: userInfo?.supplierStatus ?? null,
         role: userInfo?.role ?? null,
         activeTermsVersionId: activeTerms?.id ?? null,
@@ -154,7 +173,7 @@ export const activationRouter = router({
     .input(
       z.object({
         token: z.string().min(1),
-        temporaryPassword: z.string().min(1, "La contraseña temporal es requerida"),
+        temporaryPassword: z.string().min(1, "La contraseña temporal es requerida").optional(),
         newPassword: z
           .string()
           .min(8, "La nueva contraseña debe tener al menos 8 caracteres"),
@@ -229,7 +248,10 @@ export const activationRouter = router({
 
       const user = userRows[0];
 
-      // 4. Verify the temporary password
+      const requiresPasswordReset = record.requiresPasswordReset === 1;
+
+      // 4. Verify the temporary password only for the standard activation flow.
+      // A forced reset intentionally invalidates the prior credential and relies on the one-time link.
       if (!user.password) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -237,8 +259,10 @@ export const activationRouter = router({
         });
       }
 
-      const tempPasswordValid = await verifyPassword(temporaryPassword, user.password);
-      if (!tempPasswordValid) {
+      const tempPasswordValid = !requiresPasswordReset && temporaryPassword
+        ? await verifyPassword(temporaryPassword, user.password)
+        : false;
+      if (!requiresPasswordReset && !tempPasswordValid) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "La contraseña temporal es incorrecta",
@@ -246,8 +270,8 @@ export const activationRouter = router({
       }
 
       // 5. New password must differ from the temporary one
-      const sameAsTemp = await verifyPassword(newPassword, user.password);
-      if (sameAsTemp) {
+      const sameAsTemp = !requiresPasswordReset && await verifyPassword(newPassword, user.password);
+      if (!requiresPasswordReset && sameAsTemp) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "La nueva contraseña no puede ser igual a la contraseña temporal",
@@ -344,11 +368,11 @@ export const activationRouter = router({
 
   /**
    * Resends the activation email to a supplier_user in pending_activation status.
-   * Invalidates any existing unused tokens and creates a fresh 48-hour token.
+   * Creates a fresh 48-hour token and revokes existing unused tokens only after delivery succeeds.
    * Only accessible by system_specialist or commercial_specialist.
    */
   resendActivation: protectedProcedure
-    .input(z.object({ userId: z.number().int().positive() }))
+    .input(z.object({ userId: z.number().int().positive(), resetPassword: z.boolean().default(false) }))
     .mutation(async ({ input, ctx }) => {
       const callerRole = ctx.user.role;
       if (callerRole !== "system_specialist" && callerRole !== "commercial_specialist") {
@@ -400,39 +424,47 @@ export const activationRouter = router({
         });
       }
 
-      // Invalidate all existing unused tokens for this user
-      await db
-        .update(activationTokens)
-        .set({ used: 1 })
-        .where(and(eq(activationTokens.userId, user.id), eq(activationTokens.used, 0)));
+      const appUrl = resolvePublishedDashboardUrl(ctx.req);
 
-      // Create a fresh token
-      const newToken = generateToken();
-      const expiresAt = expiresIn48h();
-
-      await db.insert(activationTokens).values({
-        token: newToken,
-        userId: user.id,
-        email: user.email ?? "",
-        expiresAt,
-        used: 0,
+      // Create a fresh token. The linked reset invalidates the current credential only after email delivery succeeds.
+      const newToken = await createActivationToken(user.id, user.email ?? "", {
+        requiresPasswordReset: input.resetPassword,
       });
 
       // Send the activation email
-      const appUrl = "https://dashboard.florayfauna.pe";
       const activationUrl = `${appUrl}/activate/${newToken}`;
 
-      await sendActivationEmail({
+      const emailSent = await sendActivationEmail({
         name: user.name ?? user.email ?? "",
         email: user.email ?? "",
         username: user.email ?? "",
         activationUrl,
         role: user.role ?? "supplier_user",
+        requiresPasswordReset: input.resetPassword,
       });
+
+      if (!emailSent) {
+        await db.update(activationTokens).set({ used: 1 }).where(eq(activationTokens.token, newToken));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "No se pudo enviar el correo de activación" });
+      }
+
+      // Preserve pre-existing links if delivery fails; revoke them only once the new email was accepted.
+      await db
+        .update(activationTokens)
+        .set({ used: 1 })
+        .where(and(
+          eq(activationTokens.userId, user.id),
+          eq(activationTokens.used, 0),
+          ne(activationTokens.token, newToken),
+        ));
+
+      if (input.resetPassword) await resetPasswordForActivation(user.id);
 
       return {
         success: true,
-        message: `Correo de activación reenviado a ${user.email}`,
+        message: input.resetPassword
+          ? `Enlace de reinicio de contraseña enviado a ${user.email}`
+          : `Correo de activación reenviado a ${user.email}`,
       };
     }),
 });

@@ -826,8 +826,9 @@ function buildActivationEmailHtml(params: {
   username: string;
   activationUrl: string;
   role: string;
+  requiresPasswordReset?: boolean;
 }): string {
-  const { name, username, activationUrl, role } = params;
+  const { name, username, activationUrl, role, requiresPasswordReset = false } = params;
   const roleLabels: Record<string, string> = {
     system_specialist: "Especialista de Sistemas",
     cst_user: "Usuario CST",
@@ -882,7 +883,9 @@ function buildActivationEmailHtml(params: {
               </h1>
               <p style="margin:0 0 28px;font-size:15px;color:${COLORS.textMuted};line-height:1.6;">
                 Tu cuenta ha sido creada en el <strong style="color:${COLORS.textBody};">Dashboard de Ventas Flora &amp; Fauna</strong>.
-                Para activarla y establecer tu contraseña definitiva, haz clic en el botón a continuación.
+                ${requiresPasswordReset
+                  ? "Se solicitó un reinicio de contraseña. Usa el enlace seguro para definir una contraseña nueva."
+                  : "Para activarla y establecer tu contraseña definitiva, haz clic en el botón a continuación."}
               </p>
 
               <!-- Role badge — Esmeralda claro (activo) -->
@@ -917,7 +920,9 @@ function buildActivationEmailHtml(params: {
                       <tr>
                         <td style="padding:6px 0;">
                           <span style="display:inline-block;width:22px;height:22px;background-color:${COLORS.accent};border-radius:50%;text-align:center;line-height:22px;font-size:12px;font-weight:700;color:#fff;margin-right:10px;vertical-align:middle;">2</span>
-                          <span style="font-size:14px;color:${COLORS.textBody};vertical-align:middle;">Ingresa tu nombre de usuario y la contraseña temporal que te proporcionaron</span>
+                          <span style="font-size:14px;color:${COLORS.textBody};vertical-align:middle;">${requiresPasswordReset
+                            ? "El enlace de un solo uso te permitirá establecer una contraseña nueva"
+                            : "Ingresa tu nombre de usuario y la contraseña temporal que te proporcionaron"}</span>
                         </td>
                       </tr>
                       <tr>
@@ -1007,6 +1012,8 @@ export interface ActivationEmailParams {
   activationUrl: string;
   /** User role */
   role: string;
+  /** The link invalidates the prior password and lets the recipient set a new one directly. */
+  requiresPasswordReset?: boolean;
 }
 
 /**
@@ -1037,6 +1044,7 @@ export async function sendActivationEmail(params: ActivationEmailParams): Promis
         username: params.username,
         activationUrl: params.activationUrl,
         role: params.role,
+        requiresPasswordReset: params.requiresPasswordReset,
       }),
       sender: {
         name: "Flora & Fauna · Dashboard",

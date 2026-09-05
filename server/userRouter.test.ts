@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { appRouter } from './routers';
 import { getDb } from './db';
-import { users } from '../drizzle/schema';
+import { activationTokens, users } from '../drizzle/schema';
 import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { vi } from 'vitest';
+import { sendActivationEmail } from './email';
+import { createActivationToken } from './activationRouter';
 
 vi.mock('./email', () => ({
   sendActivationEmail: vi.fn().mockResolvedValue(true),
@@ -26,6 +28,15 @@ describe('User Management Router', () => {
   let storeContext: any;
   let testUserId: number;
 
+  const publishedRequest = {
+    get(header: string) {
+      if (header === 'x-forwarded-host') return 'portalventas.florayfauna.pe';
+      if (header === 'x-forwarded-proto') return 'https';
+      return undefined;
+    },
+    protocol: 'https',
+  };
+
   beforeAll(async () => {
     const db = await getDb();
     if (!db) {
@@ -39,6 +50,7 @@ describe('User Management Router', () => {
         eq(users.username, 'test_cst'),
         eq(users.username, 'test_store'),
         eq(users.username, 'new_test_user'),
+        eq(users.email, 'newuser@test.com'),
       )
     );
 
@@ -78,20 +90,26 @@ describe('User Management Router', () => {
     });
     const [storeUser] = await db.select().from(users).where(eq(users.id, storeResult.insertId)).limit(1);
 
-    specialistContext = { user: specialistUser };
-    cstContext = { user: cstUser };
-    storeContext = { user: storeUser };
+    specialistContext = { user: specialistUser, req: publishedRequest };
+    cstContext = { user: cstUser, req: publishedRequest };
+    storeContext = { user: storeUser, req: publishedRequest };
   });
 
   afterAll(async () => {
     const db = await getDb();
     if (!db) return;
+    for (const userId of [specialistContext?.user?.id, cstContext?.user?.id, storeContext?.user?.id, testUserId]) {
+      if (typeof userId === 'number') {
+        await db.delete(activationTokens).where(eq(activationTokens.userId, userId));
+      }
+    }
     await db.delete(users).where(
       or(
         eq(users.username, 'test_specialist'),
         eq(users.username, 'test_cst'),
         eq(users.username, 'test_store'),
         eq(users.username, 'new_test_user'),
+        eq(users.email, 'newuser@test.com'),
       )
     );
   });
@@ -284,17 +302,49 @@ describe('User Management Router', () => {
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
 
-    it('cst_user puede reenviar activación a store_user con email', async () => {
+    it('cst_user reenvía un enlace de reinicio por el dominio publicado y revoca los anteriores', async () => {
+      const db = await getDb();
       const caller = appRouter.createCaller(cstContext);
-      // store_user de prueba tiene email 'store@test.com'
-      // El envío real de Brevo fallará en test (sin API key válida),
-      // pero el endpoint debe lanzar INTERNAL_SERVER_ERROR (no FORBIDDEN)
-      try {
-        await caller.users.resendActivationEmail({ id: storeContext.user.id });
-      } catch (err: any) {
-        // Esperamos que NO sea FORBIDDEN (los permisos están OK)
-        expect(err.code).not.toBe('FORBIDDEN');
-      }
+      const previousToken = await createActivationToken(storeContext.user.id, 'store@test.com');
+      const emailMock = vi.mocked(sendActivationEmail);
+      emailMock.mockClear();
+      emailMock.mockResolvedValueOnce(true);
+
+      const result = await caller.users.resendActivationEmail({
+        id: storeContext.user.id,
+        resetPassword: true,
+      });
+
+      expect(result).toMatchObject({
+        success: true,
+        message: 'Enlace de reinicio de contraseña enviado exitosamente',
+      });
+      expect(emailMock).toHaveBeenLastCalledWith(expect.objectContaining({
+        activationUrl: expect.stringMatching(/^https:\/\/portalventas\.florayfauna\.pe\/activate\//),
+        requiresPasswordReset: true,
+      }));
+
+      const tokenRows = await db?.select().from(activationTokens).where(eq(activationTokens.userId, storeContext.user.id));
+      const freshToken = tokenRows?.find((row) => row.token !== previousToken && row.used === 0);
+      expect(freshToken?.requiresPasswordReset).toBe(1);
+      expect(tokenRows?.find((row) => row.token === previousToken)?.used).toBe(1);
+    });
+
+    it('mantiene los enlaces anteriores si el correo no puede enviarse', async () => {
+      const db = await getDb();
+      const caller = appRouter.createCaller(cstContext);
+      const previousToken = await createActivationToken(storeContext.user.id, 'store@test.com');
+      const emailMock = vi.mocked(sendActivationEmail);
+      emailMock.mockClear();
+      emailMock.mockResolvedValueOnce(false);
+
+      await expect(
+        caller.users.resendActivationEmail({ id: storeContext.user.id, resetPassword: true })
+      ).rejects.toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+
+      const tokenRows = await db?.select().from(activationTokens).where(eq(activationTokens.userId, storeContext.user.id));
+      expect(tokenRows?.find((row) => row.token === previousToken)?.used).toBe(0);
+      expect(tokenRows?.some((row) => row.token !== previousToken && row.used === 1)).toBe(true);
     });
 
     it('rechaza usuario inexistente (NOT_FOUND)', async () => {

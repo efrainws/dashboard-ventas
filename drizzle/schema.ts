@@ -256,6 +256,8 @@ export const activationTokens = mysqlTable("activation_tokens", {
   expiresAt: timestamp("expires_at").notNull(),
   /** Whether the token has been used */
   used: int("used").default(0).notNull(),
+  /** Whether this link replaces the current password and lets the user set a new one directly */
+  requiresPasswordReset: int("requires_password_reset").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

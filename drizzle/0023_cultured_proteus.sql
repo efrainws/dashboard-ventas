@@ -1,0 +1,1 @@
+ALTER TABLE `activation_tokens` ADD `requires_password_reset` int DEFAULT 0 NOT NULL;

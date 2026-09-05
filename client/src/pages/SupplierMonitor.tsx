@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2,
   Clock,
@@ -112,10 +113,14 @@ function fmtDate(d: Date | null | undefined): string {
 
 function ResendActivationButton({ userId, userName }: { userId: number; userName: string }) {
   const utils = trpc.useUtils();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState(false);
   const resend = trpc.activation.resendActivation.useMutation({
     onSuccess: (data) => {
       toast.success(data.message);
       utils.supplierTrial.listSupplierUsers.invalidate();
+      setIsDialogOpen(false);
+      setResetPassword(false);
     },
     onError: (err) => {
       toast.error(err.message);
@@ -123,21 +128,67 @@ function ResendActivationButton({ userId, userName }: { userId: number; userName
   });
 
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      className="h-7 text-xs"
-      disabled={resend.isPending}
-      onClick={() => resend.mutate({ userId })}
-      title={`Reenviar correo de activación a ${userName}`}
+    <AlertDialog
+      open={isDialogOpen}
+      onOpenChange={(open) => {
+        if (!resend.isPending) {
+          setIsDialogOpen(open);
+          if (!open) setResetPassword(false);
+        }
+      }}
     >
-      {resend.isPending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <RefreshCw className="h-3.5 w-3.5 mr-1" />
-      )}
-      Reenviar
-    </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs"
+        disabled={resend.isPending}
+        onClick={() => setIsDialogOpen(true)}
+        title={`Reenviar correo de activación a ${userName}`}
+      >
+        {resend.isPending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+        )}
+        Reenviar
+      </Button>
+      <AlertDialogContent className="sm:max-w-[520px]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reenviar activación</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se enviará un enlace de activación nuevo a {userName}. Los enlaces anteriores quedarán invalidados.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <label htmlFor={`reset-password-${userId}`} className="flex cursor-pointer items-start gap-3 rounded-none border border-border bg-muted/30 p-3">
+          <Checkbox
+            id={`reset-password-${userId}`}
+            checked={resetPassword}
+            onCheckedChange={(checked) => setResetPassword(checked === true)}
+            disabled={resend.isPending}
+          />
+          <span className="space-y-1 text-sm leading-relaxed">
+            <span className="block font-semibold text-foreground">Reiniciar contraseña</span>
+            <span className="block text-muted-foreground">Invalida la contraseña actual y permite definir una nueva usando el enlace de activación.</span>
+          </span>
+        </label>
+        {resetPassword && (
+          <AlertBanner variant="warning">
+            Por seguridad, no se envía una contraseña temporal por correo. El enlace de un solo uso permite establecer una contraseña nueva.
+          </AlertBanner>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={resend.isPending}>Cancelar</AlertDialogCancel>
+          <Button
+            type="button"
+            disabled={resend.isPending}
+            onClick={() => resend.mutate({ userId, resetPassword })}
+          >
+            {resend.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Enviar enlace
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

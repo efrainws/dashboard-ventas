@@ -86,6 +86,7 @@ export default function ActivateAccount() {
   const requiresTerms =
     tokenData?.role === "supplier_user" &&
     tokenData?.supplierStatus === "subscribed_active";
+  const requiresPasswordReset = tokenData?.requiresPasswordReset === true;
 
   // ── Activation mutation ──
   const activateMutation = trpc.activation.activateAccount.useMutation({
@@ -104,7 +105,7 @@ export default function ActivateAccount() {
     e.preventDefault();
     setFormError("");
 
-    if (!temporaryPassword.trim()) {
+    if (!requiresPasswordReset && !temporaryPassword.trim()) {
       setFormError("Ingresa tu contraseña temporal");
       return;
     }
@@ -123,7 +124,7 @@ export default function ActivateAccount() {
 
     activateMutation.mutate({
       token,
-      temporaryPassword,
+      ...(requiresPasswordReset ? {} : { temporaryPassword }),
       newPassword,
       confirmPassword,
       ...(requiresTerms && tokenData?.activeTermsVersionId
@@ -214,7 +215,9 @@ export default function ActivateAccount() {
       <div className="mb-6">
         <p className="text-sm text-muted-foreground font-body leading-relaxed">
           Hola, <strong className="text-foreground">{tokenData.email}</strong>. Para activar tu cuenta
-          ingresa la contraseña temporal que recibiste y elige una nueva contraseña segura.
+          {requiresPasswordReset
+            ? " usa este enlace de un solo uso para definir una contraseña nueva."
+            : " ingresa la contraseña temporal que recibiste y elige una nueva contraseña segura."}
         </p>
       </div>
 
@@ -235,6 +238,7 @@ export default function ActivateAccount() {
         </div>
 
         {/* Temporary password */}
+        {!requiresPasswordReset && (
         <div className="space-y-1.5">
           <Label htmlFor="tempPass" className="font-body text-xs uppercase tracking-wider text-muted-foreground">
             Contraseña temporal
@@ -261,6 +265,7 @@ export default function ActivateAccount() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Divider */}
         <div className="relative">
