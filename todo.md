@@ -2241,3 +2241,6 @@ Fecha: 1 de febrero de 2026
 - [ ] Revisar y reforzar el flujo de autenticación heredado
 - [x] Optimizar consultas y definir la estrategia de grandes volúmenes con índices, agregados y caché
 - [x] Mantener la autenticación actual y excluir la integración de autenticación externa de este sitio
+
+## Mapa de calor: total diario comparable en seis semanas
+- [x] Añadir una columna de total por día al extremo derecho del mapa de calor de últimas seis semanas con tooltip comparativo consistente

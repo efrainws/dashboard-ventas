@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HeatmapSkeleton } from "@/components/SalesSkeletons";
 import { trpc } from "@/lib/trpc";
+import { calculatePositiveAverage, calculateRowTotals } from "@/lib/heatmapTotals";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ interface TooltipState {
   // Campos extra para modo comparación
   fullDate?: string;
   dayName?: string;
+  isDailyTotal?: boolean;
 }
 
 // ─── Componente ────────────────────────────────────────────────────────────────
@@ -159,6 +161,18 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
       return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     });
   }, [compMatrix]);
+
+  // Cada fila representa una fecha comparable. El total sigue la misma semántica que las horas:
+  // suma todas las franjas disponibles y compara contra el promedio de fechas con actividad.
+  const compDayTotals = useMemo(() => calculateRowTotals(compMatrix), [compMatrix]);
+  const compDayAvg = useMemo(() => calculatePositiveAverage(compDayTotals), [compDayTotals]);
+  const { minDayTotal, maxDayTotal } = useMemo(() => {
+    const values = compDayTotals.filter((value) => value > 0);
+    return {
+      minDayTotal: Math.min(...values, 0),
+      maxDayTotal: Math.max(...values, 1),
+    };
+  }, [compDayTotals]);
 
   // ── Días activos en modo semanal (solo días con al menos un valor > 0) ──────
   const activeWeekDays = useMemo(() => {
@@ -328,7 +342,7 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                   <div className="font-semibold mb-0.5">{tooltip.rowLabel}</div>
                 )}
                 <div className="text-muted-foreground">
-                  {colTooltipLabel(tooltip.hour)}
+                  {tooltip.isDailyTotal ? "Total del día" : colTooltipLabel(tooltip.hour)}
                 </div>
                 <div className="text-primary font-bold mt-0.5">
                   {formatValue(tooltip.value, metric)}
@@ -363,6 +377,11 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                     {colLabel(col)}
                   </div>
                 ))}
+                {mode === "day_comparison" && (
+                  <div className="ml-1 w-[76px] shrink-0 text-center text-[10px] font-semibold text-muted-foreground">
+                    Total día
+                  </div>
+                )}
               </div>
 
               {/* Filas */}
@@ -432,6 +451,54 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                       </div>
                     );
                   })}
+
+                  {mode === "day_comparison" && (() => {
+                    const dayTotal = compDayTotals[rowIdx] ?? 0;
+                    const bg = dayTotal > 0
+                      ? interpolateColor(dayTotal, minDayTotal, maxDayTotal)
+                      : "var(--muted)";
+
+                    return (
+                      <div
+                        className="ml-1 w-[76px] shrink-0 cursor-default rounded-[2px] px-1 transition-opacity hover:opacity-80"
+                        style={{ background: bg, height: "clamp(28px, 4vw, 48px)" }}
+                        aria-label={`Total del día ${activeRowLabel(rowIdx)}: ${formatValue(dayTotal, metric)}`}
+                        onMouseEnter={e => {
+                          if (dayTotal > 0) {
+                            setTooltip({
+                              rowLabel: activeRowLabel(rowIdx),
+                              hour: -1,
+                              value: dayTotal,
+                              avg: compDayAvg ?? undefined,
+                              x: e.clientX,
+                              y: e.clientY,
+                              fullDate: compFullDates[rowIdx],
+                              dayName: DAYS_FULL[selectedDay],
+                              isDailyTotal: true,
+                            });
+                          }
+                        }}
+                        onMouseMove={e => {
+                          if (dayTotal > 0) {
+                            setTooltip(t => t ? { ...t, x: e.clientX, y: e.clientY } : null);
+                          }
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
+                        <span
+                          className="hidden h-full w-full items-center justify-center overflow-hidden sm:flex"
+                          style={{
+                            color: dayTotal > 0 ? "#fff" : "transparent",
+                            fontSize: "clamp(7px, 1vw, 12px)",
+                            whiteSpace: "nowrap",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {dayTotal > 0 ? formatValue(dayTotal, metric) : ""}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
 
@@ -465,6 +532,11 @@ export function HeatmapChart({ fechaMin, fechaMax, branchId, includeIgv = true }
                     </div>
                   );
                 })}
+                {mode === "day_comparison" && (
+                  <div className="ml-1 w-[76px] shrink-0 text-center text-[10px] font-semibold text-muted-foreground">
+                    {formatValue(compDayTotals.reduce((sum, value) => sum + value, 0), metric)}
+                  </div>
+                )}
               </div>
 
               {/* Leyenda */}
