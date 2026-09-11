@@ -2244,3 +2244,8 @@ Fecha: 1 de febrero de 2026
 
 ## Mapa de calor: total diario comparable en seis semanas
 - [x] Añadir una columna de total por día al extremo derecho del mapa de calor de últimas seis semanas con tooltip comparativo consistente
+
+## Canal de ventas en portales de Proveedores y Marca Propia
+- [x] Agregar en Dashboard un gráfico de pie de ventas por canal con los criterios del Análisis General
+- [x] Incorporar en Ventas el filtro por canal para ambas superficies
+- [x] Mostrar y permitir alternar la columna Canal en Ventas por artículo y tienda y Evolución de ventas

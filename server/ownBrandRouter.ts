@@ -23,6 +23,7 @@ import { ownBrandBrands, ownBrandCategoryBrands } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { cached, invalidateByPrefix, TTL } from "./queryCache";
+import { SALES_CHANNELS, salesChannelCase } from "./salesChannels";
 
 // Roles que pueden acceder al Portal Marca Propia
 const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
@@ -298,6 +299,51 @@ export const ownBrandRouter = router({
           total_unidades: string;
           tiendas_activas: number;
         };
+      });
+    }),
+
+  /** Distribución de ventas por canal con los mismos criterios del Análisis General. */
+  getSalesByChannel: protectedProcedure
+    .input(dateRangeCategorySchema)
+    .query(async ({ ctx, input }) => {
+      assertAccess((ctx.user as any).role);
+      const brandIds = await getOwnBrandIds();
+      if (brandIds.length === 0) return [];
+
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const categoryBrandIds = input.categoryId != null
+        ? await getBrandIdsByCategory(input.categoryId)
+        : null;
+      if (categoryBrandIds !== null && categoryBrandIds.length === 0) return [];
+
+      const cacheKey = `ownBrand:channels:${brandIds.slice().sort().join(",")}:${from}:${to}:${input.include_igv}:${input.categoryId ?? ""}`;
+      return cached(cacheKey, TTL.DYNAMIC, async () => {
+        const amtCol = input.include_igv ? "sd.total" : "sd.subtotal";
+        const channelExpression = salesChannelCase();
+        const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
+        const params: (string | number | string[])[] = [...brandParams];
+        const clauses: string[] = [];
+        addCategoryFilter(params, clauses, categoryBrandIds);
+        const fromIdx = params.length + 1;
+        const toIdx = fromIdx + 1;
+
+        const res = await queryWithRetry(
+          `SELECT
+             ${channelExpression}                           AS sales_channel,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS sales_amount,
+             COUNT(DISTINCT sh.id)::int                     AS transactions
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE 1=1 ${brandClause}
+             ${clauses.join(" ")}
+             AND sh.doc_date >= $${fromIdx}::date AND sh.doc_date < ($${toIdx}::date + INTERVAL '1 day')
+           GROUP BY sales_channel
+           ORDER BY sales_amount DESC`,
+          [...params, from, to]
+        );
+        return res.rows as Array<{ sales_channel: string; sales_amount: string; transactions: number }>;
       });
     }),
 
@@ -1048,6 +1094,8 @@ export const ownBrandRouter = router({
         branchId: z.string().optional(),
         groupByProduct: z.boolean().default(true),
         groupByStore: z.boolean().default(true),
+        groupByChannel: z.boolean().default(true),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -1072,6 +1120,8 @@ export const ownBrandRouter = router({
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       const selectProduct = gp
         ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
@@ -1079,9 +1129,13 @@ export const ownBrandRouter = router({
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
       const groupByDims = [
         ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
         ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+        ...(gc ? [channelExpression] : []),
       ].join(", ") || "1=1";
       const countGroupBy = [
         ...(gp ? ["p.id"] : []),
@@ -1108,6 +1162,10 @@ export const ownBrandRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      if (input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length) {
+        params.push(input.salesChannels);
+        clauses.push(`AND (${channelExpression}) = ANY($${params.length}::text[])`);
+      }
       addCategoryFilter(params, clauses, categoryBrandIds);
 
       // ── CTE única: datos + count + totales en un solo round-trip a PostgreSQL ──
@@ -1116,6 +1174,7 @@ export const ownBrandRouter = router({
            SELECT
              ${selectProduct}
              ${selectStore}
+             ${selectChannel}
              SUM(sd.quantity)::numeric                     AS cantidad,
              ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
              COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -1160,10 +1219,11 @@ export const ownBrandRouter = router({
           branch_id: r.branch_id,
           tienda: r.tienda,
           sap_id: r.sap_id,
+          sales_channel: r.sales_channel,
           cantidad: r.cantidad,
           monto: r.monto,
           tickets: r.tickets,
-        })) as Array<{ product_id: string; producto: string; sku: string; branch_id: string; tienda: string; sap_id: string; cantidad: string; monto: string; tickets: number }>,
+        })) as Array<{ product_id: string; producto: string; sku: string; branch_id: string; tienda: string; sap_id: string; sales_channel: string; cantidad: string; monto: string; tickets: number }>,
         total: firstRow?.total_rows ?? 0,
         totals: {
           cantidad: firstRow?.total_cantidad ?? "0",
@@ -1224,6 +1284,8 @@ export const ownBrandRouter = router({
       branchId: z.string().optional(),
       groupByProduct: z.boolean().default(true),
       groupByStore: z.boolean().default(true),
+      groupByChannel: z.boolean().default(true),
+      salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
     }))
     .query(async ({ ctx, input }) => {
       assertAccess((ctx.user as any).role);
@@ -1238,9 +1300,11 @@ export const ownBrandRouter = router({
         : null;
       if (categoryBrandIds !== null && categoryBrandIds.length === 0) return [];
 
-        const amtColExport = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const amtColExport = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       const selectProduct = gp
         ? `p.name AS producto, p.int_sku::text AS sku,`
@@ -1248,9 +1312,13 @@ export const ownBrandRouter = router({
       const selectStore = gs
         ? `b.name AS tienda, b.sap_id,`
         : `'(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
       const groupByDims = [
         ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
         ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+        ...(gc ? [channelExpression] : []),
       ].join(", ") || "1=1";
 
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
@@ -1271,12 +1339,17 @@ export const ownBrandRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      if (input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length) {
+        params.push(input.salesChannels);
+        clauses.push(`AND (${channelExpression}) = ANY($${params.length}::text[])`);
+      }
       addCategoryFilter(params, clauses, categoryBrandIds);
 
       const res = await queryWithRetry(
         `SELECT
            ${selectProduct}
            ${selectStore}
+           ${selectChannel}
            SUM(sd.quantity)::numeric                     AS cantidad,
            ROUND(SUM(${amtColExport})::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -1293,7 +1366,7 @@ export const ownBrandRouter = router({
         params
       );
 
-      return res.rows as Array<{ producto: string; sku: string; tienda: string; sap_id: string | null; cantidad: string; monto: string; tickets: number }>;
+      return res.rows as Array<{ producto: string; sku: string; tienda: string; sap_id: string | null; sales_channel: string; cantidad: string; monto: string; tickets: number }>;
     }),
 
   // ─── LISTA DE PRODUCTOS PARA SELECTS ─────────────────────────────────────────
@@ -1336,6 +1409,8 @@ export const ownBrandRouter = router({
         branchId: z.string().optional(),
         groupByProduct: z.boolean().default(true),
         groupByStore: z.boolean().default(true),
+        groupByChannel: z.boolean().default(true),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
         granularity: z.enum(['day', 'week', 'month']).default('day'),
       })
     )
@@ -1357,6 +1432,8 @@ export const ownBrandRouter = router({
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       const dateTrunc = input.granularity === 'day'
         ? `sh.doc_date::date`
@@ -1370,10 +1447,14 @@ export const ownBrandRouter = router({
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
 
       const groupByDims = [
         ...(gp ? ['p.id', 'p.name', 'p.int_sku'] : []),
         ...(gs ? ['b.id', 'b.name', 'b.sap_id'] : []),
+        ...(gc ? [channelExpression] : []),
       ];
 
       const { clause: brandClause, params: brandParams } = buildBrandFilter(brandIds, 1);
@@ -1391,6 +1472,10 @@ export const ownBrandRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      if (input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length) {
+        params.push(input.salesChannels);
+        clauses.push(`AND (${channelExpression}) = ANY($${params.length}::text[])`);
+      }
       addCategoryFilter(params, clauses, categoryBrandIds);
 
       const groupByClause = ['period', ...groupByDims].join(', ');
@@ -1400,6 +1485,7 @@ export const ownBrandRouter = router({
           ${dateTrunc} AS period,
           ${selectProduct}
           ${selectStore}
+          ${selectChannel}
           SUM(${amtCol}) AS amount,
           SUM(sd.quantity) AS quantity
         FROM public.sales_header sh
@@ -1423,6 +1509,7 @@ export const ownBrandRouter = router({
         branch_id: string | null;
         tienda: string;
         sap_id: string | null;
+        sales_channel: string;
         amount: string;
         quantity: string;
       }>;

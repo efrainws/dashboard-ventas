@@ -20,6 +20,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { pool } from "./postgres";
 import { TRPCError } from "@trpc/server";
 import { cached, invalidateByPrefix, TTL } from "./queryCache";
+import { SALES_CHANNELS, salesChannelCase } from "./salesChannels";
 
 // Roles que pueden acceder al portal de proveedores
 const ALLOWED_ROLES = ["supplier_user", "system_specialist", "commercial_specialist"];
@@ -146,6 +147,36 @@ export const supplierPortalRouter = router({
           total_unidades: string;
           tiendas_activas: number;
         };
+      });
+    }),
+
+  /** Distribución de ventas por canal con la misma clasificación del Análisis General. */
+  getSalesByChannel: protectedProcedure
+    .input(dateRangeSchema.extend({ supplierId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const supplierId = getSupplierIdFromCtx(ctx as any, input.supplierId);
+      const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+      const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const amtCol = input.include_igv ? "sd.total" : "sd.subtotal";
+      const igvKey = input.include_igv ? "igv" : "noigv";
+      const channelExpression = salesChannelCase();
+
+      return cached(`supplier:channels:${supplierId}:${from}:${to}:${igvKey}`, TTL.DYNAMIC, async () => {
+        const res = await pool.query(
+          `SELECT
+             ${channelExpression}                           AS sales_channel,
+             ROUND(SUM(${amtCol})::numeric, 2)              AS sales_amount,
+             COUNT(DISTINCT sh.id)::int                     AS transactions
+           FROM public.sales_detail sd
+           JOIN public.products p ON p.id = sd.product_id
+           JOIN public.sales_header sh ON sh.id = sd.header_id
+           WHERE p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
+             AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
+           GROUP BY sales_channel
+           ORDER BY sales_amount DESC`,
+          [supplierId, from, to]
+        );
+        return res.rows as Array<{ sales_channel: string; sales_amount: string; transactions: number }>;
       });
     }),
 
@@ -634,6 +665,8 @@ export const supplierPortalRouter = router({
         branchId: z.string().optional(),
         groupByProduct: z.boolean().default(true),
         groupByStore: z.boolean().default(true),
+        groupByChannel: z.boolean().default(true),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -645,6 +678,8 @@ export const supplierPortalRouter = router({
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       const selectProduct = gp
         ? `p.id AS product_id, p.name AS producto, p.int_sku::text AS sku,`
@@ -652,9 +687,13 @@ export const supplierPortalRouter = router({
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
       const groupByDims = [
         ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
         ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+        ...(gc ? [channelExpression] : []),
       ].join(", ") || "1=1";
       const countGroupBy = [
         ...(gp ? ["p.id"] : []),
@@ -675,6 +714,10 @@ export const supplierPortalRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      if (input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length) {
+        params.push(input.salesChannels);
+        clauses.push(`AND (${channelExpression}) = ANY($${params.length}::text[])`);
+      }
 
       const whereExtra = clauses.join(" ");
 
@@ -684,6 +727,7 @@ export const supplierPortalRouter = router({
            SELECT
              ${selectProduct}
              ${selectStore}
+             ${selectChannel}
              SUM(sd.quantity)::numeric                     AS cantidad,
              ROUND(SUM(${amtCol})::numeric, 2)              AS monto,
              COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -732,6 +776,7 @@ export const supplierPortalRouter = router({
           branch_id: string;
           tienda: string;
           sap_id: string;
+          sales_channel: string;
           cantidad: string;
           monto: string;
           tickets: number;
@@ -797,6 +842,8 @@ export const supplierPortalRouter = router({
         branchId: z.string().optional(),
         groupByProduct: z.boolean().default(true),
         groupByStore: z.boolean().default(true),
+        groupByChannel: z.boolean().default(true),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -805,6 +852,8 @@ export const supplierPortalRouter = router({
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       const selectProduct = gp
         ? `p.name AS producto, p.int_sku::text AS sku,`
@@ -812,9 +861,13 @@ export const supplierPortalRouter = router({
       const selectStore = gs
         ? `b.name AS tienda, b.sap_id,`
         : `'(Todas las tiendas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
       const groupByDims = [
         ...(gp ? ["p.id", "p.name", "p.int_sku"] : []),
         ...(gs ? ["b.id", "b.name", "b.sap_id"] : []),
+        ...(gc ? [channelExpression] : []),
       ].join(", ") || "1=1";
 
       const params: (string | number | string[])[] = [supplierId, from, to];
@@ -831,11 +884,16 @@ export const supplierPortalRouter = router({
         params.push(input.branchId);
         clauses.push(`AND b.id = $${params.length}`);
       }
+      if (input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length) {
+        params.push(input.salesChannels);
+        clauses.push(`AND (${channelExpression}) = ANY($${params.length}::text[])`);
+      }
 
       const res = await pool.query(
         `SELECT
            ${selectProduct}
            ${selectStore}
+           ${selectChannel}
            SUM(sd.quantity)::numeric                     AS cantidad,
            ROUND(SUM(sd.total)::numeric, 2)              AS monto,
            COUNT(DISTINCT sh.id)::int                    AS tickets
@@ -857,6 +915,7 @@ export const supplierPortalRouter = router({
         sku: string;
         tienda: string;
         sap_id: string | null;
+        sales_channel: string;
         cantidad: string;
         monto: string;
         tickets: number;
@@ -977,6 +1036,8 @@ export const supplierPortalRouter = router({
         branchId: z.string().optional(),
         groupByProduct: z.boolean().default(true),
         groupByStore: z.boolean().default(true),
+        groupByChannel: z.boolean().default(true),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
         granularity: z.enum(['day', 'week', 'month']).default('day'),
       })
     )
@@ -987,6 +1048,8 @@ export const supplierPortalRouter = router({
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
       const gp = input.groupByProduct !== false;
       const gs = input.groupByStore !== false;
+      const gc = input.groupByChannel !== false;
+      const channelExpression = salesChannelCase();
 
       // Truncar fecha según granularidad
       const dateTrunc = input.granularity === 'day'
@@ -1001,10 +1064,14 @@ export const supplierPortalRouter = router({
       const selectStore = gs
         ? `b.id AS branch_id, b.name AS tienda, b.sap_id,`
         : `NULL::uuid AS branch_id, '(Todas)' AS tienda, NULL AS sap_id,`;
+      const selectChannel = gc
+        ? `${channelExpression} AS sales_channel,`
+        : `'Todos los canales' AS sales_channel,`;
 
       const groupByDims = [
         ...(gp ? ['p.id', 'p.name', 'p.int_sku'] : []),
         ...(gs ? ['b.id', 'b.name', 'b.sap_id'] : []),
+        ...(gc ? [channelExpression] : []),
       ];
 
       const params: any[] = [supplierId, from, to];
@@ -1023,6 +1090,10 @@ export const supplierPortalRouter = router({
         ? (() => { params.push(input.branchId); return `AND b.id = $${pIdx++}`; })()
         : '';
 
+      const channelFilter = input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length
+        ? (() => { params.push(input.salesChannels); return `AND (${channelExpression}) = ANY($${pIdx++}::text[])`; })()
+        : '';
+
       const groupByClause = [
         `period`,
         ...groupByDims,
@@ -1033,6 +1104,7 @@ export const supplierPortalRouter = router({
           ${dateTrunc} AS period,
           ${selectProduct}
           ${selectStore}
+          ${selectChannel}
           SUM(${amtCol}) AS amount,
           SUM(sd.quantity) AS quantity
         FROM public.sales_header sh
@@ -1044,6 +1116,7 @@ export const supplierPortalRouter = router({
           AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
           ${productFilter}
           ${branchFilter}
+          ${channelFilter}
         GROUP BY ${groupByClause}
         ORDER BY period ASC, ${gp ? 'p.name ASC,' : ''} ${gs ? 'b.sap_id ASC' : '1'}
       `;
@@ -1057,6 +1130,7 @@ export const supplierPortalRouter = router({
         branch_id: string | null;
         tienda: string;
         sap_id: string | null;
+        sales_channel: string;
         amount: string;
         quantity: string;
       }>;
@@ -1069,6 +1143,7 @@ export const supplierPortalRouter = router({
         supplierId: z.string().optional(),
         productIds: z.array(z.string()).optional(),
         branchId: z.string().optional(),
+        salesChannels: z.array(z.enum(SALES_CHANNELS)).max(SALES_CHANNELS.length).optional(),
         granularity: z.enum(['day', 'week', 'month']).default('day'),
       })
     )
@@ -1077,6 +1152,7 @@ export const supplierPortalRouter = router({
       const from = input.from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
       const to = input.to ?? new Date(Date.now() - 86400000).toISOString().split('T')[0];
       const amtCol = input.include_igv ? 'sd.total' : 'sd.subtotal';
+      const channelExpression = salesChannelCase();
       const dateTrunc = input.granularity === 'day'
         ? `sh.doc_date::date::text`
         : input.granularity === 'week'
@@ -1095,6 +1171,9 @@ export const supplierPortalRouter = router({
       const branchFilter = input.branchId
         ? (() => { params.push(input.branchId); return `AND b.id = $${pIdx++}`; })()
         : '';
+      const channelFilter = input.salesChannels && input.salesChannels.length < SALES_CHANNELS.length
+        ? (() => { params.push(input.salesChannels); return `AND (${channelExpression}) = ANY($${pIdx++}::text[])`; })()
+        : '';
       const query = `
         SELECT
           ${dateTrunc} AS period,
@@ -1109,6 +1188,7 @@ export const supplierPortalRouter = router({
           AND p.id IN ${SUPPLIER_PRODUCTS_SUBQUERY}
           ${productFilter}
           ${branchFilter}
+          ${channelFilter}
         GROUP BY period
         ORDER BY period ASC
       `;

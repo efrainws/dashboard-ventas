@@ -1,6 +1,6 @@
 /**
  * SalesEvolutionTable — formato PIVOTADO
- * Filas: combinaciones únicas de (producto × tienda) según los toggles activos.
+ * Filas: combinaciones únicas de (producto × tienda × canal) según los toggles activos.
  * Columnas: un período por columna (día / semana / mes) + columna Total.
  * Reutilizable en SupplierPortal y OwnBrandPortal.
  */
@@ -39,6 +39,7 @@ export interface EvolutionRow {
   branch_id: string | null;
   tienda: string;
   sap_id: string | null;
+  sales_channel?: string;
   amount: string;
   quantity: string;
 }
@@ -50,6 +51,7 @@ interface SalesEvolutionTableProps {
   setGranularity: (g: Granularity) => void;
   showProduct: boolean;
   showStore: boolean;
+  showChannel?: boolean;
   includeIgv: boolean;
 }
 
@@ -82,10 +84,11 @@ function formatPeriodHeader(key: string, granularity: Granularity): string {
 }
 
 /** Clave de fila según las dimensiones activas */
-function rowKey(row: EvolutionRow, showProduct: boolean, showStore: boolean): string {
+function rowKey(row: EvolutionRow, showProduct: boolean, showStore: boolean, showChannel: boolean): string {
   const p = showProduct ? (row.product_id ?? row.producto) : "__ALL__";
   const s = showStore ? (row.branch_id ?? row.tienda) : "__ALL__";
-  return `${p}||${s}`;
+  const c = showChannel ? (row.sales_channel ?? "Sin canal") : "__ALL__";
+  return `${p}||${s}||${c}`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -97,6 +100,7 @@ export function SalesEvolutionTable({
   setGranularity,
   showProduct,
   showStore,
+  showChannel = false,
   includeIgv,
 }: SalesEvolutionTableProps) {
   const [metric, setMetric] = useState<Metric>("amount");
@@ -119,13 +123,14 @@ export function SalesEvolutionTable({
       sku: string;
       tienda: string;
       sap_id: string | null;
+      sales_channel: string | undefined;
       cells: Record<string, number>; // periodKey → valor
     };
 
     const rowMap = new Map<string, PivotRow>();
 
     data.forEach(r => {
-      const rk = rowKey(r, showProduct, showStore);
+      const rk = rowKey(r, showProduct, showStore, showChannel);
       if (!rowMap.has(rk)) {
         rowMap.set(rk, {
           key: rk,
@@ -133,6 +138,7 @@ export function SalesEvolutionTable({
           sku: r.sku,
           tienda: r.tienda,
           sap_id: r.sap_id,
+          sales_channel: r.sales_channel,
           cells: {},
         });
       }
@@ -153,7 +159,7 @@ export function SalesEvolutionTable({
 
     const pivotRows = Array.from(rowMap.values());
     return { periods, pivotRows, grandTotal };
-  }, [data, metric, showProduct, showStore]);
+  }, [data, metric, showProduct, showStore, showChannel]);
 
   type PivotRow = {
     key: string;
@@ -161,6 +167,7 @@ export function SalesEvolutionTable({
     sku: string;
     tienda: string;
     sap_id: string | null;
+    sales_channel: string | undefined;
     cells: Record<string, number>;
   };
 
@@ -175,7 +182,7 @@ export function SalesEvolutionTable({
   const grandTotalSum = periods.reduce((s, p) => s + (grandTotal[p] ?? 0), 0);
 
   // Columnas fijas (dimensiones)
-  const dimCols = (showProduct ? 2 : 0) + (showStore ? 2 : 0);
+  const dimCols = (showProduct ? 2 : 0) + (showStore ? 1 : 0) + (showChannel ? 1 : 0);
   const totalCols = dimCols + periods.length + 1; // +1 = columna Total
 
   return (
@@ -234,6 +241,7 @@ export function SalesEvolutionTable({
                 </>
               )}
               {showStore && <th className="whitespace-nowrap">Tienda (SAP)</th>}
+              {showChannel && <th className="whitespace-nowrap">Canal</th>}
               {/* Una columna por período */}
               {periods.map(p => (
                 <th key={p} className="text-right whitespace-nowrap">
@@ -273,6 +281,7 @@ export function SalesEvolutionTable({
                       {row.sap_id ? `${row.tienda} (${row.sap_id})` : row.tienda}
                     </td>
                   )}
+                  {showChannel && <td className="whitespace-nowrap">{row.sales_channel ?? "—"}</td>}
                   {periods.map(p => (
                     <td key={p} className="text-right tabular-nums">
                       {row.cells[p] != null ? fmt(row.cells[p]) : "—"}

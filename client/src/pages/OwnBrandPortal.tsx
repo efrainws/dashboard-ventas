@@ -87,7 +87,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { format, subDays, startOfMonth } from "date-fns";
+import { differenceInCalendarDays, format, getDaysInMonth, parseISO, subDays, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
@@ -95,6 +95,8 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
 import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
+import { ChannelBreakdown } from "@/components/ChannelBreakdown";
+import { SALES_CHANNELS, SalesChannelFilter, type SalesChannel } from "@/components/SalesChannelFilter";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -611,6 +613,7 @@ export default function OwnBrandPortal() {
   const [recPage, setRecPage] = useState(0);
   const [salesProductIds, setSalesProductIds] = useState<string[]>([]);
   const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
+  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>(SALES_CHANNELS.slice());
   const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
@@ -620,13 +623,15 @@ export default function OwnBrandPortal() {
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
+  const [showChannel, setShowChannel] = useState(true);
   // Resetear página al cambiar dimensiones para que la paginación sea correcta
   const handleToggleStore = () => { setShowStore((v) => !v); setSalesPage(0); };
   const handleToggleProduct = () => { setShowProduct((v) => !v); setSalesPage(0); };
+  const handleToggleChannel = () => { setShowChannel((v) => !v); setSalesPage(0); };
   // Granularidad de la tabla de evolución temporal
   const [evolutionGranularity, setEvolutionGranularity] = useState<Granularity>("day");
   // Ordenamiento de la tabla de ventas
-  type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "cantidad" | "monto" | "tickets";
+  type SortCol = "producto" | "sku" | "tienda" | "sap_id" | "sales_channel" | "cantidad" | "monto" | "tickets";
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const handleSortCol = (col: SortCol) => {
@@ -654,6 +659,12 @@ export default function OwnBrandPortal() {
   // Queries
   const { data: summary, isLoading: summaryLoading } =
     trpc.ownBrand.getSalesSummary.useQuery({ from, to, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
+
+  const { data: salesByChannel, isLoading: salesByChannelLoading } =
+    trpc.ownBrand.getSalesByChannel.useQuery(
+      { from, to, categoryId: selectedCategoryId, include_igv: includeIgv },
+      { enabled: canAccessPortal && activeTab === "dashboard" }
+    );
 
   const { data: dailySales, isLoading: dailyLoading } =
     trpc.ownBrand.getDailySales.useQuery({ from, to, categoryId: selectedCategoryId, include_igv: includeIgv }, { enabled: canAccessPortal });
@@ -727,6 +738,8 @@ export default function OwnBrandPortal() {
       categoryId: selectedCategoryId,
       groupByProduct: showProduct,
       groupByStore: showStore,
+      groupByChannel: showChannel,
+      salesChannels,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
       include_igv: includeIgv,
@@ -740,6 +753,8 @@ export default function OwnBrandPortal() {
     categoryId: selectedCategoryId,
     groupByProduct: showProduct,
     groupByStore: showStore,
+    groupByChannel: showChannel,
+    salesChannels,
     include_igv: includeIgv,
   }, { enabled: false });
 
@@ -753,6 +768,8 @@ export default function OwnBrandPortal() {
       categoryId: selectedCategoryId,
       groupByProduct: showProduct,
       groupByStore: showStore,
+      groupByChannel: showChannel,
+      salesChannels,
       granularity: evolutionGranularity,
       include_igv: includeIgv,
     }, { enabled: canAccessPortal && activeTab === "ventas" });
@@ -764,9 +781,10 @@ export default function OwnBrandPortal() {
       const rows = result.data ?? [];
       if (rows.length === 0) return;
       const wsData = [
-        ["Producto", "SKU", "Tienda", "Cód. SAP", "Cantidad", "Monto (S/)", "Tickets"],
+        ["Producto", "SKU", "Tienda", "Cód. SAP", "Canal", "Cantidad", "Monto (S/)", "Tickets"],
         ...rows.map((r) => [
           r.producto, r.sku, r.tienda, r.sap_id ?? "",
+          r.sales_channel,
           parseFloat(r.cantidad), parseFloat(r.monto), r.tickets,
         ]),
       ];
@@ -855,6 +873,12 @@ export default function OwnBrandPortal() {
       color: c.categoryColor,
     }));
   }, [salesByCategory]);
+
+  const channelAnalysisDays = useMemo(
+    () => Math.max(1, differenceInCalendarDays(parseISO(to), parseISO(from)) + 1),
+    [from, to]
+  );
+  const channelDaysInMonth = useMemo(() => getDaysInMonth(parseISO(to)), [to]);
 
   /** Selector de categoría interna reutilizable en las 4 pestañas */
   const CategoryFilter = () => (
@@ -1077,6 +1101,13 @@ export default function OwnBrandPortal() {
                 </CardContent>
               </Card>
             </div>
+
+            <ChannelBreakdown
+              data={salesByChannel ?? []}
+              numberOfDays={channelAnalysisDays}
+              daysInMonth={channelDaysInMonth}
+              isLoading={salesByChannelLoading}
+            />
 
             {/* Gráfico de Pie + Tabla de Ventas por Categoría Interna */}
             {(salesByCategoryLoading || (categoryPieData && categoryPieData.length > 0)) && (
@@ -1659,6 +1690,10 @@ export default function OwnBrandPortal() {
                   </SelectContent>
                 </Select>
               )}
+              <SalesChannelFilter
+                value={salesChannels}
+                onChange={(channels) => { setSalesChannels(channels); setSalesPage(0); }}
+              />
               {/* Toggles de dimensiones */}
               <div className="flex items-center gap-1.5 ml-auto">
                 <span className="text-xs text-muted-foreground mr-1">Mostrar:</span>
@@ -1687,6 +1722,19 @@ export default function OwnBrandPortal() {
                 >
                   {showStore ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                   Tienda
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleChannel}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+                    showChannel
+                      ? "bg-[#232523] text-white border-[#232523]"
+                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
+                  }`}
+                  title={showChannel ? "Ocultar dimensión Canal" : "Mostrar dimensión Canal"}
+                >
+                  {showChannel ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                  Canal
                 </button>
               </div>
 
@@ -1717,6 +1765,7 @@ export default function OwnBrandPortal() {
                         {showProduct && <SortableTableHead label="SKU" col="sku" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
                         {showStore && <SortableTableHead label="Tienda" col="tienda" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
                         {showStore && <SortableTableHead label="Cód. SAP" col="sap_id" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
+                        {showChannel && <SortableTableHead label="Canal" col="sales_channel" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} />}
                         <SortableTableHead label="Cantidad" col="cantidad" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         <SortableTableHead label="Monto (S/)" col="monto" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
                         <SortableTableHead label="Tickets" col="tickets" sortCol={sortCol} sortDir={sortDir} onSort={handleSortCol} align="right" />
@@ -1727,7 +1776,7 @@ export default function OwnBrandPortal() {
                       {salesPBLoading && (
                         [...Array(8)].map((_, i) => (
                           <TableRow key={i}>
-                            {[...Array((showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3)].map((_, j) => (
+                            {[...Array((showProduct ? 2 : 0) + (showStore ? 2 : 0) + (showChannel ? 1 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3)].map((_, j) => (
                               <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                             ))}
                           </TableRow>
@@ -1781,6 +1830,9 @@ export default function OwnBrandPortal() {
                               {showStore && (
                                 <TableCell className="text-xs tabular-nums tracking-tight text-muted-foreground">{row.sap_id ?? "—"}</TableCell>
                               )}
+                              {showChannel && (
+                                <TableCell className="text-sm text-muted-foreground">{row.sales_channel}</TableCell>
+                              )}
                               <TableCell className="text-right tabular-nums text-sm">{fmt(row.cantidad)}</TableCell>
                               <TableCell className="text-right tabular-nums text-sm font-medium" style={{ color: "#008064" }}>{fmtCurrency(row.monto)}</TableCell>
                               <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{row.tickets}</TableCell>
@@ -1796,7 +1848,7 @@ export default function OwnBrandPortal() {
                       {!salesPBLoading && !salesByPB?.rows.length && (
                         <TableRow>
                           <TableCell
-                            colSpan={(showProduct ? 2 : 0) + (showStore ? 2 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3}
+                            colSpan={(showProduct ? 2 : 0) + (showStore ? 2 : 0) + (showChannel ? 1 : 0) + 3 + (showProduct && showStore ? 1 : 0) || 3}
                             className="text-center text-sm text-muted-foreground py-10"
                           >
                             Sin ventas en el período seleccionado
@@ -1838,6 +1890,7 @@ export default function OwnBrandPortal() {
               setGranularity={setEvolutionGranularity}
               showProduct={showProduct}
               showStore={showStore}
+              showChannel={showChannel}
               includeIgv={includeIgv}
             />
           </div>

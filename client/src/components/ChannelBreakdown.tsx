@@ -28,6 +28,7 @@ interface SalesRow {
   sales_channel: string;
   sales_amount: string;
   sale_ids?: string[];
+  transactions?: number;
   sale_date?: string;
 }
 
@@ -103,25 +104,26 @@ export function ChannelBreakdown({
   const channelStats = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    const map = new Map<string, { sales: number; saleIds: Set<string> }>();
+    const map = new Map<string, { sales: number; saleIds: Set<string>; transactions: number }>();
 
     data.forEach((row) => {
       const ch = row.sales_channel || "Desconocido";
       if (!map.has(ch)) {
-        map.set(ch, { sales: 0, saleIds: new Set() });
+        map.set(ch, { sales: 0, saleIds: new Set(), transactions: 0 });
       }
       const entry = map.get(ch)!;
       entry.sales += parseFloat(row.sales_amount || "0");
       if (Array.isArray(row.sale_ids)) {
         row.sale_ids.forEach((id) => entry.saleIds.add(id));
       }
+      entry.transactions += Number(row.transactions ?? 0);
     });
 
     const totalSales = Array.from(map.values()).reduce((s, v) => s + v.sales, 0);
 
     return Array.from(map.entries())
-      .map(([channel, { sales, saleIds }]) => {
-        const transactions = saleIds.size;
+      .map(([channel, { sales, saleIds, transactions: aggregatedTransactions }]) => {
+        const transactions = aggregatedTransactions || saleIds.size;
         const avgTicket = transactions > 0 ? sales / transactions : 0;
         const avgDaily = numberOfDays > 0 ? sales / numberOfDays : 0;
         const projection = avgDaily * daysInMonth;
