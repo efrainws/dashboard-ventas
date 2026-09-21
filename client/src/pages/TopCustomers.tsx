@@ -337,10 +337,10 @@ function CustomerTransactionsModal({
 
   return (
     <DialogContent
-      className="max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden transition-all duration-200"
+      className="h-[min(90dvh,56rem)] max-h-[calc(100dvh-2rem)] flex flex-col gap-0 p-0 overflow-hidden transition-all duration-200"
       style={dialogStyle}
     >
-      <DialogHeader className="px-6 py-4 border-b border-border/50 shrink-0">
+      <DialogHeader className="px-6 py-4 pr-14 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg" style={{ background: "#1A6894" + "20" }}>
             <Receipt className="h-5 w-5" style={{ color: "#1A6894" }} />
@@ -357,22 +357,11 @@ function CustomerTransactionsModal({
               {includeIgv ? " · Con IGV" : " · Sin IGV"}
             </p>
           </div>
-          {!selectedTxn && (
-            <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
-              <span>{rows.length} transacciones</span>
-              <span
-                className="font-bold text-base"
-                style={{ color: "#008064", fontFamily: "Sailec, sans-serif" }}
-              >
-                S/ {fmtCurrency(totalMonto)}
-              </span>
-            </div>
-          )}
         </div>
       </DialogHeader>
 
       {/* Contenido: lista de transacciones o detalle de artículos */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0">
         {selectedTxn ? (
           <TransactionDetailModal
             transaction={selectedTxn}
@@ -380,7 +369,11 @@ function CustomerTransactionsModal({
             onBack={() => setSelectedTxn(null)}
           />
         ) : (
-          <div className="overflow-y-auto h-full px-6 py-4">
+          <div
+            className="h-full min-h-0 overflow-y-auto overscroll-contain px-6 py-4"
+            tabIndex={0}
+            aria-label="Lista de transacciones del cliente"
+          >
             {isLoading ? (
               <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />

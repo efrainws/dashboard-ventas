@@ -2249,3 +2249,7 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar en Dashboard un gráfico de pie de ventas por canal con los criterios del Análisis General
 - [x] Incorporar en Ventas el filtro por canal para ambas superficies
 - [x] Mostrar y permitir alternar la columna Canal en Ventas por artículo y tienda y Evolución de ventas
+## Top Clientes: detalle de transacciones
+- [x] Retirar el resumen duplicado de monto y cantidad del encabezado del modal
+- [x] Habilitar desplazamiento interno para navegar una lista extensa de transacciones
+- [x] Validar el modal en escritorio y móvil, y guardar un punto de control
