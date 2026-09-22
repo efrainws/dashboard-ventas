@@ -103,14 +103,36 @@ export const userRouter = router({
    * - cst_user: solo ve store_user
    * - commercial_specialist: solo ve supplier_user
    */
-  listUsers: canManageUsersProcedure.query(async ({ ctx }) => {
+  listUsers: canManageUsersProcedure
+    .input(z.object({
+      role: z.enum([
+        'system_specialist',
+        'operations_specialist',
+        'cst_user',
+        'commercial_specialist',
+        'store_user',
+        'supplier_user',
+        'own_brand_user',
+      ]).optional(),
+      assignedStoreCode: z.string().trim().min(1).max(64).optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
     try {
       const db = await getDb();
       if (!db) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Base de datos no disponible' });
       }
 
-      const allUsers = await db.select({
+      const currentRole = ctx.user.role as UserRole;
+      // Los roles de gestión con alcance limitado siempre prevalecen sobre el
+      // filtro recibido. Así, el filtro no puede ampliar los usuarios visibles.
+      const scopedRole = currentRole === 'operations_specialist' || currentRole === 'cst_user'
+        ? 'store_user'
+        : currentRole === 'commercial_specialist'
+          ? 'supplier_user'
+          : input?.role ?? (input?.assignedStoreCode ? 'store_user' : undefined);
+
+      const selection = {
         id: users.id,
         username: users.username,
         name: users.name,
@@ -122,18 +144,20 @@ export const userRouter = router({
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         lastSignedIn: users.lastSignedIn,
-      }).from(users);
+      };
 
-      const currentRole = ctx.user.role as UserRole;
-      let filteredUsers = allUsers;
-      if (currentRole === 'operations_specialist') {
-        // Especialista de Operaciones: solo ve usuarios de tienda
-        filteredUsers = allUsers.filter(u => u.role === 'store_user');
-      } else if (currentRole === 'cst_user') {
-        filteredUsers = allUsers.filter(u => u.role === 'store_user');
-      } else if (currentRole === 'commercial_specialist') {
-        filteredUsers = allUsers.filter(u => u.role === 'supplier_user');
-      }
+      const roleConstraint = scopedRole ? eq(users.role, scopedRole) : undefined;
+      const storeConstraint = input?.assignedStoreCode
+        ? eq(users.assignedStoreCode, input.assignedStoreCode)
+        : undefined;
+
+      const filteredUsers = roleConstraint && storeConstraint
+        ? await db.select(selection).from(users).where(and(roleConstraint, storeConstraint))
+        : roleConstraint
+          ? await db.select(selection).from(users).where(roleConstraint)
+          : storeConstraint
+            ? await db.select(selection).from(users).where(storeConstraint)
+            : await db.select(selection).from(users);
 
       // Enriquecer con nombre de proveedor para supplier_user.
       // Recopilamos los IDs únicos de proveedores asignados y hacemos una sola

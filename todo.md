@@ -2283,3 +2283,8 @@ Fecha: 1 de febrero de 2026
 - [x] Identificar las páginas con vistas de tarjetas por tienda
 - [x] Forzar la tabla como vista única para el rol store_user
 - [x] Cubrir permisos de vista y validar tipos, build e interfaz
+
+## Gestión de usuarios: filtros por rol y tienda
+- [x] Definir filtros combinables sin ampliar el alcance de permisos
+- [x] Incorporar selectores de tipo de usuario y tienda asignada
+- [x] Cubrir filtrado, estados vacíos y validación técnica

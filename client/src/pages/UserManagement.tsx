@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +52,7 @@ import {
   Package,
   Search,
   Send,
+  X,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
@@ -123,6 +124,8 @@ export default function UserManagement() {
   const [resetPasswordOnActivation, setResetPasswordOnActivation] = useState(false);
 
   const currentRole = currentUser?.role as UserRole | undefined;
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [storeFilter, setStoreFilter] = useState('all');
 
   const [formData, setFormData] = useState({
     username: '',
@@ -137,8 +140,13 @@ export default function UserManagement() {
     notifyUser: true,
   });
 
+  const userListInput = useMemo(() => ({
+    ...(roleFilter !== 'all' ? { role: roleFilter } : {}),
+    ...(storeFilter !== 'all' ? { assignedStoreCode: storeFilter } : {}),
+  }), [roleFilter, storeFilter]);
+
   // Queries
-  const { data: usersData, isLoading: usersLoading } = trpc.users.listUsers.useQuery();
+  const { data: usersData, isLoading: usersLoading } = trpc.users.listUsers.useQuery(userListInput);
   const { data: branchesData } = trpc.users.getBranches.useQuery();
   const { data: suppliersData, isLoading: suppliersLoading } = trpc.users.getSuppliers.useQuery(
     { search: supplierSearch },
@@ -466,6 +474,21 @@ export default function UserManagement() {
       ? 'Solo puedes gestionar Usuarios Tienda'
       : null;
 
+  const selectableRoles: UserRole[] = currentRole === 'system_specialist'
+    ? (Object.keys(ROLE_LABELS) as UserRole[])
+    : ['store_user'];
+  const filtersActive = roleFilter !== 'all' || storeFilter !== 'all';
+
+  const handleStoreFilterChange = (value: string) => {
+    setStoreFilter(value);
+    if (value !== 'all') setRoleFilter('store_user');
+  };
+
+  const clearUserFilters = () => {
+    setRoleFilter('all');
+    setStoreFilter('all');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <NavigationMenu />
@@ -646,6 +669,47 @@ export default function UserManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
+        <div className="flex flex-wrap items-end gap-4 border border-border bg-card p-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user-role-filter" className="text-xs text-muted-foreground">Tipo de usuario</Label>
+            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as UserRole | 'all')}>
+              <SelectTrigger id="user-role-filter" className="w-56">
+                <SelectValue placeholder="Todos los tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                {selectableRoles.map((role) => (
+                  <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user-store-filter" className="text-xs text-muted-foreground">Tienda asignada</Label>
+            <Select value={storeFilter} onValueChange={handleStoreFilterChange}>
+              <SelectTrigger id="user-store-filter" className="w-64">
+                <SelectValue placeholder="Todas las tiendas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las tiendas</SelectItem>
+                {branchesData?.branches.map((branch) => (
+                  <SelectItem key={branch.sap_id} value={branch.sap_id}>
+                    {branch.name} ({branch.sap_id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filtersActive && (
+            <Button type="button" variant="outline" size="sm" onClick={clearUserFilters}>
+              <X className="mr-1.5 h-4 w-4" />
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
+
         {/* Tabla de Usuarios */}
         <div className="bg-card rounded-lg shadow-sm border border-border">
           {usersLoading ? (
@@ -665,43 +729,43 @@ export default function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usersData?.users.map((user) => (
-                  <TableRow key={user.id} className="border-b border-border hover:bg-muted/40 transition-colors">
-                    <TableCell className="font-medium">{user.email || '-'}</TableCell>
-                    <TableCell>{user.name || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(user.role as UserRole)}
-                        <span>{ROLE_LABELS[user.role as UserRole] ?? user.role}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {user.role === 'store_user'
-                        ? getStoreName(user.assignedStoreCode)
-                        : user.role === 'supplier_user'
-                        ? getSupplierName(user)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>{formatDate(user.lastSignedIn)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(user as User)}
-                          className="hover:bg-muted"
-                        >
-                          <Pencil className="h-4 w-4 text-foreground" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openPasswordDialog(user as User)}
-                          className="hover:bg-muted"
-                        >
-                          <Key className="h-4 w-4 text-foreground" />
-                        </Button>
-                        {canResendActivation(user.role as UserRole) && user.email && (
+                {usersData?.users.length ? usersData.users.map((user) => (
+                    <TableRow key={user.id} className="border-b border-border hover:bg-muted/40 transition-colors">
+                      <TableCell className="font-medium">{user.email || '-'}</TableCell>
+                      <TableCell>{user.name || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(user.role as UserRole)}
+                          <span>{ROLE_LABELS[user.role as UserRole] ?? user.role}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {user.role === 'store_user'
+                          ? getStoreName(user.assignedStoreCode)
+                          : user.role === 'supplier_user'
+                          ? getSupplierName(user)
+                          : '-'}
+                      </TableCell>
+                      <TableCell>{formatDate(user.lastSignedIn)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(user as User)}
+                            className="hover:bg-muted"
+                          >
+                            <Pencil className="h-4 w-4 text-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openPasswordDialog(user as User)}
+                            className="hover:bg-muted"
+                          >
+                            <Key className="h-4 w-4 text-foreground" />
+                          </Button>
+                          {canResendActivation(user.role as UserRole) && user.email && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -719,20 +783,26 @@ export default function UserManagement() {
                               <Send className="h-4 w-4 text-[#1A6894]" />
                             )}
                           </Button>
-                        )}
-                        <Button
+                          )}
+                          <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteUserId(user.id)}
                           disabled={user.id === currentUser.id}
                           className="hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4 text-[#BC2C46]" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          >
+                            <Trash2 className="h-4 w-4 text-[#BC2C46]" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
+                        No encontramos usuarios con los filtros seleccionados.
+                      </TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
             </Table>
           )}

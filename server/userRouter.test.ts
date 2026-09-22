@@ -131,6 +131,33 @@ describe('User Management Router', () => {
       expect(result.success).toBe(true);
     });
 
+    it('system_specialist puede combinar filtros de rol y tienda', async () => {
+      const caller = appRouter.createCaller(specialistContext);
+      const result = await caller.users.listUsers({
+        role: 'store_user',
+        assignedStoreCode: 'T001',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.users.length).toBeGreaterThan(0);
+      expect(result.users.every((user) => (
+        user.role === 'store_user' && user.assignedStoreCode === 'T001'
+      ))).toBe(true);
+      expect(result.users).toContainEqual(expect.objectContaining({
+        username: 'test_store',
+        role: 'store_user',
+        assignedStoreCode: 'T001',
+      }));
+    });
+
+    it('cst_user conserva el alcance store_user aunque solicite otro rol', async () => {
+      const caller = appRouter.createCaller(cstContext);
+      const result = await caller.users.listUsers({ role: 'system_specialist' });
+
+      expect(result.success).toBe(true);
+      expect(result.users.every((user) => user.role === 'store_user')).toBe(true);
+    });
+
     it('store_user no puede listar usuarios (FORBIDDEN)', async () => {
       const caller = appRouter.createCaller(storeContext);
       await expect(caller.users.listUsers()).rejects.toMatchObject({ code: 'FORBIDDEN' });
