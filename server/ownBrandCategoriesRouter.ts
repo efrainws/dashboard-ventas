@@ -9,7 +9,7 @@
  * no a nivel de producto individual. Todos los productos de una marca
  * quedan automáticamente en la categoría asignada a esa marca.
  *
- * Roles con acceso de lectura: own_brand_user, system_specialist, admin, commercial_specialist
+ * Roles con acceso de lectura: own_brand_user, system_specialist, admin, commercial_specialist, management_user
  * Roles con acceso de escritura: admin, own_brand_user, system_specialist
  */
 
@@ -22,7 +22,7 @@ import { eq, and } from "drizzle-orm";
 import { invalidateOwnBrandIdsCache } from "./ownBrandRouter";
 
 // Roles que pueden acceder al Portal Marca Propia
-const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
+const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"];
 
 // Roles que pueden gestionar categorías y asignaciones
 const CATEGORY_ADMIN_ROLES = ["admin", "own_brand_user", "system_specialist"];

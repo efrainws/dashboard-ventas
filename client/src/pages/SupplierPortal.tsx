@@ -84,6 +84,7 @@ import { useIgv } from "@/contexts/IgvContext";
 import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 import { SALES_CHANNELS, SalesChannelFilter, type SalesChannel } from "@/components/SalesChannelFilter";
+import { hasCommercialOrSystemScope } from "@shared/roleAccess";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -232,8 +233,8 @@ export default function SupplierPortal() {
   } | null>(null);
   const PAGE_SIZE = 20;
 
-  // Para system_specialist y commercial_specialist: proveedor seleccionado manualmente
-  const isSystemSpecialist = user?.role === 'system_specialist' || user?.role === 'commercial_specialist';
+  // Los roles de alcance comercial seleccionan el proveedor manualmente.
+  const isSystemSpecialist = hasCommercialOrSystemScope(user?.role);
   const isSupplierUser = user?.role === 'supplier_user';
   const canAccessPortal = isSupplierUser || isSystemSpecialist;
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>(undefined);

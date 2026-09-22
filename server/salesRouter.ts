@@ -2673,7 +2673,7 @@ export const salesRouter = router({
       shelfId:     z.string().uuid(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const allowedRoles = ['cst_user', 'commercial_specialist', 'system_specialist'];
+      const allowedRoles = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'];
       if (!allowedRoles.includes(ctx.user.role)) {
         throw new Error('No tienes permisos para reasignar productos a góndolas.');
       }
@@ -2765,7 +2765,7 @@ export const salesRouter = router({
   /**
    * Carga masiva de asociaciones producto-góndola-tienda desde un Excel
    * Acepta shelf_name (nombre de la góndola) en lugar de shelf_id (UUID)
-   * Solo accesible para cst_user, commercial_specialist y system_specialist
+   * Solo accesible para cst_user, roles de alcance comercial y system_specialist
    */
   bulkAssignProductShelf: protectedProcedure
     .input(z.object({
@@ -2773,7 +2773,7 @@ export const salesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Verificar rol del usuario
-      const allowedRoles = ['cst_user', 'commercial_specialist', 'system_specialist'];
+      const allowedRoles = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'];
       if (!allowedRoles.includes(ctx.user.role)) {
         throw new Error('No tienes permisos para realizar esta operación');
       }

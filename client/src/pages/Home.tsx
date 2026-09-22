@@ -25,6 +25,7 @@ const roleLabels: Record<string, string> = {
   operations_specialist: "Especialista de Operaciones",
   cst_user: "Usuario CST",
   commercial_specialist: "Especialista Comercial",
+  management_user: "Gerencia",
   store_user: "Usuario Tienda",
   supplier_user: "Usuario Proveedor",
   own_brand_user: "Usuario Marca Propia",

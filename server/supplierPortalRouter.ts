@@ -21,10 +21,11 @@ import { pool } from "./postgres";
 import { TRPCError } from "@trpc/server";
 import { cached, invalidateByPrefix, TTL } from "./queryCache";
 import { SALES_CHANNELS, salesChannelCase } from "./salesChannels";
+import { hasCommercialOrSystemScope } from "@shared/roleAccess";
 
 // Roles que pueden acceder al portal de proveedores
-const ALLOWED_ROLES = ["supplier_user", "system_specialist", "commercial_specialist"];
-const ADMIN_ROLES = ["system_specialist", "commercial_specialist"];
+const ALLOWED_ROLES = ["supplier_user", "system_specialist", "commercial_specialist", "management_user"];
+const ADMIN_ROLES = ["system_specialist", "commercial_specialist", "management_user"];
 
 // Helper: obtener supplier_id del usuario autenticado o del parámetro de override (para system_specialist / commercial_specialist)
 function getSupplierIdFromCtx(
@@ -34,7 +35,7 @@ function getSupplierIdFromCtx(
   if (!ALLOWED_ROLES.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Acceso solo para proveedores." });
   }
-  // system_specialist y commercial_specialist pueden pasar un supplierId explícito
+  // Los roles de alcance comercial pueden pasar un supplierId explícito.
   if (ADMIN_ROLES.includes(ctx.user.role)) {
     if (!overrideSupplierId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Selecciona un proveedor para continuar." });
@@ -69,7 +70,7 @@ export const supplierPortalRouter = router({
    * Permite seleccionar un proveedor para ver su portal
    */
   listAllSuppliers: protectedProcedure.query(async ({ ctx }) => {
-    if (!ADMIN_ROLES.includes((ctx.user as any).role)) {
+    if (!hasCommercialOrSystemScope((ctx.user as any).role)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Solo para especialistas de sistemas o comerciales." });
     }
     // Caché global de lista de proveedores (5 min)

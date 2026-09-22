@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { StoreMultiSelect } from "@/components/StoreMultiSelect";
 
-type UserRole = 'system_specialist' | 'cst_user' | 'store_user';
+type UserRole = 'system_specialist' | 'operations_specialist' | 'cst_user' | 'commercial_specialist' | 'management_user' | 'store_user' | 'supplier_user' | 'own_brand_user';
 type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
 
 const CHANNEL_OPTIONS: { value: SalesChannel; label: string; icon: React.ReactNode; toneClass: string }[] = [

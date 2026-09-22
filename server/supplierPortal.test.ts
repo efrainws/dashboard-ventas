@@ -92,6 +92,14 @@ describe("SupplierPortal — Control de acceso por rol", () => {
       code: "BAD_REQUEST",
     });
   });
+
+  it("management_user sin proveedor seleccionado recibe BAD_REQUEST (debe seleccionar proveedor)", async () => {
+    const user = makeUser({ role: "management_user", assignedSupplierId: null });
+    const caller = appRouter.createCaller(makeCtx(user));
+    await expect(caller.supplierPortal.getMySupplier()).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
 });
 
 describe("SupplierPortal — Validación de proveedor asignado", () => {

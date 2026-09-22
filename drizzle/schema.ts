@@ -6,6 +6,7 @@ import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar 
  * - operations_specialist: Especialista de Operaciones. Mismas potestades que system_specialist pero SOLO para gestionar usuarios de tienda (store_user).
  * - cst_user: Usuario CST. Sin restricciones de datos. Solo puede crear usuarios tipo store_user.
  * - commercial_specialist: Especialista Comercial. Igual que cst_user pero solo puede crear supplier_user.
+ * - management_user: Gerencia. Mismo alcance y restricciones que Especialista Comercial.
  * - store_user: Usuario Tienda. Solo ve datos de su tienda asignada (assigned_store_code). No puede crear usuarios.
  * - supplier_user: Usuario Proveedor. Solo accede al módulo de proveedores. Requiere assigned_supplier_id.
  * - own_brand_user: Usuario Marca Propia. Accede al Portal Marca Propia. Mismos accesos que commercial_specialist.
@@ -25,7 +26,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }).unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["system_specialist", "operations_specialist", "cst_user", "commercial_specialist", "store_user", "supplier_user", "own_brand_user"]).default("cst_user").notNull(),
+  role: mysqlEnum("role", ["system_specialist", "operations_specialist", "cst_user", "commercial_specialist", "management_user", "store_user", "supplier_user", "own_brand_user"]).default("cst_user").notNull(),
   /**
    * SAP ID de la tienda asignada al usuario.
    * Obligatorio para store_user. Vacío para los demás roles.

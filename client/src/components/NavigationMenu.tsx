@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
+import { hasCommercialScope } from "@shared/roleAccess";
 
 export function NavigationMenu() {
   const [location] = useLocation();
@@ -225,8 +226,8 @@ export function NavigationMenu() {
             )}
           </Link>
 
-          {/* Portales Adicionales — system_specialist, commercial_specialist, admin, own_brand_user */}
-          {(["system_specialist", "commercial_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+          {/* Portales Adicionales — especialistas, Gerencia, admin y Marca Propia */}
+          {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -246,8 +247,8 @@ export function NavigationMenu() {
                 <DropdownMenuLabel>Portales Adicionales</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  {/* Ventas por Proveedor — system_specialist, commercial_specialist, admin */}
-                  {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                  {/* Ventas por Proveedor — especialistas, Gerencia y admin */}
+                  {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                     <DropdownMenuItem asChild>
                       <Link href="/supplier" className="flex items-center w-full cursor-pointer">
                         <Truck className="mr-2 h-4 w-4" />
@@ -255,8 +256,8 @@ export function NavigationMenu() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {/* Administración de Proveedores — system_specialist, commercial_specialist, admin */}
-                  {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                  {/* Administración de Proveedores — especialistas, Gerencia y admin */}
+                  {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                     <DropdownMenuItem asChild>
                       <Link href="/monitoreo-proveedores" className="flex items-center w-full cursor-pointer">
                         <Activity className="mr-2 h-4 w-4" />
@@ -265,8 +266,8 @@ export function NavigationMenu() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  {/* Portal Marca Propia — system_specialist, admin, own_brand_user, commercial_specialist */}
-                  {(["system_specialist", "admin", "own_brand_user", "commercial_specialist"].includes(user?.role as string)) && (
+                  {/* Portal Marca Propia — especialistas, Gerencia, admin y Marca Propia */}
+                  {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                     <DropdownMenuItem asChild>
                       <Link href="/marca-propia" className="flex items-center w-full cursor-pointer">
                         <Tag className="mr-2 h-4 w-4" />
@@ -297,6 +298,7 @@ export function NavigationMenu() {
                       : user?.role === 'operations_specialist' ? 'Especialista de Operaciones'
                       : user?.role === 'cst_user' ? 'Usuario CST'
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
+                      : user?.role === 'management_user' ? 'Gerencia'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
                       : user?.role === 'supplier_user' ? 'Usuario Proveedor'
                       : user?.role === 'own_brand_user' ? 'Usuario Marca Propia'
@@ -561,8 +563,8 @@ export function NavigationMenu() {
               </Link>
             )}
 
-            {/* Portales Adicionales — system_specialist, commercial_specialist, admin, own_brand_user */}
-            {(["system_specialist", "commercial_specialist", "admin", "own_brand_user"].includes(user?.role as string)) && (
+            {/* Portales Adicionales — especialistas, Gerencia, admin y Marca Propia */}
+            {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
               <>
                 <div className="px-3 pt-2 pb-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -571,7 +573,7 @@ export function NavigationMenu() {
                   </p>
                 </div>
                 {/* Ventas por Proveedor */}
-                {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                   <Link
                     href="/supplier"
                     onClick={closeMobile}
@@ -586,7 +588,7 @@ export function NavigationMenu() {
                   </Link>
                 )}
                 {/* Administración de Proveedores */}
-                {(["system_specialist", "commercial_specialist", "admin"].includes(user?.role as string)) && (
+                {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                   <Link
                     href="/monitoreo-proveedores"
                     onClick={closeMobile}
@@ -601,7 +603,7 @@ export function NavigationMenu() {
                   </Link>
                 )}
                 {/* Portal Marca Propia */}
-                {(["system_specialist", "admin", "own_brand_user", "commercial_specialist"].includes(user?.role as string)) && (
+                {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                   <Link
                     href="/marca-propia"
                     onClick={closeMobile}
@@ -662,6 +664,7 @@ export function NavigationMenu() {
                       : user?.role === 'operations_specialist' ? 'Especialista de Operaciones'
                       : user?.role === 'cst_user' ? 'Usuario CST'
                       : user?.role === 'commercial_specialist' ? 'Especialista Comercial'
+                      : user?.role === 'management_user' ? 'Gerencia'
                       : user?.role === 'store_user' ? 'Usuario Tienda'
                       : user?.role === 'supplier_user' ? 'Usuario Proveedor'
                       : user?.role === 'own_brand_user' ? 'Usuario Marca Propia'

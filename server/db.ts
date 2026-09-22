@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   DiscrepancyTicket, discrepancyTickets, InsertDiscrepancyTicket,
@@ -584,7 +584,7 @@ export async function getAffiliationReport(): Promise<Array<{
   });
 }
 
-/** Obtiene usuarios especialistas (commercial_specialist y systems_specialist) con email */
+/** Obtiene usuarios especialistas de sistemas y alcance comercial con email. */
 export async function getSpecialistEmails(): Promise<Array<{ name: string | null; email: string }>> {
   const db = await getDb();
   if (!db) return [];
@@ -592,12 +592,10 @@ export async function getSpecialistEmails(): Promise<Array<{ name: string | null
   const specialists = await db
     .select({ name: users.name, email: users.email })
     .from(users)
-    .where(
-      and(
-        // commercial_specialist or system_specialist
-        eq(users.role, "commercial_specialist")
-      )
-    );
+    .where(or(
+      eq(users.role, "commercial_specialist"),
+      eq(users.role, "management_user"),
+    ));
 
   const systemSpecialists = await db
     .select({ name: users.name, email: users.email })

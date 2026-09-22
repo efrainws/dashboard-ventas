@@ -1,7 +1,7 @@
 /**
  * AffiliationReport.tsx
  * Reporte de afiliación de proveedores con exportación CSV.
- * Solo accesible para system_specialist y commercial_specialist.
+ * Accesible para system_specialist y roles de alcance comercial.
  */
 import { useRef } from "react";
 import { trpc } from "@/lib/trpc";
@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { NavigationMenu } from "@/components/NavigationMenu";
+import { hasCommercialOrSystemScope } from "@shared/roleAccess";
 
 type SupplierStatus = "trial_active" | "trial_expired" | "subscribed_active" | "access_requested" | "suspended";
 
@@ -88,7 +89,7 @@ export default function AffiliationReport() {
 
   const { data: report, isLoading } = trpc.supplierTrial.getAffiliationReport.useQuery();
 
-  if (!user || (user.role !== "system_specialist" && user.role !== "commercial_specialist")) {
+  if (!user || !hasCommercialOrSystemScope(user.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>

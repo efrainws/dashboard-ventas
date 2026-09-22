@@ -2288,3 +2288,8 @@ Fecha: 1 de febrero de 2026
 - [x] Definir filtros combinables sin ampliar el alcance de permisos
 - [x] Incorporar selectores de tipo de usuario y tienda asignada
 - [x] Cubrir filtrado, estados vacíos y validación técnica
+
+## Rol Gerencia con alcance comercial
+- [x] Incorporar Gerencia al esquema, contratos y migración de usuarios
+- [x] Replicar los permisos de Especialista Comercial en rutas, routers y navegación
+- [x] Cubrir equivalencia de permisos y validar migración, tipado y build

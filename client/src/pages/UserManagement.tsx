@@ -58,15 +58,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast as showToast } from 'sonner';
 import { NavigationMenu } from '@/components/NavigationMenu';
 import { AlertBanner } from '@/components/AlertBanner';
+import { hasCommercialScope } from '@shared/roleAccess';
 
 // ─── Tipos de rol ─────────────────────────────────────────────────────────────
-type UserRole = 'system_specialist' | 'operations_specialist' | 'cst_user' | 'commercial_specialist' | 'store_user' | 'supplier_user' | 'own_brand_user';
+type UserRole = 'system_specialist' | 'operations_specialist' | 'cst_user' | 'commercial_specialist' | 'management_user' | 'store_user' | 'supplier_user' | 'own_brand_user';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   system_specialist: 'Especialista de Sistemas',
   operations_specialist: 'Especialista de Operaciones',
   cst_user: 'Usuario CST',
   commercial_specialist: 'Especialista Comercial',
+  management_user: 'Gerencia',
   store_user: 'Usuario Tienda',
   supplier_user: 'Usuario Proveedor',
   own_brand_user: 'Usuario Marca Propia',
@@ -76,13 +78,14 @@ const ROLE_LABELS: Record<UserRole, string> = {
  * Roles que cada tipo de usuario puede crear:
  * - system_specialist → todos excepto supplier_user (se crea desde Administración de Proveedores)
  * - cst_user → solo store_user
- * - commercial_specialist → ninguno (usa Administración de Proveedores)
+ * - commercial_specialist / management_user → ninguno (usan Administración de Proveedores)
  */
 const CREATABLE_ROLES: Record<UserRole, UserRole[]> = {
-  system_specialist: ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'own_brand_user'],
+  system_specialist: ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'management_user', 'store_user', 'own_brand_user'],
   operations_specialist: ['store_user'],
   cst_user: ['store_user'],
   commercial_specialist: [],
+  management_user: [],
   store_user: [],
   supplier_user: [],
   own_brand_user: [],
@@ -285,7 +288,7 @@ export default function UserManagement() {
     if (currentRole === 'system_specialist') return true;
     if (currentRole === 'operations_specialist') return targetRole === 'store_user';
     if (currentRole === 'cst_user') return targetRole === 'store_user';
-    if (currentRole === 'commercial_specialist') return targetRole === 'supplier_user';
+    if (hasCommercialScope(currentRole)) return targetRole === 'supplier_user';
     return false;
   };
 
@@ -298,7 +301,7 @@ export default function UserManagement() {
     );
   }
 
-  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user' || currentRole === 'commercial_specialist' || currentRole === 'own_brand_user') {
+  if (!currentUser || currentRole === 'store_user' || currentRole === 'supplier_user' || hasCommercialScope(currentRole) || currentRole === 'own_brand_user') {
     setLocation('/');
     return null;
   }
@@ -310,7 +313,7 @@ export default function UserManagement() {
     return 'store_user';
   };
 
-  // commercial_specialist no puede crear usuarios desde esta página
+  // Los roles de alcance comercial no pueden crear usuarios desde esta página.
   const canCreateUsers = availableRoles.length > 0;
 
   const openCreateDialog = () => {
@@ -457,7 +460,7 @@ export default function UserManagement() {
   const getRoleIcon = (role: UserRole) => {
     if (role === 'system_specialist') return <Shield className="h-4 w-4 text-foreground" />;
     if (role === 'cst_user') return <UserIcon className="h-4 w-4 text-muted-foreground" />;
-    if (role === 'commercial_specialist') return <Briefcase className="h-4 w-4 text-muted-foreground" />;
+    if (hasCommercialScope(role)) return <Briefcase className="h-4 w-4 text-muted-foreground" />;
     if (role === 'supplier_user') return <Package className="h-4 w-4 text-muted-foreground" />;
     return <Store className="h-4 w-4 text-muted-foreground" />;
   };

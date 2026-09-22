@@ -31,14 +31,14 @@ vi.mock("./supplierPortalRouter", () => ({
 // ─── Tests de guard assertAccess ─────────────────────────────────────────────
 
 describe("ownBrandRouter — assertAccess", () => {
-  const ALLOWED = ["own_brand_user", "system_specialist", "admin"];
-  const DENIED = ["supplier_user", "store_user", "commercial_specialist", "cst_user"];
+  const ALLOWED = ["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"];
+  const DENIED = ["supplier_user", "store_user", "cst_user"];
 
   it.each(ALLOWED)("permite el acceso al rol '%s'", (role) => {
     // La función assertAccess lanza si el rol no está permitido.
     // Importamos la lógica directamente para testearla sin instanciar tRPC.
     const assertAccess = (r: string) => {
-      if (!["own_brand_user", "system_specialist", "admin"].includes(r)) {
+      if (!["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"].includes(r)) {
         throw new Error("FORBIDDEN");
       }
     };
@@ -47,7 +47,7 @@ describe("ownBrandRouter — assertAccess", () => {
 
   it.each(DENIED)("bloquea el acceso al rol '%s'", (role) => {
     const assertAccess = (r: string) => {
-      if (!["own_brand_user", "system_specialist", "admin"].includes(r)) {
+      if (!["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"].includes(r)) {
         throw new Error("FORBIDDEN");
       }
     };

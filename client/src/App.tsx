@@ -33,6 +33,7 @@ import CreditNotes from "./pages/CreditNotes";
 import TopCustomers from "./pages/TopCustomers";
 import SalesByShelf from "./pages/SalesByShelf";
 import SalesByCategoryAnalysis from "./pages/SalesByCategoryAnalysis";
+import { hasCommercialScope } from "@shared/roleAccess";
 
 type RouteGuard = "no_supplier" | "no_own_brand" | "managers_only" | "system_specialist_only" | "system_specialist_strict" | "own_brand_only";
 
@@ -40,7 +41,7 @@ type RouteGuard = "no_supplier" | "no_own_brand" | "managers_only" | "system_spe
  * Ruta protegida con autenticación y control de acceso por perfil.
  *
  * guard="no_supplier" → bloquea a supplier_user (páginas generales del sistema)
- * guard="managers_only" → solo system_specialist, cst_user, commercial_specialist
+ * guard="managers_only" → system_specialist, cst_user y roles de alcance comercial
  */
 function ProtectedRoute({
   component: Component,
@@ -86,7 +87,7 @@ function ProtectedRoute({
     guard === "managers_only" &&
     user.role !== "system_specialist" &&
     user.role !== "cst_user" &&
-    user.role !== "commercial_specialist"
+    !hasCommercialScope(user.role)
   ) {
     return <AccessDenied />;
   }
@@ -105,8 +106,8 @@ function ProtectedRoute({
     return <AccessDenied />;
   }
 
-  // Guard: own_brand_user, system_specialist, admin y commercial_specialist
-  const OWN_BRAND_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
+  // Guard: own_brand_user, system_specialist, admin y roles de alcance comercial
+  const OWN_BRAND_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"];
   if (guard === "own_brand_only" && !OWN_BRAND_ROLES.includes(user.role)) {
     return <AccessDenied />;
   }

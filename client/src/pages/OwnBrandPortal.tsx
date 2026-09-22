@@ -651,7 +651,7 @@ export default function OwnBrandPortal() {
   } | null>(null);
   const PAGE_SIZE = 20;
 
-  const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
+  const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"];
   const canAccessPortal = !!user && ALLOWED_ROLES.includes(user.role as string);
   // Admin, own_brand_user y system_specialist pueden gestionar marcas y categorías internas
   const canManageBrands = ["admin", "own_brand_user", "system_specialist"].includes(user?.role as string);

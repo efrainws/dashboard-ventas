@@ -22,7 +22,8 @@ import { eq, and, ne } from "drizzle-orm";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
 import { sendActivationEmail } from "./email";
-import { hashPassword, verifyPassword } from "./passwordHash";
+import { hashPassword, verifyPassword } from './passwordHash';
+import { hasCommercialOrSystemScope } from '@shared/roleAccess';
 import { resolvePublishedDashboardUrl } from "./domainChangeAnnouncement";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,13 +370,13 @@ export const activationRouter = router({
   /**
    * Resends the activation email to a supplier_user in pending_activation status.
    * Creates a fresh 48-hour token and revokes existing unused tokens only after delivery succeeds.
-   * Only accessible by system_specialist or commercial_specialist.
+   * Only accessible by a system specialist or a commercial-scope role.
    */
   resendActivation: protectedProcedure
     .input(z.object({ userId: z.number().int().positive(), resetPassword: z.boolean().default(false) }))
     .mutation(async ({ input, ctx }) => {
       const callerRole = ctx.user.role;
-      if (callerRole !== "system_specialist" && callerRole !== "commercial_specialist") {
+      if (!hasCommercialOrSystemScope(callerRole)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Solo los especialistas pueden reenviar correos de activación",

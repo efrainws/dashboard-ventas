@@ -17,6 +17,7 @@ import {
   DOMAIN_CHANGE_NOTICE_SUBJECT,
   resolvePublishedDashboardUrl,
 } from './domainChangeAnnouncement';
+import { hasCommercialScope } from '@shared/roleAccess';
 
 // --- Tipos de rol ---
 export type UserRole =
@@ -24,6 +25,7 @@ export type UserRole =
   | 'operations_specialist'
   | 'cst_user'
   | 'commercial_specialist'
+  | 'management_user'
   | 'store_user'
   | 'supplier_user'
   | 'own_brand_user';
@@ -36,6 +38,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   operations_specialist: 'Especialista de Operaciones',
   cst_user: 'Usuario CST',
   commercial_specialist: 'Especialista Comercial',
+  management_user: 'Gerencia',
   store_user: 'Usuario Tienda',
   supplier_user: 'Usuario Proveedor',
   own_brand_user: 'Usuario Marca Propia',
@@ -44,7 +47,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 /**
  * Roles que pueden gestionar usuarios (acceder a /admin/users)
  */
-const MANAGER_ROLES: UserRole[] = ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist'];
+const MANAGER_ROLES: UserRole[] = ['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'management_user'];
 
 // ─── Procedimientos con restricción de rol ────────────────────────────────────
 
@@ -110,6 +113,7 @@ export const userRouter = router({
         'operations_specialist',
         'cst_user',
         'commercial_specialist',
+        'management_user',
         'store_user',
         'supplier_user',
         'own_brand_user',
@@ -128,7 +132,7 @@ export const userRouter = router({
       // filtro recibido. Así, el filtro no puede ampliar los usuarios visibles.
       const scopedRole = currentRole === 'operations_specialist' || currentRole === 'cst_user'
         ? 'store_user'
-        : currentRole === 'commercial_specialist'
+        : hasCommercialScope(currentRole)
           ? 'supplier_user'
           : input?.role ?? (input?.assignedStoreCode ? 'store_user' : undefined);
 
@@ -484,7 +488,7 @@ export const userRouter = router({
         name: z.string().min(1, 'El nombre es requerido'),
         email: z.string().email('Email inválido'),
         username: z.string().optional(), // Mantenido por compatibilidad, ya no requerido
-        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
+        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'management_user', 'store_user', 'supplier_user', 'own_brand_user']).default('store_user'),
         assignedStoreCode: z.string().optional(),
         assignedSupplierId: z.string().optional(),
         sendWelcomeEmail: z.boolean().default(true),
@@ -508,7 +512,7 @@ export const userRouter = router({
             message: 'Solo puedes crear usuarios de tipo Usuario Tienda',
           });
         }
-        if (currentRole === 'commercial_specialist' && input.role !== 'supplier_user') {
+        if (hasCommercialScope(currentRole) && input.role !== 'supplier_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes crear usuarios de tipo Usuario Proveedor',
@@ -623,7 +627,7 @@ export const userRouter = router({
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
         username: z.string().optional(), // Mantenido por compatibilidad
-        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
+        role: z.enum(['system_specialist', 'operations_specialist', 'cst_user', 'commercial_specialist', 'management_user', 'store_user', 'supplier_user', 'own_brand_user']).optional(),
         assignedStoreCode: z.string().nullable().optional(),
         assignedSupplierId: z.string().nullable().optional(),
       })
@@ -656,7 +660,7 @@ export const userRouter = router({
             message: 'Solo puedes editar usuarios de tipo Usuario Tienda',
           });
         }
-        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
+        if (hasCommercialScope(currentRole) && existingUser[0].role !== 'supplier_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes editar usuarios de tipo Usuario Proveedor',
@@ -747,7 +751,7 @@ export const userRouter = router({
             message: 'Solo puedes cambiar la contraseña de usuarios de tipo Usuario Tienda',
           });
         }
-        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
+        if (hasCommercialScope(currentRole) && existingUser[0].role !== 'supplier_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes cambiar la contraseña de usuarios de tipo Usuario Proveedor',
@@ -831,7 +835,7 @@ export const userRouter = router({
             message: 'Solo puedes reenviar activación a usuarios de tipo Usuario Tienda',
           });
         }
-        if (currentRole === 'commercial_specialist' && targetUser.role !== 'supplier_user') {
+        if (hasCommercialScope(currentRole) && targetUser.role !== 'supplier_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes reenviar activación a usuarios de tipo Usuario Proveedor',
@@ -920,7 +924,7 @@ export const userRouter = router({
             message: 'Solo puedes eliminar usuarios de tipo Usuario Tienda',
           });
         }
-        if (currentRole === 'commercial_specialist' && existingUser[0].role !== 'supplier_user') {
+        if (hasCommercialScope(currentRole) && existingUser[0].role !== 'supplier_user') {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Solo puedes eliminar usuarios de tipo Usuario Proveedor',

@@ -26,7 +26,7 @@ import { cached, invalidateByPrefix, TTL } from "./queryCache";
 import { SALES_CHANNELS, salesChannelCase } from "./salesChannels";
 
 // Roles que pueden acceder al Portal Marca Propia
-const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist"];
+const ALLOWED_ROLES = ["own_brand_user", "system_specialist", "admin", "commercial_specialist", "management_user"];
 
 function assertAccess(role: string) {
   if (!ALLOWED_ROLES.includes(role)) {

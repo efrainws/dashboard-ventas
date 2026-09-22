@@ -169,6 +169,13 @@
       "when": 1788471648602,
       "tag": "0023_cultured_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1790098736835,
+      "tag": "0024_special_black_crow",
+      "breakpoints": true
     }
   ]
 }

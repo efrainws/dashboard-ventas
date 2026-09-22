@@ -1,7 +1,7 @@
 /**
  * SupplierMonitor.tsx
  * Página de administración de usuarios proveedor.
- * Accesible solo para system_specialist y commercial_specialist.
+ * Accesible para system_specialist y roles de alcance comercial.
  */
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
@@ -68,6 +68,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
+import { hasCommercialOrSystemScope } from "@shared/roleAccess";
 import { useLocation } from "wouter";
 import { AlertBanner } from "@/components/AlertBanner";
 
@@ -880,7 +881,7 @@ export default function SupplierMonitor() {
   });
 
   // Guard de rol
-  if (!user || (user.role !== "system_specialist" && user.role !== "commercial_specialist")) {
+  if (!user || !hasCommercialOrSystemScope(user.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>

@@ -69,6 +69,11 @@ describe("RLS — Roles de usuario", () => {
     expect(user.role).toBe("commercial_specialist");
   });
 
+  it("management_user es un rol válido en el schema", () => {
+    const user = makeUser({ role: "management_user" });
+    expect(user.role).toBe("management_user");
+  });
+
   it("store_user es un rol válido en el schema", () => {
     const user = makeUser({ role: "store_user", assignedStoreCode: "T001" });
     expect(user.role).toBe("store_user");
@@ -127,6 +132,7 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nuevo_admin",
         password: "pass123",
         name: "Nuevo Admin",
+        email: "nuevo.admin@example.com",
         role: "system_specialist",
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -140,6 +146,7 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nuevo_commercial",
         password: "pass123",
         name: "Nuevo Comercial",
+        email: "nuevo.commercial@example.com",
         role: "commercial_specialist",
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -153,6 +160,7 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nuevo_supplier",
         password: "pass123",
         name: "Nuevo Proveedor",
+        email: "nuevo.supplier@example.com",
         role: "supplier_user",
         assignedSupplierId: "SUP-001",
       })
@@ -168,6 +176,7 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nueva_tienda",
         password: "pass123",
         name: "Nueva Tienda",
+        email: "nueva.tienda@example.com",
         role: "store_user",
         assignedStoreCode: "T001",
       })
@@ -182,6 +191,7 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nuevo_cst",
         password: "pass123",
         name: "Nuevo CST",
+        email: "nuevo.cst@example.com",
         role: "cst_user",
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -195,7 +205,23 @@ describe("RLS — Restricciones de creación de usuarios", () => {
         username: "nuevo_sys",
         password: "pass123",
         name: "Nuevo Sys",
+        email: "nuevo.sys@example.com",
         role: "system_specialist",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("management_user conserva la restricción comercial al crear usuarios (FORBIDDEN)", async () => {
+    const managementUser = makeUser({ id: 33, role: "management_user" });
+    const caller = appRouter.createCaller(makeCtx(managementUser));
+    await expect(
+      caller.users.createUser({
+        username: "nueva_tienda_gerencia",
+        password: "pass123",
+        name: "Nueva Tienda",
+        email: "nueva.tienda.gerencia@example.com",
+        role: "store_user",
+        assignedStoreCode: "T001",
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });

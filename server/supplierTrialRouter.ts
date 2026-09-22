@@ -27,11 +27,12 @@ import {
 import { getUserById } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendTrialExpiryWarning, sendTermsAcceptedEmail, sendAccessRequestedEmail, sendAccessApprovedEmail, sendAccessApprovedEmail as sendSubscriptionActivatedEmail } from "./email";
+import { hasCommercialOrSystemScope } from "@shared/roleAccess";
 
 // ─── Guard: solo especialistas ────────────────────────────────────────────────
 const specialistProcedure = protectedProcedure.use(({ ctx, next }) => {
   const role = ctx.user.role;
-  if (role !== "system_specialist" && role !== "commercial_specialist") {
+  if (!hasCommercialOrSystemScope(role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Solo especialistas pueden acceder a esta función" });
   }
   return next({ ctx });

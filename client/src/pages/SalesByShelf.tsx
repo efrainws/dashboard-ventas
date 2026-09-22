@@ -1216,7 +1216,7 @@ export default function SalesByShelf() {
 
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
-  const canBulkAssign = ['cst_user', 'commercial_specialist', 'system_specialist'].includes(userRole ?? '');
+  const canBulkAssign = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'].includes(userRole ?? '');
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");

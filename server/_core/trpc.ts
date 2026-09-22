@@ -13,6 +13,7 @@ const SALES_DASHBOARD_ROLES = new Set([
   'operations_specialist',
   'cst_user',
   'commercial_specialist',
+  'management_user',
   'store_user',
   'own_brand_user',
   'admin',
