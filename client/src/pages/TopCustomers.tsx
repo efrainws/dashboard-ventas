@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { CustomerDetailAnalytics } from "@/components/CustomerDetailAnalytics";
 import {
   Popover,
   PopoverContent,
@@ -304,21 +305,39 @@ function CustomerTransactionsModal({
   includeIgv,
   branchSapId,
   salesChannel,
-  onClose,
 }: {
   customer: SelectedCustomer;
   fechaMin: string;
   fechaMax: string;
   includeIgv: boolean;
   branchSapId?: string;
-  salesChannel?: string;
-  onClose: () => void;
+  salesChannel?: Channel;
 }) {
   const [selectedTxn, setSelectedTxn] = useState<SelectedTransaction | null>(null);
+  const [storeMetric, setStoreMetric] = useState<"salesAmount" | "transactions">("salesAmount");
+  const [departmentMetric, setDepartmentMetric] = useState<"salesAmount" | "transactions">("salesAmount");
+  const [productLimit, setProductLimit] = useState<10 | 20 | 50 | 100>(10);
   // Ancho del modal: forzado con style inline para sobreescribir sm:max-w-lg del DialogContent base
   const dialogStyle = selectedTxn
     ? { width: "min(96vw, 1300px)", maxWidth: "min(96vw, 1300px)" }
-    : { width: "min(95vw, 896px)",  maxWidth: "min(95vw, 896px)" };
+    : { width: "min(95vw, 1240px)",  maxWidth: "min(95vw, 1240px)" };
+
+  const analyticsInput = useMemo(
+    () => ({
+      customer_id: customer.customer_id,
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+      include_igv: includeIgv,
+      branch_sap_id: branchSapId,
+      sales_channel: salesChannel,
+    }),
+    [branchSapId, customer.customer_id, fechaMax, fechaMin, includeIgv, salesChannel]
+  );
+
+  const productsInput = useMemo(
+    () => ({ ...analyticsInput, limit: productLimit }),
+    [analyticsInput, productLimit]
+  );
 
   const { data, isLoading } = trpc.sales.getCustomerTransactions.useQuery(
     {
@@ -331,6 +350,16 @@ function CustomerTransactionsModal({
     },
     { enabled: !!customer.customer_id }
   );
+
+  const { data: analyticsData, isLoading: isLoadingAnalytics } =
+    trpc.sales.getCustomerDetailAnalytics.useQuery(analyticsInput, {
+      enabled: !!customer.customer_id && !selectedTxn,
+    });
+
+  const { data: topProductsData, isLoading: isLoadingProducts } =
+    trpc.sales.getCustomerTopProducts.useQuery(productsInput, {
+      enabled: !!customer.customer_id && !selectedTxn,
+    });
 
   const rows = data?.data ?? [];
   const totalMonto = rows.reduce((s, r) => s + r.monto_total, 0);
@@ -385,6 +414,19 @@ function CustomerTransactionsModal({
               </p>
             ) : (
               <>
+                <CustomerDetailAnalytics
+                  stores={analyticsData?.stores ?? []}
+                  departments={analyticsData?.departments ?? []}
+                  products={topProductsData?.data ?? []}
+                  storeMetric={storeMetric}
+                  departmentMetric={departmentMetric}
+                  productLimit={productLimit}
+                  isLoadingAnalytics={isLoadingAnalytics}
+                  isLoadingProducts={isLoadingProducts}
+                  onStoreMetricChange={setStoreMetric}
+                  onDepartmentMetricChange={setDepartmentMetric}
+                  onProductLimitChange={setProductLimit}
+                />
                 <p className="text-xs text-muted-foreground mb-3">
                   Haz clic en una fila para ver el detalle de artículos.
                 </p>
@@ -566,7 +608,7 @@ export default function TopCustomers() {
 
   // ── Parámetros para el modal de transacciones ──
   const modalBranchSapId = selectedSapId !== 'all' ? selectedSapId : undefined;
-  const modalSalesChannel = effectiveChannel !== 'all' ? effectiveChannel : undefined;
+  const modalSalesChannel: Channel | undefined = effectiveChannel !== 'all' ? effectiveChannel : undefined;
 
   const handleCustomerClick = (customerId: string | null, customerName: string) => {
     if (!customerId) return;
@@ -1067,7 +1109,6 @@ export default function TopCustomers() {
               includeIgv={includeIgv}
               branchSapId={modalBranchSapId}
               salesChannel={modalSalesChannel}
-              onClose={() => setSelectedCustomer(null)}
             />
           )}
         </Dialog>

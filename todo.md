@@ -2253,3 +2253,8 @@ Fecha: 1 de febrero de 2026
 - [x] Retirar el resumen duplicado de monto y cantidad del encabezado del modal
 - [x] Habilitar desplazamiento interno para navegar una lista extensa de transacciones
 - [x] Validar el modal en escritorio y móvil, y guardar un punto de control
+## Top Clientes: analíticas en detalle de cliente
+- [x] Agregar distribución por tienda con métricas de monto y transacciones
+- [x] Agregar distribución por departamento con métricas de monto y transacciones
+- [x] Incorporar ranking configurable de los productos más comprados
+- [x] Optimizar las agregaciones en backend, probar y validar la interfaz

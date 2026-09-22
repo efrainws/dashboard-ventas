@@ -6,6 +6,12 @@ import { z } from "zod";
 import { cached, TTL } from "./queryCache";
 import { ENV } from "./_core/env";
 import { inclusiveCalendarDays } from "../shared/analytics";
+import {
+  buildCustomerDistributionsQuery,
+  buildCustomerTopProductsQuery,
+  mapCustomerDistributions,
+  mapCustomerTopProducts,
+} from "./customerDetailAnalytics";
 
 export const salesRouter = router({
   /**
@@ -1917,6 +1923,114 @@ export const salesRouter = router({
       } catch (error) {
         console.error('[PostgreSQL] Error en getCustomerTransactions:', error);
         throw new Error('Error al consultar transacciones del cliente');
+      }
+    }),
+
+  /**
+   * Agregaciones compactas para el detalle de un cliente. Resuelve ambas
+   * distribuciones en un único round-trip y deja el cálculo pesado en
+   * PostgreSQL: primero acota cabeceras por cliente/fecha/filtros y después
+   * une únicamente sus líneas de venta.
+   */
+  getCustomerDetailAnalytics: salesDataProcedure
+    .input(
+      z.object({
+        customer_id: z.string().uuid(),
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        include_igv: z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
+        sales_channel: z.enum(["Presencial", "eCommerce", "Rappi"]).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const fechaMin = input.fecha_min.substring(0, 10);
+      const fechaMax = input.fecha_max.substring(0, 10);
+      const igvKey = input.include_igv ? "igv" : "noigv";
+      const cacheKey = [
+        "sales:customerAnalytics",
+        input.customer_id,
+        fechaMin,
+        fechaMax,
+        input.branch_sap_id ?? "all",
+        input.sales_channel ?? "all",
+        igvKey,
+      ].join(":");
+
+      try {
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const built = buildCustomerDistributionsQuery({
+            customerId: input.customer_id,
+            fechaMin,
+            fechaMax,
+            includeIgv: input.include_igv,
+            branchSapId: input.branch_sap_id,
+            salesChannel: input.sales_channel,
+          });
+          const result = await queryWithRetry(built.query, built.params);
+          return {
+            success: true,
+            ...mapCustomerDistributions(result.rows[0]),
+          };
+        });
+      } catch (error) {
+        console.error("[PostgreSQL] Error en getCustomerDetailAnalytics:", error);
+        throw new Error("Error al consultar las distribuciones del cliente");
+      }
+    }),
+
+  /**
+   * Ranking de productos de un cliente, ordenado por unidades compradas.
+   * El límite se aplica en PostgreSQL para evitar transferir el historial de
+   * líneas de venta al navegador cuando se eligen Top 10, 20, 50 o 100.
+   */
+  getCustomerTopProducts: salesDataProcedure
+    .input(
+      z.object({
+        customer_id: z.string().uuid(),
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        include_igv: z.boolean().default(true),
+        branch_sap_id: z.string().optional(),
+        sales_channel: z.enum(["Presencial", "eCommerce", "Rappi"]).optional(),
+        limit: z.union([z.literal(10), z.literal(20), z.literal(50), z.literal(100)]).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const fechaMin = input.fecha_min.substring(0, 10);
+      const fechaMax = input.fecha_max.substring(0, 10);
+      const igvKey = input.include_igv ? "igv" : "noigv";
+      const cacheKey = [
+        "sales:customerTopProducts",
+        input.customer_id,
+        fechaMin,
+        fechaMax,
+        input.branch_sap_id ?? "all",
+        input.sales_channel ?? "all",
+        igvKey,
+        input.limit,
+      ].join(":");
+
+      try {
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const built = buildCustomerTopProductsQuery({
+            customerId: input.customer_id,
+            fechaMin,
+            fechaMax,
+            includeIgv: input.include_igv,
+            branchSapId: input.branch_sap_id,
+            salesChannel: input.sales_channel,
+            limit: input.limit,
+          });
+          const result = await queryWithRetry(built.query, built.params);
+          return {
+            success: true,
+            data: mapCustomerTopProducts(result.rows),
+          };
+        });
+      } catch (error) {
+        console.error("[PostgreSQL] Error en getCustomerTopProducts:", error);
+        throw new Error("Error al consultar los productos más comprados del cliente");
       }
     }),
 
