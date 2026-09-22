@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
+import { useId } from "react";
 
 export const SALES_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
 export type SalesChannel = (typeof SALES_CHANNELS)[number];
@@ -14,6 +15,7 @@ interface SalesChannelFilterProps {
 }
 
 export function SalesChannelFilter({ value, onChange, className }: SalesChannelFilterProps) {
+  const inputId = useId();
   const allSelected = value.length === SALES_CHANNELS.length;
   const label = value.length === 0
     ? "Sin canales"
@@ -48,25 +50,29 @@ export function SalesChannelFilter({ value, onChange, className }: SalesChannelF
         </PopoverTrigger>
         <PopoverContent className="w-56 p-2" align="start">
           <div className="space-y-1">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => onChange(SALES_CHANNELS.slice())}
-            >
-              <Checkbox checked={allSelected} aria-label="Seleccionar todos los canales" />
-              Todos los canales
-            </button>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent">
+              <Checkbox
+                id={`${inputId}-all`}
+                checked={allSelected}
+                onCheckedChange={() => onChange(SALES_CHANNELS.slice())}
+                aria-label="Seleccionar todos los canales"
+              />
+              <label htmlFor={`${inputId}-all`} className="flex-1 cursor-pointer">Todos los canales</label>
+            </div>
             <div className="my-1 border-t border-border" />
             {SALES_CHANNELS.map((channel) => (
-              <button
+              <div
                 key={channel}
-                type="button"
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => toggleChannel(channel)}
+                className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent"
               >
-                <Checkbox checked={value.includes(channel)} aria-label={`Filtrar canal ${channel}`} />
-                {channel}
-              </button>
+                <Checkbox
+                  id={`${inputId}-${channel}`}
+                  checked={value.includes(channel)}
+                  onCheckedChange={() => toggleChannel(channel)}
+                  aria-label={`Filtrar canal ${channel}`}
+                />
+                <label htmlFor={`${inputId}-${channel}`} className="flex-1 cursor-pointer">{channel}</label>
+              </div>
             ))}
           </div>
         </PopoverContent>

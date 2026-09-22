@@ -2273,3 +2273,8 @@ Fecha: 1 de febrero de 2026
 - [x] Implementar tarjetas predeterminadas con nombre, monto y tooltip de detalle
 - [x] Conservar la tabla y permitir Top 50/100 en sus rankings globales
 - [x] Validar consultas, interfaz, tipado, build y respuesta visual
+
+## Corrección: botones anidados en Portal de Proveedores
+- [x] Localizar el árbol de controles anidados en /supplier
+- [x] Corregir la semántica sin alterar la interacción del portal
+- [x] Agregar prueba de regresión y validar el portal
