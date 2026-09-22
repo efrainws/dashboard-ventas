@@ -1980,7 +1980,8 @@ export const salesRouter = router({
     }),
 
   /**
-   * Ranking de productos de un cliente, ordenado por unidades compradas.
+   * Ranking de productos de un cliente, ordenado por monto de ventas de forma
+   * predeterminada. El criterio queda restringido a una lista segura.
    * El límite se aplica en PostgreSQL para evitar transferir el historial de
    * líneas de venta al navegador cuando se eligen Top 10, 20, 50 o 100.
    */
@@ -1994,6 +1995,7 @@ export const salesRouter = router({
         branch_sap_id: z.string().optional(),
         sales_channel: z.enum(["Presencial", "eCommerce", "Rappi"]).optional(),
         limit: z.union([z.literal(10), z.literal(20), z.literal(50), z.literal(100)]).default(10),
+        sort_by: z.enum(["sales_amount", "quantity", "transactions"]).default("sales_amount"),
       })
     )
     .query(async ({ input }) => {
@@ -2009,6 +2011,7 @@ export const salesRouter = router({
         input.sales_channel ?? "all",
         igvKey,
         input.limit,
+        input.sort_by,
       ].join(":");
 
       try {
@@ -2021,6 +2024,7 @@ export const salesRouter = router({
             branchSapId: input.branch_sap_id,
             salesChannel: input.sales_channel,
             limit: input.limit,
+            sortBy: input.sort_by,
           });
           const result = await queryWithRetry(built.query, built.params);
           return {

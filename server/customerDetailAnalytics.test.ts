@@ -37,7 +37,7 @@ describe("agregaciones de detalle de cliente", () => {
     expect(built.query).not.toContain(baseInput.customerId);
   });
 
-  it("limita en PostgreSQL el ranking de productos por unidades", () => {
+  it("prioriza monto de ventas de forma predeterminada y limita el ranking en PostgreSQL", () => {
     const built = buildCustomerTopProductsQuery({
       ...baseInput,
       includeIgv: false,
@@ -54,8 +54,16 @@ describe("agregaciones de detalle de cliente", () => {
     ]);
     expect(built.query).toContain("sd.subtotal");
     expect(built.query).toContain("COALESCE(p.int_sku::text, '—') AS sku");
-    expect(built.query).toContain("ORDER BY quantity DESC, sales_amount DESC, product_name ASC");
+    expect(built.query).toContain("ORDER BY sales_amount DESC, quantity DESC, transactions DESC, product_name ASC");
     expect(built.query).toContain("LIMIT $5");
+  });
+
+  it("aplica únicamente los criterios de orden permitidos para unidades y transacciones", () => {
+    const byQuantity = buildCustomerTopProductsQuery({ ...baseInput, limit: 10, sortBy: "quantity" });
+    const byTransactions = buildCustomerTopProductsQuery({ ...baseInput, limit: 10, sortBy: "transactions" });
+
+    expect(byQuantity.query).toContain("ORDER BY quantity DESC, sales_amount DESC, transactions DESC, product_name ASC");
+    expect(byTransactions.query).toContain("ORDER BY transactions DESC, sales_amount DESC, quantity DESC, product_name ASC");
   });
 
   it("normaliza distribuciones y productos a números seguros para la interfaz", () => {

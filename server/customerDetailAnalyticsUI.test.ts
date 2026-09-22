@@ -18,7 +18,8 @@ describe("analíticas en el modal de Top Clientes", () => {
     expect(page).toContain('width: "min(95vw, 1240px)"');
   });
 
-  it("ofrece métricas intercambiables y límites de Top 10, 20, 50 y 100", () => {
+  it("ofrece métricas intercambiables, límites y orden del ranking", () => {
+    const page = source("client/src/pages/TopCustomers.tsx");
     const component = source("client/src/components/CustomerDetailAnalytics.tsx");
 
     expect(component).toContain("Distribución por tienda");
@@ -26,8 +27,14 @@ describe("analíticas en el modal de Top Clientes", () => {
     expect(component).toContain("Productos más comprados");
     expect(component).toContain("Transacciones");
     ["10", "20", "50", "100"].forEach((limit) => {
-      expect(component).toContain(`value=\"${limit}\"`);
+      expect(component).toContain(`value="${limit}"`);
     });
+    expect(page).toContain('useState<"sales_amount" | "quantity" | "transactions">("sales_amount")');
+    expect(page).toContain("sort_by: productSort");
+    expect(component).toContain("Ordenar por");
+    expect(component).toContain("Monto de ventas");
+    expect(component).toContain("Unidades compradas");
+    expect(component).toContain("N.° de transacciones");
     expect(component).toContain("max-h-80 overflow-auto");
   });
 });

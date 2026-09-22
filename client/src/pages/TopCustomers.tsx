@@ -317,6 +317,7 @@ function CustomerTransactionsModal({
   const [storeMetric, setStoreMetric] = useState<"salesAmount" | "transactions">("salesAmount");
   const [departmentMetric, setDepartmentMetric] = useState<"salesAmount" | "transactions">("salesAmount");
   const [productLimit, setProductLimit] = useState<10 | 20 | 50 | 100>(10);
+  const [productSort, setProductSort] = useState<"sales_amount" | "quantity" | "transactions">("sales_amount");
   // Ancho del modal: forzado con style inline para sobreescribir sm:max-w-lg del DialogContent base
   const dialogStyle = selectedTxn
     ? { width: "min(96vw, 1300px)", maxWidth: "min(96vw, 1300px)" }
@@ -335,8 +336,8 @@ function CustomerTransactionsModal({
   );
 
   const productsInput = useMemo(
-    () => ({ ...analyticsInput, limit: productLimit }),
-    [analyticsInput, productLimit]
+    () => ({ ...analyticsInput, limit: productLimit, sort_by: productSort }),
+    [analyticsInput, productLimit, productSort]
   );
 
   const { data, isLoading } = trpc.sales.getCustomerTransactions.useQuery(
@@ -421,11 +422,13 @@ function CustomerTransactionsModal({
                   storeMetric={storeMetric}
                   departmentMetric={departmentMetric}
                   productLimit={productLimit}
+                  productSort={productSort}
                   isLoadingAnalytics={isLoadingAnalytics}
                   isLoadingProducts={isLoadingProducts}
                   onStoreMetricChange={setStoreMetric}
                   onDepartmentMetricChange={setDepartmentMetric}
                   onProductLimitChange={setProductLimit}
+                  onProductSortChange={setProductSort}
                 />
                 <p className="text-xs text-muted-foreground mb-3">
                   Haz clic en una fila para ver el detalle de artículos.

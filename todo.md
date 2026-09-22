@@ -2263,3 +2263,7 @@ Fecha: 1 de febrero de 2026
 - [x] Corregir tokens semánticos de fondo y texto para modo oscuro
 - [x] Sustituir estilos locales que impiden el contraste correcto en componentes compartidos
 - [x] Validar contraste, TypeScript, build y respuesta en escritorio y móvil
+## Top Clientes: orden del ranking de productos
+- [x] Ordenar el ranking por monto de ventas de forma predeterminada
+- [x] Permitir seleccionar monto, unidades o transacciones como criterio de orden
+- [x] Mantener la agregación, orden y límite en PostgreSQL y validar el cambio

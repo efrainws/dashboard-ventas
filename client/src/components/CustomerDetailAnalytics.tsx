@@ -40,6 +40,13 @@ const PIE_COLORS = [
 ];
 
 type Metric = "salesAmount" | "transactions";
+export type CustomerProductSort = "sales_amount" | "quantity" | "transactions";
+
+const PRODUCT_SORT_LABELS: Record<CustomerProductSort, string> = {
+  sales_amount: "Monto de ventas",
+  quantity: "Unidades compradas",
+  transactions: "N.° de transacciones",
+};
 
 export type CustomerDistributionRow = {
   id: string;
@@ -64,11 +71,13 @@ interface CustomerDetailAnalyticsProps {
   storeMetric: Metric;
   departmentMetric: Metric;
   productLimit: 10 | 20 | 50 | 100;
+  productSort: CustomerProductSort;
   isLoadingAnalytics?: boolean;
   isLoadingProducts?: boolean;
   onStoreMetricChange: (metric: Metric) => void;
   onDepartmentMetricChange: (metric: Metric) => void;
   onProductLimitChange: (limit: 10 | 20 | 50 | 100) => void;
+  onProductSortChange: (sort: CustomerProductSort) => void;
 }
 
 const formatCurrency = (value: number) =>
@@ -240,11 +249,13 @@ export function CustomerDetailAnalytics({
   storeMetric,
   departmentMetric,
   productLimit,
+  productSort,
   isLoadingAnalytics,
   isLoadingProducts,
   onStoreMetricChange,
   onDepartmentMetricChange,
   onProductLimitChange,
+  onProductSortChange,
 }: CustomerDetailAnalyticsProps) {
   return (
     <section className="space-y-4 border-b border-border/50 pb-5" aria-labelledby="customer-analytics-title">
@@ -289,24 +300,41 @@ export function CustomerDetailAnalytics({
               </h3>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ranking por unidades compradas; el monto y las transacciones complementan el resultado.
+              Ranking por {PRODUCT_SORT_LABELS[productSort].toLowerCase()}; el resto de métricas complementa el resultado.
             </p>
           </div>
-          <div className="w-32">
-            <label htmlFor="customer-product-limit" className="mb-1 block text-[11px] font-medium text-muted-foreground">
-              Mostrar
-            </label>
-            <Select value={String(productLimit)} onValueChange={(value) => onProductLimitChange(Number(value) as 10 | 20 | 50 | 100)}>
-              <SelectTrigger id="customer-product-limit" className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">Top 10</SelectItem>
-                <SelectItem value="20">Top 20</SelectItem>
-                <SelectItem value="50">Top 50</SelectItem>
-                <SelectItem value="100">Top 100</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap gap-3">
+            <div className="w-32">
+              <label htmlFor="customer-product-limit" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Mostrar
+              </label>
+              <Select value={String(productLimit)} onValueChange={(value) => onProductLimitChange(Number(value) as 10 | 20 | 50 | 100)}>
+                <SelectTrigger id="customer-product-limit" className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">Top 10</SelectItem>
+                  <SelectItem value="20">Top 20</SelectItem>
+                  <SelectItem value="50">Top 50</SelectItem>
+                  <SelectItem value="100">Top 100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-44">
+              <label htmlFor="customer-product-sort" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Ordenar por
+              </label>
+              <Select value={productSort} onValueChange={(value) => onProductSortChange(value as CustomerProductSort)}>
+                <SelectTrigger id="customer-product-sort" className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sales_amount">Monto de ventas</SelectItem>
+                  <SelectItem value="quantity">Unidades compradas</SelectItem>
+                  <SelectItem value="transactions">N.° de transacciones</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

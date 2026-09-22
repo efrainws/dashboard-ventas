@@ -27,6 +27,14 @@ export type CustomerTopProduct = {
   transactions: number;
 };
 
+export type CustomerProductSort = "sales_amount" | "quantity" | "transactions";
+
+const PRODUCT_ORDER_BY: Record<CustomerProductSort, string> = {
+  sales_amount: "sales_amount DESC, quantity DESC, transactions DESC, product_name ASC",
+  quantity: "quantity DESC, sales_amount DESC, transactions DESC, product_name ASC",
+  transactions: "transactions DESC, sales_amount DESC, quantity DESC, product_name ASC",
+};
+
 type BuiltQuery = {
   query: string;
   params: unknown[];
@@ -170,15 +178,17 @@ export function buildCustomerDistributionsQuery(input: CustomerAnalyticsScope): 
 
 /**
  * Aggregates the ranking on PostgreSQL and transfers only the selected top N.
- * The rank is intentionally by units purchased, with sales as a stable tiebreaker.
+ * Sales amount is the default criterion; all supported sort clauses are a
+ * server-owned allow-list, never interpolated from untrusted user input.
  */
 export function buildCustomerTopProductsQuery(
-  input: CustomerAnalyticsScope & { limit: number }
+  input: CustomerAnalyticsScope & { limit: number; sortBy?: CustomerProductSort }
 ): BuiltQuery {
   const scope = buildHeaderScope(input);
   const params = [...scope.params, input.limit];
   const limitParameter = scope.nextParameterIndex;
   const lineAmount = input.includeIgv ? "sd.total" : "sd.subtotal";
+  const orderBy = PRODUCT_ORDER_BY[input.sortBy ?? "sales_amount"];
 
   return {
     params,
@@ -205,7 +215,7 @@ export function buildCustomerTopProductsQuery(
         sales_amount,
         transactions
       FROM product_rows
-      ORDER BY quantity DESC, sales_amount DESC, product_name ASC
+      ORDER BY ${orderBy}
       LIMIT $${limitParameter};
     `,
   };
