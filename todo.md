@@ -2293,3 +2293,9 @@ Fecha: 1 de febrero de 2026
 - [x] Incorporar Gerencia al esquema, contratos y migración de usuarios
 - [x] Replicar los permisos de Especialista Comercial en rutas, routers y navegación
 - [x] Cubrir equivalencia de permisos y validar migración, tipado y build
+
+## Gerencia: ranking de productos por góndola
+- [x] Crear una consulta agregada, acotada y ordenable por tienda y góndola
+- [x] Sustituir el modal de asignación por el ranking para el rol Gerencia
+- [x] Mostrar monto, unidades y transacciones; permitir ordenar por cada dimensión
+- [x] Validar el control de acceso, SQL, tipado, compilación y presentación

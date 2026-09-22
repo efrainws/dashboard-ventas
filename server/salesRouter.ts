@@ -1,4 +1,5 @@
 import { protectedProcedure, router, salesDataProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import * as XLSX from "xlsx";
 import { pool, queryWithRetry } from "./postgres";
 import { buildCreditNoteTransactionsByCashierQuery } from "./creditNoteQueries";
@@ -16,6 +17,10 @@ import {
   buildTopProductsByStoreQuery,
   mapTopProductsByStore,
 } from "./topProductsByStore";
+import {
+  buildShelfProductRankingQuery,
+  SHELF_PRODUCT_SORTS,
+} from "./shelfProductRanking";
 
 export const salesRouter = router({
   /**
@@ -2343,6 +2348,79 @@ export const salesRouter = router({
       } catch (error) {
         console.error('[PostgreSQL] Error en getSalesByShelfAggregated:', error);
         throw new Error('Error al consultar ventas por góndola agregadas');
+      }
+    }),
+
+  /**
+   * Ranking agregado de productos vendidos en una góndola específica de una tienda.
+   * Exclusivo para Gerencia: devuelve solo las métricas necesarias, ordenadas y
+   * limitadas en PostgreSQL para no transferir líneas de venta masivas al cliente.
+   */
+  getShelfProductRanking: salesDataProcedure
+    .input(z.object({
+      branch_sap_id: z.string().min(1).max(64),
+      shelf_id: z.string().uuid().nullable(),
+      shelf_status: z.enum(['Sin registro en stocks', 'Stock sin góndola', 'Con góndola asignada']).optional(),
+      fecha_min: z.string(),
+      fecha_max: z.string(),
+      category_id: z.string().optional(),
+      include_igv: z.boolean().default(true),
+      sort_by: z.enum(SHELF_PRODUCT_SORTS).default('amount'),
+      limit: z.number().int().min(1).max(200).default(100),
+    }))
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'management_user') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Este ranking detallado está disponible para el rol Gerencia.',
+        });
+      }
+
+      const { query, params } = buildShelfProductRankingQuery({
+        branchSapId: input.branch_sap_id,
+        shelfId: input.shelf_id,
+        shelfStatus: input.shelf_status,
+        fechaMin: input.fecha_min,
+        fechaMax: input.fecha_max,
+        categoryId: input.category_id && input.category_id !== 'all' ? input.category_id : undefined,
+        includeIgv: input.include_igv,
+        sortBy: input.sort_by,
+        limit: input.limit,
+      });
+
+      const cacheKey = [
+        'sales:shelf:product-ranking',
+        input.branch_sap_id,
+        input.shelf_id ?? input.shelf_status ?? 'unassigned',
+        input.fecha_min.substring(0, 10),
+        input.fecha_max.substring(0, 10),
+        input.category_id ?? 'all',
+        input.include_igv ? 'igv' : 'noigv',
+        input.sort_by,
+        input.limit,
+      ].join(':');
+
+      try {
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const result = await queryWithRetry(query, params);
+          const data = result.rows.map((row: any) => ({
+            product_id: row.product_id ?? '',
+            int_sku: row.int_sku ?? '',
+            product_name: row.product_name ?? 'Producto sin nombre',
+            monto_total: Number(row.monto_total ?? 0),
+            cantidad_vendida: Number(row.cantidad_vendida ?? 0),
+            transacciones: Number(row.transacciones ?? 0),
+          }));
+
+          return {
+            success: true,
+            total_productos: Number(result.rows[0]?.total_productos ?? 0),
+            data,
+          };
+        });
+      } catch (error) {
+        console.error('[PostgreSQL] Error en getShelfProductRanking:', error);
+        throw new Error('Error al consultar el ranking de productos de la góndola');
       }
     }),
 

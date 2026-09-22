@@ -991,6 +991,157 @@ interface ReassignState {
   message?: string;
 }
 
+type ShelfRankingSort = 'amount' | 'quantity' | 'transactions';
+
+interface ShelfRankingTarget extends ReassignTarget {
+  shelf_status?: 'Sin registro en stocks' | 'Stock sin góndola' | 'Con góndola asignada';
+  category_id?: string;
+  include_igv: boolean;
+}
+
+interface ShelfRankingRow {
+  product_id: string;
+  int_sku: string;
+  product_name: string;
+  monto_total: number;
+  cantidad_vendida: number;
+  transacciones: number;
+}
+
+const SHELF_RANKING_SORT_OPTIONS: Array<{ value: ShelfRankingSort; label: string }> = [
+  { value: 'amount', label: 'Monto de venta' },
+  { value: 'quantity', label: 'Unidades vendidas' },
+  { value: 'transactions', label: 'Transacciones' },
+];
+
+function ShelfProductRankingModal({
+  target,
+  onClose,
+}: {
+  target: ShelfRankingTarget | null;
+  onClose: () => void;
+}) {
+  const [sortBy, setSortBy] = useState<ShelfRankingSort>('amount');
+
+  useEffect(() => {
+    setSortBy('amount');
+  }, [target?.branch_sap_id, target?.shelf_id, target?.fecha_min, target?.fecha_max]);
+
+  const rankingInput = useMemo(() => ({
+    branch_sap_id: target?.branch_sap_id ?? 'pending',
+    shelf_id: target?.shelf_id ?? null,
+    shelf_status: target?.shelf_id === null ? target?.shelf_status : undefined,
+    fecha_min: target?.fecha_min ?? '1970-01-01',
+    fecha_max: target?.fecha_max ?? '1970-01-01',
+    category_id: target?.category_id,
+    include_igv: target?.include_igv ?? true,
+    sort_by: sortBy,
+    limit: 200,
+  }), [target, sortBy]);
+
+  const { data: rankingResult, isLoading, error } = trpc.sales.getShelfProductRanking.useQuery(
+    rankingInput,
+    { enabled: !!target }
+  );
+
+  if (!target) return null;
+
+  const products: ShelfRankingRow[] = rankingResult?.data ?? [];
+  const totalProducts = rankingResult?.total_productos ?? 0;
+  const selectedSortLabel = SHELF_RANKING_SORT_OPTIONS.find((option) => option.value === sortBy)?.label.toLowerCase();
+
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-5xl w-full flex flex-col gap-0 p-0 overflow-hidden" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <DialogHeader className="px-6 pt-8 pb-5 border-b flex-shrink-0">
+          <DialogTitle className="text-base font-heading uppercase flex items-center gap-2 mb-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Ranking de productos por góndola
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground mt-2">
+            <span className="font-medium text-foreground">{target.shelf_name || '(Sin góndola asignada)'}</span>
+            {' · '}
+            {target.branch_name} ({target.branch_sap_id})
+            {target.fecha_min && target.fecha_max && (
+              <span>{' · '}{target.fecha_min} al {target.fecha_max}</span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="px-6 py-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
+          <div>
+            <p className="ff-section-label">Criterio de orden</p>
+            <p className="text-xs text-muted-foreground mt-1">El ranking se calcula en la base de datos para el período seleccionado.</p>
+          </div>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as ShelfRankingSort)}>
+            <SelectTrigger className="h-9 w-full sm:w-56 text-sm" aria-label="Ordenar ranking de productos por">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SHELF_RANKING_SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4" style={{ minHeight: 0, height: 0 }}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Calculando ranking de productos…</span>
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center text-sm text-destructive">
+              No se pudo cargar el ranking: {error.message}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground">
+              No se encontraron productos vendidos en esta góndola para el período seleccionado.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="w-14 text-xs font-heading uppercase text-center" style={{ color: '#919291' }}>#</TableHead>
+                  <TableHead className="text-xs font-heading uppercase hidden sm:table-cell" style={{ color: '#919291' }}>SKU</TableHead>
+                  <TableHead className="text-xs font-heading uppercase" style={{ color: '#919291' }}>Producto</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-right" style={{ color: '#919291' }}>Monto</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-right" style={{ color: '#919291' }}>Unidades</TableHead>
+                  <TableHead className="text-xs font-heading uppercase text-right" style={{ color: '#919291' }}>Transacciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((product, index) => (
+                  <TableRow key={product.product_id} className="hover:bg-muted/20 transition-colors">
+                    <TableCell className="text-xs text-center tabular-nums text-muted-foreground">{index + 1}</TableCell>
+                    <TableCell className="text-xs tabular-nums text-muted-foreground hidden sm:table-cell">{product.int_sku || '—'}</TableCell>
+                    <TableCell className="text-xs text-foreground font-medium max-w-[280px]">
+                      <span className="block truncate" title={product.product_name}>{product.product_name}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">S/ {fmtCurrency(product.monto_total)}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(product.cantidad_vendida)}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums text-foreground">{product.transacciones.toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        <div className="px-6 py-3 border-t flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+          <span>
+            {totalProducts > products.length
+              ? `Mostrando ${products.length.toLocaleString()} de ${totalProducts.toLocaleString()} productos, por ${selectedSortLabel}.`
+              : `${totalProducts.toLocaleString()} producto${totalProducts === 1 ? '' : 's'}, ordenado${totalProducts === 1 ? '' : 's'} por ${selectedSortLabel}.`}
+          </span>
+          <Button variant="outline" size="sm" onClick={onClose} className="h-7 text-xs">Cerrar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ShelfReassignModal({
   target,
   onClose,
@@ -1216,6 +1367,7 @@ export default function SalesByShelf() {
 
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
+  const isManagementUser = userRole === "management_user";
   const canBulkAssign = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'].includes(userRole ?? '');
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
@@ -1225,6 +1377,7 @@ export default function SalesByShelf() {
   const [searchAgg, setSearchAgg] = useState("");
   const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
+  const [shelfRankingTarget, setShelfRankingTarget] = useState<ShelfRankingTarget | null>(null);
   // Modal de carga masiva Excel
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
@@ -1465,6 +1618,40 @@ export default function SalesByShelf() {
     setSearchAgg("");
   };
 
+  const openShelfDetails = (row: {
+    branch_sap_id: string;
+    branch_name: string;
+    shelf_id: string | null;
+    shelf_name: string;
+    shelf_status: string;
+  }) => {
+    const shelfStatus: NonNullable<ShelfRankingTarget['shelf_status']> = row.shelf_status.includes('Sin registro')
+      ? 'Sin registro en stocks'
+      : row.shelf_status.includes('sin góndola') || row.shelf_status.includes('sin shelf')
+        ? 'Stock sin góndola'
+        : 'Con góndola asignada';
+    const target = {
+      branch_sap_id: row.branch_sap_id,
+      branch_name: row.branch_name,
+      shelf_id: row.shelf_id,
+      shelf_name: row.shelf_name,
+      fecha_min: fechaMin,
+      fecha_max: fechaMax,
+    };
+
+    if (isManagementUser) {
+      setShelfRankingTarget({
+        ...target,
+        shelf_status: shelfStatus,
+        category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
+        include_igv: includeIgv,
+      });
+      return;
+    }
+
+    setReassignTarget(target);
+  };
+
   return (
     <div className="min-h-screen bg-background" data-theme={effectiveTheme}>
       <NavigationMenu />
@@ -1675,15 +1862,8 @@ export default function SalesByShelf() {
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
                             className="hover:bg-muted/30 transition-colors cursor-pointer"
-                            onClick={() => setReassignTarget({
-                              branch_sap_id: row.branch_sap_id,
-                              branch_name: row.branch_name,
-                              shelf_id: row.shelf_id,
-                              shelf_name: row.shelf_name,
-                              fecha_min: fechaMin,
-                              fecha_max: fechaMax,
-                            })}
-                            title="Clic para ver y reasignar artículos"
+                            onClick={() => openShelfDetails(row)}
+                            title={isManagementUser ? 'Clic para ver el ranking de productos' : 'Clic para ver y reasignar artículos'}
                           >
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
@@ -1752,15 +1932,8 @@ export default function SalesByShelf() {
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
                             className="hover:bg-muted/30 transition-colors cursor-pointer"
-                            onClick={() => setReassignTarget({
-                              branch_sap_id: row.branch_sap_id,
-                              branch_name: row.branch_name,
-                              shelf_id: row.shelf_id,
-                              shelf_name: row.shelf_name,
-                              fecha_min: fechaMin,
-                              fecha_max: fechaMax,
-                            })}
-                            title="Clic para ver y reasignar artículos"
+                            onClick={() => openShelfDetails(row)}
+                            title={isManagementUser ? 'Clic para ver el ranking de productos' : 'Clic para ver y reasignar artículos'}
                           >
                             <TableCell className="text-xs font-semibold text-foreground">
                               {row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>}
@@ -1886,6 +2059,10 @@ export default function SalesByShelf() {
       <ShelfReassignModal
         target={reassignTarget}
         onClose={() => setReassignTarget(null)}
+      />
+      <ShelfProductRankingModal
+        target={shelfRankingTarget}
+        onClose={() => setShelfRankingTarget(null)}
       />
 
       {/* Modal de carga masiva Excel */}
