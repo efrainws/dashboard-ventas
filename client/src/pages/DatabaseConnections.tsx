@@ -58,11 +58,13 @@ const FF = {
   esmeralda: "#008064",
   mostaza: "#C49705",
   cobalto: "#1A6894",
-  carbon: "#232523",
-  humo: "#919291",
-  beige: "#EAE8E2",
-  hueso: "#F5F4F1",
-  blanco: "#FFFFFF",
+  carbon: "var(--text-strong)",
+  humo: "var(--text-muted)",
+  beige: "var(--border-subtle)",
+  hueso: "var(--surface-cream)",
+  blanco: "var(--surface-card)",
+  primary: "var(--primary)",
+  primaryForeground: "var(--primary-foreground)",
   esmeraldaLight: "#E6F4F1",
   mostazaLight: "#FDF6E3",
   cobaltaLight: "#E8F1F7",
@@ -476,7 +478,7 @@ function ConnectionFormModal({
             <Button
               type="submit"
               disabled={isSaving}
-              style={{ background: FF.carbon, color: FF.blanco }}
+              style={{ background: FF.primary, color: FF.primaryForeground }}
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? "Guardar Cambios" : "Crear Conexión"}
@@ -566,7 +568,7 @@ export default function DatabaseConnections() {
           <Button
             onClick={handleOpenCreate}
             className="gap-2 font-medium"
-            style={{ background: FF.carbon, color: FF.blanco }}
+            style={{ background: FF.primary, color: FF.primaryForeground }}
           >
             <Plus className="h-4 w-4" />
             Nueva Conexión
@@ -645,7 +647,7 @@ export default function DatabaseConnections() {
               <button
                 onClick={handleOpenCreate}
                 className="flex items-center gap-1.5 text-xs rounded-md px-3 py-1.5 font-medium"
-                style={{ background: FF.carbon, color: FF.blanco }}
+                style={{ background: FF.primary, color: FF.primaryForeground }}
               >
                 <Plus className="h-4 w-4" />
                 Crear primera conexión

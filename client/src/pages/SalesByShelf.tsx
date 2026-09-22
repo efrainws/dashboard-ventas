@@ -575,11 +575,11 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
       <Dialog open={!!pendingPos} onOpenChange={(open) => { if (!open) setPendingPos(null); }}>
         <DialogContent style={{ width: "min(96vw, 480px)", maxWidth: "min(96vw, 480px)" }}>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'Italian Plate No 1', sans-serif", textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "1rem", color: "#232523" }}>
+            <DialogTitle className="font-heading text-base font-bold uppercase tracking-wide text-foreground">
               Seleccionar Góndola
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm" style={{ color: "#919291" }}>Elige la góndola que deseas colocar en esta posición del mapa.</p>
+          <p className="text-sm text-muted-foreground">Elige la góndola que deseas colocar en esta posición del mapa.</p>
           {/* Buscador */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "#919291" }} />
@@ -600,9 +600,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
                 <button
                   key={shelf.id}
                   onClick={() => handleSelectShelf(shelf)}
-                  className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                  style={{ borderBottom: "1px solid #EAE8E2", color: "#232523" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F5F4F1")}
+                  className="w-full border-b border-border px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   {shelf.name}
@@ -640,8 +638,8 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
           top: 10,
           right: 10,
           zIndex: 20,
-          background: "rgba(255,255,255,0.92)",
-          border: "1px solid #EAE8E2",
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-subtle)",
           borderRadius: 6,
           padding: "6px 8px",
           cursor: "pointer",
@@ -649,7 +647,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
           alignItems: "center",
           gap: 4,
           fontSize: 12,
-          color: "#232523",
+          color: "var(--text-strong)",
           boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
         }}
       >
@@ -889,7 +887,7 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
           {/* Cabecera */}
           <div className="flex items-center gap-2">
             <LayoutGrid className="h-4 w-4 flex-shrink-0" style={{ color: "#1A6894" }} />
-            <span className="text-sm font-semibold" style={{ fontFamily: "'Italian Plate No 1', sans-serif", color: "#232523" }}>
+            <span className="font-heading text-sm font-semibold text-foreground">
               {selectedZone.name}
             </span>
             <div className="ml-auto flex gap-1">
@@ -940,11 +938,11 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>Unidades</p>
-                  <p className="font-semibold" style={{ color: "#232523" }}>{fmtNumber(metrics.unidades)}</p>
+                  <p className="font-semibold text-foreground">{fmtNumber(metrics.unidades)}</p>
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>SKUs</p>
-                  <p className="font-semibold" style={{ color: "#232523" }}>{metrics.skus.size}</p>
+                  <p className="font-semibold text-foreground">{metrics.skus.size}</p>
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: "#919291" }}>Estado</p>
@@ -1605,13 +1603,8 @@ export default function SalesByShelf() {
                 <button
                   key={tab.value}
                   onClick={() => setActiveTab(tab.value)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-                  style={{
-                    backgroundColor: activeTab === tab.value ? "#232523" : "transparent",
-                    color: activeTab === tab.value ? "#FFFFFF" : "#919291",
-                    border: activeTab === tab.value ? "1px solid #232523" : "1px solid #EAE8E2",
-                    fontFamily: "var(--font-sans)",
-                  }}
+                  className="ff-view-tab flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors"
+                  aria-pressed={activeTab === tab.value}
                 >
                   {tab.icon}
                   {tab.label}

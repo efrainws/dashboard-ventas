@@ -30,11 +30,13 @@ const FF = {
   mostaza:          "#C49705",
   cobalto:          "#1A6894",
   // Neutros
-  carbon:           "#232523",
-  humo:             "#919291",
-  beige:            "#EAE8E2",
-  hueso:            "#F5F4F1",
-  blanco:           "#FFFFFF",
+  carbon:           "var(--text-strong)",
+  humo:             "var(--text-muted)",
+  beige:            "var(--border-subtle)",
+  hueso:            "var(--surface-cream)",
+  blanco:           "var(--surface-card)",
+  primary:          "var(--primary)",
+  primaryForeground:"var(--primary-foreground)",
   // Variaciones light (para fondos de badges/alertas)
   granateLight:     "#FAEAED",   // ~15% granate sobre blanco
   granateBorder:    "#E8B0BC",
@@ -220,7 +222,7 @@ export function ReportDiscrepancyModal({
             <Button
               onClick={handleClose}
               className="mt-2 font-medium uppercase tracking-wide text-sm"
-              style={{ background: FF.carbon, color: FF.blanco, fontFamily: "'Sailec', sans-serif" }}
+              style={{ background: FF.primary, color: FF.primaryForeground, fontFamily: "'Sailec', sans-serif" }}
             >
               Cerrar
             </Button>
@@ -490,8 +492,8 @@ export function ReportDiscrepancyModal({
                 disabled={!description.trim() || createTicket.isPending}
                 className="uppercase tracking-wide text-sm font-medium"
                 style={{
-                  background: FF.carbon,
-                  color: FF.blanco,
+                  background: FF.primary,
+                  color: FF.primaryForeground,
                   fontFamily: "'Sailec', sans-serif",
                 }}
               >

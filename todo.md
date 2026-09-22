@@ -2258,3 +2258,8 @@ Fecha: 1 de febrero de 2026
 - [x] Agregar distribución por departamento con métricas de monto y transacciones
 - [x] Incorporar ranking configurable de los productos más comprados
 - [x] Optimizar las agregaciones en backend, probar y validar la interfaz
+## Corrección de contraste en modo oscuro
+- [x] Auditar las superficies, navegación y títulos que conservan tonos de modo claro
+- [x] Corregir tokens semánticos de fondo y texto para modo oscuro
+- [x] Sustituir estilos locales que impiden el contraste correcto en componentes compartidos
+- [x] Validar contraste, TypeScript, build y respuesta en escritorio y móvil

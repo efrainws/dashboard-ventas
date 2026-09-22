@@ -269,7 +269,7 @@
   --secondary: #2a2a2a;
   --secondary-foreground: oklch(from var(--ff-beige) l c h);
   --muted: #2a2a2a;
-  --muted-foreground: oklch(from var(--ff-humo) l c h);
+  --muted-foreground: #CFC7B8;
   
   /* Accent (Beige para botones de acento en dark mode) */
   --accent: oklch(from var(--ff-beige) l c h);
@@ -300,6 +300,27 @@
   --sidebar-accent-foreground: oklch(from var(--ff-beige) l c h);
   --sidebar-border: oklch(from var(--ff-humo) l c h / 0.3);
   --sidebar-ring: oklch(from var(--ff-cobalto) l c h);
+
+  /* Alias semánticos: las superficies compartidas no deben heredar
+     sus equivalentes claros cuando el documento está en modo oscuro. */
+  --text-strong: #F3EEE1;
+  --text-body: #EAE8E2;
+  --text-muted: #CFC7B8;
+  --text-inverse: #1A1A1A;
+  --surface-page: #1A1A1A;
+  --surface-card: #242424;
+  --surface-cream: #2A2A2A;
+  --surface-beige: #333330;
+  --border-subtle: #46443F;
+  --border-default: #625F58;
+  --border-strong: #D8D0C0;
+  --shadow-focus: 0 0 0 3px color-mix(in oklab, var(--ff-celeste-light) 58%, transparent);
+
+  /* Las etiquetas de estado se aclaran para conservar contraste sobre
+     superficies oscuras, sin cambiar su significado cromático. */
+  --ff-canal-presencial: #79B9D7;
+  --ff-canal-ecommerce: #E5C56C;
+  --ff-canal-rappi: #6EC1AD;
 
   /* CardHeader con fondo Hueso — dark mode */
   --ff-card-header-bg:      #2a2a2a;
@@ -465,7 +486,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: var(--ls-caps);
-    color: var(--ff-humo);
+    color: var(--text-muted);
   }
 
   /* ── Desglose por canal ────────────────────────────────────────────────
@@ -924,7 +945,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;    /* tracking-wide */
-    color: var(--ff-carbon);
+    color: var(--text-strong);
   }
 
   /* ── Bloques compartidos de la aplicación ─────────────────────────────── */
@@ -964,6 +985,27 @@
   .ff-module-card:hover {
     border-color: var(--border-strong);
     box-shadow: var(--shadow-warm-md);
+  }
+
+  /* Pestañas de vistas analíticas, compartidas por las pantallas de venta. */
+  .ff-view-tab {
+    border: 1px solid var(--border-subtle);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+  }
+
+  .ff-view-tab:hover {
+    border-color: var(--border-default);
+    background: var(--surface-cream);
+    color: var(--text-strong);
+  }
+
+  .ff-view-tab[aria-pressed="true"] {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 
   .ff-module-mark {

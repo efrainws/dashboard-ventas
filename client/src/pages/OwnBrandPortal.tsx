@@ -1700,11 +1700,8 @@ export default function OwnBrandPortal() {
                 <button
                   type="button"
                   onClick={handleToggleProduct}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
-                    showProduct
-                      ? "bg-[#232523] text-white border-[#232523]"
-                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
-                  }`}
+                  className="ff-view-tab inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors"
+                  aria-pressed={showProduct}
                   title={showProduct ? "Ocultar dimensión Artículo" : "Mostrar dimensión Artículo"}
                 >
                   {showProduct ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -1713,11 +1710,8 @@ export default function OwnBrandPortal() {
                 <button
                   type="button"
                   onClick={handleToggleStore}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
-                    showStore
-                      ? "bg-[#232523] text-white border-[#232523]"
-                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
-                  }`}
+                  className="ff-view-tab inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors"
+                  aria-pressed={showStore}
                   title={showStore ? "Ocultar dimensión Tienda" : "Mostrar dimensión Tienda"}
                 >
                   {showStore ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -1726,11 +1720,8 @@ export default function OwnBrandPortal() {
                 <button
                   type="button"
                   onClick={handleToggleChannel}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
-                    showChannel
-                      ? "bg-[#232523] text-white border-[#232523]"
-                      : "bg-background text-muted-foreground border-border hover:border-[#232523] hover:text-foreground"
-                  }`}
+                  className="ff-view-tab inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors"
+                  aria-pressed={showChannel}
                   title={showChannel ? "Ocultar dimensión Canal" : "Mostrar dimensión Canal"}
                 >
                   {showChannel ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
