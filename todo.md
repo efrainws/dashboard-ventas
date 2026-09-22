@@ -2267,3 +2267,9 @@ Fecha: 1 de febrero de 2026
 - [x] Ordenar el ranking por monto de ventas de forma predeterminada
 - [x] Permitir seleccionar monto, unidades o transacciones como criterio de orden
 - [x] Mantener la agregación, orden y límite en PostgreSQL y validar el cambio
+## Top Productos: tarjetas por tienda y límites configurables
+- [x] Renombrar el módulo, navegación y portada como Top Productos
+- [x] Crear una consulta compacta por tienda para las tarjetas Top 20/50
+- [x] Implementar tarjetas predeterminadas con nombre, monto y tooltip de detalle
+- [x] Conservar la tabla y permitir Top 50/100 en sus rankings globales
+- [x] Validar consultas, interfaz, tipado, build y respuesta visual

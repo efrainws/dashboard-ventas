@@ -12,6 +12,10 @@ import {
   mapCustomerDistributions,
   mapCustomerTopProducts,
 } from "./customerDetailAnalytics";
+import {
+  buildTopProductsByStoreQuery,
+  mapTopProductsByStore,
+} from "./topProductsByStore";
 
 export const salesRouter = router({
   /**
@@ -812,7 +816,7 @@ export const salesRouter = router({
     }),
 
   /**
-   * Obtiene el Top 50 productos por cantidad vendida y por monto de ventas
+   * Obtiene el Top 50 o 100 productos por cantidad vendida y por monto de ventas.
    * Soporta filtros de fecha, sucursal y categoría (igual que las otras páginas)
    */
   getTopProducts: salesDataProcedure
@@ -823,10 +827,11 @@ export const salesRouter = router({
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
         include_igv: z.boolean().default(true),
+        limit: z.union([z.literal(50), z.literal(100)]).default(50),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
+      const { fecha_min, fecha_max, branch_id, category_id, include_igv, limit } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
       const fechaMinDate = fecha_min.substring(0, 10);
@@ -842,6 +847,9 @@ export const salesRouter = router({
       const categoryClause = (category_id && category_id !== 'all')
         ? (() => { params.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}`; })()
         : '';
+
+      const limitParameter = pi;
+      const queryParams = [...params, limit];
 
       // Cláusula de stock: si hay filtro de tienda, solo el stock de esa tienda;
       // si no, suma el stock de todas las tiendas (a través del branch_id de branches).
@@ -935,7 +943,7 @@ export const salesRouter = router({
         LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
         WHERE a.total_qty > 0
         ORDER BY rank_qty
-        LIMIT 50;
+        LIMIT $${limitParameter};
       `;
 
       // Segunda query para top 50 por monto (necesitamos orden diferente)
@@ -1014,13 +1022,13 @@ export const salesRouter = router({
         LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
         WHERE a.total_amount > 0
         ORDER BY rank_amount
-        LIMIT 50;
+        LIMIT $${limitParameter};
       `;
 
       try {
         const [resultByQty, resultByAmount] = await Promise.all([
-          pool.query(query, params),
-          pool.query(queryByAmount, params),
+          pool.query(query, queryParams),
+          pool.query(queryByAmount, queryParams),
         ]);
 
         const mapRow = (row: any, idx: number) => ({
@@ -1046,12 +1054,71 @@ export const salesRouter = router({
             fecha_max: fechaMaxDate,
             branch_id: branch_id || 'all',
             category_id: category_id || 'all',
+            limit,
             generated_at: new Date().toISOString(),
           },
         };
       } catch (error) {
         console.error('[PostgreSQL] Error executing top products query:', error);
         throw new Error('Error al consultar top productos');
+      }
+    }),
+
+  /**
+   * Ranking compacto de productos por tienda para la vista de tarjetas.
+   * El límite se evalúa por sucursal en PostgreSQL para evitar transferir
+   * el historial completo de productos al navegador.
+   */
+  getTopProductsByStore: salesDataProcedure
+    .input(
+      z.object({
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_id: z.string().optional(),
+        category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
+        limit: z.union([z.literal(20), z.literal(50)]).default(20),
+      })
+    )
+    .query(async ({ input }) => {
+      const fechaMin = input.fecha_min.substring(0, 10);
+      const fechaMax = input.fecha_max.substring(0, 10);
+      const cacheKey = [
+        "sales:topProductsByStore",
+        fechaMin,
+        fechaMax,
+        input.branch_id ?? "all",
+        input.category_id ?? "all",
+        input.include_igv ? "igv" : "noigv",
+        input.limit,
+      ].join(":");
+
+      try {
+        return await cached(cacheKey, TTL.DYNAMIC, async () => {
+          const built = buildTopProductsByStoreQuery({
+            fechaMin,
+            fechaMax,
+            includeIgv: input.include_igv,
+            limit: input.limit,
+            branchSapId: input.branch_id,
+            categoryId: input.category_id,
+          });
+          const result = await queryWithRetry(built.query, built.params);
+          return {
+            success: true,
+            data: mapTopProductsByStore(result.rows),
+            metadata: {
+              fecha_min: fechaMin,
+              fecha_max: fechaMax,
+              branch_id: input.branch_id ?? "all",
+              category_id: input.category_id ?? "all",
+              limit: input.limit,
+            },
+          };
+        });
+      } catch (error) {
+        console.error('[PostgreSQL] Error executing top products by store query:', error);
+        throw new Error('Error al consultar productos por tienda');
       }
     }),
 

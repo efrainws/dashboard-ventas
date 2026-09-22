@@ -174,8 +174,8 @@ export default function Home() {
       iconColor: "var(--ff-blanco)",
     },
     {
-      title: "Top 50 productos",
-      description: "Revisa los productos con mayor cantidad vendida y monto de ventas.",
+      title: "Top productos",
+      description: "Revisa los productos con mayor monto de ventas por tienda y en el ranking general.",
       icon: Trophy,
       href: "/top-products",
       tone: "var(--ff-cobalto)",

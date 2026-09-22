@@ -8,10 +8,18 @@ import { useIgv } from "@/contexts/IgvContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Trophy, Hash, DollarSign, Package, Store, X } from "lucide-react";
+import { Loader2, Trophy, Hash, DollarSign, Package, Store, LayoutGrid, LayoutList } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
+import { TopProductsStoreCards } from "@/components/TopProductsStoreCards";
 import {
   BarChart,
   Bar,
@@ -475,6 +483,9 @@ export default function TopProducts() {
     () => globalBranchId || "all"
   );
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [cardLimit, setCardLimit] = useState<20 | 50>(20);
+  const [tableLimit, setTableLimit] = useState<50 | 100>(50);
 
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
@@ -509,8 +520,33 @@ export default function TopProducts() {
   // Listas de sucursales y categorías reutilizando el hook existente
   const { metrics } = useAggregatedSales(queryFilters as AggregatedSalesFilters);
 
-  // Query principal
-  const { data, isLoading, error } = trpc.sales.getTopProducts.useQuery(queryFilters);
+  const cardQueryInput = useMemo(
+    () => ({ ...queryFilters, limit: cardLimit }),
+    [cardLimit, queryFilters]
+  );
+  const tableQueryInput = useMemo(
+    () => ({ ...queryFilters, limit: tableLimit }),
+    [queryFilters, tableLimit]
+  );
+
+  // Cada vista solicita sólo las filas que puede representar.
+  const {
+    data: cardsData,
+    isLoading: isLoadingCards,
+    error: cardsError,
+  } = trpc.sales.getTopProductsByStore.useQuery(cardQueryInput, {
+    enabled: viewMode === "cards",
+  });
+  const {
+    data: tableData,
+    isLoading: isLoadingTable,
+    error: tableError,
+  } = trpc.sales.getTopProducts.useQuery(tableQueryInput, {
+    enabled: viewMode === "table",
+  });
+  const data = tableData;
+  const isLoading = isLoadingTable;
+  const error = tableError;
 
   const handleClearFilters = () => {
     setDateRange(defaultDateRange);
@@ -544,10 +580,10 @@ export default function TopProducts() {
             className="text-3xl font-bold tracking-tight uppercase"
             style={{ fontFamily: "'Italian Plate No 1', sans-serif", fontWeight: 800 }}
           >
-            Top 50 Productos
+            Top Productos
           </h1>
           <p className="text-muted-foreground text-sm">
-            Ranking de los 50 mejores productos por cantidad vendida y por monto de ventas
+            Explora los productos con mayor monto de ventas por tienda o en un ranking general.
           </p>
           <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
             Período: {dateRangeText}
@@ -568,8 +604,82 @@ export default function TopProducts() {
           showIgvToggle
         />
 
+        <Card className="border-border/60">
+          <CardContent className="flex flex-wrap items-end justify-between gap-4 py-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Vista</span>
+              <div className="flex h-9 overflow-hidden border border-border" role="group" aria-label="Seleccionar vista de Top Productos">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("cards")}
+                  aria-pressed={viewMode === "cards"}
+                  className={`flex items-center gap-1.5 px-3 text-xs font-medium transition-colors ${
+                    viewMode === "cards" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Tarjetas por tienda
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  aria-pressed={viewMode === "table"}
+                  className={`flex items-center gap-1.5 border-l border-border px-3 text-xs font-medium transition-colors ${
+                    viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <LayoutList className="h-3.5 w-3.5" />
+                  Tabla general
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="top-products-limit" className="text-xs text-muted-foreground">
+                {viewMode === "cards" ? "Productos por tienda" : "Productos en tabla"}
+              </label>
+              {viewMode === "cards" ? (
+                <Select value={String(cardLimit)} onValueChange={(value) => setCardLimit(Number(value) as 20 | 50)}>
+                  <SelectTrigger id="top-products-limit" className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="20">Top 20</SelectItem>
+                    <SelectItem value="50">Top 50</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={String(tableLimit)} onValueChange={(value) => setTableLimit(Number(value) as 50 | 100)}>
+                  <SelectTrigger id="top-products-limit" className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="50">Top 50</SelectItem>
+                    <SelectItem value="100">Top 100</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {viewMode === "cards" && (
+          <>
+            {cardsError ? (
+              <Card className="border-destructive/60">
+                <CardHeader>
+                  <CardTitle className="text-destructive">Error al cargar productos por tienda</CardTitle>
+                  <CardDescription>{cardsError.message}</CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <TopProductsStoreCards
+                rows={cardsData?.data ?? []}
+                limit={cardLimit}
+                isLoading={isLoadingCards}
+              />
+            )}
+          </>
+        )}
+
         {/* ── Cargando ───────────────────────────────────────────────────────────────────── */}
-        {isLoading && (
+        {viewMode === "table" && isLoading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1A6894" }} />
             <span className="ml-3 text-lg font-medium">Cargando ranking de productos...</span>
@@ -577,7 +687,7 @@ export default function TopProducts() {
         )}
 
         {/* ── Error ───────────────────────────────────────────────────────── */}
-        {error && !isLoading && (
+        {viewMode === "table" && error && !isLoading && (
           <Card style={{ borderColor: "#BC2C46" }}>
             <CardHeader>
               <CardTitle style={{ color: "#BC2C46", fontFamily: "'Italian Plate No 1', sans-serif" }}>
@@ -589,7 +699,7 @@ export default function TopProducts() {
         )}
 
         {/* ── Contenido principal ─────────────────────────────────────────── */}
-        {!isLoading && !error && data && (
+        {viewMode === "table" && !isLoading && !error && data && (
           <>
             {/* KPIs */}
             <div className="grid gap-4 md:grid-cols-3">
@@ -710,7 +820,7 @@ export default function TopProducts() {
                           className="text-base font-bold uppercase tracking-wide"
                           style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
                         >
-                          Ranking Completo — Top 50 por Cantidad
+                          Ranking completo — Top {tableLimit} por cantidad
                         </CardTitle>
                         <CardDescription>
                           {data.byQuantity.length} productos ordenados por unidades vendidas
@@ -757,7 +867,7 @@ export default function TopProducts() {
                           className="text-base font-bold uppercase tracking-wide"
                           style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
                         >
-                          Ranking Completo — Top 50 por Monto
+                          Ranking completo — Top {tableLimit} por monto
                         </CardTitle>
                         <CardDescription>
                           {data.byAmount.length} productos ordenados por monto de ventas

@@ -17,8 +17,9 @@ describe("getTopProducts", () => {
     branchId?: string;
     categoryId?: string;
     orderBy: "qty" | "amount";
+    limit?: 50 | 100;
   }) {
-    const { fechaMin, fechaMax, branchId, categoryId, orderBy } = opts;
+    const { fechaMin, fechaMax, branchId, categoryId, orderBy, limit = 50 } = opts;
     const params: any[] = [];
     let pi = 1;
 
@@ -126,7 +127,7 @@ describe("getTopProducts", () => {
       LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
       WHERE ${whereCol}
       ORDER BY ${orderCol}
-      LIMIT 50;
+      LIMIT ${limit};
     `;
 
     return pool.query(query, params);
@@ -173,6 +174,18 @@ describe("getTopProducts", () => {
     result.rows.forEach((row) => {
       expect(Number(row.total_amount)).toBeGreaterThan(0);
     });
+  });
+
+  it("admite un ranking global de hasta 100 productos", { timeout: 30_000 }, async () => {
+    const result = await runTopProductsQuery({
+      fechaMin: FECHA_MIN,
+      fechaMax: FECHA_MAX,
+      orderBy: "amount",
+      limit: 100,
+    });
+
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(result.rows.length).toBeLessThanOrEqual(100);
   });
 
   // ── Test 3: el orden por cantidad es descendente ─────────────────────────

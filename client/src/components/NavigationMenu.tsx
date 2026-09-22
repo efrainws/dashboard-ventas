@@ -148,7 +148,7 @@ export function NavigationMenu() {
                 <DropdownMenuItem asChild>
                   <Link href="/top-products" className="flex items-center w-full cursor-pointer">
                     <Trophy className="mr-2 h-4 w-4" />
-                    <span>Top 50 Productos</span>
+                    <span>Top Productos</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -430,7 +430,7 @@ export function NavigationMenu() {
                     }`}
                   >
                     <Trophy className="h-4 w-4 shrink-0" />
-                    <span>Top 50 Productos</span>
+                    <span>Top Productos</span>
                   </Link>
                   <Link
                     href="/top-customers"
