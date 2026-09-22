@@ -2278,3 +2278,8 @@ Fecha: 1 de febrero de 2026
 - [x] Localizar el árbol de controles anidados en /supplier
 - [x] Corregir la semántica sin alterar la interacción del portal
 - [x] Agregar prueba de regresión y validar el portal
+
+## Usuarios tienda: restringir vistas por tienda a tabla
+- [x] Identificar las páginas con vistas de tarjetas por tienda
+- [x] Forzar la tabla como vista única para el rol store_user
+- [x] Cubrir permisos de vista y validar tipos, build e interfaz

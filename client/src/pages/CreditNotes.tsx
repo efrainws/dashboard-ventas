@@ -1019,7 +1019,9 @@ export default function CreditNotes() {
                 NOTAS DE CRÉDITO
               </h1>
               <p className="text-muted-foreground text-sm">
-                Detalle de NC emitidas por tienda. Haz clic en una tarjeta para ver el breakdown por cajero.
+                Detalle de NC emitidas por tienda. {isStoreUser
+                  ? "Usa Ver cajeros para abrir el detalle de tu tienda."
+                  : "Haz clic en una tarjeta para ver el breakdown por cajero."}
               </p>
               {queryData?.metadata && (
                 <p className="text-xs text-muted-foreground">
@@ -1290,6 +1292,64 @@ export default function CreditNotes() {
                     </span>
                   </div>
 
+                  {isStoreUser ? (
+                    <Card>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="pl-4">Tienda</TableHead>
+                              <TableHead>Código</TableHead>
+                              <TableHead className="text-right">Notas de crédito</TableHead>
+                              <TableHead className="text-right">Monto NC</TableHead>
+                              <TableHead className="text-right">NC / transacciones</TableHead>
+                              <TableHead className="text-right">NC / ventas</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead className="w-28 pr-4" />
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {storeData.map((store) => {
+                              const montoNc = includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
+                              const montoVentas = includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas;
+                              const traffic = getTrafficLight(
+                                store.total_nc,
+                                montoNc,
+                                store.total_txn_tienda,
+                                montoVentas,
+                                thresholds,
+                              );
+
+                              return (
+                                <TableRow key={store.codigo_tienda || store.nombre}>
+                                  <TableCell className="pl-4 font-medium">{store.nombre}</TableCell>
+                                  <TableCell className="text-muted-foreground">{store.codigo_tienda || "—"}</TableCell>
+                                  <TableCell className="text-right tabular-nums" style={{ color: traffic.color }}>
+                                    {formatNumber(store.total_nc)}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">S/ {formatCurrency(montoNc)}</TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {traffic.pct_txn === null ? "—" : `${traffic.pct_txn.toFixed(2)}%`}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {traffic.pct_monto === null ? "—" : `${traffic.pct_monto.toFixed(2)}%`}
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="text-xs font-semibold" style={{ color: traffic.color }}>{traffic.label}</span>
+                                  </TableCell>
+                                  <TableCell className="pr-4 text-right">
+                                    <Button variant="outline" size="sm" onClick={() => setModal({ open: true, store })}>
+                                      Ver cajeros
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {storeData.map((store) => {
                       const monto_nc = includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
@@ -1432,6 +1492,7 @@ export default function CreditNotes() {
                       );
                     })}
                   </div>
+                  )}
                 </>
               )}
             </>

@@ -51,7 +51,7 @@ import {
   Receipt,
   Package,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { CustomerDetailAnalytics } from "@/components/CustomerDetailAnalytics";
 import {
@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const ALL_CHANNELS = ['Presencial', 'eCommerce', 'Rappi'] as const;
 type Channel = typeof ALL_CHANNELS[number];
@@ -500,6 +501,9 @@ function CustomerTransactionsModal({
 
 export default function TopCustomers() {
   const { theme } = useTheme();
+  const { user, loading: authLoading } = useAuth();
+  const isStoreUser = user?.role === "store_user";
+  const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   // ── Fechas por defecto: últimos 30 días ──
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
@@ -512,6 +516,7 @@ export default function TopCustomers() {
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [selectedSapId, setSelectedSapId] = useState<string>("all");
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>([...ALL_CHANNELS]);
+  const activeViewMode = isStoreUser ? "table" : viewMode;
 
   // Modal de transacciones
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
@@ -520,7 +525,11 @@ export default function TopCustomers() {
   const fechaMax = toLocalDate(to);
 
   // Límite de tarjetas: máximo 20 en modo cards
-  const effectiveTopN = viewMode === "cards" ? Math.min(topN, 20) : topN;
+  const effectiveTopN = activeViewMode === "cards" ? Math.min(topN, 20) : topN;
+
+  useEffect(() => {
+    if (isStoreUser && assignedStoreCode) setSelectedSapId(assignedStoreCode);
+  }, [isStoreUser, assignedStoreCode]);
 
   // Canal único para el backend (si todos seleccionados → 'all', si uno → ese canal)
   const effectiveChannel = useMemo(() => {
@@ -540,7 +549,7 @@ export default function TopCustomers() {
         branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
         sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
       },
-      { enabled: viewMode === "cards" }
+      { enabled: !authLoading && activeViewMode === "cards" }
     );
 
   const { data: generalData, isLoading: loadingGeneral } =
@@ -553,7 +562,7 @@ export default function TopCustomers() {
         branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
         sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
       },
-      { enabled: viewMode === "table" }
+      { enabled: !authLoading && activeViewMode === "table" }
     );
 
   // ── Lista de tiendas disponibles (extraída de los datos de tarjetas) ──
@@ -618,6 +627,15 @@ export default function TopCustomers() {
     setSelectedCustomer({ customer_id: customerId, customer_name: customerName });
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg font-medium">Cargando...</span>
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className={`min-h-screen bg-background ${theme}`}>
@@ -668,19 +686,26 @@ export default function TopCustomers() {
                 {/* Tienda */}
                 <div className="flex flex-col gap-1">
                   <Label className="text-xs text-muted-foreground">Tienda</Label>
-                  <Select value={selectedSapId} onValueChange={setSelectedSapId}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue placeholder="Todas las tiendas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las tiendas</SelectItem>
-                      {availableStores.map((s) => (
-                        <SelectItem key={s.sap_id} value={s.sap_id}>
-                          {s.nombre} ({s.sap_id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isStoreUser ? (
+                    <div className="flex h-9 w-44 items-center gap-2 border border-border bg-muted/50 px-3 text-sm text-muted-foreground">
+                      <Store className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{assignedStoreCode ?? "Tu tienda"}</span>
+                    </div>
+                  ) : (
+                    <Select value={selectedSapId} onValueChange={setSelectedSapId}>
+                      <SelectTrigger className="w-44">
+                        <SelectValue placeholder="Todas las tiendas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las tiendas</SelectItem>
+                        {availableStores.map((s) => (
+                          <SelectItem key={s.sap_id} value={s.sap_id}>
+                            {s.nombre} ({s.sap_id})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 {/* Canal */}
@@ -779,33 +804,39 @@ export default function TopCustomers() {
                 </div>
 
                 {/* Vista */}
-                <div className="flex flex-col gap-1 ml-auto">
-                  <Label className="text-xs text-muted-foreground">Vista</Label>
-                  <div className="flex items-center border border-border rounded-md overflow-hidden h-9">
-                    <button
-                      onClick={() => setViewMode("cards")}
-                      className={`flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors ${
-                        viewMode === "cards"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      Tarjetas
-                    </button>
-                    <button
-                      onClick={() => setViewMode("table")}
-                      className={`flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors ${
-                        viewMode === "table"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <LayoutList className="h-3.5 w-3.5" />
-                      Tabla
-                    </button>
+                {!isStoreUser && (
+                  <div className="flex flex-col gap-1 ml-auto">
+                    <Label className="text-xs text-muted-foreground">Vista</Label>
+                    <div className="flex items-center border border-border rounded-md overflow-hidden h-9">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("cards")}
+                        aria-pressed={activeViewMode === "cards"}
+                        className={`flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors ${
+                          activeViewMode === "cards"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                        Tarjetas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("table")}
+                        aria-pressed={activeViewMode === "table"}
+                        className={`flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors ${
+                          activeViewMode === "table"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <LayoutList className="h-3.5 w-3.5" />
+                        Tabla
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <ReportDiscrepancyButton
                   context={{
@@ -817,7 +848,7 @@ export default function TopCustomers() {
               </div>
 
               {/* Aviso de límite en modo tarjetas */}
-              {viewMode === "cards" && topN > 20 && (
+              {activeViewMode === "cards" && topN > 20 && (
                 <p className="mt-2 text-xs text-muted-foreground italic">
                   En modo tarjetas se muestran máximo 20 clientes por tienda. Cambia a vista Tabla para ver los {topN} clientes completos.
                 </p>
@@ -826,7 +857,7 @@ export default function TopCustomers() {
           </Card>
 
           {/* ── KPIs (solo modo tarjetas) ── */}
-          {viewMode === "cards" && (
+          {activeViewMode === "cards" && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card className="border border-border/60">
                 <CardContent className="pt-4 pb-4 flex items-center gap-3">
@@ -873,7 +904,7 @@ export default function TopCustomers() {
           {/* ══════════════════════════════════════════════════════════════════
               MODO TARJETAS
           ══════════════════════════════════════════════════════════════════ */}
-          {viewMode === "cards" && (
+          {activeViewMode === "cards" && (
             <>
               {loadingCards ? (
                 <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
@@ -984,7 +1015,7 @@ export default function TopCustomers() {
           {/* ══════════════════════════════════════════════════════════════════
               MODO TABLA GENERAL
           ══════════════════════════════════════════════════════════════════ */}
-          {viewMode === "table" && (
+          {activeViewMode === "table" && (
             <Card className="border border-border/60">
               <CardHeader className="pb-2 pt-4">
                 <CardTitle

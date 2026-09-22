@@ -479,8 +479,10 @@ export default function IdentifiedTransactions() {
             TRANSACCIONES IDENTIFICADAS
           </h1>
           <p className="text-muted-foreground">
-            Porcentaje de identificación de clientes por tienda en el período seleccionado.{" "}
-            <span className="text-xs">Haz clic en una tarjeta para ver el detalle por cajero.</span>
+            Porcentaje de identificación de clientes por tienda en el período seleccionado. {" "}
+            <span className="text-xs">
+              {isStoreUser ? "Usa Ver cajeros para abrir el detalle de tu tienda." : "Haz clic en una tarjeta para ver el detalle por cajero."}
+            </span>
           </p>
           {queryData?.metadata && (
             <p className="text-xs text-muted-foreground">
@@ -678,6 +680,46 @@ export default function IdentifiedTransactions() {
                   </span>
                 </div>
 
+                {isStoreUser ? (
+                  <Card>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="pl-4">Tienda</TableHead>
+                            <TableHead>Código</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Identificadas</TableHead>
+                            <TableHead className="text-right">Sin identificar</TableHead>
+                            <TableHead className="text-right">Identificación</TableHead>
+                            <TableHead className="w-28 pr-4" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {storeData.map((store) => (
+                            <TableRow key={store.codigo_tienda || store.nombre}>
+                              <TableCell className="pl-4 font-medium">{store.nombre}</TableCell>
+                              <TableCell className="text-muted-foreground">{store.codigo_tienda || "—"}</TableCell>
+                              <TableCell className="text-right tabular-nums">{formatNumber(store.total_transactions)}</TableCell>
+                              <TableCell className="text-right tabular-nums">{formatNumber(store.identified_transactions)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">
+                                {formatNumber(store.total_transactions - store.identified_transactions)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold" style={{ color: percentColor(store.identified_percentage) }}>
+                                {store.identified_percentage.toFixed(1)}%
+                              </TableCell>
+                              <TableCell className="pr-4 text-right">
+                                <Button variant="outline" size="sm" onClick={() => setModal({ open: true, store })}>
+                                  Ver cajeros
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {storeData.map((store) => (
                     <Card
@@ -781,6 +823,7 @@ export default function IdentifiedTransactions() {
                     </Card>
                   ))}
                 </div>
+                )}
               </>
             )}
           </>

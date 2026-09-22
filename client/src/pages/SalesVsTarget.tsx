@@ -16,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { StoreMultiSelect } from "@/components/StoreMultiSelect";
@@ -333,7 +341,7 @@ export default function SalesVsTarget() {
         </Card>
 
         {/* Tarjeta de Totales */}
-        {!isLoading && totals && (
+        {!isStoreUser && !isLoading && totals && (
           <div>
             <h2 className="ff-section-label mb-3">
               Total Consolidado
@@ -359,7 +367,53 @@ export default function SalesVsTarget() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2 text-lg font-medium">Cargando datos...</span>
           </div>
-        ) : data?.stores && data.stores.length > 0 ? (
+        ) : data?.stores && data.stores.length > 0 ? isStoreUser ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading uppercase text-base tracking-wide">Cumplimiento de tu tienda</CardTitle>
+              <CardDescription>El detalle se limita a la tienda asignada a tu usuario.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Tienda</TableHead>
+                    <TableHead className="text-right">Venta período</TableHead>
+                    <TableHead className="text-right">Meta período</TableHead>
+                    <TableHead className="text-right">Cumplimiento</TableHead>
+                    <TableHead className="text-right">Proyección mensual</TableHead>
+                    <TableHead className="text-right pr-6">Meta mensual</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.stores.map((store) => {
+                    const projection = (store.total_sales / Math.max(daysElapsed, 1)) * daysInMonth;
+                    const completion = store.prorated_target > 0
+                      ? (store.total_sales / store.prorated_target) * 100
+                      : null;
+
+                    return (
+                      <TableRow key={store.store_id}>
+                        <TableCell className="pl-6 font-medium">{store.store_name}</TableCell>
+                        <TableCell className="text-right tabular-nums">S/ {store.total_sales.toLocaleString("es-PE", { maximumFractionDigits: 0 })}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {store.has_target ? `S/ ${store.prorated_target.toLocaleString("es-PE", { maximumFractionDigits: 0 })}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">
+                          {completion === null ? "—" : `${completion.toFixed(1)}%`}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">S/ {projection.toLocaleString("es-PE", { maximumFractionDigits: 0 })}</TableCell>
+                        <TableCell className="pr-6 text-right tabular-nums">
+                          {store.monthly_target ? `S/ ${store.monthly_target.toLocaleString("es-PE", { maximumFractionDigits: 0 })}` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {data.stores.map((store) => (
               <StoreTargetCard

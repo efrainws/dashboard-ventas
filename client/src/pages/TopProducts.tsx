@@ -486,6 +486,7 @@ export default function TopProducts() {
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [cardLimit, setCardLimit] = useState<20 | 50>(20);
   const [tableLimit, setTableLimit] = useState<50 | 100>(50);
+  const activeViewMode = isStoreUser ? "table" : viewMode;
 
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
@@ -535,14 +536,14 @@ export default function TopProducts() {
     isLoading: isLoadingCards,
     error: cardsError,
   } = trpc.sales.getTopProductsByStore.useQuery(cardQueryInput, {
-    enabled: viewMode === "cards",
+    enabled: !authLoading && activeViewMode === "cards",
   });
   const {
     data: tableData,
     isLoading: isLoadingTable,
     error: tableError,
   } = trpc.sales.getTopProducts.useQuery(tableQueryInput, {
-    enabled: viewMode === "table",
+    enabled: !authLoading && activeViewMode === "table",
   });
   const data = tableData;
   const isLoading = isLoadingTable;
@@ -606,39 +607,41 @@ export default function TopProducts() {
 
         <Card className="border-border/60">
           <CardContent className="flex flex-wrap items-end justify-between gap-4 py-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Vista</span>
-              <div className="flex h-9 overflow-hidden border border-border" role="group" aria-label="Seleccionar vista de Top Productos">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("cards")}
-                  aria-pressed={viewMode === "cards"}
-                  className={`flex items-center gap-1.5 px-3 text-xs font-medium transition-colors ${
-                    viewMode === "cards" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Tarjetas por tienda
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("table")}
-                  aria-pressed={viewMode === "table"}
-                  className={`flex items-center gap-1.5 border-l border-border px-3 text-xs font-medium transition-colors ${
-                    viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <LayoutList className="h-3.5 w-3.5" />
-                  Tabla general
-                </button>
+            {!isStoreUser && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Vista</span>
+                <div className="flex h-9 overflow-hidden border border-border" role="group" aria-label="Seleccionar vista de Top Productos">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("cards")}
+                    aria-pressed={activeViewMode === "cards"}
+                    className={`flex items-center gap-1.5 px-3 text-xs font-medium transition-colors ${
+                      activeViewMode === "cards" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    Tarjetas por tienda
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    aria-pressed={activeViewMode === "table"}
+                    className={`flex items-center gap-1.5 border-l border-border px-3 text-xs font-medium transition-colors ${
+                      activeViewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                    Tabla general
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col gap-1">
               <label htmlFor="top-products-limit" className="text-xs text-muted-foreground">
-                {viewMode === "cards" ? "Productos por tienda" : "Productos en tabla"}
+                {activeViewMode === "cards" ? "Productos por tienda" : "Productos en tabla"}
               </label>
-              {viewMode === "cards" ? (
+              {activeViewMode === "cards" ? (
                 <Select value={String(cardLimit)} onValueChange={(value) => setCardLimit(Number(value) as 20 | 50)}>
                   <SelectTrigger id="top-products-limit" className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -659,7 +662,7 @@ export default function TopProducts() {
           </CardContent>
         </Card>
 
-        {viewMode === "cards" && (
+        {activeViewMode === "cards" && (
           <>
             {cardsError ? (
               <Card className="border-destructive/60">
@@ -679,7 +682,7 @@ export default function TopProducts() {
         )}
 
         {/* ── Cargando ───────────────────────────────────────────────────────────────────── */}
-        {viewMode === "table" && isLoading && (
+        {activeViewMode === "table" && isLoading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1A6894" }} />
             <span className="ml-3 text-lg font-medium">Cargando ranking de productos...</span>
@@ -687,7 +690,7 @@ export default function TopProducts() {
         )}
 
         {/* ── Error ───────────────────────────────────────────────────────── */}
-        {viewMode === "table" && error && !isLoading && (
+        {activeViewMode === "table" && error && !isLoading && (
           <Card style={{ borderColor: "#BC2C46" }}>
             <CardHeader>
               <CardTitle style={{ color: "#BC2C46", fontFamily: "'Italian Plate No 1', sans-serif" }}>
@@ -699,7 +702,7 @@ export default function TopProducts() {
         )}
 
         {/* ── Contenido principal ─────────────────────────────────────────── */}
-        {viewMode === "table" && !isLoading && !error && data && (
+        {activeViewMode === "table" && !isLoading && !error && data && (
           <>
             {/* KPIs */}
             <div className="grid gap-4 md:grid-cols-3">

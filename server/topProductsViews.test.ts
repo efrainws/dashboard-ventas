@@ -11,10 +11,11 @@ describe("vistas de Top Productos", () => {
     expect(page).toContain('useState<"cards" | "table">("cards")');
     expect(page).toContain('useState<20 | 50>(20)');
     expect(page).toContain('useState<50 | 100>(50)');
+    expect(page).toContain('const activeViewMode = isStoreUser ? "table" : viewMode;');
     expect(page).toContain("trpc.sales.getTopProductsByStore.useQuery");
-    expect(page).toContain("enabled: viewMode === \"cards\"");
+    expect(page).toContain('enabled: !authLoading && activeViewMode === "cards"');
     expect(page).toContain("trpc.sales.getTopProducts.useQuery");
-    expect(page).toContain("enabled: viewMode === \"table\"");
+    expect(page).toContain('enabled: !authLoading && activeViewMode === "table"');
     expect(page).toContain("TopProductsStoreCards");
   });
 
