@@ -427,6 +427,7 @@ function CustomerTransactionsModal({
                   stores={analyticsData?.stores ?? []}
                   departments={analyticsData?.departments ?? []}
                   products={topProductsData?.data ?? []}
+                  purchaseSummary={analyticsData?.purchaseSummary}
                   storeMetric={storeMetric}
                   departmentMetric={departmentMetric}
                   productLimit={productLimit}

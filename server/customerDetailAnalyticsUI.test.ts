@@ -25,6 +25,12 @@ describe("analíticas en el modal de Top Clientes", () => {
     expect(component).toContain("Distribución por tienda");
     expect(component).toContain("Distribución por departamento");
     expect(component).toContain("Productos más comprados");
+    expect(component).toContain("Monto total de compra");
+    expect(component).toContain("Total de transacciones");
+    expect(component).toContain("Monto promedio mensual");
+    expect(component).toContain("Transacciones promedio por mes");
+    expect(component).toContain("Resumen de compras del cliente");
+    expect(page).toContain("purchaseSummary={analyticsData?.purchaseSummary}");
     expect(component).toContain("Transacciones");
     ["10", "20", "50", "100"].forEach((limit) => {
       expect(component).toContain(`value="${limit}"`);

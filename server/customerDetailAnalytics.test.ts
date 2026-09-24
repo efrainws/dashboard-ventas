@@ -34,6 +34,9 @@ describe("agregaciones de detalle de cliente", () => {
     expect(built.query).toContain("b.sap_id = $4");
     expect(built.query).toContain("WHERE sales_channel = $5");
     expect(built.query).toContain("COUNT(DISTINCT header_id)::int AS transactions");
+    expect(built.query).toContain("purchase_summary AS");
+    expect(built.query).toContain("monthly_sales_amount");
+    expect(built.query).toContain("monthly_transactions");
     expect(built.query).not.toContain(baseInput.customerId);
   });
 
@@ -73,10 +76,22 @@ describe("agregaciones de detalle de cliente", () => {
         departments: JSON.stringify([
           { id: "D1", name: "Alimentos", sales_amount: 200, transactions: 2 },
         ]),
+        purchase_summary: {
+          sales_amount: "1234.50",
+          transactions: "4",
+          monthly_sales_amount: "617.25",
+          monthly_transactions: "2",
+        },
       })
     ).toEqual({
       stores: [{ id: "FF01", name: "La Mar", salesAmount: 1234.5, transactions: 4 }],
       departments: [{ id: "D1", name: "Alimentos", salesAmount: 200, transactions: 2 }],
+      purchaseSummary: {
+        salesAmount: 1234.5,
+        transactions: 4,
+        monthlySalesAmount: 617.25,
+        monthlyTransactions: 2,
+      },
     });
 
     expect(

@@ -6,7 +6,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { BarChart3, Building2, Package, Tags } from "lucide-react";
+import { BarChart3, Building2, CalendarDays, Package, ReceiptText, Tags, WalletCards } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -64,10 +64,18 @@ export type CustomerProductRow = {
   transactions: number;
 };
 
+export type CustomerPurchaseSummary = {
+  salesAmount: number;
+  transactions: number;
+  monthlySalesAmount: number;
+  monthlyTransactions: number;
+};
+
 interface CustomerDetailAnalyticsProps {
   stores: CustomerDistributionRow[];
   departments: CustomerDistributionRow[];
   products: CustomerProductRow[];
+  purchaseSummary?: CustomerPurchaseSummary;
   storeMetric: Metric;
   departmentMetric: Metric;
   productLimit: 10 | 20 | 50 | 100;
@@ -87,6 +95,12 @@ const formatCurrency = (value: number) =>
   }).format(value)}`;
 
 const formatNumber = (value: number) => new Intl.NumberFormat("es-PE").format(value);
+
+const formatAverage = (value: number) =>
+  new Intl.NumberFormat("es-PE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 
 function MetricSwitch({
   metric,
@@ -123,6 +137,63 @@ function MetricSwitch({
       >
         Transacciones
       </button>
+    </div>
+  );
+}
+
+function PurchaseSummaryCards({
+  summary,
+  isLoading,
+}: {
+  summary?: CustomerPurchaseSummary;
+  isLoading?: boolean;
+}) {
+  const metrics = [
+    {
+      label: "Monto total de compra",
+      value: formatCurrency(summary?.salesAmount ?? 0),
+      icon: WalletCards,
+      tone: "text-[var(--ff-esmeralda)]",
+    },
+    {
+      label: "Total de transacciones",
+      value: formatNumber(summary?.transactions ?? 0),
+      icon: ReceiptText,
+      tone: "text-[var(--ff-cobalto)]",
+    },
+    {
+      label: "Monto promedio mensual",
+      value: formatCurrency(summary?.monthlySalesAmount ?? 0),
+      icon: CalendarDays,
+      tone: "text-[var(--ff-mostaza-dark)]",
+    },
+    {
+      label: "Transacciones promedio por mes",
+      value: formatAverage(summary?.monthlyTransactions ?? 0),
+      icon: CalendarDays,
+      tone: "text-[var(--ff-granate)]",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de compras del cliente">
+      {metrics.map(({ label, value, icon: Icon, tone }) => (
+        <div key={label} className="border border-border/60 bg-card p-3">
+          <div className="flex items-start gap-2.5">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center bg-muted ${tone}`}>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] leading-tight text-muted-foreground">{label}</p>
+              {isLoading ? (
+                <Skeleton className="mt-1.5 h-6 w-24" />
+              ) : (
+                <p className="mt-1 tabular-nums font-sans text-lg font-bold text-foreground">{value}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -246,6 +317,7 @@ export function CustomerDetailAnalytics({
   stores,
   departments,
   products,
+  purchaseSummary,
   storeMetric,
   departmentMetric,
   productLimit,
@@ -268,6 +340,8 @@ export function CustomerDetailAnalytics({
           </h2>
         </div>
       </div>
+
+      <PurchaseSummaryCards summary={purchaseSummary} isLoading={isLoadingAnalytics} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <DistributionPie

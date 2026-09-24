@@ -18,6 +18,13 @@ export type CustomerDistribution = {
   transactions: number;
 };
 
+export type CustomerPurchaseSummary = {
+  salesAmount: number;
+  transactions: number;
+  monthlySalesAmount: number;
+  monthlyTransactions: number;
+};
+
 export type CustomerTopProduct = {
   productId: string | null;
   productName: string;
@@ -148,6 +155,22 @@ export function buildCustomerDistributionsQuery(input: CustomerAnalyticsScope): 
           COUNT(DISTINCT header_id)::int AS transactions
         FROM detail_rows
         GROUP BY department_id, department_name
+      ),
+      date_range AS (
+        SELECT GREATEST(
+          1,
+          (
+            DATE_PART('year', AGE($3::date, $2::date)) * 12
+            + DATE_PART('month', AGE($3::date, $2::date))
+            + 1
+          )::int
+        ) AS months
+      ),
+      purchase_summary AS (
+        SELECT
+          ROUND(COALESCE(SUM(header_amount), 0)::numeric, 2) AS sales_amount,
+          COUNT(*)::int AS transactions
+        FROM filtered_headers
       )
       SELECT
         COALESCE(
@@ -171,7 +194,15 @@ export function buildCustomerDistributionsQuery(input: CustomerAnalyticsScope): 
             ) ORDER BY sales_amount DESC, name ASC
           ) FROM department_rows),
           '[]'::jsonb
-        ) AS departments;
+        ) AS departments,
+        jsonb_build_object(
+          'sales_amount', summary.sales_amount,
+          'transactions', summary.transactions,
+          'monthly_sales_amount', ROUND(summary.sales_amount / range.months::numeric, 2),
+          'monthly_transactions', ROUND(summary.transactions::numeric / range.months::numeric, 2)
+        ) AS purchase_summary
+      FROM purchase_summary summary
+      CROSS JOIN date_range range;
     `,
   };
 }
@@ -240,9 +271,19 @@ export function mapCustomerDistributions(row: Record<string, unknown> | undefine
       transactions: asNumber(item.transactions),
     }));
 
+  const purchaseSummary = (typeof row?.purchase_summary === "string"
+    ? JSON.parse(row.purchase_summary)
+    : row?.purchase_summary) as Record<string, unknown> | undefined;
+
   return {
     stores: mapDistribution(row?.stores),
     departments: mapDistribution(row?.departments),
+    purchaseSummary: {
+      salesAmount: asNumber(purchaseSummary?.sales_amount),
+      transactions: asNumber(purchaseSummary?.transactions),
+      monthlySalesAmount: asNumber(purchaseSummary?.monthly_sales_amount),
+      monthlyTransactions: asNumber(purchaseSummary?.monthly_transactions),
+    } satisfies CustomerPurchaseSummary,
   };
 }
 

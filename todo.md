@@ -2328,3 +2328,8 @@ Fecha: 1 de febrero de 2026
 - [x] Añadir el disparador Búsqueda por DNI junto a Reportar discrepancia
 - [x] Conservar estados de búsqueda, resultados y apertura del detalle de cliente
 - [x] Validar interacción, accesibilidad, tipado, build y presentación responsive
+
+## Top Clientes: métricas de Perfil de compra
+- [x] Incorporar un resumen agregado y acotado al contrato de analíticas del cliente
+- [x] Mostrar monto, transacciones y promedios mensuales en casillas del perfil
+- [x] Cubrir los cálculos, carga y presentación responsive con pruebas y compilación
