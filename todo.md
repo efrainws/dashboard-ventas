@@ -2311,3 +2311,14 @@ Fecha: 1 de febrero de 2026
 - [x] Aplicar el identificador completo en cada listado y detalle de transacciones
 - [x] Actualizar contratos, inventario SQL y pruebas de regresión
 - [x] Validar la consulta PostgreSQL, tipado, build y presentación
+
+## Corrección: compatibilidad del detalle de Top Clientes
+- [x] Confirmar la visualización Serie-Número tras recargar la interfaz actualizada
+- [x] Verificar que no se requiere un cambio de contrato adicional
+- [x] Cerrar la incidencia como caché de la interfaz anterior en el navegador
+
+## Top Clientes: detalle directo por DNI
+- [x] Crear una búsqueda exacta, indexada y acotada por los filtros del análisis
+- [x] Abrir el modal de cliente desde la búsqueda por DNI con estados de validación
+- [x] Mantener el alcance de sucursal para usuarios tienda y cubrir pruebas
+- [x] Validar consulta PostgreSQL, interfaz, tipado y compilación

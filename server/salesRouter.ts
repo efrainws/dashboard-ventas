@@ -8,6 +8,7 @@ import { ENV } from "./_core/env";
 import { inclusiveCalendarDays } from "../shared/analytics";
 import { canReassignShelfProducts } from "../shared/roleAccess";
 import { buildTransactionNumberSql } from "./transactionIdentifiers";
+import { buildCustomerByDniQuery } from "./customerDniSearch";
 import {
   buildCustomerDistributionsQuery,
   buildCustomerTopProductsQuery,
@@ -1917,6 +1918,45 @@ export const salesRouter = router({
       } catch (error) {
         console.error('[PostgreSQL] Error en getTopCustomersGeneral:', error);
         throw new Error('Error al consultar tabla general de clientes');
+      }
+    }),
+
+  /**
+   * Resuelve un cliente para abrir su detalle desde un DNI exacto. El resultado
+   * solo existe si el cliente tiene ventas bajo los mismos filtros del análisis.
+   */
+  getCustomerByDni: salesDataProcedure
+    .input(
+      z.object({
+        dni: z.string().regex(/^\d{8}$/, "Ingresa un DNI válido de 8 dígitos."),
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_sap_id: z.string().optional(),
+        sales_channel: z.enum(["Presencial", "eCommerce", "Rappi"]).optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { query, params } = buildCustomerByDniQuery({
+        dni: input.dni,
+        fechaMin: input.fecha_min.substring(0, 10),
+        fechaMax: input.fecha_max.substring(0, 10),
+        branchSapId: input.branch_sap_id,
+        salesChannel: input.sales_channel,
+      });
+
+      try {
+        const result = await queryWithRetry(query, params);
+        return {
+          success: true,
+          data: result.rows.map((row: any) => ({
+            customer_id: row.customer_id,
+            customer_name: row.customer_name ?? "Sin nombre",
+            dni: row.dni,
+          })),
+        };
+      } catch (error) {
+        console.error("[PostgreSQL] Error en getCustomerByDni:", error);
+        throw new Error("Error al buscar el cliente por DNI");
       }
     }),
 

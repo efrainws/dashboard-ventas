@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ import {
   ChevronLeft,
   Receipt,
   Package,
+  Search,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
@@ -156,6 +158,10 @@ interface GeneralRow {
 interface SelectedCustomer {
   customer_id: string;
   customer_name: string;
+}
+
+interface DniCustomerMatch extends SelectedCustomer {
+  dni: string;
 }
 
 interface SelectedTransaction {
@@ -520,6 +526,10 @@ export default function TopCustomers() {
 
   // Modal de transacciones
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
+  const [dniInput, setDniInput] = useState("");
+  const [submittedDni, setSubmittedDni] = useState<string | null>(null);
+  const [dniMatches, setDniMatches] = useState<DniCustomerMatch[]>([]);
+  const [dniMessage, setDniMessage] = useState<string | null>(null);
 
   const fechaMin = toLocalDate(from);
   const fechaMax = toLocalDate(to);
@@ -563,6 +573,18 @@ export default function TopCustomers() {
         sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
       },
       { enabled: !authLoading && activeViewMode === "table" }
+    );
+
+  const { data: dniData, isFetching: isSearchingDni, error: dniError } =
+    trpc.sales.getCustomerByDni.useQuery(
+      {
+        dni: submittedDni ?? "00000000",
+        fecha_min: fechaMin,
+        fecha_max: fechaMax,
+        branch_sap_id: selectedSapId !== "all" ? selectedSapId : undefined,
+        sales_channel: effectiveChannel !== "all" ? effectiveChannel : undefined,
+      },
+      { enabled: !authLoading && submittedDni !== null },
     );
 
   // ── Lista de tiendas disponibles (extraída de los datos de tarjetas) ──
@@ -626,6 +648,49 @@ export default function TopCustomers() {
     if (!customerId) return;
     setSelectedCustomer({ customer_id: customerId, customer_name: customerName });
   };
+
+  const handleDniSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const dni = dniInput.replace(/\D/g, "");
+    setDniMatches([]);
+
+    if (dni.length !== 8) {
+      setDniMessage("Ingresa un DNI de 8 dígitos.");
+      return;
+    }
+
+    setDniMessage(null);
+    setSubmittedDni(dni);
+  };
+
+  useEffect(() => {
+    if (!submittedDni || !dniData) return;
+
+    const matches = dniData.data as DniCustomerMatch[];
+    setSubmittedDni(null);
+
+    if (matches.length === 0) {
+      setDniMessage("No se encontraron ventas para este DNI con los filtros actuales.");
+      return;
+    }
+
+    if (matches.length === 1) {
+      const [customer] = matches;
+      setDniMessage(null);
+      setSelectedCustomer(customer);
+      return;
+    }
+
+    setDniMessage("Se encontraron varios registros para este DNI. Elige un cliente.");
+    setDniMatches(matches);
+  }, [dniData, submittedDni]);
+
+  useEffect(() => {
+    if (!submittedDni || !dniError) return;
+    setSubmittedDni(null);
+    setDniMatches([]);
+    setDniMessage("No se pudo completar la búsqueda por DNI. Inténtalo nuevamente.");
+  }, [dniError, submittedDni]);
 
   if (authLoading) {
     return (
@@ -772,6 +837,75 @@ export default function TopCustomers() {
                       </div>
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                {/* Búsqueda directa por DNI */}
+                <div className="flex flex-col gap-1 min-w-[17rem]">
+                  <Label htmlFor="customer-dni" className="text-xs text-muted-foreground">
+                    Detalle por DNI
+                  </Label>
+                  <form className="flex gap-2" onSubmit={handleDniSubmit}>
+                    <Input
+                      id="customer-dni"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      value={dniInput}
+                      onChange={(event) => {
+                        setDniInput(event.target.value.replace(/\D/g, "").slice(0, 8));
+                        if (dniMessage || dniMatches.length > 0) {
+                          setDniMessage(null);
+                          setDniMatches([]);
+                        }
+                      }}
+                      placeholder="DNI de 8 dígitos"
+                      aria-describedby="customer-dni-help"
+                      className="h-9 min-w-0 tabular-nums"
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="h-9 shrink-0 px-3"
+                      disabled={isSearchingDni || dniInput.length !== 8}
+                    >
+                      {isSearchingDni ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-label="Buscando cliente" />
+                      ) : (
+                        <>
+                          <Search className="mr-1.5 h-4 w-4" />
+                          Buscar
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                  <p id="customer-dni-help" className="text-[11px] leading-tight text-muted-foreground">
+                    Abre el detalle con los filtros actuales.
+                  </p>
+                  {dniMessage && (
+                    <p role="status" className="text-xs text-muted-foreground">
+                      {dniMessage}
+                    </p>
+                  )}
+                  {dniMatches.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5" aria-label="Clientes encontrados por DNI">
+                      {dniMatches.map((customer) => (
+                        <Button
+                          key={customer.customer_id}
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 max-w-full justify-start truncate px-2 text-xs"
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setDniMatches([]);
+                            setDniMessage(null);
+                          }}
+                        >
+                          {toTitleCase(customer.customer_name)}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Top N */}
