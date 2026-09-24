@@ -36,8 +36,8 @@ describe("getShelfProductRanking — acceso", () => {
     limit: 100,
   };
 
-  it("bloquea a un rol comercial distinto de Gerencia antes de consultar PostgreSQL", async () => {
-    const caller = appRouter.createCaller(makeContext("commercial_specialist"));
+  it("bloquea perfiles sin acceso al análisis antes de consultar PostgreSQL", async () => {
+    const caller = appRouter.createCaller(makeContext("supplier_user"));
     await expect(caller.sales.getShelfProductRanking(input)).rejects.toMatchObject({
       code: "FORBIDDEN",
     });

@@ -16,3 +16,15 @@ export function hasCommercialScope(role: string | null | undefined): boolean {
 export function hasCommercialOrSystemScope(role: string | null | undefined): boolean {
   return role === "system_specialist" || hasCommercialScope(role);
 }
+
+/** Roles con la autorización existente para modificar asociaciones producto-góndola. */
+export const SHELF_REASSIGN_ROLES = [
+  "cst_user",
+  "commercial_specialist",
+  MANAGEMENT_ROLE,
+  "system_specialist",
+] as const;
+
+export function canReassignShelfProducts(role: string | null | undefined): boolean {
+  return SHELF_REASSIGN_ROLES.includes(role as typeof SHELF_REASSIGN_ROLES[number]);
+}

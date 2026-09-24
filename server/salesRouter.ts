@@ -1,5 +1,4 @@
 import { protectedProcedure, router, salesDataProcedure } from "./_core/trpc";
-import { TRPCError } from "@trpc/server";
 import * as XLSX from "xlsx";
 import { pool, queryWithRetry } from "./postgres";
 import { buildCreditNoteTransactionsByCashierQuery } from "./creditNoteQueries";
@@ -7,6 +6,7 @@ import { z } from "zod";
 import { cached, TTL } from "./queryCache";
 import { ENV } from "./_core/env";
 import { inclusiveCalendarDays } from "../shared/analytics";
+import { canReassignShelfProducts } from "../shared/roleAccess";
 import {
   buildCustomerDistributionsQuery,
   buildCustomerTopProductsQuery,
@@ -2353,8 +2353,9 @@ export const salesRouter = router({
 
   /**
    * Ranking agregado de productos vendidos en una góndola específica de una tienda.
-   * Exclusivo para Gerencia: devuelve solo las métricas necesarias, ordenadas y
-   * limitadas en PostgreSQL para no transferir líneas de venta masivas al cliente.
+   * Disponible para perfiles con acceso al análisis: devuelve solo las métricas
+   * necesarias, ordenadas y limitadas en PostgreSQL para no transferir líneas
+   * de venta masivas al cliente.
    */
   getShelfProductRanking: salesDataProcedure
     .input(z.object({
@@ -2368,14 +2369,7 @@ export const salesRouter = router({
       sort_by: z.enum(SHELF_PRODUCT_SORTS).default('amount'),
       limit: z.number().int().min(1).max(200).default(100),
     }))
-    .query(async ({ input, ctx }) => {
-      if (ctx.user.role !== 'management_user') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Este ranking detallado está disponible para el rol Gerencia.',
-        });
-      }
-
+    .query(async ({ input }) => {
       const { query, params } = buildShelfProductRankingQuery({
         branchSapId: input.branch_sap_id,
         shelfId: input.shelf_id,
@@ -2751,8 +2745,7 @@ export const salesRouter = router({
       shelfId:     z.string().uuid(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const allowedRoles = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'];
-      if (!allowedRoles.includes(ctx.user.role)) {
+      if (!canReassignShelfProducts(ctx.user.role)) {
         throw new Error('No tienes permisos para reasignar productos a góndolas.');
       }
       const { branchSapId, intSku, shelfId } = input;
@@ -2851,8 +2844,7 @@ export const salesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Verificar rol del usuario
-      const allowedRoles = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'];
-      if (!allowedRoles.includes(ctx.user.role)) {
+      if (!canReassignShelfProducts(ctx.user.role)) {
         throw new Error('No tienes permisos para realizar esta operación');
       }
 

@@ -11,12 +11,13 @@ const router = readFileSync(
   "utf8",
 );
 
-describe("Ranking por góndola para Gerencia", () => {
+describe("Ranking por góndola", () => {
   it("abre el ranking en lugar del modal de reasignación para el rol Gerencia", () => {
     expect(page).toContain('const isManagementUser = userRole === "management_user"');
-    expect(page).toContain("const openShelfDetails");
+    expect(page).toContain("const createShelfTarget");
+    expect(page).toContain("const openShelfRanking");
     expect(page).toContain("setShelfRankingTarget");
-    expect(page).toContain("isManagementUser ? 'Clic para ver el ranking de productos'");
+    expect(page).toContain("onClick={isManagementUser ? () => openShelfRanking(actionTarget) : undefined}");
   });
 
   it("expone las tres métricas y controles de orden requeridos", () => {
@@ -29,10 +30,10 @@ describe("Ranking por góndola para Gerencia", () => {
     expect(page).toContain(">Transacciones</TableHead>");
   });
 
-  it("mantiene el ranking limitado y exclusivo para Gerencia en servidor", () => {
+  it("mantiene el ranking limitado para perfiles autorizados en servidor", () => {
     expect(router).toContain("getShelfProductRanking");
-    expect(router).toContain("ctx.user.role !== 'management_user'");
     expect(router).toContain("limit: z.number().int().min(1).max(200).default(100)");
     expect(router).toContain("buildShelfProductRankingQuery");
+    expect(router).not.toContain("Este ranking detallado está disponible para el rol Gerencia.");
   });
 });

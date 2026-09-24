@@ -41,7 +41,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3, FileSpreadsheet, AlertCircle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { canReassignShelfProducts } from "@shared/roleAccess";
+import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIcon, Trash2, Save, BarChart3, Maximize2, Minimize2, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, Edit3, FileSpreadsheet, AlertCircle, ChevronDown } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
@@ -1142,6 +1151,64 @@ function ShelfProductRankingModal({
   );
 }
 
+function ShelfContextActions({
+  target,
+  canReassign,
+  onOpenRanking,
+  onOpenReassignment,
+}: {
+  target: ShelfRankingTarget;
+  canReassign: boolean;
+  onOpenRanking: (target: ShelfRankingTarget) => void;
+  onOpenReassignment: (target: ReassignTarget) => void;
+}) {
+  const shelfLabel = target.shelf_name || '(Sin góndola asignada)';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex max-w-full items-center gap-1 text-left text-xs font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Ver opciones para la góndola ${shelfLabel}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <span className="truncate">{shelfLabel}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuLabel>Acciones de góndola</DropdownMenuLabel>
+        <DropdownMenuItem onSelect={() => onOpenRanking(target)}>
+          <BarChart3 className="h-4 w-4" />
+          <span className="flex flex-col gap-0.5">
+            <span>Ver ranking de productos</span>
+            <span className="text-xs font-normal text-muted-foreground">Monto, unidades y transacciones</span>
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {canReassign ? (
+          <DropdownMenuItem onSelect={() => onOpenReassignment(target)}>
+            <Edit3 className="h-4 w-4" />
+            <span className="flex flex-col gap-0.5">
+              <span>Reasignar artículos</span>
+              <span className="text-xs font-normal text-muted-foreground">Modificar la asociación producto-góndola</span>
+            </span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <Edit3 className="h-4 w-4" />
+            <span className="flex flex-col gap-0.5">
+              <span>Reasignar artículos</span>
+              <span className="text-xs font-normal">No autorizado para este perfil</span>
+            </span>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ShelfReassignModal({
   target,
   onClose,
@@ -1368,7 +1435,8 @@ export default function SalesByShelf() {
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
   const isManagementUser = userRole === "management_user";
-  const canBulkAssign = ['cst_user', 'commercial_specialist', 'management_user', 'system_specialist'].includes(userRole ?? '');
+  const canReassignShelves = canReassignShelfProducts(userRole);
+  const canBulkAssign = canReassignShelves;
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -1618,38 +1686,37 @@ export default function SalesByShelf() {
     setSearchAgg("");
   };
 
-  const openShelfDetails = (row: {
+  const createShelfTarget = (row: {
     branch_sap_id: string;
     branch_name: string;
     shelf_id: string | null;
     shelf_name: string;
     shelf_status: string;
-  }) => {
+  }): ShelfRankingTarget => {
     const shelfStatus: NonNullable<ShelfRankingTarget['shelf_status']> = row.shelf_status.includes('Sin registro')
       ? 'Sin registro en stocks'
       : row.shelf_status.includes('sin góndola') || row.shelf_status.includes('sin shelf')
         ? 'Stock sin góndola'
         : 'Con góndola asignada';
-    const target = {
+    return {
       branch_sap_id: row.branch_sap_id,
       branch_name: row.branch_name,
       shelf_id: row.shelf_id,
       shelf_name: row.shelf_name,
       fecha_min: fechaMin,
       fecha_max: fechaMax,
+      shelf_status: shelfStatus,
+      category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
+      include_igv: includeIgv,
     };
+  };
 
-    if (isManagementUser) {
-      setShelfRankingTarget({
-        ...target,
-        shelf_status: shelfStatus,
-        category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
-        include_igv: includeIgv,
-      });
-      return;
-    }
+  const openShelfRanking = (target: ShelfRankingTarget) => {
+    setShelfRankingTarget(target);
+  };
 
-    setReassignTarget(target);
+  const openShelfReassignment = (target: ReassignTarget) => {
+    if (canReassignShelves) setReassignTarget(target);
   };
 
   return (
@@ -1857,29 +1924,43 @@ export default function SalesByShelf() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredRows.map((row, i) => (
-                          <TableRow
-                            key={i}
-                            style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="hover:bg-muted/30 transition-colors cursor-pointer"
-                            onClick={() => openShelfDetails(row)}
-                            title={isManagementUser ? 'Clic para ver el ranking de productos' : 'Clic para ver y reasignar artículos'}
-                          >
-                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
-                            <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
-                            <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.int_sku || "—"}</TableCell>
-                            <TableCell className="text-xs max-w-[200px] text-foreground">
-                              <span className="block truncate" title={row.product_name}>{row.product_name}</span>
-                            </TableCell>
-                            <TableCell className="text-xs" style={{ color: "#919291" }}>{row.category_name}</TableCell>
-                            <TableCell className="text-xs text-foreground">{row.shelf_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                            <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(row.cantidad_vendida)}</TableCell>
-                            <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">
-                              S/ {fmtCurrency(row.monto_total)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {filteredRows.map((row, i) => {
+                          const actionTarget = createShelfTarget(row);
+                          return (
+                            <TableRow
+                              key={i}
+                              style={{ borderBottom: "1px solid #EAE8E2" }}
+                              className={`hover:bg-muted/30 transition-colors ${isManagementUser ? 'cursor-pointer' : ''}`}
+                              onClick={isManagementUser ? () => openShelfRanking(actionTarget) : undefined}
+                              title={isManagementUser ? 'Clic para ver el ranking de productos' : undefined}
+                            >
+                              <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
+                              <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
+                              <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.int_sku || "—"}</TableCell>
+                              <TableCell className="text-xs max-w-[200px] text-foreground">
+                                <span className="block truncate" title={row.product_name}>{row.product_name}</span>
+                              </TableCell>
+                              <TableCell className="text-xs" style={{ color: "#919291" }}>{row.category_name}</TableCell>
+                              <TableCell className="text-xs text-foreground">
+                                {isManagementUser ? (
+                                  row.shelf_name || <span className="text-muted-foreground">—</span>
+                                ) : (
+                                  <ShelfContextActions
+                                    target={actionTarget}
+                                    canReassign={canReassignShelves}
+                                    onOpenRanking={openShelfRanking}
+                                    onOpenReassignment={openShelfReassignment}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
+                              <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(row.cantidad_vendida)}</TableCell>
+                              <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">
+                                S/ {fmtCurrency(row.monto_total)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -1927,16 +2008,26 @@ export default function SalesByShelf() {
                         {filteredAggRows.map((row, i) => {
                           const compKey = `${row.branch_sap_id}::${row.shelf_id ?? 'null'}`;
                           const comp = compMap.get(compKey);
+                          const actionTarget = createShelfTarget(row);
                           return (
                           <TableRow
                             key={i}
                             style={{ borderBottom: "1px solid #EAE8E2" }}
-                            className="hover:bg-muted/30 transition-colors cursor-pointer"
-                            onClick={() => openShelfDetails(row)}
-                            title={isManagementUser ? 'Clic para ver el ranking de productos' : 'Clic para ver y reasignar artículos'}
+                            className={`hover:bg-muted/30 transition-colors ${isManagementUser ? 'cursor-pointer' : ''}`}
+                            onClick={isManagementUser ? () => openShelfRanking(actionTarget) : undefined}
+                            title={isManagementUser ? 'Clic para ver el ranking de productos' : undefined}
                           >
                             <TableCell className="text-xs font-semibold text-foreground">
-                              {row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>}
+                              {isManagementUser ? (
+                                row.shelf_name || <span className="text-muted-foreground italic">(Sin góndola asignada)</span>
+                              ) : (
+                                <ShelfContextActions
+                                  target={actionTarget}
+                                  canReassign={canReassignShelves}
+                                  onOpenRanking={openShelfRanking}
+                                  onOpenReassignment={openShelfReassignment}
+                                />
+                              )}
                             </TableCell>
                             <TableCell className="text-xs font-medium text-foreground">{row.branch_name}</TableCell>
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>

@@ -2299,3 +2299,9 @@ Fecha: 1 de febrero de 2026
 - [x] Sustituir el modal de asignación por el ranking para el rol Gerencia
 - [x] Mostrar monto, unidades y transacciones; permitir ordenar por cada dimensión
 - [x] Validar el control de acceso, SQL, tipado, compilación y presentación
+
+## Góndolas: menú contextual de detalle por perfil
+- [x] Extender el ranking de lectura a los perfiles autorizados para el análisis
+- [x] Mostrar un menú contextual con Ranking y Reasignación al seleccionar una góndola
+- [x] Mantener la reasignación limitada a los permisos de escritura existentes
+- [x] Validar roles, menú, modales, tipado, build y respuesta visual
