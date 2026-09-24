@@ -2322,3 +2322,9 @@ Fecha: 1 de febrero de 2026
 - [x] Abrir el modal de cliente desde la búsqueda por DNI con estados de validación
 - [x] Mantener el alcance de sucursal para usuarios tienda y cubrir pruebas
 - [x] Validar consulta PostgreSQL, interfaz, tipado y compilación
+
+## Top Clientes: modal de búsqueda por DNI
+- [x] Mover el formulario de DNI desde los filtros a un diálogo dedicado
+- [x] Añadir el disparador Búsqueda por DNI junto a Reportar discrepancia
+- [x] Conservar estados de búsqueda, resultados y apertura del detalle de cliente
+- [x] Validar interacción, accesibilidad, tipado, build y presentación responsive

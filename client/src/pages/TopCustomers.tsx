@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -530,6 +531,7 @@ export default function TopCustomers() {
   const [submittedDni, setSubmittedDni] = useState<string | null>(null);
   const [dniMatches, setDniMatches] = useState<DniCustomerMatch[]>([]);
   const [dniMessage, setDniMessage] = useState<string | null>(null);
+  const [dniDialogOpen, setDniDialogOpen] = useState(false);
 
   const fechaMin = toLocalDate(from);
   const fechaMax = toLocalDate(to);
@@ -649,6 +651,23 @@ export default function TopCustomers() {
     setSelectedCustomer({ customer_id: customerId, customer_name: customerName });
   };
 
+  const resetDniSearch = () => {
+    setDniInput("");
+    setSubmittedDni(null);
+    setDniMatches([]);
+    setDniMessage(null);
+  };
+
+  const handleDniDialogChange = (open: boolean) => {
+    setDniDialogOpen(open);
+    if (!open) resetDniSearch();
+  };
+
+  const openDniDialog = () => {
+    resetDniSearch();
+    setDniDialogOpen(true);
+  };
+
   const handleDniSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const dni = dniInput.replace(/\D/g, "");
@@ -677,6 +696,7 @@ export default function TopCustomers() {
     if (matches.length === 1) {
       const [customer] = matches;
       setDniMessage(null);
+      setDniDialogOpen(false);
       setSelectedCustomer(customer);
       return;
     }
@@ -839,75 +859,6 @@ export default function TopCustomers() {
                   </Popover>
                 </div>
 
-                {/* Búsqueda directa por DNI */}
-                <div className="flex flex-col gap-1 min-w-[17rem]">
-                  <Label htmlFor="customer-dni" className="text-xs text-muted-foreground">
-                    Detalle por DNI
-                  </Label>
-                  <form className="flex gap-2" onSubmit={handleDniSubmit}>
-                    <Input
-                      id="customer-dni"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={8}
-                      value={dniInput}
-                      onChange={(event) => {
-                        setDniInput(event.target.value.replace(/\D/g, "").slice(0, 8));
-                        if (dniMessage || dniMatches.length > 0) {
-                          setDniMessage(null);
-                          setDniMatches([]);
-                        }
-                      }}
-                      placeholder="DNI de 8 dígitos"
-                      aria-describedby="customer-dni-help"
-                      className="h-9 min-w-0 tabular-nums"
-                    />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      className="h-9 shrink-0 px-3"
-                      disabled={isSearchingDni || dniInput.length !== 8}
-                    >
-                      {isSearchingDni ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-label="Buscando cliente" />
-                      ) : (
-                        <>
-                          <Search className="mr-1.5 h-4 w-4" />
-                          Buscar
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                  <p id="customer-dni-help" className="text-[11px] leading-tight text-muted-foreground">
-                    Abre el detalle con los filtros actuales.
-                  </p>
-                  {dniMessage && (
-                    <p role="status" className="text-xs text-muted-foreground">
-                      {dniMessage}
-                    </p>
-                  )}
-                  {dniMatches.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5" aria-label="Clientes encontrados por DNI">
-                      {dniMatches.map((customer) => (
-                        <Button
-                          key={customer.customer_id}
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="h-7 max-w-full justify-start truncate px-2 text-xs"
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setDniMatches([]);
-                            setDniMessage(null);
-                          }}
-                        >
-                          {toTitleCase(customer.customer_name)}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Top N */}
                 <div className="flex flex-col gap-1">
                   <Label className="text-xs text-muted-foreground">Top clientes</Label>
@@ -972,13 +923,19 @@ export default function TopCustomers() {
                   </div>
                 )}
 
-                <ReportDiscrepancyButton
-                  context={{
-                    module: "top-customers",
-                    dateFrom: fechaMin,
-                    dateTo: fechaMax,
-                  }}
-                />
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                  <Button type="button" variant="outline" className="h-9" onClick={openDniDialog}>
+                    <Search className="mr-1.5 h-4 w-4" />
+                    Búsqueda por DNI
+                  </Button>
+                  <ReportDiscrepancyButton
+                    context={{
+                      module: "top-customers",
+                      dateFrom: fechaMin,
+                      dateTo: fechaMax,
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Aviso de límite en modo tarjetas */}
@@ -1266,6 +1223,95 @@ export default function TopCustomers() {
             </Card>
           )}
         </main>
+
+        {/* ── Modal de búsqueda por DNI ── */}
+        <Dialog open={dniDialogOpen} onOpenChange={handleDniDialogChange}>
+          <DialogContent className="max-w-[calc(100%-2rem)] gap-0 overflow-hidden p-0 sm:max-w-md">
+            <DialogHeader className="border-b border-border/50 px-6 py-5 pr-14">
+              <DialogTitle className="text-base font-bold uppercase tracking-wide">
+                Búsqueda por DNI
+              </DialogTitle>
+              <DialogDescription>
+                Encuentra al cliente y abre su detalle con las fechas, tienda y canal que ya seleccionaste.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form className="space-y-4 px-6 py-5" onSubmit={handleDniSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="customer-dni">DNI del cliente</Label>
+                <Input
+                  id="customer-dni"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                  autoComplete="off"
+                  autoFocus
+                  value={dniInput}
+                  onChange={(event) => {
+                    setDniInput(event.target.value.replace(/\D/g, "").slice(0, 8));
+                    if (dniMessage || dniMatches.length > 0) {
+                      setDniMessage(null);
+                      setDniMatches([]);
+                    }
+                  }}
+                  placeholder="DNI de 8 dígitos"
+                  aria-describedby="customer-dni-help"
+                  className="h-10 tabular-nums"
+                />
+                <p id="customer-dni-help" className="text-xs leading-tight text-muted-foreground">
+                  Solo se mostrarán clientes con ventas dentro de los filtros actuales.
+                </p>
+              </div>
+
+              {dniMessage && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {dniMessage}
+                </p>
+              )}
+
+              {dniMatches.length > 0 && (
+                <div className="space-y-2" aria-label="Clientes encontrados por DNI">
+                  <p className="text-xs font-medium text-muted-foreground">Selecciona un cliente</p>
+                  <div className="flex flex-col gap-2">
+                    {dniMatches.map((customer) => (
+                      <Button
+                        key={customer.customer_id}
+                        type="button"
+                        variant="secondary"
+                        className="h-auto min-h-9 justify-start px-3 py-2 text-left"
+                        onClick={() => {
+                          handleDniDialogChange(false);
+                          setSelectedCustomer(customer);
+                        }}
+                      >
+                        {toTitleCase(customer.customer_name)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 border-t border-border/50 pt-4 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => handleDniDialogChange(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isSearchingDni || dniInput.length !== 8}>
+                  {isSearchingDni ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      Buscando
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-1.5 h-4 w-4" />
+                      Buscar cliente
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* ── Modal de transacciones del cliente ── */}
         <Dialog open={!!selectedCustomer} onOpenChange={(open) => !open && setSelectedCustomer(null)}>

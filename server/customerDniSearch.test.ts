@@ -57,13 +57,26 @@ describe("búsqueda directa de clientes por DNI", () => {
     expect(input).toMatchObject({ branch_sap_id: "FF11" });
   });
 
-  it("valida ocho dígitos y muestra estados de búsqueda en la interfaz", () => {
+  it("valida ocho dígitos y conserva estados de búsqueda dentro del modal", () => {
     expect(salesRouter).toContain('dni: z.string().regex(/^\\d{8}$/');
     expect(salesRouter).toContain("getCustomerByDni");
     expect(topCustomers).toContain("trpc.sales.getCustomerByDni.useQuery");
+    expect(topCustomers).toContain('<Dialog open={dniDialogOpen} onOpenChange={handleDniDialogChange}>');
+    expect(topCustomers).toContain("Búsqueda por DNI");
     expect(topCustomers).toContain('placeholder="DNI de 8 dígitos"');
     expect(topCustomers).toContain("No se encontraron ventas para este DNI con los filtros actuales.");
     expect(topCustomers).toContain("No se pudo completar la búsqueda por DNI. Inténtalo nuevamente.");
     expect(topCustomers).toContain("setSelectedCustomer(customer)");
+  });
+
+  it("ubica el disparador junto al reporte de discrepancia, fuera de los filtros de datos", () => {
+    const searchButtonIndex = topCustomers.indexOf("Búsqueda por DNI");
+    const discrepancyButtonIndex = topCustomers.indexOf("<ReportDiscrepancyButton");
+    const dialogIndex = topCustomers.indexOf("{/* ── Modal de búsqueda por DNI ── */}");
+
+    expect(searchButtonIndex).toBeGreaterThan(-1);
+    expect(discrepancyButtonIndex).toBeGreaterThan(searchButtonIndex);
+    expect(dialogIndex).toBeGreaterThan(discrepancyButtonIndex);
+    expect(topCustomers).not.toContain("Detalle por DNI");
   });
 });
