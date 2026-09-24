@@ -2305,3 +2305,9 @@ Fecha: 1 de febrero de 2026
 - [x] Mostrar un menú contextual con Ranking y Reasignación al seleccionar una góndola
 - [x] Mantener la reasignación limitada a los permisos de escritura existentes
 - [x] Validar roles, menú, modales, tipado, build y respuesta visual
+
+## Identificador completo de transacciones
+- [x] Centralizar el formato Serie-Número en las consultas de ventas
+- [x] Aplicar el identificador completo en cada listado y detalle de transacciones
+- [x] Actualizar contratos, inventario SQL y pruebas de regresión
+- [x] Validar la consulta PostgreSQL, tipado, build y presentación

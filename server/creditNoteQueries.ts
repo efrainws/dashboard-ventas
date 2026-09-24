@@ -1,3 +1,5 @@
+import { buildTransactionNumberSql } from "./transactionIdentifiers";
+
 /**
  * Construye el listado de documentos de notas de crédito para un cajero.
  * Los cuatro parámetros enlazados son, en orden: fecha de inicio, fecha de fin,
@@ -5,21 +7,12 @@
  */
 export function buildCreditNoteTransactionsByCashierQuery(includeIgv: boolean) {
   const transactionAmountColumn = includeIgv ? "sh.total" : "sh.subtotal";
+  const transactionNumberSql = buildTransactionNumberSql();
 
   return `
     SELECT
       sh.id::text AS header_id,
-      COALESCE(
-        NULLIF(
-          CONCAT_WS(
-            '-',
-            NULLIF(sh.order_serial::text, ''),
-            NULLIF(sh.order_number::text, '')
-          ),
-          ''
-        ),
-        sh.id::text
-      ) AS numero_transaccion,
+      ${transactionNumberSql} AS numero_transaccion,
       sh.doc_date::text AS fecha_transaccion,
       sh.cashier_id::text AS cashier_id,
       COALESCE(cashier.name, 'Sin cajero registrado') AS cashier_name,

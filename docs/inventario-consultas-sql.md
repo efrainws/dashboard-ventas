@@ -1703,14 +1703,24 @@ WITH date_range AS (
 ### 17. getCustomerTransactions — consulta 17
 
 **Origen:** `server/salesRouter.ts:1818`  
-**Propósito:** Lista las transacciones de un cliente dentro del período y filtros seleccionados.  
+**Propósito:** Lista las transacciones de un cliente dentro del período y filtros seleccionados, identificadas como Serie-Número.
 **Tablas o CTEs relevantes:** `branches`, `sales_header`.  
 **Parámetros / fragmentos variables:** `:fecha_inicio_analisis`, `:fecha_fin_analisis`, `{{columna_importe_segun_igv}}`, `{{predicado_canal_venta}}`, `{{predicado_sucursal}}`, `:id_cliente`, `:id_cabecera_venta`.
 
 ```sql
 SELECT
           sh.id                              AS header_id,
-          sh.order_serial                    AS comprobante,
+          COALESCE(
+            NULLIF(
+              CONCAT_WS(
+                '-',
+                NULLIF(sh.order_serial::text, ''),
+                NULLIF(sh.order_number::text, '')
+              ),
+              ''
+            ),
+            sh.id::text
+          )                                  AS numero_transaccion,
           sh.doc_date                        AS fecha,
           b.name                             AS tienda_nombre,
           b.sap_id                           AS tienda_sap_id,

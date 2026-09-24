@@ -7,6 +7,7 @@ import { cached, TTL } from "./queryCache";
 import { ENV } from "./_core/env";
 import { inclusiveCalendarDays } from "../shared/analytics";
 import { canReassignShelfProducts } from "../shared/roleAccess";
+import { buildTransactionNumberSql } from "./transactionIdentifiers";
 import {
   buildCustomerDistributionsQuery,
   buildCustomerTopProductsQuery,
@@ -1921,7 +1922,7 @@ export const salesRouter = router({
 
   /**
    * Transacciones de un cliente específico en el período filtrado.
-   * Devuelve: número de comprobante (order_serial), fecha (doc_date), tienda, monto con IGV.
+   * Devuelve: número de transacción Serie-Número, fecha, tienda y monto.
    */
   getCustomerTransactions: salesDataProcedure
     .input(
@@ -1939,6 +1940,7 @@ export const salesRouter = router({
       const fechaMin = fecha_min.substring(0, 10);
       const fechaMax = fecha_max.substring(0, 10);
       const amtCol  = include_igv ? 'sh.total' : 'sh.subtotal';
+      const transactionNumberSql = buildTransactionNumberSql();
 
       const branchFilter = branch_sap_id && branch_sap_id !== 'all'
         ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'`
@@ -1963,7 +1965,7 @@ export const salesRouter = router({
       const query = `
         SELECT
           sh.id                              AS header_id,
-          sh.order_serial                    AS comprobante,
+          ${transactionNumberSql}            AS numero_transaccion,
           sh.doc_date                        AS fecha,
           b.name                             AS tienda_nombre,
           b.sap_id                           AS tienda_sap_id,
@@ -1984,12 +1986,12 @@ export const salesRouter = router({
         return {
           success: true,
           data: result.rows.map((row: any) => ({
-            header_id:     row.header_id,
-            comprobante:   row.comprobante ?? '—',
-            fecha:         row.fecha,
-            tienda_nombre: row.tienda_nombre ?? '—',
-            tienda_sap_id: row.tienda_sap_id ?? '—',
-            monto_total:   row.monto_total !== null ? Number(row.monto_total) : 0,
+            header_id:          row.header_id,
+            numero_transaccion: row.numero_transaccion ?? '—',
+            fecha:              row.fecha,
+            tienda_nombre:      row.tienda_nombre ?? '—',
+            tienda_sap_id:      row.tienda_sap_id ?? '—',
+            monto_total:        row.monto_total !== null ? Number(row.monto_total) : 0,
           })),
         };
       } catch (error) {

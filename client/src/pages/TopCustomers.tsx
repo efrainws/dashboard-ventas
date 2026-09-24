@@ -160,7 +160,7 @@ interface SelectedCustomer {
 
 interface SelectedTransaction {
   header_id: string;
-  comprobante: string;
+  numero_transaccion: string;
   fecha: Date | string;
   tienda_nombre: string;
   monto_total: number;
@@ -203,7 +203,7 @@ function TransactionDetailModal({
             className="text-sm font-bold uppercase tracking-wide"
             style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
           >
-            {transaction.comprobante}
+            {transaction.numero_transaccion}
           </span>
         </div>
         <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
@@ -437,7 +437,7 @@ function CustomerTransactionsModal({
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border/50">
-                      <TableHead className="text-xs">Comprobante</TableHead>
+                      <TableHead className="text-xs">N.° de transacción</TableHead>
                       <TableHead className="text-xs">Fecha</TableHead>
                       <TableHead className="text-xs">Tienda</TableHead>
                       <TableHead className="text-xs text-right">Monto Total</TableHead>
@@ -453,7 +453,7 @@ function CustomerTransactionsModal({
                         <TableCell className="text-sm font-mono font-medium">
                           <div className="flex items-center gap-1.5">
                             <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            {r.comprobante}
+                            {r.numero_transaccion}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
