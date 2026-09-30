@@ -2333,3 +2333,10 @@ Fecha: 1 de febrero de 2026
 - [x] Incorporar un resumen agregado y acotado al contrato de analíticas del cliente
 - [x] Mostrar monto, transacciones y promedios mensuales en casillas del perfil
 - [x] Cubrir los cálculos, carga y presentación responsive con pruebas y compilación
+
+## Portales: filtros aplicados, URL compartible y comparación configurable
+- [x] Inventariar filtros, periodos y puntos de comparación de Proveedores y Marca Propia
+- [x] Definir alcance: comparación en Dashboard, fechas independientes y filtros por pestaña
+- [x] Implementar estado borrador, aplicar/restablecer y URL por cada portal
+- [x] Incorporar acciones en Dashboard, Ventas, Catálogo y Stock sin modificar los routers existentes
+- [x] Validar serialización, interfaz, tipado y build

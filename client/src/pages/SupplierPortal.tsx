@@ -74,7 +74,8 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { differenceInCalendarDays, format, getDaysInMonth, parseISO, subDays, startOfMonth } from "date-fns";
@@ -84,7 +85,19 @@ import { useIgv } from "@/contexts/IgvContext";
 import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 import { SALES_CHANNELS, SalesChannelFilter, type SalesChannel } from "@/components/SalesChannelFilter";
+import { PortalFilterActions } from "@/components/PortalFilterActions";
 import { hasCommercialOrSystemScope } from "@shared/roleAccess";
+import {
+  buildPortalLocation,
+  equalStringArrays,
+  getPortalSearchParams,
+  readBoolean,
+  readDateRange,
+  readOptionalString,
+  readStringList,
+} from "@shared/portalFilters";
+import { getEquivalentPreviousRange } from "@shared/periodComparison";
+import { PortalPeriodComparison } from "@/components/PortalPeriodComparison";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -172,30 +185,209 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "recepciones", label: "Entregas de Mercadería", icon: Truck },
 ];
 
+type SupplierPortalFilters = {
+  from: string;
+  to: string;
+  compareFrom: string;
+  compareTo: string;
+  includeIgv: boolean;
+  supplierId?: string;
+  salesProductIds: string[];
+  salesBranchId?: string;
+  salesChannels: SalesChannel[];
+  stockProductId?: string;
+  stockBranchId?: string;
+  catalogProductId?: string;
+};
+
+function readSupplierPortalFilters(
+  search: string,
+  defaults: SupplierPortalFilters,
+): SupplierPortalFilters {
+  const params = getPortalSearchParams(search);
+  const dates = readDateRange(params, { from: defaults.from, to: defaults.to });
+  const comparisonDefaults = getEquivalentPreviousRange(dates.from, dates.to);
+  const comparison = readDateRange(params, comparisonDefaults);
+  const rawChannels = readOptionalString(params, "salesChannels");
+
+  return {
+    ...defaults,
+    ...dates,
+    compareFrom: comparison.from,
+    compareTo: comparison.to,
+    includeIgv: readBoolean(params, "igv", defaults.includeIgv),
+    supplierId: readOptionalString(params, "supplierId"),
+    salesProductIds: readStringList(params, "salesProductIds"),
+    salesBranchId: readOptionalString(params, "salesBranchId"),
+    salesChannels: rawChannels === "none"
+      ? []
+      : rawChannels
+        ? readStringList(params, "salesChannels", SALES_CHANNELS) as SalesChannel[]
+        : SALES_CHANNELS.slice(),
+    stockProductId: readOptionalString(params, "stockProductId"),
+    stockBranchId: readOptionalString(params, "stockBranchId"),
+    catalogProductId: readOptionalString(params, "catalogProductId"),
+  };
+}
+
+function supplierPortalLocation(filters: SupplierPortalFilters): string {
+  return buildPortalLocation("/supplier", {
+    from: filters.from,
+    to: filters.to,
+    compareFrom: filters.compareFrom,
+    compareTo: filters.compareTo,
+    igv: filters.includeIgv,
+    supplierId: filters.supplierId,
+    salesProductIds: filters.salesProductIds,
+    salesBranchId: filters.salesBranchId,
+    salesChannels: filters.salesChannels.length > 0 ? filters.salesChannels : "none",
+    stockProductId: filters.stockProductId,
+    stockBranchId: filters.stockBranchId,
+    catalogProductId: filters.catalogProductId,
+  });
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SupplierPortal() {
   const { logout, user, loading } = useAuth();
-  const { includeIgv } = useIgv();
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [from, setFrom] = useState(defaultFrom);
-  const [to, setTo] = useState(defaultTo);
-  const [stockProductId, setStockProductId] = useState<string | undefined>(undefined);
+  const { includeIgv: sessionIncludeIgv, setIncludeIgv } = useIgv();
+  const [pathname, setLocation] = useLocation();
+  const search = useSearch();
+  const defaultFilters = useMemo<SupplierPortalFilters>(() => {
+    const from = defaultFrom();
+    const to = defaultTo();
+    const comparison = getEquivalentPreviousRange(from, to);
+    return {
+      from,
+      to,
+      compareFrom: comparison.from,
+      compareTo: comparison.to,
+      includeIgv: sessionIncludeIgv,
+      salesProductIds: [],
+      salesChannels: SALES_CHANNELS.slice(),
+    };
+  }, [sessionIncludeIgv]);
+  const [draftFilters, setDraftFilters] = useState<SupplierPortalFilters>(() =>
+    readSupplierPortalFilters(search, defaultFilters),
+  );
+  const [appliedFilters, setAppliedFilters] = useState<SupplierPortalFilters>(() =>
+    readSupplierPortalFilters(search, defaultFilters),
+  );
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = getPortalSearchParams(search).get("tab");
+    return TABS.some((item) => item.id === tab) ? tab as Tab : "dashboard";
+  });
+  const { from, to, compareFrom, compareTo, includeIgv, salesProductIds, salesBranchId, salesChannels, stockProductId, stockBranchId, catalogProductId } = appliedFilters;
   const [stockProductSearch, setStockProductSearch] = useState("");
-  const [stockBranchId, setStockBranchId] = useState<string | undefined>(undefined);
   const [stockPage, setStockPage] = useState(0);
-  const [catalogProductId, setCatalogProductId] = useState<string | undefined>(undefined);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
   const [recPage, setRecPage] = useState(0);
-  // Estado para la pestaña Ventas
-  const [salesProductIds, setSalesProductIds] = useState<string[]>([]);
-  const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
-  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>(SALES_CHANNELS.slice());
-  const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
-  // Estado de exportación (ventas)
+  const [salesPage, setSalesPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingStock, setIsExportingStock] = useState(false);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>(() =>
+    readSupplierPortalFilters(search, defaultFilters).supplierId,
+  );
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [detailModal, setDetailModal] = useState<{
+    open: boolean;
+    productId: string;
+    branchId: string;
+    producto: string;
+    tienda: string;
+  } | null>(null);
+  const PAGE_SIZE = 20;
+
+  // La URL representa el último estado aplicado: recarga, enlaces y Atrás/Adelante
+  // restauran filtros sin activar consultas mientras el usuario edita el borrador.
+  useEffect(() => {
+    const next = readSupplierPortalFilters(search, {
+      ...defaultFilters,
+      includeIgv: sessionIncludeIgv,
+    });
+    setDraftFilters(next);
+    setAppliedFilters(next);
+    setIncludeIgv(next.includeIgv);
+    setSelectedSupplierId(next.supplierId);
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    const tab = getPortalSearchParams(search).get("tab");
+    setActiveTab(TABS.some((item) => item.id === tab) ? tab as Tab : "dashboard");
+  }, [search, defaultFilters, sessionIncludeIgv, setIncludeIgv]);
+
+  const hasPendingFilterChanges =
+    draftFilters.from !== appliedFilters.from ||
+    draftFilters.to !== appliedFilters.to ||
+    draftFilters.compareFrom !== appliedFilters.compareFrom ||
+    draftFilters.compareTo !== appliedFilters.compareTo ||
+    draftFilters.includeIgv !== appliedFilters.includeIgv ||
+    draftFilters.supplierId !== appliedFilters.supplierId ||
+    draftFilters.salesBranchId !== appliedFilters.salesBranchId ||
+    draftFilters.stockProductId !== appliedFilters.stockProductId ||
+    draftFilters.stockBranchId !== appliedFilters.stockBranchId ||
+    draftFilters.catalogProductId !== appliedFilters.catalogProductId ||
+    !equalStringArrays(draftFilters.salesProductIds, appliedFilters.salesProductIds) ||
+    !equalStringArrays(draftFilters.salesChannels, appliedFilters.salesChannels);
+
+  const applyFilters = useCallback(() => {
+    const next = { ...draftFilters };
+    setAppliedFilters(next);
+    setSelectedSupplierId(next.supplierId);
+    setIncludeIgv(next.includeIgv);
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    setLocation(buildPortalLocation(pathname, {
+      ...Object.fromEntries(getPortalSearchParams(supplierPortalLocation(next))),
+      tab: activeTab,
+    }));
+  }, [activeTab, draftFilters, pathname, setIncludeIgv, setLocation]);
+
+  const resetFilters = useCallback(() => {
+    const next: SupplierPortalFilters = {
+      ...defaultFilters,
+      includeIgv: true,
+      supplierId: undefined,
+    };
+    setDraftFilters(next);
+    setAppliedFilters(next);
+    setSelectedSupplierId(undefined);
+    setIncludeIgv(true);
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    setLocation(buildPortalLocation(pathname, { ...Object.fromEntries(getPortalSearchParams(supplierPortalLocation(next))), tab: "dashboard" }));
+    setActiveTab("dashboard");
+  }, [defaultFilters, pathname, setIncludeIgv, setLocation]);
+
+  const updateDraftFilters = useCallback((update: Partial<SupplierPortalFilters>) => {
+    setDraftFilters((current) => ({ ...current, ...update }));
+  }, []);
+
+  const selectSupplier = useCallback((supplierId: string) => {
+    const next = { ...appliedFilters, supplierId };
+    setDraftFilters(next);
+    setAppliedFilters(next);
+    setSelectedSupplierId(supplierId);
+    setLocation(supplierPortalLocation(next));
+  }, [appliedFilters, setLocation]);
+
+  const selectTab = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    setLocation(buildPortalLocation(pathname, {
+      ...Object.fromEntries(getPortalSearchParams(supplierPortalLocation(appliedFilters))),
+      tab,
+    }));
+  }, [appliedFilters, pathname, setLocation]);
+
+  /*
+   * Filtros de interacción sin URL (búsqueda dentro de selectores, paginación,
+   * orden y dimensiones) se conservan como estado de presentación local.
+   */
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
@@ -216,29 +408,16 @@ export default function SupplierPortal() {
       setSortDir("desc");
     }
   };
-  // Estado de exportación (stock)
-  const [isExportingStock, setIsExportingStock] = useState(false);
   // Granularidad de la tabla de evolución temporal
   const [evolutionGranularity, setEvolutionGranularity] = useState<Granularity>("day");
   // Granularidad y métrica del gráfico de líneas
   const [lineGranularity, setLineGranularity] = useState<Granularity>("day");
   const [lineMetric, setLineMetric] = useState<"amount" | "quantity">("amount");
-  // Modal de detalle diario
-  const [detailModal, setDetailModal] = useState<{
-    open: boolean;
-    productId: string;
-    branchId: string;
-    producto: string;
-    tienda: string;
-  } | null>(null);
-  const PAGE_SIZE = 20;
 
   // Los roles de alcance comercial seleccionan el proveedor manualmente.
   const isSystemSpecialist = hasCommercialOrSystemScope(user?.role);
   const isSupplierUser = user?.role === 'supplier_user';
   const canAccessPortal = isSupplierUser || isSystemSpecialist;
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>(undefined);
-  const [supplierSearch, setSupplierSearch] = useState("");
 
   // Lista de proveedores para el selector (system_specialist y commercial_specialist)
   const { data: allSuppliers, isLoading: allSuppliersLoading } =
@@ -259,6 +438,12 @@ export default function SupplierPortal() {
     trpc.supplierPortal.getSalesSummary.useQuery(
       { from, to, supplierId: effectiveSupplierId, include_igv: includeIgv },
       { enabled: queriesEnabled }
+    );
+
+  const { data: comparisonSummary, isLoading: comparisonLoading } =
+    trpc.supplierPortal.getSalesSummary.useQuery(
+      { from: compareFrom, to: compareTo, supplierId: effectiveSupplierId, include_igv: includeIgv },
+      { enabled: queriesEnabled && activeTab === "dashboard" }
     );
 
   const { data: salesByChannel, isLoading: salesByChannelLoading } =
@@ -652,7 +837,7 @@ export default function SupplierPortal() {
                 ) : filteredSuppliers.map(s => (
                   <button
                     key={s.id}
-                    onClick={() => setSelectedSupplierId(s.id)}
+                    onClick={() => selectSupplier(s.id)}
                     className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors"
                   >
                     <p className="text-sm font-medium text-foreground" style={{ fontFamily: "'Sailec', sans-serif" }}>
@@ -744,9 +929,9 @@ export default function SupplierPortal() {
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  <button
+                    key={tab.id}
+                    onClick={() => selectTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? "border-primary text-primary"
@@ -774,8 +959,8 @@ export default function SupplierPortal() {
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
                 <Input
                   type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
+                  value={draftFilters.from}
+                  onChange={(e) => updateDraftFilters({ from: e.target.value })}
                   className="w-36 text-sm h-8"
                 max={new Date().toISOString().split('T')[0]}
                 />
@@ -784,24 +969,62 @@ export default function SupplierPortal() {
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
                 <Input
                   type="date"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
+                  value={draftFilters.to}
+                  onChange={(e) => updateDraftFilters({ to: e.target.value })}
                   className="w-36 text-sm h-8"
                 max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="flex items-center gap-2 border-l border-border pl-3">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Comparar desde</label>
+                <Input
+                  type="date"
+                  value={draftFilters.compareFrom}
+                  onChange={(e) => updateDraftFilters({ compareFrom: e.target.value })}
+                  className="w-36 text-sm h-8"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">hasta</label>
+                <Input
+                  type="date"
+                  value={draftFilters.compareTo}
+                  onChange={(e) => updateDraftFilters({ compareTo: e.target.value })}
+                  className="w-36 text-sm h-8"
+                  max={new Date().toISOString().split('T')[0]}
                 />
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setFrom(defaultFrom());
-                  setTo(defaultTo());
+                  const nextFrom = defaultFrom();
+                  const nextTo = defaultTo();
+                  const comparison = getEquivalentPreviousRange(nextFrom, nextTo);
+                  updateDraftFilters({ from: nextFrom, to: nextTo, compareFrom: comparison.from, compareTo: comparison.to });
                 }}
               >
                 Este mes
               </Button>
-              <IgvToggle />
+              <IgvToggle value={draftFilters.includeIgv} onChange={(value) => updateDraftFilters({ includeIgv: value })} />
+              <PortalFilterActions
+                hasPendingChanges={hasPendingFilterChanges}
+                onApply={applyFilters}
+                onReset={resetFilters}
+              />
             </div>
+
+            <PortalPeriodComparison
+              currentRange={{ from, to }}
+              previousRange={{ from: compareFrom, to: compareTo }}
+              isLoading={summaryLoading || comparisonLoading}
+              metrics={[
+                { label: "Ventas", current: summary?.total_ventas, previous: comparisonSummary?.total_ventas, format: fmtCurrency },
+                { label: "Tickets", current: summary?.total_tickets, previous: comparisonSummary?.total_tickets, format: fmt },
+                { label: "Unidades", current: summary?.total_unidades, previous: comparisonSummary?.total_unidades, format: fmt },
+              ]}
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1065,8 +1288,8 @@ export default function SupplierPortal() {
               {/* Filtro por producto - Select desplegable */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={catalogProductId ?? "all"}
-                  onValueChange={(v) => { setCatalogProductId(v === "all" ? undefined : v); setCatalogPage(0); }}
+                  value={draftFilters.catalogProductId ?? "all"}
+                  onValueChange={(v) => { updateDraftFilters({ catalogProductId: v === "all" ? undefined : v }); setCatalogPage(0); }}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
@@ -1109,6 +1332,11 @@ export default function SupplierPortal() {
                   {catalogData.total} productos
                 </span>
               )}
+              <PortalFilterActions
+                hasPendingChanges={hasPendingFilterChanges}
+                onApply={applyFilters}
+                onReset={resetFilters}
+              />
             </div>
 
             <Card className="border-border/50">
@@ -1216,8 +1444,8 @@ export default function SupplierPortal() {
               {/* Filtro por producto - Select desplegable */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={stockProductId ?? "all"}
-                  onValueChange={(v) => { setStockProductId(v === "all" ? undefined : v); setStockPage(0); }}
+                  value={draftFilters.stockProductId ?? "all"}
+                  onValueChange={(v) => { updateDraftFilters({ stockProductId: v === "all" ? undefined : v }); setStockPage(0); }}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
@@ -1258,9 +1486,9 @@ export default function SupplierPortal() {
 
               {/* Filtro por tienda */}
               <Select
-                value={stockBranchId ?? "all"}
+                value={draftFilters.stockBranchId ?? "all"}
                 onValueChange={(val) => {
-                  setStockBranchId(val === "all" ? undefined : val);
+                  updateDraftFilters({ stockBranchId: val === "all" ? undefined : val });
                   setStockPage(0);
                 }}
               >
@@ -1279,15 +1507,14 @@ export default function SupplierPortal() {
               </Select>
 
               {/* Botón limpiar filtros (visible solo si hay algún filtro activo) */}
-              {(stockProductId || stockBranchId) && (
+              {(draftFilters.stockProductId || draftFilters.stockBranchId) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-9 text-muted-foreground"
                   onClick={() => {
-                    setStockProductId(undefined);
+                    updateDraftFilters({ stockProductId: undefined, stockBranchId: undefined });
                     setStockProductSearch("");
-                    setStockBranchId(undefined);
                     setStockPage(0);
                   }}
                 >
@@ -1315,6 +1542,11 @@ export default function SupplierPortal() {
                   )}
                   {isExportingStock ? "Exportando..." : "Descargar Excel"}
                 </Button>
+                <PortalFilterActions
+                  hasPendingChanges={hasPendingFilterChanges}
+                  onApply={applyFilters}
+                  onReset={resetFilters}
+                />
               </div>
             </div>
 
@@ -1540,18 +1772,18 @@ export default function SupplierPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
-                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={draftFilters.from} onChange={(e) => { updateDraftFilters({ from: e.target.value }); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
-                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={draftFilters.to} onChange={(e) => { updateDraftFilters({ to: e.target.value }); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               {/* Selector múltiple de productos del proveedor */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <MultiProductSelect
                   products={supplierProducts ?? []}
-                  selectedIds={salesProductIds}
-                  onChange={(ids) => { setSalesProductIds(ids); setSalesPage(0); }}
+                  selectedIds={draftFilters.salesProductIds}
+                  onChange={(ids) => { updateDraftFilters({ salesProductIds: ids }); setSalesPage(0); }}
                   loading={supplierProductsLoading}
                   placeholder="Todos los productos"
                   className="w-full"
@@ -1559,8 +1791,8 @@ export default function SupplierPortal() {
               </div>
               {branchesForSales && branchesForSales.length > 0 && (
                 <Select
-                  value={salesBranchId ?? "all"}
-                  onValueChange={(v) => { setSalesBranchId(v === "all" ? undefined : v); setSalesPage(0); }}
+                  value={draftFilters.salesBranchId ?? "all"}
+                  onValueChange={(v) => { updateDraftFilters({ salesBranchId: v === "all" ? undefined : v }); setSalesPage(0); }}
                 >
                   <SelectTrigger className="w-52 h-8 text-sm">
                     <SelectValue placeholder="Todas las tiendas" />
@@ -1574,8 +1806,8 @@ export default function SupplierPortal() {
                 </Select>
               )}
               <SalesChannelFilter
-                value={salesChannels}
-                onChange={(channels) => { setSalesChannels(channels); setSalesPage(0); }}
+                value={draftFilters.salesChannels}
+                onChange={(channels) => { updateDraftFilters({ salesChannels: channels }); setSalesPage(0); }}
               />
               {/* Toggles de dimensiones */}
               <div className="flex items-center gap-1.5 ml-auto">
@@ -1613,7 +1845,12 @@ export default function SupplierPortal() {
               </div>
 
               {/* Botón de descarga Excel */}
-              <IgvToggle />
+              <IgvToggle value={draftFilters.includeIgv} onChange={(value) => updateDraftFilters({ includeIgv: value })} />
+              <PortalFilterActions
+                hasPendingChanges={hasPendingFilterChanges}
+                onApply={applyFilters}
+                onReset={resetFilters}
+              />
               <Button
                 variant="outline"
                 size="sm"
