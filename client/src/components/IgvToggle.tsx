@@ -14,30 +14,17 @@ interface IgvToggleProps {
   /** Variante de presentación: "badge" muestra solo el badge, "button" muestra botón completo */
   variant?: "badge" | "button";
   className?: string;
-  /** Valor controlado para formularios con cambios pendientes. */
-  value?: boolean;
-  /** Cambio controlado; si no se proporciona se conserva el contexto global. */
-  onChange?: (value: boolean) => void;
 }
 
-export function IgvToggle({ variant = "button", className = "", value, onChange }: IgvToggleProps) {
-  const { includeIgv: contextIncludeIgv, toggleIgv } = useIgv();
-  const includeIgv = value ?? contextIncludeIgv;
-  const igvLabel = includeIgv ? "Con IGV" : "Sin IGV";
-  const handleToggle = () => {
-    if (onChange) {
-      onChange(!includeIgv);
-      return;
-    }
-    toggleIgv();
-  };
+export function IgvToggle({ variant = "button", className = "" }: IgvToggleProps) {
+  const { includeIgv, toggleIgv, igvLabel } = useIgv();
 
   if (variant === "badge") {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            onClick={handleToggle}
+            onClick={toggleIgv}
             className={`inline-flex items-center gap-1 cursor-pointer select-none ${className}`}
             aria-label={`Cambiar a ${includeIgv ? "Sin IGV" : "Con IGV"}`}
           >
@@ -63,7 +50,7 @@ export function IgvToggle({ variant = "button", className = "", value, onChange 
         <Button
           variant={includeIgv ? "default" : "outline"}
           size="sm"
-          onClick={handleToggle}
+          onClick={toggleIgv}
           className={`h-8 gap-1.5 text-xs font-medium ${className}`}
           aria-label={`Actualmente mostrando precios ${igvLabel}. Clic para cambiar.`}
         >
