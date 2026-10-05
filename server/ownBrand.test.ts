@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { defaultTemporalRange, parseTemporalState } from "@shared/temporalFilterState";
 
 // ─── Mock de getDb ────────────────────────────────────────────────────────────
 
@@ -156,5 +157,26 @@ describe("ownBrandRouter — seeds iniciales de marcas", () => {
   it("los IDs de marcas por defecto son únicos", () => {
     const unique = new Set(DEFAULT_BRAND_IDS);
     expect(unique.size).toBe(DEFAULT_BRAND_IDS.length);
+  });
+});
+
+// ─── P11 — estado temporal sin comparación ───────────────────────────────────
+
+describe("P11 — Portal Marca Propia", () => {
+  it("usa mes actual hasta ayer y conserva una única dimensión temporal aunque la URL incluya comparación", () => {
+    const now = new Date("2026-10-05T10:00:00");
+    expect(defaultTemporalRange("P11", now)).toEqual({
+      start: "2026-10-01",
+      end: "2026-10-04",
+    });
+
+    const parsed = parseTemporalState(
+      "P11",
+      "?fecha_min=2026-09-20&fecha_max=2026-10-04&modalidad_comparacion=days&comparacion_fecha_min=2026-09-05&comparacion_fecha_max=2026-09-19",
+      now,
+    );
+    expect(parsed.state.primary).toEqual({ start: "2026-09-20", end: "2026-10-04" });
+    expect(parsed.state.comparison).toBeUndefined();
+    expect(parsed.state.comparisonMode).toBe("previous");
   });
 });

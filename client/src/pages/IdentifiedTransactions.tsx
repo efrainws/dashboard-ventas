@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -47,15 +46,16 @@ import {
   ShoppingCart,
   UserCheck,
   TrendingUp,
-  X,
   Store,
   Lock,
   UserCircle2,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { DateRange } from "react-day-picker";
-import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { isRangeValid } from "@shared/temporalFilterState";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -76,6 +76,19 @@ function percentColor(pct: number): string {
   if (pct < 90) return "#C49705";   // Mostaza
   if (pct < 100) return "#1A6894";  // Cobalto
   return "#008064";                  // Esmeralda
+}
+
+interface IdentifiedTransactionControls {
+  sapId: string;
+}
+
+function identifiedTransactionControlsFromSearch(search: string): IdentifiedTransactionControls {
+  const sapId = new URLSearchParams(search).get("branch_sap_id")?.trim();
+  return { sapId: sapId || "all" };
+}
+
+function isoToLocalDate(value: string): Date {
+  return new Date(`${value}T12:00:00`);
 }
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
@@ -318,66 +331,113 @@ function CashierDetailModal({
 
 export default function IdentifiedTransactions() {
   const { user, loading: authLoading } = useAuth();
+  const temporal = useTemporalUrlState("P09");
   const isStoreUser = user?.role === 'store_user';
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
-  const { effectiveTheme } = useTheme();
 
-  // Filtros globales compartidos entre páginas
-  const {
-    dateRange: globalDateRange,
-    setDateRange: setGlobalDateRange,
-    branchId: globalBranchId,
-    setBranchId: setGlobalBranchId,
-  } = useFilters();
-
-  // Estado local de filtros — por defecto: ayer
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    return { from: yesterday, to: yesterdayEnd };
-  });
-
-  // El filtro de tienda en esta página usa sap_id (no UUID) porque el query agrupa por sap_id
-  const [selectedSapId, setSelectedSapId] = useState<string>("all");
+  // El borrador no consulta ni cambia la URL. El estado aplicado se reconstruye desde URL.
+  const [draftControls, setDraftControls] = useState<IdentifiedTransactionControls>(() =>
+    identifiedTransactionControlsFromSearch(window.location.search),
+  );
+  const [appliedControls, setAppliedControls] = useState<IdentifiedTransactionControls>(() =>
+    identifiedTransactionControlsFromSearch(window.location.search),
+  );
+  const draftDateRange = useMemo<DateRange>(() => ({
+    from: isoToLocalDate(temporal.draft.primary.start),
+    to: isoToLocalDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary.start, temporal.draft.primary.end]);
 
   // Estado del modal
   const [modal, setModal] = useState<ModalState>({ open: false, store: null });
 
-  // Inicializar filtro de tienda para store_user
+  // Las restricciones de tienda por rol prevalecen sobre cualquier parámetro de URL.
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) {
-      setSelectedSapId(assignedStoreCode);
+      const restricted = { sapId: assignedStoreCode };
+      setDraftControls(restricted);
+      setAppliedControls(restricted);
     }
   }, [isStoreUser, assignedStoreCode]);
 
-  // Sincronizar con contexto global
   useEffect(() => {
-    setGlobalDateRange(dateRange);
-  }, [dateRange, setGlobalDateRange]);
+    const syncControlsFromUrl = () => {
+      const next = identifiedTransactionControlsFromSearch(window.location.search);
+      const controls = isStoreUser && assignedStoreCode ? { sapId: assignedStoreCode } : next;
+      setDraftControls(controls);
+      setAppliedControls(controls);
+    };
+    window.addEventListener("popstate", syncControlsFromUrl);
+    return () => window.removeEventListener("popstate", syncControlsFromUrl);
+  }, [isStoreUser, assignedStoreCode]);
+
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range.to) return;
+    const { from, to } = range;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: toLocalDate(from), end: toLocalDate(to) },
+    }));
+  };
+
+  const applyFilters = () => {
+    if (!isRangeValid(temporal.draft.primary)) {
+      temporal.setIssue("Selecciona un rango de fechas válido.");
+      return;
+    }
+    const nextControls = isStoreUser && assignedStoreCode
+      ? { sapId: assignedStoreCode }
+      : draftControls;
+    const params = new URLSearchParams(window.location.search);
+    params.delete("branch_sap_id");
+    if (!isStoreUser && nextControls.sapId !== "all") {
+      params.set("branch_sap_id", nextControls.sapId);
+    }
+    temporal.apply(params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const handleResetFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls = isStoreUser && assignedStoreCode
+      ? { sapId: assignedStoreCode }
+      : { sapId: "all" };
+    const params = new URLSearchParams(window.location.search);
+    params.delete("branch_sap_id");
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
 
   // Construir parámetros de la query
   const queryParams = useMemo(() => {
-    const fecha_min = dateRange?.from ? toLocalDate(dateRange.from) : toLocalDate(new Date(Date.now() - 86_400_000));
-    const fecha_max = dateRange?.to   ? toLocalDate(dateRange.to)   : fecha_min;
     return {
-      fecha_min,
-      fecha_max,
-      branch_sap_id: selectedSapId !== "all" ? selectedSapId : undefined,
+      fecha_min: temporal.applied.primary.start,
+      fecha_max: temporal.applied.primary.end,
+      branch_sap_id: appliedControls.sapId !== "all" ? appliedControls.sapId : undefined,
     };
-  }, [dateRange, selectedSapId]);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, appliedControls.sapId]);
 
-  const { data: queryData, isLoading, error } = trpc.sales.getIdentifiedTransactions.useQuery(queryParams);
+  const { data: queryData, isLoading, isFetching, error } = trpc.sales.getIdentifiedTransactions.useQuery(queryParams);
+  const lastQueryData = useRef<typeof queryData>(undefined);
+
+  useEffect(() => {
+    if (queryData) lastQueryData.current = queryData;
+  }, [queryData]);
+
+  // React Query puede retirar data al cambiar la clave; se conserva la última respuesta visible.
+  const displayedQueryData = queryData ?? lastQueryData.current;
+  const isInitialLoading = isLoading && !displayedQueryData;
 
   // Agrupar filas por tienda (suma de todos los días del rango)
   const storeData = useMemo<StoreRow[]>(() => {
-    if (!queryData?.data) return [];
+    if (!displayedQueryData?.data) return [];
 
     const map = new Map<string, StoreRow>();
-    for (const row of queryData.data) {
+    for (const row of displayedQueryData.data) {
       const key = row.codigo_tienda || row.nombre;
       const existing = map.get(key);
       if (existing) {
@@ -410,14 +470,14 @@ export default function IdentifiedTransactions() {
     });
 
     return rows;
-  }, [queryData]);
+  }, [displayedQueryData]);
 
   // Lista de tiendas disponibles para el filtro (extraída de los datos)
   const availableStores = useMemo(() => {
-    if (!queryData?.data) return [];
+    if (!displayedQueryData?.data) return [];
     const seen = new Set<string>();
     const stores: { sap_id: string; nombre: string }[] = [];
-    for (const row of queryData.data) {
+    for (const row of displayedQueryData.data) {
       if (row.codigo_tienda && !seen.has(row.codigo_tienda)) {
         seen.add(row.codigo_tienda);
         stores.push({ sap_id: row.codigo_tienda, nombre: row.nombre });
@@ -429,7 +489,7 @@ export default function IdentifiedTransactions() {
       return na - nb;
     });
     return stores;
-  }, [queryData]);
+  }, [displayedQueryData]);
 
   // Resumen consolidado
   const summary = useMemo(() => {
@@ -439,22 +499,11 @@ export default function IdentifiedTransactions() {
     return { total, identified, pct };
   }, [storeData]);
 
-  const handleClearFilters = () => {
-    setDateRange(undefined);
-    setSelectedSapId("all");
-    setGlobalBranchId(undefined);
-  };
-
-  const hasActiveFilters = dateRange !== undefined || selectedSapId !== "all";
-
   const dateRangeText = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${dateRange.from.toLocaleDateString("es-PE")} – ${dateRange.to.toLocaleDateString("es-PE")}`;
-    } else if (dateRange?.from) {
-      return `Desde ${dateRange.from.toLocaleDateString("es-PE")}`;
-    }
-    return "Ayer (por defecto)";
-  }, [dateRange]);
+    const from = isoToLocalDate(temporal.applied.primary.start);
+    const to = isoToLocalDate(temporal.applied.primary.end);
+    return `${from.toLocaleDateString("es-PE")} – ${to.toLocaleDateString("es-PE")}`;
+  }, [temporal.applied.primary.start, temporal.applied.primary.end]);
 
   if (authLoading) {
     return (
@@ -484,11 +533,11 @@ export default function IdentifiedTransactions() {
               {isStoreUser ? "Usa Ver cajeros para abrir el detalle de tu tienda." : "Haz clic en una tarjeta para ver el detalle por cajero."}
             </span>
           </p>
-          {queryData?.metadata && (
+          {displayedQueryData?.metadata && (
             <p className="text-xs text-muted-foreground">
               Actualizado:{" "}
-              {new Date(queryData.metadata.generated_at).toLocaleString("es-PE")} |
-              Total registros: {formatNumber(queryData.metadata.total_rows)}
+              {new Date(displayedQueryData.metadata.generated_at).toLocaleString("es-PE")} |
+              Total registros: {formatNumber(displayedQueryData.metadata.total_rows)}
             </p>
           )}
         </div>
@@ -505,10 +554,6 @@ export default function IdentifiedTransactions() {
                   Selecciona un rango de fechas y/o tienda para explorar los datos
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                <X className="mr-2 h-4 w-4" />
-                Limpiar Filtros
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -517,10 +562,10 @@ export default function IdentifiedTransactions() {
               <div className="space-y-2">
                 <Label>Fecha Inicio</Label>
                 <DatePicker
-                  date={dateRange?.from}
-                  onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                  date={draftDateRange.from}
+                  onDateChange={(from) => setDraftDateRange({ from, to: draftDateRange.to })}
                   placeholder="Fecha inicio"
-                  maxDate={dateRange?.to ?? new Date()}
+                  maxDate={draftDateRange.to ?? new Date()}
                 />
               </div>
 
@@ -528,10 +573,10 @@ export default function IdentifiedTransactions() {
               <div className="space-y-2">
                 <Label>Fecha Fin</Label>
                 <DatePicker
-                  date={dateRange?.to}
-                  onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                  date={draftDateRange.to}
+                  onDateChange={(to) => setDraftDateRange({ from: draftDateRange.from, to })}
                   placeholder="Fecha fin"
-                  minDate={dateRange?.from}
+                  minDate={draftDateRange.from}
                   maxDate={new Date()}
                 />
               </div>
@@ -548,7 +593,10 @@ export default function IdentifiedTransactions() {
                     <span>{availableStores.find(s => s.sap_id === assignedStoreCode)?.nombre ?? assignedStoreCode ?? 'Tu tienda'}</span>
                   </div>
                 ) : (
-                  <Select value={selectedSapId} onValueChange={setSelectedSapId}>
+                  <Select
+                    value={draftControls.sapId}
+                    onValueChange={(sapId) => setDraftControls(current => ({ ...current, sapId }))}
+                  >
                     <SelectTrigger id="store">
                       <SelectValue placeholder="Todas las tiendas" />
                     </SelectTrigger>
@@ -564,14 +612,30 @@ export default function IdentifiedTransactions() {
                 )}
               </div>
             </div>
+            {temporal.issue && (
+              <p className="mt-4 text-sm text-destructive" role="alert">{temporal.issue}</p>
+            )}
+            <AppliedFilterActions
+              onApply={applyFilters}
+              onReset={handleResetFilters}
+              isPending={hasPendingChanges}
+              isApplying={isFetching}
+            />
           </CardContent>
         </Card>
 
-        {/* ── Estado de carga ── */}
-        {isLoading && (
+        {/* La primera carga ocupa el área de resultados; en recargas se mantienen los datos anteriores. */}
+        {isInitialLoading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+          </div>
+        )}
+
+        {isFetching && !isInitialLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Actualizando resultados…
           </div>
         )}
 
@@ -585,7 +649,7 @@ export default function IdentifiedTransactions() {
           </Card>
         )}
 
-        {!isLoading && !error && (
+        {!isInitialLoading && !error && (
           <>
             {/* ── Resumen consolidado ── */}
             <div className="grid gap-4 md:grid-cols-3">
@@ -846,10 +910,10 @@ export default function IdentifiedTransactions() {
           module: "identified-transactions",
           dateFrom: queryParams.fecha_min,
           dateTo: queryParams.fecha_max,
-          storeId: selectedSapId !== "all" ? selectedSapId : undefined,
+          storeId: appliedControls.sapId !== "all" ? appliedControls.sapId : undefined,
           storeName:
-            selectedSapId !== "all"
-              ? availableStores.find((s) => s.sap_id === selectedSapId)?.nombre
+            appliedControls.sapId !== "all"
+              ? availableStores.find((s) => s.sap_id === appliedControls.sapId)?.nombre
               : undefined,
         }}
       />

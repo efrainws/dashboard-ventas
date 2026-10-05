@@ -5,7 +5,7 @@ import { NavigationMenu } from "@/components/NavigationMenu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Loader2, Plus, Lock, X, Store, ShoppingCart, Bike } from "lucide-react";
+import { Loader2, Plus, Lock, Store, ShoppingCart, Bike } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { StoreTargetCard } from "@/components/StoreTargetCard";
 import { TargetEditModal } from "@/components/TargetEditModal";
@@ -27,6 +27,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { StoreMultiSelect } from "@/components/StoreMultiSelect";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
 
 type UserRole = 'system_specialist' | 'operations_specialist' | 'cst_user' | 'commercial_specialist' | 'management_user' | 'store_user' | 'supplier_user' | 'own_brand_user';
 type SalesChannel = "all" | "presencial" | "ecommerce" | "rappi";
@@ -38,71 +40,112 @@ const CHANNEL_OPTIONS: { value: SalesChannel; label: string; icon: React.ReactNo
   { value: "rappi", label: "Rappi", icon: <Bike className="h-3.5 w-3.5" />, toneClass: "ff-channel-rappi" },
 ];
 
+type TargetControls = {
+  storeIds: string[];
+  channels: SalesChannel[];
+};
+
+const TARGET_CONTROL_QUERY_KEYS = ["store_ids", "channels"] as const;
+const TARGET_CHANNELS = new Set<SalesChannel>(["presencial", "ecommerce", "rappi"]);
+
+function normalizeChannels(values: string[]): SalesChannel[] {
+  const channels = values.filter((value): value is Exclude<SalesChannel, "all"> => TARGET_CHANNELS.has(value as SalesChannel));
+  return channels.length > 0 ? Array.from(new Set(channels)) : ["all"];
+}
+
+function targetControlsFromSearch(search: string): TargetControls {
+  const params = new URLSearchParams(search);
+  const storeIds = (params.get("store_ids") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const channels = normalizeChannels((params.get("channels") ?? "").split(","));
+
+  return { storeIds: Array.from(new Set(storeIds)), channels };
+}
+
+function targetControlsEqual(left: TargetControls, right: TargetControls) {
+  return left.storeIds.join(",") === right.storeIds.join(",") && left.channels.join(",") === right.channels.join(",");
+}
+
+function isoToDate(value: string): Date {
+  return new Date(`${value}T12:00:00`);
+}
+
+function toLocalDateStr(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function SalesVsTarget() {
   const { user, loading: authLoading } = useAuth();
+  const temporal = useTemporalUrlState("P03");
 
   const userRole = user?.role as UserRole | undefined;
   const isStoreUser = userRole === 'store_user';
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  // ─── Filtros ─────────────────────────────────────────────────────────────────
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-    return { from: firstDayOfMonth, to: yesterday };
-  });
-
-  const [selectedStores, setSelectedStores] = useState<string[]>([]);
-
-  /**
-   * Canales activos. "all" = sin filtro de canal.
-   * Puede ser un solo canal o múltiples (ecommerce + rappi a la vez).
-   */
-  const [selectedChannels, setSelectedChannels] = useState<SalesChannel[]>(["all"]);
+  const [draftControls, setDraftControls] = useState<TargetControls>(() => targetControlsFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<TargetControls>(() => targetControlsFromSearch(window.location.search));
+  const dateRange = useMemo<DateRange>(() => ({
+    from: isoToDate(temporal.draft.primary.start),
+    to: isoToDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary]);
+  const appliedDateRange = useMemo<DateRange>(() => ({
+    from: isoToDate(temporal.applied.primary.start),
+    to: isoToDate(temporal.applied.primary.end),
+  }), [temporal.applied.primary]);
 
   // Inicializar filtro de tienda para store_user
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) {
-      setSelectedStores([assignedStoreCode]);
+      const lockedControls = (current: TargetControls): TargetControls => ({
+        ...current,
+        storeIds: [assignedStoreCode],
+      });
+      setDraftControls(lockedControls);
+      setAppliedControls(lockedControls);
     }
   }, [isStoreUser, assignedStoreCode]);
+
+  // La URL siempre reconstruye los filtros aplicados, incluso con atrás/adelante.
+  useEffect(() => {
+    const next = targetControlsFromSearch(window.location.search);
+    if (isStoreUser && assignedStoreCode) next.storeIds = [assignedStoreCode];
+    setDraftControls(next);
+    setAppliedControls(next);
+  }, [temporal.applied, isStoreUser, assignedStoreCode]);
 
   // Modal de edición
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<{ id: string; name: string } | null>(null);
-
-  // Convertir fechas a formato YYYY-MM-DD local para evitar desfase UTC/Lima
-  const toLocalDateStr = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
 
   // Para store_user: siempre filtrar por su tienda asignada
   const effectiveStoreFilter = useMemo(() => {
     if (isStoreUser && assignedStoreCode) {
       return [assignedStoreCode];
     }
-    return selectedStores;
-  }, [isStoreUser, assignedStoreCode, selectedStores]);
+    return appliedControls.storeIds;
+  }, [isStoreUser, assignedStoreCode, appliedControls.storeIds]);
 
   // Canales efectivos para la query (nunca vacío)
   const effectiveChannels = useMemo<SalesChannel[]>(() => {
-    if (selectedChannels.length === 0 || selectedChannels.includes("all")) return ["all"];
-    return selectedChannels;
-  }, [selectedChannels]);
+    if (appliedControls.channels.length === 0 || appliedControls.channels.includes("all")) return ["all"];
+    return appliedControls.channels;
+  }, [appliedControls.channels]);
 
-  const { data, isLoading, refetch } = trpc.targets.getSalesVsTarget.useQuery(
+  const { data, isLoading, isFetching, refetch } = trpc.targets.getSalesVsTarget.useQuery(
     {
-      fecha_min: dateRange?.from ? toLocalDateStr(dateRange.from) : toLocalDateStr(new Date()),
-      fecha_max: dateRange?.to ? toLocalDateStr(dateRange.to) : toLocalDateStr(new Date()),
+      fecha_min: temporal.applied.primary.start,
+      fecha_max: temporal.applied.primary.end,
       store_ids: effectiveStoreFilter.length > 0 ? effectiveStoreFilter : undefined,
       channels: effectiveChannels,
     },
     {
-      enabled: !!dateRange?.from && !!dateRange?.to,
+      enabled: !authLoading && !!temporal.applied.primary.start && !!temporal.applied.primary.end,
+      placeholderData: (previousData) => previousData,
     }
   );
 
@@ -128,37 +171,73 @@ export default function SalesVsTarget() {
 
   // Calcular días transcurridos en el período y días totales del mes
   const { daysElapsed, daysInMonth } = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) {
+    if (!appliedDateRange?.from || !appliedDateRange?.to) {
       return { daysElapsed: 1, daysInMonth: 30 };
     }
-    const from = dateRange.from;
-    const to = dateRange.to;
+    const from = appliedDateRange.from;
+    const to = appliedDateRange.to;
     const msPerDay = 1000 * 60 * 60 * 24;
     const elapsed = Math.max(1, Math.round((to.getTime() - from.getTime()) / msPerDay) + 1);
     const year = to.getFullYear();
     const month = to.getMonth();
     const totalDays = new Date(year, month + 1, 0).getDate();
     return { daysElapsed: elapsed, daysInMonth: totalDays };
-  }, [dateRange]);
+  }, [appliedDateRange]);
 
   // ─── Handlers de canal ────────────────────────────────────────────────────────
   const handleChannelToggle = (channel: SalesChannel) => {
     if (channel === "all") {
-      setSelectedChannels(["all"]);
+      setDraftControls(current => ({ ...current, channels: ["all"] }));
       return;
     }
-    setSelectedChannels((prev) => {
+    setDraftControls(current => {
       // Quitar "all" si había
-      const withoutAll = prev.filter((c) => c !== "all");
+      const withoutAll = current.channels.filter((value) => value !== "all");
       if (withoutAll.includes(channel)) {
         // Desmarcar canal
         const next = withoutAll.filter((c) => c !== channel);
-        return next.length === 0 ? ["all"] : next;
+        return { ...current, channels: next.length === 0 ? ["all"] : next };
       } else {
-        return [...withoutAll, channel];
+        return { ...current, channels: [...withoutAll, channel] };
       }
     });
   };
+
+  const setDraftDateRange = (nextRange: DateRange | undefined) => {
+    if (!nextRange?.from || !nextRange.to) return;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: toLocalDateStr(nextRange.from!), end: toLocalDateStr(nextRange.to!) },
+    }));
+  };
+
+  const applyFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    TARGET_CONTROL_QUERY_KEYS.forEach((key) => params.delete(key));
+    if (!isStoreUser && draftControls.storeIds.length > 0) {
+      params.set("store_ids", draftControls.storeIds.join(","));
+    }
+    if (!draftControls.channels.includes("all")) {
+      params.set("channels", draftControls.channels.join(","));
+    }
+    temporal.apply(params);
+    setAppliedControls(draftControls);
+  };
+
+  const resetFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: TargetControls = {
+      storeIds: isStoreUser && assignedStoreCode ? [assignedStoreCode] : [],
+      channels: ["all"],
+    };
+    const params = new URLSearchParams(window.location.search);
+    TARGET_CONTROL_QUERY_KEYS.forEach((key) => params.delete(key));
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges || !targetControlsEqual(draftControls, appliedControls);
 
   const handleEditStore = (storeId: string, storeName: string) => {
     setEditingStore({ id: storeId, name: storeName });
@@ -167,17 +246,6 @@ export default function SalesVsTarget() {
 
   const handleModalSuccess = () => {
     refetch();
-  };
-
-  const handleClearFilters = () => {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-    setDateRange({ from: firstDayOfMonth, to: yesterday });
-    if (!isStoreUser) {
-      setSelectedStores([]);
-    }
-    setSelectedChannels(["all"]);
   };
 
   // Etiqueta del canal activo para mostrar en las tarjetas
@@ -236,10 +304,6 @@ export default function SalesVsTarget() {
                   Selecciona un rango de fechas, tienda y canal de venta
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                <X className="mr-2 h-4 w-4" />
-                Limpiar Filtros
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -249,7 +313,7 @@ export default function SalesVsTarget() {
                 <Label>Fecha Inicio</Label>
                 <DatePicker
                   date={dateRange?.from}
-                  onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                  onDateChange={(from) => setDraftDateRange({ from, to: dateRange?.to })}
                   placeholder="Fecha inicio"
                   maxDate={dateRange?.to ?? new Date()}
                 />
@@ -260,7 +324,7 @@ export default function SalesVsTarget() {
                 <Label>Fecha Fin</Label>
                 <DatePicker
                   date={dateRange?.to}
-                  onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                  onDateChange={(to) => setDraftDateRange({ from: dateRange?.from, to })}
                   placeholder="Fecha fin"
                   minDate={dateRange?.from}
                   maxDate={new Date()}
@@ -275,8 +339,8 @@ export default function SalesVsTarget() {
                 </Label>
                 <StoreMultiSelect
                   stores={availableStores}
-                  selectedIds={selectedStores}
-                  onChange={setSelectedStores}
+                  selectedIds={draftControls.storeIds}
+                  onChange={(storeIds) => setDraftControls(current => ({ ...current, storeIds }))}
                   locked={isStoreUser}
                   lockedLabel={availableStores[0]?.name ?? assignedStoreCode ?? 'Tu tienda asignada'}
                 />
@@ -289,8 +353,8 @@ export default function SalesVsTarget() {
                   {CHANNEL_OPTIONS.map((opt) => {
                     const isActive =
                       opt.value === "all"
-                        ? effectiveChannels.includes("all")
-                        : selectedChannels.includes(opt.value);
+                        ? draftControls.channels.includes("all")
+                        : draftControls.channels.includes(opt.value);
                     return (
                       <button
                         key={opt.value}
@@ -306,13 +370,13 @@ export default function SalesVsTarget() {
                   })}
                 </div>
                 {/* Nota informativa sobre el canal presencial */}
-                {selectedChannels.includes("presencial") && !selectedChannels.includes("all") && (
+                {draftControls.channels.includes("presencial") && !draftControls.channels.includes("all") && (
                   <p className="ff-target-note">
                     La meta del canal Presencial se calcula como: 100% − % eCommerce − % Rappi definidos en la configuración de metas.
                   </p>
                 )}
                 {/* Nota cuando se combinan eCommerce + Rappi */}
-                {selectedChannels.includes("ecommerce") && selectedChannels.includes("rappi") && (
+                {draftControls.channels.includes("ecommerce") && draftControls.channels.includes("rappi") && (
                   <p className="ff-target-note">
                     La meta combinada usa la suma de los porcentajes eCommerce + Rappi.
                   </p>
@@ -337,8 +401,21 @@ export default function SalesVsTarget() {
                 })}
               </div>
             )}
+            <AppliedFilterActions
+              onApply={applyFilters}
+              onReset={resetFilters}
+              isPending={hasPendingChanges}
+              isApplying={isFetching}
+            />
           </CardContent>
         </Card>
+
+        {isFetching && !isLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Actualizando resultados…
+          </div>
+        )}
 
         {/* Tarjeta de Totales */}
         {!isStoreUser && !isLoading && totals && (
@@ -467,8 +544,8 @@ export default function SalesVsTarget() {
             context={{
               module: "sales-vs-target",
               moduleLabel: "Ventas vs Meta",
-              dateFrom: dateRange?.from ? toLocalDateStr(dateRange.from) : undefined,
-              dateTo: dateRange?.to ? toLocalDateStr(dateRange.to) : undefined,
+              dateFrom: temporal.applied.primary.start,
+              dateTo: temporal.applied.primary.end,
               storeId: singleStoreId,
               storeName: singleStoreId
                 ? availableStores.find((s) => s.id === singleStoreId)?.name

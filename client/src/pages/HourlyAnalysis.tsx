@@ -11,10 +11,8 @@ import { useHourlySales, type HourlySalesFilters } from "@/hooks/useHourlySales"
 import { HourlyLineChart } from "@/components/HourlyLineChart";
 import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
-import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { IgvToggle } from "@/components/IgvToggle";
-import { useIgv } from "@/contexts/IgvContext";
 import { KPIGridSkeleton, SalesLineChartSkeleton } from "@/components/SalesSkeletons";
 import {
   Select,
@@ -31,6 +29,35 @@ import { DatePicker } from "@/components/ui/date-picker";
 import type { DateRange } from "react-day-picker";
 import { HeatmapChart } from "@/components/HeatmapChart";
 import { inclusiveCalendarDays } from "@shared/analytics";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { ComparisonPeriodControls } from "@/components/ComparisonPeriodControls";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+
+const HOURLY_CHANNELS = ["Presencial", "eCommerce", "Rappi"];
+
+interface HourlyControls {
+  branch: string;
+  channels: string[];
+  includeIgv: boolean;
+}
+
+function hourlyControlsFromSearch(search: string): HourlyControls {
+  const params = new URLSearchParams(search);
+  const channels = (params.get("channels") ?? "").split(",").filter(channel => HOURLY_CHANNELS.includes(channel));
+  return {
+    branch: params.get("branch_id") ?? "all",
+    channels: channels.length ? channels : HOURLY_CHANNELS,
+    includeIgv: params.get("include_igv") !== "false",
+  };
+}
+
+function hourlyIsoToDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function hourlyDateToIso(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
 
 export default function HourlyAnalysis() {
   const { user, loading: authLoading } = useAuth();
@@ -42,79 +69,42 @@ export default function HourlyAnalysis() {
     },
   });
 
-  // Usar filtros del contexto global
-  const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
-  
-  // Estados de filtros - Por defecto: día de ayer
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    
-    return { from: yesterday, to: yesterdayEnd };
-  });
+  const temporal = useTemporalUrlState("P02");
+  const [draftControls, setDraftControls] = useState<HourlyControls>(() => hourlyControlsFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<HourlyControls>(() => hourlyControlsFromSearch(window.location.search));
+  const dateRange = useMemo<DateRange>(() => ({
+    from: hourlyIsoToDate(temporal.draft.primary.start),
+    to: hourlyIsoToDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary]);
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === 'store_user';
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
-    if (globalBranchId) return globalBranchId;
-    return "all";
-  });
-
   // Inicializar filtro de tienda para store_user
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) {
-      setSelectedBranch(assignedStoreCode);
+      setDraftControls(current => ({ ...current, branch: assignedStoreCode }));
+      setAppliedControls(current => ({ ...current, branch: assignedStoreCode }));
     }
   }, [isStoreUser, assignedStoreCode]);
-  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce", "Rappi"]);
-
-  // Sincronizar con contexto global
-  useEffect(() => {
-    setGlobalDateRange(dateRange);
-  }, [dateRange, setGlobalDateRange]);
 
   useEffect(() => {
-    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
-  }, [selectedBranch, setGlobalBranchId]);
-
-  // Construir filtros para el hook
-  const { includeIgv } = useIgv();
+    const next = hourlyControlsFromSearch(window.location.search);
+    if (isStoreUser && assignedStoreCode) next.branch = assignedStoreCode;
+    setDraftControls(next);
+    setAppliedControls(next);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, isStoreUser, assignedStoreCode]);
 
   const filters = useMemo<HourlySalesFilters>(() => {
-    const result: HourlySalesFilters = {};
-    
-    if (dateRange?.from) {
-      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
-      const d = dateRange.from;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      result.fecha_min = `${y}-${m}-${day}`;
-    }
-    
-    if (dateRange?.to) {
-      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
-      const d = dateRange.to;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      result.fecha_max = `${y}-${m}-${day}`;
-    }
-    
-    if (selectedBranch !== "all") {
-      result.branch_id = selectedBranch;
-    }
-
-    result.include_igv = includeIgv;
+    const result: HourlySalesFilters = {
+      fecha_min: temporal.applied.primary.start,
+      fecha_max: temporal.applied.primary.end,
+      include_igv: appliedControls.includeIgv,
+    };
+    if (appliedControls.branch !== "all") result.branch_id = appliedControls.branch;
 
     return result;
-  }, [dateRange, selectedBranch, includeIgv]);
+  }, [temporal.applied.primary, appliedControls]);
 
   // Obtener datos agregados con filtros
   const { data, metadata, metrics, isLoading, error } = useHourlySales(filters);
@@ -124,11 +114,13 @@ export default function HourlyAnalysis() {
     {
       fecha_min: filters.fecha_min || '',
       fecha_max: filters.fecha_max || '',
+      comparison_fecha_min: temporal.applied.comparison?.start,
+      comparison_fecha_max: temporal.applied.comparison?.end,
       branch_id: filters.branch_id,
-      sales_channels: selectedChannels.length === 3
+      sales_channels: appliedControls.channels.length === 3
         ? undefined
-        : selectedChannels as ("Presencial" | "eCommerce" | "Rappi")[],
-      include_igv: includeIgv,
+        : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi")[],
+      include_igv: appliedControls.includeIgv,
     },
     {
       enabled: !!filters.fecha_min && !!filters.fecha_max,
@@ -137,11 +129,11 @@ export default function HourlyAnalysis() {
 
   // Filtrar datos por canal de ventas en el frontend
   const filteredData = useMemo(() => {
-    if (!data || selectedChannels.length === 3) {
+    if (!data || appliedControls.channels.length === 3) {
       return data; // Si todos los canales están seleccionados, no filtrar
     }
-    return data.filter(row => selectedChannels.includes(row.sales_channel));
-  }, [data, selectedChannels]);
+    return data.filter(row => appliedControls.channels.includes(row.sales_channel));
+  }, [data, appliedControls.channels]);
 
   // Recalcular métricas con datos filtrados
   const filteredMetrics = useMemo(() => {
@@ -173,11 +165,41 @@ export default function HourlyAnalysis() {
     await logoutMutation.mutateAsync();
   };
 
-  const handleClearFilters = () => {
-    setDateRange(undefined);
-    setSelectedBranch("all");
-    setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
+  const applyFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "channels", "include_igv"].forEach(key => params.delete(key));
+    if (draftControls.branch !== "all") params.set("branch_id", draftControls.branch);
+    if (draftControls.channels.length !== HOURLY_CHANNELS.length) params.set("channels", draftControls.channels.join(","));
+    if (!draftControls.includeIgv) params.set("include_igv", "false");
+    temporal.apply(params);
+    setAppliedControls(draftControls);
   };
+
+  const handleClearFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: HourlyControls = {
+      branch: isStoreUser && assignedStoreCode ? assignedStoreCode : "all",
+      channels: HOURLY_CHANNELS,
+      includeIgv: true,
+    };
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "channels", "include_igv"].forEach(key => params.delete(key));
+    if (nextControls.branch !== "all") params.set("branch_id", nextControls.branch);
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range.to) return;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: hourlyDateToIso(range.from!), end: hourlyDateToIso(range.to!) },
+    }));
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
 
   if (authLoading) {
     return (
@@ -246,10 +268,13 @@ export default function HourlyAnalysis() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <IgvToggle />
+                  <IgvToggle
+                    includeIgv={draftControls.includeIgv}
+                    onIncludeIgvChange={includeIgv => setDraftControls(current => ({ ...current, includeIgv }))}
+                  />
                   <Button variant="outline" size="sm" onClick={handleClearFilters}>
                     <X className="mr-2 h-4 w-4" />
-                    Limpiar Filtros
+                    Restablecer filtros
                   </Button>
                 </div>
               </div>
@@ -261,7 +286,7 @@ export default function HourlyAnalysis() {
                   <label className="text-sm font-medium">Fecha Inicio</label>
                   <DatePicker
                     date={dateRange?.from}
-                    onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                    onDateChange={(from) => setDraftDateRange({ from, to: dateRange?.to })}
                     placeholder="Fecha inicio"
                     maxDate={dateRange?.to ?? new Date()}
                   />
@@ -272,7 +297,7 @@ export default function HourlyAnalysis() {
                   <label className="text-sm font-medium">Fecha Fin</label>
                   <DatePicker
                     date={dateRange?.to}
-                    onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                    onDateChange={(to) => setDraftDateRange({ from: dateRange?.from, to })}
                     placeholder="Fecha fin"
                     minDate={dateRange?.from}
                     maxDate={new Date()}
@@ -291,7 +316,7 @@ export default function HourlyAnalysis() {
                       <span>{metrics.branches.find(b => b.sap_id === assignedStoreCode)?.name ?? assignedStoreCode ?? 'Tu tienda'}</span>
                     </div>
                   ) : (
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                    <Select value={draftControls.branch} onValueChange={branch => setDraftControls(current => ({ ...current, branch }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todas las sucursales" />
                       </SelectTrigger>
@@ -323,16 +348,16 @@ export default function HourlyAnalysis() {
                         className="w-full justify-between font-normal h-9 px-3"
                       >
                         <span className="truncate text-sm">
-                          {selectedChannels.length === 0
+                          {draftControls.channels.length === 0
                             ? "Sin canales"
-                            : selectedChannels.length === 3
+                            : draftControls.channels.length === 3
                             ? "Todos los canales"
-                            : selectedChannels.join(", ")}
+                            : draftControls.channels.join(", ")}
                         </span>
                         <div className="flex items-center gap-1 shrink-0">
-                          {selectedChannels.length > 0 && selectedChannels.length < 3 && (
+                          {draftControls.channels.length > 0 && draftControls.channels.length < 3 && (
                             <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                              {selectedChannels.length}
+                              {draftControls.channels.length}
                             </Badge>
                           )}
                           <ChevronDown className="h-4 w-4 opacity-50" />
@@ -344,11 +369,11 @@ export default function HourlyAnalysis() {
                         {/* Opción: Todos */}
                         <div
                           className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
-                          onClick={() => setSelectedChannels(["Presencial", "eCommerce", "Rappi"])}
+                          onClick={() => setDraftControls(current => ({ ...current, channels: HOURLY_CHANNELS }))}
                         >
                           <Checkbox
-                            checked={selectedChannels.length === 3}
-                            onCheckedChange={() => setSelectedChannels(["Presencial", "eCommerce", "Rappi"])}
+                            checked={draftControls.channels.length === 3}
+                            onCheckedChange={() => setDraftControls(current => ({ ...current, channels: HOURLY_CHANNELS }))}
                           />
                           <span className="text-sm">Todos los canales</span>
                         </div>
@@ -358,21 +383,23 @@ export default function HourlyAnalysis() {
                             key={channel}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
                             onClick={() => {
-                              setSelectedChannels(prev =>
-                                prev.includes(channel)
-                                  ? prev.filter(c => c !== channel)
-                                  : [...prev, channel]
-                              );
+                              setDraftControls(current => ({
+                                ...current,
+                                channels: current.channels.includes(channel)
+                                  ? current.channels.filter(value => value !== channel)
+                                  : [...current.channels, channel],
+                              }));
                             }}
                           >
                             <Checkbox
-                              checked={selectedChannels.includes(channel)}
+                              checked={draftControls.channels.includes(channel)}
                               onCheckedChange={() => {
-                                setSelectedChannels(prev =>
-                                  prev.includes(channel)
-                                    ? prev.filter(c => c !== channel)
-                                    : [...prev, channel]
-                                );
+                                setDraftControls(current => ({
+                                  ...current,
+                                  channels: current.channels.includes(channel)
+                                    ? current.channels.filter(value => value !== channel)
+                                    : [...current.channels, channel],
+                                }));
                               }}
                             />
                             <span className="text-sm">{channel}</span>
@@ -385,6 +412,16 @@ export default function HourlyAnalysis() {
 
 
               </div>
+              <ComparisonPeriodControls
+                value={temporal.draft}
+                onChange={temporal.setDraft}
+                error={temporal.issue}
+              />
+              <AppliedFilterActions
+                onApply={applyFilters}
+                onReset={handleClearFilters}
+                isPending={hasPendingChanges}
+              />
             </CardContent>
           </Card>
         )}
@@ -442,8 +479,8 @@ export default function HourlyAnalysis() {
             <HeatmapChart
               fechaMin={filters.fecha_min || ''}
               fechaMax={filters.fecha_max || ''}
-              branchId={selectedBranch !== 'all' ? selectedBranch : undefined}
-              includeIgv={includeIgv}
+              branchId={appliedControls.branch !== 'all' ? appliedControls.branch : undefined}
+              includeIgv={appliedControls.includeIgv}
             />
 
             {/* Gráfico de línea: Ventas y Transacciones por Hora */}
@@ -475,10 +512,10 @@ export default function HourlyAnalysis() {
           moduleLabel: "Análisis por Horas",
           dateFrom: filters.fecha_min,
           dateTo: filters.fecha_max,
-          storeId: selectedBranch !== "all" ? selectedBranch : undefined,
+          storeId: appliedControls.branch !== "all" ? appliedControls.branch : undefined,
           storeName:
-            selectedBranch !== "all"
-              ? metrics.branches?.find((b: any) => b.sap_id === selectedBranch)?.name
+            appliedControls.branch !== "all"
+              ? metrics.branches?.find((b: any) => b.sap_id === appliedControls.branch)?.name
               : "Todas las tiendas",
           dashboardAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
           relatedSaleAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,

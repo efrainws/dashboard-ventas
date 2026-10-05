@@ -15,16 +15,48 @@ import { BranchBarChart } from "@/components/BranchBarChart";
 import { KPICard } from "@/components/KPICard";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
-import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
-import { useIgv } from "@/contexts/IgvContext";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { ComparisonPeriodControls } from "@/components/ComparisonPeriodControls";
+import { inclusiveCalendarDays } from "@shared/analytics";
 import {
   KPIGridSkeleton,
   SalesLineChartSkeleton,
   BranchBarChartSkeleton,
   CategoryPieChartSkeleton,
 } from "@/components/SalesSkeletons";
+
+const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"];
+
+interface AppliedSalesControls {
+  branch: string;
+  category: string;
+  channels: string[];
+  includeIgv: boolean;
+}
+
+function dateToIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isoToDate(value: string): Date {
+  return new Date(`${value}T12:00:00`);
+}
+
+function controlsFromSearch(search: string): AppliedSalesControls {
+  const params = new URLSearchParams(search);
+  const channels = (params.get("channels") ?? "").split(",").filter(channel => ALL_CHANNELS.includes(channel));
+  return {
+    branch: params.get("branch_id") ?? "all",
+    category: params.get("category_id") ?? "all",
+    channels: channels.length ? channels : ALL_CHANNELS,
+    includeIgv: params.get("include_igv") !== "false",
+  };
+}
 
 export default function SalesByCategory() {
   const { user, loading: authLoading } = useAuth();
@@ -36,106 +68,77 @@ export default function SalesByCategory() {
     },
   });
 
-  // Usar filtros del contexto global
-  const { dateRange: globalDateRange, setDateRange: setGlobalDateRange, branchId: globalBranchId, setBranchId: setGlobalBranchId } = useFilters();
-  const { includeIgv } = useIgv();
-  
-  // Estado local para filtros - Por defecto: día de ayer
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    
-    return { from: yesterday, to: yesterdayEnd };
-  });
+  const temporal = useTemporalUrlState("P01");
+  const [draftControls, setDraftControls] = useState<AppliedSalesControls>(() => controlsFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<AppliedSalesControls>(() => controlsFromSearch(window.location.search));
+  const dateRange = useMemo<DateRange>(() => ({
+    from: isoToDate(temporal.draft.primary.start),
+    to: isoToDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary]);
+  const appliedDateRange = useMemo(() => temporal.applied.primary, [temporal.applied.primary]);
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === 'store_user';
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
-
   // Inicializar filtro de tienda para store_user
   useEffect(() => {
     if (isStoreUser && assignedStoreCode) {
-      setSelectedBranch(assignedStoreCode);
+      setDraftControls(current => ({ ...current, branch: assignedStoreCode }));
+      setAppliedControls(current => ({ ...current, branch: assignedStoreCode }));
     }
   }, [isStoreUser, assignedStoreCode]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedChannels, setSelectedChannels] = useState<string[]>(["Presencial", "eCommerce", "Rappi"]);
+
+  useEffect(() => {
+    const next = controlsFromSearch(window.location.search);
+    if (isStoreUser && assignedStoreCode) next.branch = assignedStoreCode;
+    setDraftControls(next);
+    setAppliedControls(next);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, isStoreUser, assignedStoreCode]);
 
   // Calcular días del mes para la proyección mensual
   const daysInMonth = useMemo(() => {
-    const refDate = dateRange?.to ?? dateRange?.from ?? new Date();
+    const refDate = isoToDate(appliedDateRange.end);
     return new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).getDate();
-  }, [dateRange]);
-
-  // Sincronizar con contexto global
-  useEffect(() => {
-    setGlobalDateRange(dateRange);
-  }, [dateRange, setGlobalDateRange]);
-
-  useEffect(() => {
-    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
-  }, [selectedBranch, setGlobalBranchId]);
+  }, [appliedDateRange.end]);
 
   // Construir filtros para la consulta
-  const filters = useMemo<AggregatedSalesFilters | undefined>(() => {
-    const hasFilters = dateRange || selectedBranch !== "all" || selectedCategory !== "all";
-    
-    if (!hasFilters) {
-      return undefined; // Usar valores por defecto del hook
-    }
-
-    // Construir objeto de filtros solo con valores definidos
-    const result: AggregatedSalesFilters = {};
-    
-    if (dateRange?.from) {
-      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
-      const d = dateRange.from;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      result.fecha_min = `${y}-${m}-${day}`;
-    }
-    
-    if (dateRange?.to) {
-      // Usar formato YYYY-MM-DD local para evitar desfase UTC/Lima
-      const d = dateRange.to;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      result.fecha_max = `${y}-${m}-${day}`;
-    }
-    
-    if (selectedBranch !== "all") {
-      result.branch_id = selectedBranch;
-    }
-    
-    if (selectedCategory !== "all") {
-      result.category_id = selectedCategory;
-    }
-
-    result.include_igv = includeIgv;
-
+  const filters = useMemo<AggregatedSalesFilters>(() => {
+    const result: AggregatedSalesFilters = {
+      fecha_min: appliedDateRange.start,
+      fecha_max: appliedDateRange.end,
+      include_igv: appliedControls.includeIgv,
+    };
+    if (appliedControls.branch !== "all") result.branch_id = appliedControls.branch;
+    if (appliedControls.category !== "all") result.category_id = appliedControls.category;
     return result;
-  }, [dateRange, selectedBranch, selectedCategory, includeIgv]);
+  }, [appliedDateRange, appliedControls]);
+
+  const comparisonFilters = useMemo<AggregatedSalesFilters>(() => ({
+    fecha_min: temporal.applied.comparison?.start ?? appliedDateRange.start,
+    fecha_max: temporal.applied.comparison?.end ?? appliedDateRange.end,
+    ...(appliedControls.branch !== "all" ? { branch_id: appliedControls.branch } : {}),
+    ...(appliedControls.category !== "all" ? { category_id: appliedControls.category } : {}),
+    include_igv: appliedControls.includeIgv,
+  }), [temporal.applied.comparison, appliedDateRange, appliedControls]);
 
   // Obtener datos agregados con filtros
   const { data: rawData, metadata, metrics, isLoading, error } = useAggregatedSales(filters);
+  const { data: comparisonRawData, isLoading: comparisonDataLoading } = useAggregatedSales(comparisonFilters);
 
   // Filtrar por canal en el frontend (igual que HourlyAnalysis)
   const data = useMemo(() => {
-    if (!rawData || selectedChannels.length === 3) return rawData;
-    return rawData.filter((row: any) => selectedChannels.includes(row.sales_channel));
-  }, [rawData, selectedChannels]);
+    if (!rawData || appliedControls.channels.length === 3) return rawData;
+    return rawData.filter((row: any) => appliedControls.channels.includes(row.sales_channel));
+  }, [rawData, appliedControls.channels]);
+
+  const comparisonData = useMemo(() => {
+    if (appliedControls.channels.length === 3) return comparisonRawData;
+    return comparisonRawData.filter((row: any) => appliedControls.channels.includes(row.sales_channel));
+  }, [comparisonRawData, appliedControls.channels]);
 
   // Recalcular métricas con datos filtrados por canal
   const filteredMetrics = useMemo(() => {
-    if (!data || selectedChannels.length === 3) return metrics;
+    if (!data || appliedControls.channels.length === 3) return metrics;
     const totalSales = data.reduce((sum: number, row: any) => sum + parseFloat(row.sales_amount || '0'), 0);
     const uniqueSaleIds = new Set<string>();
     data.forEach((row: any) => {
@@ -145,77 +148,88 @@ export default function SalesByCategory() {
     });
     const totalTickets = uniqueSaleIds.size;
     return { ...metrics, totalSales, totalTickets };
-  }, [data, metrics, selectedChannels]);
+  }, [data, metrics, appliedControls.channels]);
 
-  // Obtener comparación con período anterior
-  const comparisonQuery = trpc.sales.getAggregatedComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          branch_id: filters.branch_id,
-          category_id: filters.category_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
+  const comparisonQuery = trpc.sales.getAggregatedComparison.useQuery({
+    fecha_min: appliedDateRange.start,
+    fecha_max: appliedDateRange.end,
+    comparison_fecha_min: temporal.applied.comparison?.start,
+    comparison_fecha_max: temporal.applied.comparison?.end,
+    branch_id: filters.branch_id,
+    category_id: filters.category_id,
+    sales_channels: appliedControls.channels.length === ALL_CHANNELS.length
+      ? undefined
+      : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi")[],
+    include_igv: appliedControls.includeIgv,
+  });
 
   // Calcular número de días en el rango
   const numberOfDays = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return 1;
-    
-    // Normalizar fechas a medianoche para comparación correcta
-    const fromDate = new Date(dateRange.from);
-    fromDate.setHours(0, 0, 0, 0);
-    const toDate = new Date(dateRange.to);
-    toDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir el día inicial
-    return diffDays;
-  }, [dateRange]);
+    return inclusiveCalendarDays(appliedDateRange.start, appliedDateRange.end);
+  }, [appliedDateRange]);
 
   // Obtener comparación por sucursal
-  const branchComparisonQuery = trpc.sales.getBranchComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          branch_id: filters.branch_id,
-          category_id: filters.category_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
+  const branchComparisonQuery = trpc.sales.getBranchComparison.useQuery({
+    fecha_min: appliedDateRange.start,
+    fecha_max: appliedDateRange.end,
+    comparison_fecha_min: temporal.applied.comparison?.start,
+    comparison_fecha_max: temporal.applied.comparison?.end,
+    branch_id: filters.branch_id,
+    category_id: filters.category_id,
+    include_igv: appliedControls.includeIgv,
+  });
 
   // Obtener comparación por categoría
-  const categoryComparisonQuery = trpc.sales.getCategoryComparison.useQuery(
-    filters && filters.fecha_min && filters.fecha_max
-      ? {
-          fecha_min: filters.fecha_min,
-          fecha_max: filters.fecha_max,
-          branch_id: filters.branch_id,
-        }
-      : {
-          fecha_min: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-          fecha_max: new Date().toISOString(),
-        }
-  );
+  const categoryComparisonQuery = trpc.sales.getCategoryComparison.useQuery({
+    fecha_min: appliedDateRange.start,
+    fecha_max: appliedDateRange.end,
+    comparison_fecha_min: temporal.applied.comparison?.start,
+    comparison_fecha_max: temporal.applied.comparison?.end,
+    branch_id: filters.branch_id,
+    include_igv: appliedControls.includeIgv,
+  });
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
   };
 
-  const handleClearFilters = () => {
-    setDateRange(undefined);
-    setSelectedBranch("all");
-    setSelectedCategory("all");
-    setSelectedChannels(["Presencial", "eCommerce", "Rappi"]);
+  const applyFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "category_id", "channels", "include_igv"].forEach(key => params.delete(key));
+    if (draftControls.branch !== "all") params.set("branch_id", draftControls.branch);
+    if (draftControls.category !== "all") params.set("category_id", draftControls.category);
+    if (draftControls.channels.length !== ALL_CHANNELS.length) params.set("channels", draftControls.channels.join(","));
+    if (!draftControls.includeIgv) params.set("include_igv", "false");
+    temporal.apply(params);
+    setAppliedControls(draftControls);
   };
+
+  const handleClearFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: AppliedSalesControls = {
+      branch: isStoreUser && assignedStoreCode ? assignedStoreCode : "all",
+      category: "all",
+      channels: ALL_CHANNELS,
+      includeIgv: true,
+    };
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "category_id", "channels", "include_igv"].forEach(key => params.delete(key));
+    if (nextControls.branch !== "all") params.set("branch_id", nextControls.branch);
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range.to) return;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: dateToIso(range.from!), end: dateToIso(range.to!) },
+    }));
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
 
   if (authLoading) {
     return (
@@ -242,15 +256,10 @@ export default function SalesByCategory() {
 
   // Determinar el texto del rango de fechas
   const dateRangeText = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${dateRange.from.toLocaleDateString('es-PE')} - ${dateRange.to.toLocaleDateString('es-PE')}`;
-    } else if (dateRange?.from) {
-      return `Desde ${dateRange.from.toLocaleDateString('es-PE')}`;
-    } else if (dateRange?.to) {
-      return `Hasta ${dateRange.to.toLocaleDateString('es-PE')}`;
-    }
-    return "Enero 2026 (por defecto)";
-  }, [dateRange]);
+    const from = isoToDate(appliedDateRange.start);
+    const to = isoToDate(appliedDateRange.end);
+    return `${from.toLocaleDateString('es-PE')} - ${to.toLocaleDateString('es-PE')}`;
+  }, [appliedDateRange]);
 
   // Logo según tema
   const logoSrc = effectiveTheme === "dark" ? "/Logoclarochico.svg" : "/Logonegro.svg";
@@ -276,18 +285,29 @@ export default function SalesByCategory() {
         {/* Filtros */}
         <DashboardFilters
           dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
+          onDateRangeChange={setDraftDateRange}
+          selectedBranch={draftControls.branch}
           branches={metrics.branches}
-          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          onBranchChange={isStoreUser ? () => {} : branch => setDraftControls(current => ({ ...current, branch }))}
           branchLocked={isStoreUser}
-          selectedCategory={selectedCategory}
+          selectedCategory={draftControls.category}
           categories={metrics.categories}
-          onCategoryChange={setSelectedCategory}
-          selectedChannels={selectedChannels}
-          onChannelsChange={setSelectedChannels}
+          onCategoryChange={category => setDraftControls(current => ({ ...current, category }))}
+          selectedChannels={draftControls.channels}
+          onChannelsChange={channels => setDraftControls(current => ({ ...current, channels }))}
           onClearFilters={handleClearFilters}
           showIgvToggle
+          includeIgv={draftControls.includeIgv}
+          onIncludeIgvChange={includeIgv => setDraftControls(current => ({ ...current, includeIgv }))}
+          comparisonControls={
+            <ComparisonPeriodControls
+              value={temporal.draft}
+              onChange={temporal.setDraft}
+              error={temporal.issue}
+            />
+          }
+          onApplyFilters={applyFilters}
+          hasPendingChanges={hasPendingChanges}
         />
 
         {/* Estado de carga — skeletons que reflejan la forma real de cada sección */}
@@ -370,7 +390,11 @@ export default function SalesByCategory() {
             {/* Gráficos de visualización */}
             <div className="space-y-6">
               {/* Gráfico de línea: Progresión de ventas */}
-              <SalesLineChart data={data} />
+              <SalesLineChart
+                data={data}
+                comparisonData={comparisonData}
+                description={`Ventas principales frente al período comparativo · ${temporal.applied.comparison?.start} a ${temporal.applied.comparison?.end}`}
+              />
 
               {/* Gráfico de barras: Comparación por sucursal (ancho completo) */}
               {branchComparisonQuery.isLoading ? (
@@ -398,9 +422,10 @@ export default function SalesByCategory() {
             {/* Análisis por Canal */}
             <ChannelBreakdown
               data={data}
+              comparisonData={comparisonData}
               numberOfDays={numberOfDays}
               daysInMonth={daysInMonth}
-              isLoading={isLoading}
+              isLoading={isLoading || comparisonDataLoading}
             />
 
             {/* Información de datos */}
@@ -414,14 +439,14 @@ export default function SalesByCategory() {
                   <p><span className="font-medium">Total de registros agregados:</span> {formatNumber(data.length)}</p>
                   <p><span className="font-medium">Rango de fechas:</span> {dateRangeText}</p>
                   <p><span className="font-medium">Sucursal:</span> {
-                    selectedBranch === "all" 
+                    appliedControls.branch === "all"
                       ? "Todas las sucursales" 
-                      : metrics.branches.find(b => b.id === selectedBranch)?.name || "Desconocida"
+                      : metrics.branches.find(b => b.sap_id === appliedControls.branch)?.name || "Desconocida"
                   }</p>
                   <p><span className="font-medium">Categoría:</span> {
-                    selectedCategory === "all" 
+                    appliedControls.category === "all"
                       ? "Todas las categorías" 
-                      : metrics.categories.find(c => c.id === selectedCategory)?.name || "Desconocida"
+                      : metrics.categories.find(c => c.id === appliedControls.category)?.name || "Desconocida"
                   }</p>
                   <p><span className="font-medium">Agrupación:</span> Por hora, sucursal y departamento</p>
                   <p className="text-xs text-muted-foreground mt-4">
@@ -444,10 +469,10 @@ export default function SalesByCategory() {
           moduleLabel: "Análisis General",
           dateFrom: filters?.fecha_min,
           dateTo: filters?.fecha_max,
-          storeId: selectedBranch !== "all" ? selectedBranch : undefined,
+          storeId: appliedControls.branch !== "all" ? appliedControls.branch : undefined,
           storeName:
-            selectedBranch !== "all"
-              ? (metrics.branches.find((b: any) => b.sap_id === selectedBranch)?.name ?? selectedBranch)
+            appliedControls.branch !== "all"
+              ? (metrics.branches.find((b: any) => b.sap_id === appliedControls.branch)?.name ?? appliedControls.branch)
               : "Todas las tiendas",
           dashboardAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,
           relatedSaleAmount: !isLoading && filteredMetrics.totalSales > 0 ? Math.round(filteredMetrics.totalSales) : undefined,

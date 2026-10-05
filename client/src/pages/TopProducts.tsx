@@ -3,8 +3,6 @@ import { trpc } from "@/lib/trpc";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { useAggregatedSales, type AggregatedSalesFilters } from "@/hooks/useAggregatedSales";
-import { useFilters } from "@/contexts/FiltersContext";
-import { useIgv } from "@/contexts/IgvContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +18,8 @@ import { Loader2, Trophy, Hash, DollarSign, Package, Store, LayoutGrid, LayoutLi
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { TopProductsStoreCards } from "@/components/TopProductsStoreCards";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { ComparisonPeriodControls } from "@/components/ComparisonPeriodControls";
 import {
   BarChart,
   Bar,
@@ -53,6 +53,20 @@ const FF_PALETTE = [
 const getBarColor = (idx: number) => FF_PALETTE[idx % FF_PALETTE.length];
 
 const MEDAL_COLORS = ["var(--ff-mostaza)", "var(--ff-humo)", "var(--ff-mostaza-dark)"];
+
+type ProductControls = { branch: string; category: string; includeIgv: boolean };
+
+function productControlsFromSearch(search: string): ProductControls {
+  const params = new URLSearchParams(search);
+  return {
+    branch: params.get("branch_id") ?? "all",
+    category: params.get("category_id") ?? "all",
+    includeIgv: params.get("include_igv") !== "false",
+  };
+}
+
+const isoToProductDate = (value: string) => new Date(`${value}T12:00:00`);
+const productDateToIso = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatCurrency = (v: number) =>
@@ -451,51 +465,75 @@ function HorizontalBarChart({ rows, mode }: { rows: ProductRow[]; mode: "qty" | 
   );
 }
 
+function RankingPeriodGroup({
+  rows,
+  mode,
+  tableLimit,
+  label,
+}: {
+  rows: ProductRow[];
+  mode: "qty" | "amount";
+  tableLimit: number;
+  label: string;
+}) {
+  const metricLabel = mode === "qty" ? "unidades vendidas" : "monto de ventas";
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-bold uppercase tracking-wide" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
+            {label} · Top 20 — {metricLabel}
+          </CardTitle>
+          <CardDescription>Ranking independiente del período {label.toLowerCase()}.</CardDescription>
+        </CardHeader>
+        <CardContent><HorizontalBarChart rows={rows} mode={mode} /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-bold uppercase tracking-wide" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
+            {label} · Ranking completo — Top {tableLimit}
+          </CardTitle>
+          <CardDescription>{rows.length} productos ordenados por {metricLabel}.</CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-6"><RankingTable rows={rows} mode={mode} /></CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function TopProducts() {
   const { user, loading: authLoading } = useAuth();
-
-  const {
-    dateRange: globalDateRange,
-    setDateRange: setGlobalDateRange,
-    branchId: globalBranchId,
-    setBranchId: setGlobalBranchId,
-  } = useFilters();
+  const temporal = useTemporalUrlState("P04");
+  const [draftControls, setDraftControls] = useState<ProductControls>(() => productControlsFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<ProductControls>(() => productControlsFromSearch(window.location.search));
 
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
 
-  // ── Período por defecto: últimos 30 días ─────────────────────────────────
-  const defaultDateRange = useMemo<DateRange>(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const from = new Date();
-    from.setDate(from.getDate() - 29); // 29 días atrás + hoy = 30 días
-    from.setHours(0, 0, 0, 0);
-    return { from, to: today };
-  }, []);
-
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(
-    () => globalDateRange ?? defaultDateRange
-  );
-  const [selectedBranch, setSelectedBranch] = useState<string>(
-    () => globalBranchId || "all"
-  );
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const dateRange = useMemo<DateRange>(() => ({
+    from: isoToProductDate(temporal.draft.primary.start),
+    to: isoToProductDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary]);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [cardLimit, setCardLimit] = useState<20 | 50>(20);
   const [tableLimit, setTableLimit] = useState<50 | 100>(50);
   const activeViewMode = isStoreUser ? "table" : viewMode;
 
   useEffect(() => {
-    if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
+    if (isStoreUser && assignedStoreCode) {
+      setDraftControls(current => ({ ...current, branch: assignedStoreCode }));
+      setAppliedControls(current => ({ ...current, branch: assignedStoreCode }));
+    }
   }, [isStoreUser, assignedStoreCode]);
 
-  useEffect(() => { setGlobalDateRange(dateRange); }, [dateRange, setGlobalDateRange]);
   useEffect(() => {
-    setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch);
-  }, [selectedBranch, setGlobalBranchId]);
+    const next = productControlsFromSearch(window.location.search);
+    if (isStoreUser && assignedStoreCode) next.branch = assignedStoreCode;
+    setDraftControls(next);
+    setAppliedControls(next);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, isStoreUser, assignedStoreCode]);
 
   // ── Construir parámetros de query ────────────────────────────────────────
   const toDateStr = (d: Date) => {
@@ -505,18 +543,23 @@ export default function TopProducts() {
     return `${y}-${m}-${day}`;
   };
 
-  const { includeIgv } = useIgv();
-
   const queryFilters = useMemo(() => {
-    const fallback = defaultDateRange;
     return {
-      fecha_min: dateRange?.from ? toDateStr(dateRange.from) : toDateStr(fallback.from!),
-      fecha_max: dateRange?.to   ? toDateStr(dateRange.to)   : toDateStr(fallback.to!),
-      ...(selectedBranch !== "all"   ? { branch_id:   selectedBranch   } : {}),
-      ...(selectedCategory !== "all" ? { category_id: selectedCategory } : {}),
-      include_igv: includeIgv,
+      fecha_min: temporal.applied.primary.start,
+      fecha_max: temporal.applied.primary.end,
+      ...(appliedControls.branch !== "all" ? { branch_id: appliedControls.branch } : {}),
+      ...(appliedControls.category !== "all" ? { category_id: appliedControls.category } : {}),
+      include_igv: appliedControls.includeIgv,
     };
-  }, [dateRange, selectedBranch, selectedCategory, defaultDateRange, includeIgv]);
+  }, [temporal.applied.primary, appliedControls]);
+
+  const comparisonQueryFilters = useMemo(() => ({
+    fecha_min: temporal.applied.comparison?.start ?? temporal.applied.primary.start,
+    fecha_max: temporal.applied.comparison?.end ?? temporal.applied.primary.end,
+    ...(appliedControls.branch !== "all" ? { branch_id: appliedControls.branch } : {}),
+    ...(appliedControls.category !== "all" ? { category_id: appliedControls.category } : {}),
+    include_igv: appliedControls.includeIgv,
+  }), [temporal.applied, appliedControls]);
 
   // Listas de sucursales y categorías reutilizando el hook existente
   const { metrics } = useAggregatedSales(queryFilters as AggregatedSalesFilters);
@@ -528,6 +571,14 @@ export default function TopProducts() {
   const tableQueryInput = useMemo(
     () => ({ ...queryFilters, limit: tableLimit }),
     [queryFilters, tableLimit]
+  );
+  const comparisonCardQueryInput = useMemo(
+    () => ({ ...comparisonQueryFilters, limit: cardLimit }),
+    [cardLimit, comparisonQueryFilters]
+  );
+  const comparisonTableQueryInput = useMemo(
+    () => ({ ...comparisonQueryFilters, limit: tableLimit }),
+    [comparisonQueryFilters, tableLimit]
   );
 
   // Cada vista solicita sólo las filas que puede representar.
@@ -545,22 +596,57 @@ export default function TopProducts() {
   } = trpc.sales.getTopProducts.useQuery(tableQueryInput, {
     enabled: !authLoading && activeViewMode === "table",
   });
+  const { data: comparisonCardsData, isLoading: isLoadingComparisonCards } =
+    trpc.sales.getTopProductsByStore.useQuery(comparisonCardQueryInput, {
+      enabled: !authLoading && activeViewMode === "cards" && !!temporal.applied.comparison,
+    });
+  const { data: comparisonTableData, isLoading: isLoadingComparisonTable } =
+    trpc.sales.getTopProducts.useQuery(comparisonTableQueryInput, {
+      enabled: !authLoading && activeViewMode === "table" && !!temporal.applied.comparison,
+    });
   const data = tableData;
   const isLoading = isLoadingTable;
   const error = tableError;
 
-  const handleClearFilters = () => {
-    setDateRange(defaultDateRange);
-    setSelectedBranch("all");
-    setSelectedCategory("all");
+  const applyFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "category_id", "include_igv"].forEach(key => params.delete(key));
+    if (draftControls.branch !== "all") params.set("branch_id", draftControls.branch);
+    if (draftControls.category !== "all") params.set("category_id", draftControls.category);
+    if (!draftControls.includeIgv) params.set("include_igv", "false");
+    temporal.apply(params);
+    setAppliedControls(draftControls);
   };
 
+  const handleClearFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: ProductControls = {
+      branch: isStoreUser && assignedStoreCode ? assignedStoreCode : "all",
+      category: "all",
+      includeIgv: true,
+    };
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "category_id", "include_igv"].forEach(key => params.delete(key));
+    if (nextControls.branch !== "all") params.set("branch_id", nextControls.branch);
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range.to) return;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: productDateToIso(range.from!), end: productDateToIso(range.to!) },
+    }));
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
+
   const dateRangeText = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${dateRange.from.toLocaleDateString("es-PE")} – ${dateRange.to.toLocaleDateString("es-PE")}`;
-    }
-    return "Últimos 30 días";
-  }, [dateRange]);
+    return `${isoToProductDate(temporal.applied.primary.start).toLocaleDateString("es-PE")} – ${isoToProductDate(temporal.applied.primary.end).toLocaleDateString("es-PE")}`;
+  }, [temporal.applied.primary]);
 
   if (authLoading) {
     return (
@@ -593,16 +679,21 @@ export default function TopProducts() {
         {/* ── Filtros ───────────────────────────────────────────────────────────────────── */}
         <DashboardFilters
           dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
+          onDateRangeChange={setDraftDateRange}
+          selectedBranch={draftControls.branch}
           branches={metrics.branches}
-          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          onBranchChange={isStoreUser ? () => {} : branch => setDraftControls(current => ({ ...current, branch }))}
           branchLocked={isStoreUser}
-          selectedCategory={selectedCategory}
+          selectedCategory={draftControls.category}
           categories={metrics.categories}
-          onCategoryChange={setSelectedCategory}
+          onCategoryChange={category => setDraftControls(current => ({ ...current, category }))}
           onClearFilters={handleClearFilters}
           showIgvToggle
+          includeIgv={draftControls.includeIgv}
+          onIncludeIgvChange={includeIgv => setDraftControls(current => ({ ...current, includeIgv }))}
+          comparisonControls={<ComparisonPeriodControls value={temporal.draft} onChange={temporal.setDraft} error={temporal.issue} />}
+          onApplyFilters={applyFilters}
+          hasPendingChanges={hasPendingChanges}
         />
 
         <Card className="border-border/60">
@@ -672,11 +763,20 @@ export default function TopProducts() {
                 </CardHeader>
               </Card>
             ) : (
-              <TopProductsStoreCards
-                rows={cardsData?.data ?? []}
-                limit={cardLimit}
-                isLoading={isLoadingCards}
-              />
+              <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                <TopProductsStoreCards
+                  rows={cardsData?.data ?? []}
+                  limit={cardLimit}
+                  isLoading={isLoadingCards}
+                  periodLabel="Periodo principal"
+                />
+                <TopProductsStoreCards
+                  rows={comparisonCardsData?.data ?? []}
+                  limit={cardLimit}
+                  isLoading={isLoadingComparisonCards}
+                  periodLabel="Periodo comparativo"
+                />
+              </div>
             )}
           </>
         )}
@@ -790,98 +890,18 @@ export default function TopProducts() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Tab: Por Cantidad */}
               <TabsContent value="qty" className="space-y-6">
-                {data.byQuantity.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-16 text-center text-muted-foreground">
-                      No hay datos para el período y filtros seleccionados.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle
-                          className="text-base font-bold uppercase tracking-wide"
-                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
-                        >
-                          Top 20 — Unidades Vendidas
-                        </CardTitle>
-                        <CardDescription>
-                          Los 20 productos con mayor cantidad de unidades vendidas en el período
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <HorizontalBarChart rows={data.byQuantity} mode="qty" />
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle
-                          className="text-base font-bold uppercase tracking-wide"
-                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
-                        >
-                          Ranking completo — Top {tableLimit} por cantidad
-                        </CardTitle>
-                        <CardDescription>
-                          {data.byQuantity.length} productos ordenados por unidades vendidas
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="px-6 pb-6">
-                        <RankingTable rows={data.byQuantity} mode="qty" />
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
+                <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                  <RankingPeriodGroup rows={data.byQuantity} mode="qty" tableLimit={tableLimit} label="Periodo principal" />
+                  <RankingPeriodGroup rows={comparisonTableData?.byQuantity ?? []} mode="qty" tableLimit={tableLimit} label="Periodo comparativo" />
+                </div>
               </TabsContent>
 
-              {/* Tab: Por Monto */}
               <TabsContent value="amount" className="space-y-6">
-                {data.byAmount.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-16 text-center text-muted-foreground">
-                      No hay datos para el período y filtros seleccionados.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle
-                          className="text-base font-bold uppercase tracking-wide"
-                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
-                        >
-                          Top 20 — Monto de Ventas
-                        </CardTitle>
-                        <CardDescription>
-                          Los 20 productos con mayor monto de ventas en el período
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <HorizontalBarChart rows={data.byAmount} mode="amount" />
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle
-                          className="text-base font-bold uppercase tracking-wide"
-                          style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
-                        >
-                          Ranking completo — Top {tableLimit} por monto
-                        </CardTitle>
-                        <CardDescription>
-                          {data.byAmount.length} productos ordenados por monto de ventas
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="px-6 pb-6">
-                        <RankingTable rows={data.byAmount} mode="amount" />
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
+                <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                  <RankingPeriodGroup rows={data.byAmount} mode="amount" tableLimit={tableLimit} label="Periodo principal" />
+                  <RankingPeriodGroup rows={comparisonTableData?.byAmount ?? []} mode="amount" tableLimit={tableLimit} label="Periodo comparativo" />
+                </div>
               </TabsContent>
             </Tabs>
           </>

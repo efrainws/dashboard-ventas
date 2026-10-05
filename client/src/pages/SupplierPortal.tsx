@@ -74,10 +74,10 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
-import { differenceInCalendarDays, format, getDaysInMonth, parseISO, subDays, startOfMonth } from "date-fns";
+import { differenceInCalendarDays, format, getDaysInMonth, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { IgvToggle } from "@/components/IgvToggle";
 import { useIgv } from "@/contexts/IgvContext";
@@ -85,6 +85,8 @@ import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvoluti
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 import { SALES_CHANNELS, SalesChannelFilter, type SalesChannel } from "@/components/SalesChannelFilter";
 import { hasCommercialOrSystemScope } from "@shared/roleAccess";
+import { isRangeValid, parseTemporalState, type TemporalRange } from "@shared/temporalFilterState";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -115,11 +117,102 @@ function formatStoreLabel(name: string | null | undefined, sapId: string | null 
   return sapId?.trim() ? `${resolvedName} (${sapId})` : resolvedName;
 }
 
-function defaultFrom() {
-  return format(startOfMonth(new Date()), "yyyy-MM-dd");
+const SUPPLIER_FILTER_QUERY_KEYS = [
+  "ventas_productos",
+  "ventas_sucursal",
+  "ventas_canales",
+  "stock_producto",
+  "stock_sucursal",
+  "catalogo_producto",
+] as const;
+
+type SupplierTemporalTab = "dashboard" | "ventas";
+
+interface SalesTabFilters {
+  productIds: string[];
+  branchId?: string;
+  channels: SalesChannel[];
 }
-function defaultTo() {
-  return format(subDays(new Date(), 1), "yyyy-MM-dd");
+
+interface StockTabFilters {
+  productId?: string;
+  branchId?: string;
+}
+
+interface CatalogTabFilters {
+  productId?: string;
+}
+
+interface SupplierUrlFilters {
+  sales: SalesTabFilters;
+  stock: StockTabFilters;
+  catalog: CatalogTabFilters;
+}
+
+function readSupplierUrlFilters(search: string): SupplierUrlFilters {
+  const params = new URLSearchParams(search);
+  const uniqueValues = (value: string | null) =>
+    value === null ? [] : Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
+  const channelParam = params.get("ventas_canales");
+  const parsedChannels = channelParam === null ? null : uniqueValues(channelParam);
+  const channels =
+    parsedChannels === null || !parsedChannels.every((channel) => SALES_CHANNELS.includes(channel as SalesChannel))
+      ? SALES_CHANNELS.slice()
+      : (parsedChannels as SalesChannel[]);
+
+  return {
+    sales: {
+      productIds: uniqueValues(params.get("ventas_productos")),
+      branchId: params.get("ventas_sucursal") || undefined,
+      channels,
+    },
+    stock: {
+      productId: params.get("stock_producto") || undefined,
+      branchId: params.get("stock_sucursal") || undefined,
+    },
+    catalog: {
+      productId: params.get("catalogo_producto") || undefined,
+    },
+  };
+}
+
+function writeSupplierUrlFilters(
+  params: URLSearchParams,
+  tab: "ventas" | "stock" | "productos",
+  filters: SalesTabFilters | StockTabFilters | CatalogTabFilters,
+) {
+  const setOptional = (key: string, value: string | undefined) => {
+    params.delete(key);
+    if (value) params.set(key, value);
+  };
+
+  if (tab === "ventas") {
+    const sales = filters as SalesTabFilters;
+    setOptional("ventas_productos", sales.productIds.length ? sales.productIds.join(",") : undefined);
+    setOptional("ventas_sucursal", sales.branchId);
+    params.delete("ventas_canales");
+    if (sales.channels.length !== SALES_CHANNELS.length) {
+      params.set("ventas_canales", sales.channels.join(","));
+    }
+    return;
+  }
+
+  if (tab === "stock") {
+    const stock = filters as StockTabFilters;
+    setOptional("stock_producto", stock.productId);
+    setOptional("stock_sucursal", stock.branchId);
+    return;
+  }
+
+  setOptional("catalogo_producto", (filters as CatalogTabFilters).productId);
+}
+
+function clearSupplierUrlFilters(params: URLSearchParams) {
+  SUPPLIER_FILTER_QUERY_KEYS.forEach((key) => params.delete(key));
+}
+
+function currentSupplierSearch(): string {
+  return typeof window === "undefined" ? "" : window.location.search;
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
@@ -178,22 +271,108 @@ export default function SupplierPortal() {
   const { logout, user, loading } = useAuth();
   const { includeIgv } = useIgv();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [from, setFrom] = useState(defaultFrom);
-  const [to, setTo] = useState(defaultTo);
-  const [stockProductId, setStockProductId] = useState<string | undefined>(undefined);
+  const {
+    applied: appliedTemporal,
+    issue: temporalIssue,
+    setIssue: setTemporalIssue,
+    applyState: applyTemporalState,
+    reset: resetTemporal,
+  } = useTemporalUrlState("P10");
+  const initialUrlFilters = useRef(readSupplierUrlFilters(currentSupplierSearch()));
+  const [salesDraft, setSalesDraft] = useState<SalesTabFilters>(initialUrlFilters.current.sales);
+  const [appliedSalesFilters, setAppliedSalesFilters] = useState<SalesTabFilters>(initialUrlFilters.current.sales);
+  const [stockDraft, setStockDraft] = useState<StockTabFilters>(initialUrlFilters.current.stock);
+  const [appliedStockFilters, setAppliedStockFilters] = useState<StockTabFilters>(initialUrlFilters.current.stock);
+  const [catalogDraft, setCatalogDraft] = useState<CatalogTabFilters>(initialUrlFilters.current.catalog);
+  const [appliedCatalogFilters, setAppliedCatalogFilters] = useState<CatalogTabFilters>(initialUrlFilters.current.catalog);
   const [stockProductSearch, setStockProductSearch] = useState("");
-  const [stockBranchId, setStockBranchId] = useState<string | undefined>(undefined);
   const [stockPage, setStockPage] = useState(0);
-  const [catalogProductId, setCatalogProductId] = useState<string | undefined>(undefined);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
   const [recPage, setRecPage] = useState(0);
-  // Estado para la pestaña Ventas
-  const [salesProductIds, setSalesProductIds] = useState<string[]>([]);
-  const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
-  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>(SALES_CHANNELS.slice());
   const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
+  const [dashboardTemporalDraft, setDashboardTemporalDraft] = useState<TemporalRange>(appliedTemporal.primary);
+  const [salesTemporalDraft, setSalesTemporalDraft] = useState<TemporalRange>(appliedTemporal.primary);
+  const from = appliedTemporal.primary.start;
+  const to = appliedTemporal.primary.end;
+
+  useEffect(() => {
+    setDashboardTemporalDraft(appliedTemporal.primary);
+    setSalesTemporalDraft(appliedTemporal.primary);
+  }, [appliedTemporal.primary.start, appliedTemporal.primary.end]);
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const next = readSupplierUrlFilters(currentSupplierSearch());
+      setSalesDraft(next.sales);
+      setAppliedSalesFilters(next.sales);
+      setStockDraft(next.stock);
+      setAppliedStockFilters(next.stock);
+      setCatalogDraft(next.catalog);
+      setAppliedCatalogFilters(next.catalog);
+      setStockPage(0);
+      setCatalogPage(0);
+      setSalesPage(0);
+    };
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
+  const updateTemporalDraft = (tab: SupplierTemporalTab, range: Partial<TemporalRange>) => {
+    const update = (current: TemporalRange): TemporalRange => ({ ...current, ...range });
+    if (tab === "dashboard") setDashboardTemporalDraft(update);
+    else setSalesTemporalDraft(update);
+  };
+
+  const applyTabFilters = (tab: Tab) => {
+    const draftRange = tab === "dashboard" ? dashboardTemporalDraft : tab === "ventas" ? salesTemporalDraft : undefined;
+    const temporalToApply = draftRange ? { ...appliedTemporal, primary: draftRange } : appliedTemporal;
+    if (draftRange && !isRangeValid(draftRange)) {
+      setTemporalIssue("Selecciona un rango de fechas válido.");
+      return;
+    }
+
+    const params = new URLSearchParams(currentSupplierSearch());
+    if (tab === "ventas") {
+      writeSupplierUrlFilters(params, "ventas", salesDraft);
+      setAppliedSalesFilters(salesDraft);
+      setSalesPage(0);
+    } else if (tab === "stock") {
+      writeSupplierUrlFilters(params, "stock", stockDraft);
+      setAppliedStockFilters(stockDraft);
+      setStockPage(0);
+    } else if (tab === "productos") {
+      writeSupplierUrlFilters(params, "productos", catalogDraft);
+      setAppliedCatalogFilters(catalogDraft);
+      setCatalogPage(0);
+    }
+
+    applyTemporalState(temporalToApply, params);
+  };
+
+  const resetAllFilters = () => {
+    const defaultTemporal = resetTemporal();
+    const defaultSales: SalesTabFilters = { productIds: [], branchId: undefined, channels: SALES_CHANNELS.slice() };
+    const defaultStock: StockTabFilters = { productId: undefined, branchId: undefined };
+    const defaultCatalog: CatalogTabFilters = { productId: undefined };
+    const params = new URLSearchParams(currentSupplierSearch());
+    clearSupplierUrlFilters(params);
+    setSalesDraft(defaultSales);
+    setAppliedSalesFilters(defaultSales);
+    setStockDraft(defaultStock);
+    setAppliedStockFilters(defaultStock);
+    setCatalogDraft(defaultCatalog);
+    setAppliedCatalogFilters(defaultCatalog);
+    setDashboardTemporalDraft(defaultTemporal.primary);
+    setSalesTemporalDraft(defaultTemporal.primary);
+    setStockProductSearch("");
+    setCatalogProductSearch("");
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    applyTemporalState(defaultTemporal, params);
+  };
   // Estado de exportación (ventas)
   const [isExporting, setIsExporting] = useState(false);
   // Toggles de dimensiones en la tabla de ventas
@@ -312,11 +491,11 @@ export default function SupplierPortal() {
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.supplierPortal.getStockByProduct.useQuery({
-      productId: stockProductId,
-      search: stockProductId
+      productId: appliedStockFilters.productId,
+      search: appliedStockFilters.productId
         ? undefined  // cuando hay productId usamos el CROSS JOIN, no búsqueda por nombre
         : undefined,
-      branchId: stockBranchId,
+      branchId: appliedStockFilters.branchId,
       supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
@@ -324,8 +503,8 @@ export default function SupplierPortal() {
 
   const { data: catalogData, isLoading: catalogLoading } =
     trpc.supplierPortal.getProductCatalog.useQuery({
-      search: catalogProductId
-        ? supplierProducts?.find((p) => p.id === catalogProductId)?.name
+      search: appliedCatalogFilters.productId
+        ? supplierProducts?.find((p) => p.id === appliedCatalogFilters.productId)?.name
         : undefined,
       supplierId: effectiveSupplierId,
       limit: PAGE_SIZE,
@@ -361,12 +540,12 @@ export default function SupplierPortal() {
       from,
       to,
       supplierId: effectiveSupplierId,
-      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-      branchId: salesBranchId,
+      productIds: appliedSalesFilters.productIds.length > 0 ? appliedSalesFilters.productIds : undefined,
+      branchId: appliedSalesFilters.branchId,
       groupByProduct: showProduct,
       groupByStore: showStore,
       groupByChannel: showChannel,
-      salesChannels,
+      salesChannels: appliedSalesFilters.channels,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
       include_igv: includeIgv,
@@ -377,12 +556,12 @@ export default function SupplierPortal() {
     from,
     to,
     supplierId: effectiveSupplierId,
-    productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-    branchId: salesBranchId,
+    productIds: appliedSalesFilters.productIds.length > 0 ? appliedSalesFilters.productIds : undefined,
+    branchId: appliedSalesFilters.branchId,
     groupByProduct: showProduct,
     groupByStore: showStore,
     groupByChannel: showChannel,
-    salesChannels,
+    salesChannels: appliedSalesFilters.channels,
     include_igv: includeIgv,
   }, { enabled: false });
 
@@ -392,9 +571,9 @@ export default function SupplierPortal() {
       from,
       to,
       supplierId: effectiveSupplierId,
-      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-      branchId: salesBranchId,
-      salesChannels,
+      productIds: appliedSalesFilters.productIds.length > 0 ? appliedSalesFilters.productIds : undefined,
+      branchId: appliedSalesFilters.branchId,
+      salesChannels: appliedSalesFilters.channels,
       granularity: lineGranularity,
       include_igv: includeIgv,
     }, { enabled: queriesEnabled && activeTab === "ventas" });
@@ -405,12 +584,12 @@ export default function SupplierPortal() {
       from,
       to,
       supplierId: effectiveSupplierId,
-      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-      branchId: salesBranchId,
+      productIds: appliedSalesFilters.productIds.length > 0 ? appliedSalesFilters.productIds : undefined,
+      branchId: appliedSalesFilters.branchId,
       groupByProduct: showProduct,
       groupByStore: showStore,
       groupByChannel: showChannel,
-      salesChannels,
+      salesChannels: appliedSalesFilters.channels,
       granularity: evolutionGranularity,
       include_igv: includeIgv,
     }, { enabled: queriesEnabled && activeTab === "ventas" });
@@ -446,8 +625,8 @@ export default function SupplierPortal() {
 
   // Query lazy para exportación de stock (se activa solo al hacer clic en Descargar)
   const exportStockQuery = trpc.supplierPortal.exportStockByProduct.useQuery({
-    productId: stockProductId,
-    branchId: stockBranchId,
+    productId: appliedStockFilters.productId,
+    branchId: appliedStockFilters.branchId,
     supplierId: effectiveSupplierId,
   }, { enabled: false });
 
@@ -472,8 +651,8 @@ export default function SupplierPortal() {
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Stock");
-      const productLabel = stockProductId
-        ? (supplierProducts?.find((p) => p.id === stockProductId)?.sku ?? "producto")
+      const productLabel = appliedStockFilters.productId
+        ? (supplierProducts?.find((p) => p.id === appliedStockFilters.productId)?.sku ?? "producto")
         : "todos";
       XLSX.writeFile(wb, `stock_${productLabel}.xlsx`);
     } finally {
@@ -774,8 +953,8 @@ export default function SupplierPortal() {
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
                 <Input
                   type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
+                  value={dashboardTemporalDraft.start}
+                  onChange={(e) => updateTemporalDraft("dashboard", { start: e.target.value })}
                   className="w-36 text-sm h-8"
                 max={new Date().toISOString().split('T')[0]}
                 />
@@ -784,8 +963,8 @@ export default function SupplierPortal() {
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
                 <Input
                   type="date"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
+                  value={dashboardTemporalDraft.end}
+                  onChange={(e) => updateTemporalDraft("dashboard", { end: e.target.value })}
                   className="w-36 text-sm h-8"
                 max={new Date().toISOString().split('T')[0]}
                 />
@@ -793,14 +972,18 @@ export default function SupplierPortal() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setFrom(defaultFrom());
-                  setTo(defaultTo());
-                }}
+                onClick={() => setDashboardTemporalDraft(resetTemporal().primary)}
               >
-                Este mes
+                Período predeterminado
               </Button>
               <IgvToggle />
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Restablecer filtros
+              </Button>
+              <Button size="sm" onClick={() => applyTabFilters("dashboard")}>
+                Aplicar filtros
+              </Button>
+              {temporalIssue && <p className="w-full text-xs text-destructive">{temporalIssue}</p>}
             </div>
 
             {/* KPIs */}
@@ -1065,8 +1248,8 @@ export default function SupplierPortal() {
               {/* Filtro por producto - Select desplegable */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={catalogProductId ?? "all"}
-                  onValueChange={(v) => { setCatalogProductId(v === "all" ? undefined : v); setCatalogPage(0); }}
+                  value={catalogDraft.productId ?? "all"}
+                  onValueChange={(v) => setCatalogDraft({ productId: v === "all" ? undefined : v })}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
@@ -1109,6 +1292,10 @@ export default function SupplierPortal() {
                   {catalogData.total} productos
                 </span>
               )}
+              <div className="ml-auto flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={resetAllFilters}>Restablecer filtros</Button>
+                <Button size="sm" onClick={() => applyTabFilters("productos")}>Aplicar filtros</Button>
+              </div>
             </div>
 
             <Card className="border-border/50">
@@ -1216,8 +1403,8 @@ export default function SupplierPortal() {
               {/* Filtro por producto - Select desplegable */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={stockProductId ?? "all"}
-                  onValueChange={(v) => { setStockProductId(v === "all" ? undefined : v); setStockPage(0); }}
+                  value={stockDraft.productId ?? "all"}
+                  onValueChange={(v) => setStockDraft((current) => ({ ...current, productId: v === "all" ? undefined : v }))}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={supplierProductsLoading ? "Cargando productos..." : "Todos los productos"} />
@@ -1258,11 +1445,8 @@ export default function SupplierPortal() {
 
               {/* Filtro por tienda */}
               <Select
-                value={stockBranchId ?? "all"}
-                onValueChange={(val) => {
-                  setStockBranchId(val === "all" ? undefined : val);
-                  setStockPage(0);
-                }}
+                value={stockDraft.branchId ?? "all"}
+                onValueChange={(val) => setStockDraft((current) => ({ ...current, branchId: val === "all" ? undefined : val }))}
               >
                 <SelectTrigger className="h-9 w-[220px]">
                   <Store className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
@@ -1279,23 +1463,25 @@ export default function SupplierPortal() {
               </Select>
 
               {/* Botón limpiar filtros (visible solo si hay algún filtro activo) */}
-              {(stockProductId || stockBranchId) && (
+              {(stockDraft.productId || stockDraft.branchId) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-9 text-muted-foreground"
                   onClick={() => {
-                    setStockProductId(undefined);
+                    setStockDraft({ productId: undefined, branchId: undefined });
                     setStockProductSearch("");
-                    setStockBranchId(undefined);
-                    setStockPage(0);
                   }}
                 >
                   Limpiar filtros
                 </Button>
               )}
 
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={resetAllFilters}>Restablecer filtros</Button>
+                <Button size="sm" onClick={() => applyTabFilters("stock")}>Aplicar filtros</Button>
+              </div>
+              <div className="flex items-center gap-3">
                 {stockData && (
                   <span className="text-sm text-muted-foreground">
                     {stockData.total} registros
@@ -1540,18 +1726,18 @@ export default function SupplierPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
-                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={salesTemporalDraft.start} onChange={(e) => updateTemporalDraft("ventas", { start: e.target.value })} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
-                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={salesTemporalDraft.end} onChange={(e) => updateTemporalDraft("ventas", { end: e.target.value })} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               {/* Selector múltiple de productos del proveedor */}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <MultiProductSelect
                   products={supplierProducts ?? []}
-                  selectedIds={salesProductIds}
-                  onChange={(ids) => { setSalesProductIds(ids); setSalesPage(0); }}
+                  selectedIds={salesDraft.productIds}
+                  onChange={(productIds) => setSalesDraft((current) => ({ ...current, productIds }))}
                   loading={supplierProductsLoading}
                   placeholder="Todos los productos"
                   className="w-full"
@@ -1559,8 +1745,8 @@ export default function SupplierPortal() {
               </div>
               {branchesForSales && branchesForSales.length > 0 && (
                 <Select
-                  value={salesBranchId ?? "all"}
-                  onValueChange={(v) => { setSalesBranchId(v === "all" ? undefined : v); setSalesPage(0); }}
+                  value={salesDraft.branchId ?? "all"}
+                  onValueChange={(v) => setSalesDraft((current) => ({ ...current, branchId: v === "all" ? undefined : v }))}
                 >
                   <SelectTrigger className="w-52 h-8 text-sm">
                     <SelectValue placeholder="Todas las tiendas" />
@@ -1574,8 +1760,8 @@ export default function SupplierPortal() {
                 </Select>
               )}
               <SalesChannelFilter
-                value={salesChannels}
-                onChange={(channels) => { setSalesChannels(channels); setSalesPage(0); }}
+                value={salesDraft.channels}
+                onChange={(channels) => setSalesDraft((current) => ({ ...current, channels }))}
               />
               {/* Toggles de dimensiones */}
               <div className="flex items-center gap-1.5 ml-auto">
@@ -1614,6 +1800,12 @@ export default function SupplierPortal() {
 
               {/* Botón de descarga Excel */}
               <IgvToggle />
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={resetAllFilters}>
+                Restablecer filtros
+              </Button>
+              <Button size="sm" className="h-8 text-xs" onClick={() => applyTabFilters("ventas")}>
+                Aplicar filtros
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -1629,6 +1821,7 @@ export default function SupplierPortal() {
                 {isExporting ? "Exportando..." : "Descargar Excel"}
               </Button>
             </div>
+            {temporalIssue && <p className="text-xs text-destructive">{temporalIssue}</p>}
 
             {/* Tabla */}
             <Card className="border-border/50">

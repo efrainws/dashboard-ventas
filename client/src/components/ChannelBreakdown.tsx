@@ -34,6 +34,7 @@ interface SalesRow {
 
 interface ChannelBreakdownProps {
   data: SalesRow[];
+  comparisonData?: SalesRow[];
   numberOfDays: number;
   daysInMonth: number;
   isLoading?: boolean;
@@ -96,6 +97,7 @@ const renderCustomLabel = ({
 // ── Componente principal ──────────────────────────────────────────────────────
 export function ChannelBreakdown({
   data,
+  comparisonData = [],
   numberOfDays,
   daysInMonth,
   isLoading,
@@ -144,6 +146,19 @@ export function ChannelBreakdown({
       })),
     [channelStats]
   );
+
+  const comparisonStats = useMemo(() => {
+    const map = new Map<string, { sales: number; transactions: number; saleIds: Set<string> }>();
+    comparisonData.forEach(row => {
+      const channel = row.sales_channel || "Desconocido";
+      const entry = map.get(channel) ?? { sales: 0, transactions: 0, saleIds: new Set<string>() };
+      entry.sales += parseFloat(row.sales_amount || "0");
+      entry.transactions += Number(row.transactions ?? 0);
+      row.sale_ids?.forEach(id => entry.saleIds.add(id));
+      map.set(channel, entry);
+    });
+    return map;
+  }, [comparisonData]);
 
   if (isLoading) {
     return (
@@ -238,6 +253,7 @@ export function ChannelBreakdown({
               <tbody>
                 {channelStats.map((row) => {
                   const toneClass = CHANNEL_TONE_CLASS[row.channel] ?? "ff-channel-default";
+                  const comparison = comparisonStats.get(row.channel);
                   return (
                     <tr key={row.channel}>
                       <td>
@@ -247,8 +263,14 @@ export function ChannelBreakdown({
                           {row.channel}
                         </span>
                       </td>
-                      <td>{formatCurrency(row.sales)}</td>
-                      <td>{formatNumber(row.transactions)}</td>
+                      <td>
+                        {formatCurrency(row.sales)}
+                        {comparison && <span className="block text-xs text-muted-foreground">Comp.: {formatCurrency(comparison.sales)}</span>}
+                      </td>
+                      <td>
+                        {formatNumber(row.transactions)}
+                        {comparison && <span className="block text-xs text-muted-foreground">Comp.: {formatNumber(comparison.transactions || comparison.saleIds.size)}</span>}
+                      </td>
                       <td>{formatCurrency(row.avgTicket)}</td>
                       <td>{formatCurrency(row.avgDaily)}</td>
                     </tr>

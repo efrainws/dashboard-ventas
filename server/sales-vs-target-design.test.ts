@@ -15,6 +15,25 @@ describe("Ventas vs Meta y sus variantes visuales", () => {
     expect(page).not.toContain('bg-[#1A6894]/10');
   });
 
+  it("mantiene filtros pendientes y aplicados en URL sin agregar comparación temporal", () => {
+    const page = projectFile("client/src/pages/SalesVsTarget.tsx");
+
+    expect(page).toContain('useTemporalUrlState("P03")');
+    expect(page).toContain("const [draftControls, setDraftControls]");
+    expect(page).toContain("const [appliedControls, setAppliedControls]");
+    expect(page).toContain("temporal.applied.primary.start");
+    expect(page).toContain("temporal.applied.primary.end");
+    expect(page).toContain("<AppliedFilterActions");
+    expect(page).toContain("onApply={applyFilters}");
+    expect(page).toContain("onReset={resetFilters}");
+    expect(page).toContain("TARGET_CONTROL_QUERY_KEYS.forEach");
+    expect(page).toContain('params.set("store_ids", draftControls.storeIds.join(","))');
+    expect(page).toContain('params.set("channels", draftControls.channels.join(","))');
+    expect(page).not.toContain("comparison_fecha_min");
+    expect(page).not.toContain("comparison_fecha_max");
+    expect(page).not.toContain("modalidad_comparacion");
+  });
+
   it("usa tonos semánticos y barras rectangulares para el cumplimiento", () => {
     const card = projectFile("client/src/components/StoreTargetCard.tsx");
     const modal = projectFile("client/src/components/TargetEditModal.tsx");

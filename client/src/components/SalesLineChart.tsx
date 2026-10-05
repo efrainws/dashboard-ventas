@@ -19,6 +19,7 @@ export interface SalesDataPoint {
 
 interface SalesLineChartProps {
   data: SalesDataPoint[];
+  comparisonData?: SalesDataPoint[];
   title?: string;
   description?: string;
 }
@@ -28,16 +29,18 @@ type ViewMode = "day" | "month";
 // ─── Tooltip personalizado ─────────────────────────────────────────────────────
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; payload: { prevSales?: number; label: string } }>;
+  payload?: Array<{ value: number; dataKey?: string; payload: { prevSales?: number; comparisonSales?: number; label: string } }>;
   label?: string;
 }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
-  const current = payload[0].value;
-  const prev = payload[0].payload.prevSales;
-  const periodLabel = payload[0].payload.label;
+  const currentEntry = payload.find(entry => entry.dataKey === "sales") ?? payload[0];
+  const current = currentEntry.value;
+  const comparison = currentEntry.payload.comparisonSales;
+  const prev = comparison ?? currentEntry.payload.prevSales;
+  const periodLabel = currentEntry.payload.label;
 
   const formatCurrency = (v: number) =>
     `S/ ${v.toLocaleString("es-PE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -53,7 +56,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
     variationEl = (
       <div className="flex items-center gap-1 mt-1 text-xs font-medium" style={{ color }}>
         <Icon className="h-3 w-3" />
-        <span>{sign}{pct.toFixed(1)}% vs anterior ({formatCurrency(prev)})</span>
+        <span>{sign}{pct.toFixed(1)}% vs {comparison !== undefined ? "comparativo" : "anterior"} ({formatCurrency(prev)})</span>
       </div>
     );
   } else if (prev === 0) {
@@ -82,7 +85,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 // ─── Componente principal ──────────────────────────────────────────────────────
-export function SalesLineChart({ data, title, description }: SalesLineChartProps) {
+export function SalesLineChart({ data, comparisonData = [], title, description }: SalesLineChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
 
   // Agregar datos por día con variación vs punto anterior
@@ -149,7 +152,31 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
     }));
   }, [data]);
 
-  const chartData = viewMode === "day" ? dailyData : monthlyData;
+  const comparisonDailyData = useMemo(() => {
+    const grouped = new Map<string, number>();
+    comparisonData.forEach(row => {
+      const date = new Date(row.doc_date);
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+      grouped.set(key, (grouped.get(key) ?? 0) + parseFloat(row.sales_amount || "0"));
+    });
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, sales]) => sales);
+  }, [comparisonData]);
+
+  const comparisonMonthlyData = useMemo(() => {
+    const grouped = new Map<string, number>();
+    comparisonData.forEach(row => {
+      const date = new Date(row.doc_date);
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+      grouped.set(key, (grouped.get(key) ?? 0) + parseFloat(row.sales_amount || "0"));
+    });
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, sales]) => sales);
+  }, [comparisonData]);
+
+  const chartData = useMemo(() => {
+    const primary = viewMode === "day" ? dailyData : monthlyData;
+    const comparison = viewMode === "day" ? comparisonDailyData : comparisonMonthlyData;
+    return primary.map((row, index) => ({ ...row, comparisonSales: comparison[index] }));
+  }, [viewMode, dailyData, monthlyData, comparisonDailyData, comparisonMonthlyData]);
   const xAxisKey = "label";
 
   const formatCurrencyShort = (value: number) => {
@@ -222,6 +249,18 @@ export function SalesLineChart({ data, title, description }: SalesLineChartProps
                 activeDot={{ r: 6, fill: "var(--ff-esmeralda-dark)" }}
                 name="sales"
               />
+              {comparisonData.length > 0 && (
+                <Line
+                  type="monotone"
+                  dataKey="comparisonSales"
+                  stroke="var(--ff-cobalto)"
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                  name="comparativo"
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         )}

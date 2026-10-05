@@ -24,6 +24,41 @@ import {
   SHELF_PRODUCT_SORTS,
 } from "./shelfProductRanking";
 
+function resolveComparisonRange(
+  fechaMin: string,
+  fechaMax: string,
+  comparisonFechaMin?: string,
+  comparisonFechaMax?: string,
+) {
+  const currentStart = fechaMin.substring(0, 10);
+  const currentEnd = fechaMax.substring(0, 10);
+
+  if (comparisonFechaMin && comparisonFechaMax) {
+    return {
+      currentStart,
+      currentEnd,
+      comparisonStart: comparisonFechaMin.substring(0, 10),
+      comparisonEnd: comparisonFechaMax.substring(0, 10),
+    };
+  }
+
+  const currentStartDate = new Date(`${currentStart}T12:00:00`);
+  const currentEndDate = new Date(`${currentEnd}T12:00:00`);
+  const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / 86_400_000) + 1;
+  const comparisonEndDate = new Date(currentStartDate);
+  comparisonEndDate.setDate(comparisonEndDate.getDate() - 1);
+  const comparisonStartDate = new Date(comparisonEndDate);
+  comparisonStartDate.setDate(comparisonStartDate.getDate() - (durationDays - 1));
+  const format = (date: Date) => date.toISOString().substring(0, 10);
+
+  return {
+    currentStart,
+    currentEnd,
+    comparisonStart: format(comparisonStartDate),
+    comparisonEnd: format(comparisonEndDate),
+  };
+}
+
 export const salesRouter = router({
   /**
    * Obtiene ventas agregadas por fecha, tienda y departamento
@@ -281,32 +316,29 @@ export const salesRouter = router({
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        comparison_fecha_min: z.string().optional(),
+        comparison_fecha_max: z.string().optional(),
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
+        sales_channels: z.array(z.enum(['Presencial', 'eCommerce', 'Rappi'])).optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
+      const {
+        fecha_min,
+        fecha_max,
+        comparison_fecha_min,
+        comparison_fecha_max,
+        branch_id,
+        category_id,
+        sales_channels,
+        include_igv,
+      } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      // Calcular duración del período actual en días
-      const currentStartDate = new Date(fechaMinDate + 'T12:00:00'); // Mediodía para evitar DST
-      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
-      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-      // Calcular período anterior (misma duración, inmediatamente antes)
-      const prevEndDate = new Date(currentStartDate);
-      prevEndDate.setDate(prevEndDate.getDate() - 1);
-      const prevStartDate = new Date(prevEndDate);
-      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
-
-      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
-      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
+      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
+        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -325,6 +357,13 @@ export const salesRouter = router({
         paramIndex++;
       }
 
+      const channelFilter = sales_channels?.length
+        ? (() => {
+            queryParams.push(sales_channels);
+            return `AND fh.sales_channel = ANY($${paramIndex++}::text[])`;
+          })()
+        : '';
+
       // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail
       // Incluye JOIN a branches (para filtrar por branch_id) y categories (para category_id)
       const query = `
@@ -334,6 +373,15 @@ export const salesRouter = router({
             sh.doc_date,
             sh.branch_id,
             b.sap_id AS branch_sap_id,
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM methods_payment mp
+                WHERE mp.header_id = sh.id
+                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
+              ) THEN 'Rappi'
+              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid THEN 'eCommerce'
+              ELSE 'Presencial'
+            END AS sales_channel,
             CASE
               WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
                 THEN 'current'
@@ -372,11 +420,12 @@ export const salesRouter = router({
         JOIN agg_detail ad ON ad.header_id = fh.id
         WHERE fh.period IS NOT NULL
           ${additionalFilters.filter(f => f.includes('category')).map(f => f.replace('COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)', 'ad.category_id')).join('\n          ')}
+          ${channelFilter}
         GROUP BY fh.period;
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:comparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
+      const cacheKey = `sales:comparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${sales_channels?.join(',') ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
@@ -412,6 +461,8 @@ export const salesRouter = router({
       z.object({
         fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
         fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        comparison_fecha_min: z.string().optional(),
+        comparison_fecha_max: z.string().optional(),
         branch_id: z.string().optional(),
         sales_channel: z.string().optional(),
         sales_channels: z.array(z.enum(['Presencial', 'eCommerce', 'Rappi'])).optional(),
@@ -419,23 +470,20 @@ export const salesRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, sales_channel, sales_channels, include_igv } = input;
+      const {
+        fecha_min,
+        fecha_max,
+        comparison_fecha_min,
+        comparison_fecha_max,
+        branch_id,
+        sales_channel,
+        sales_channels,
+        include_igv,
+      } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      // Calcular período anterior en días
-      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
-      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
-      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const prevEndDate = new Date(currentStartDate);
-      prevEndDate.setDate(prevEndDate.getDate() - 1);
-      const prevStartDate = new Date(prevEndDate);
-      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
-      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
-      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
+      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
+        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -539,30 +587,29 @@ export const salesRouter = router({
       z.object({
         fecha_min: z.string(),
         fecha_max: z.string(),
+        comparison_fecha_min: z.string().optional(),
+        comparison_fecha_max: z.string().optional(),
         category_id: z.string().optional(),
         branch_id: z.string().optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, category_id, branch_id, include_igv } = input;
+      const {
+        fecha_min,
+        fecha_max,
+        comparison_fecha_min,
+        comparison_fecha_max,
+        category_id,
+        branch_id,
+        include_igv,
+      } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      // Calcular período anterior en días
-      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
-      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
-      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const prevEndDate = new Date(currentStartDate);
-      prevEndDate.setDate(prevEndDate.getDate() - 1);
-      const prevStartDate = new Date(prevEndDate);
-      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
-      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
-      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
-      const daysInAnalysisPeriod = inclusiveCalendarDays(fechaMinDate, fechaMaxDate);
+      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
+        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
+      const currentPeriodDays = inclusiveCalendarDays(fechaMinDate, fechaMaxDate);
+      const comparisonPeriodDays = inclusiveCalendarDays(prevStartStr, prevEndStr);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -640,7 +687,7 @@ export const salesRouter = router({
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
+      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
@@ -661,7 +708,7 @@ export const salesRouter = router({
             const totalSales = parseFloat(row.total_sales || 0);
             const totalTickets = parseInt(row.total_tickets || 0, 10);
             const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
-            const avgSalesPerDay = totalSales / daysInAnalysisPeriod;
+            const avgSalesPerDay = totalSales / (row.period === 'current' ? currentPeriodDays : comparisonPeriodDays);
             if (row.period === 'current') {
               branch.current = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
             } else if (row.period === 'previous') {
@@ -691,28 +738,25 @@ export const salesRouter = router({
       z.object({
         fecha_min: z.string(),
         fecha_max: z.string(),
+        comparison_fecha_min: z.string().optional(),
+        comparison_fecha_max: z.string().optional(),
         branch_id: z.string().optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, include_igv } = input;
+      const {
+        fecha_min,
+        fecha_max,
+        comparison_fecha_min,
+        comparison_fecha_max,
+        branch_id,
+        include_igv,
+      } = input;
       const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
 
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      // Calcular período anterior en días
-      const currentStartDate = new Date(fechaMinDate + 'T12:00:00');
-      const currentEndDate = new Date(fechaMaxDate + 'T12:00:00');
-      const durationDays = Math.round((currentEndDate.getTime() - currentStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const prevEndDate = new Date(currentStartDate);
-      prevEndDate.setDate(prevEndDate.getDate() - 1);
-      const prevStartDate = new Date(prevEndDate);
-      prevStartDate.setDate(prevStartDate.getDate() - (durationDays - 1));
-      const prevStartStr = prevStartDate.toISOString().substring(0, 10);
-      const prevEndStr = prevEndDate.toISOString().substring(0, 10);
+      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
+        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
 
       // Construir filtros adicionales
       const additionalFilters: string[] = [];
@@ -784,7 +828,7 @@ export const salesRouter = router({
       `;
 
       const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:categoryComparison:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${igvKey}`;
+      const cacheKey = `sales:categoryComparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);

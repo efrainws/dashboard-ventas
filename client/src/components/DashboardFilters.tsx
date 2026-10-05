@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, Lock, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { IgvToggle } from "@/components/IgvToggle";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+import type { ReactNode } from "react";
 
 const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
 type Channel = typeof ALL_CHANNELS[number];
@@ -46,6 +48,13 @@ export interface DashboardFiltersProps {
 
   // Toggle IGV dentro del panel
   showIgvToggle?: boolean;
+  includeIgv?: boolean;
+  onIncludeIgvChange?: (value: boolean) => void;
+
+  // Estado pendiente/aplicado opcional
+  comparisonControls?: ReactNode;
+  onApplyFilters?: () => void;
+  hasPendingChanges?: boolean;
 }
 
 export function DashboardFilters({
@@ -62,6 +71,11 @@ export function DashboardFilters({
   onClearFilters,
   branchLocked = false,
   showIgvToggle = false,
+  includeIgv,
+  onIncludeIgvChange,
+  comparisonControls,
+  onApplyFilters,
+  hasPendingChanges,
 }: DashboardFiltersProps) {
   const showChannelFilter = selectedChannels !== undefined && onChannelsChange !== undefined;
   const hasActiveFilters =
@@ -105,7 +119,7 @@ export function DashboardFilters({
           </div>
           <Button variant="outline" size="sm" onClick={onClearFilters}>
             <X className="mr-2 h-4 w-4" />
-            Limpiar Filtros
+            Restablecer filtros
           </Button>
         </div>
       </CardHeader>
@@ -253,8 +267,16 @@ export function DashboardFilters({
         </div>
         {showIgvToggle && (
           <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
-            <IgvToggle />
+            <IgvToggle includeIgv={includeIgv} onIncludeIgvChange={onIncludeIgvChange} />
           </div>
+        )}
+        {comparisonControls}
+        {onApplyFilters && (
+          <AppliedFilterActions
+            onApply={onApplyFilters}
+            onReset={onClearFilters}
+            isPending={hasPendingChanges}
+          />
         )}
       </CardContent>
     </Card>

@@ -79,10 +79,12 @@ export function TopProductsStoreCards({
   rows,
   limit,
   isLoading,
+  periodLabel,
 }: {
   rows: TopProductByStoreRow[];
   limit: 20 | 50;
   isLoading?: boolean;
+  periodLabel?: string;
 }) {
   const stores = useMemo(() => {
     const grouped = new Map<string, { sapId: string; name: string; products: TopProductByStoreRow[] }>();
@@ -128,7 +130,7 @@ export function TopProductsStoreCards({
         <div>
           <p className="ff-eyebrow">Ranking por tienda</p>
           <h2 id="top-products-store-cards-title" className="mt-1 font-heading text-xl font-bold uppercase tracking-wide text-foreground">
-            Top {limit} productos por tienda
+            {periodLabel ? `${periodLabel} · ` : ""}Top {limit} productos por tienda
           </h2>
         </div>
         <p className="max-w-sm text-xs text-muted-foreground">

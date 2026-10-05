@@ -65,9 +65,32 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { ComparisonPeriodControls } from "@/components/ComparisonPeriodControls";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+import { CustomerStoreRankingCard } from "@/components/CustomerStoreRankingCard";
 
 const ALL_CHANNELS = ['Presencial', 'eCommerce', 'Rappi'] as const;
 type Channel = typeof ALL_CHANNELS[number];
+
+type CustomerControls = {
+  branch: string;
+  channels: Channel[];
+  topN: number;
+  includeIgv: boolean;
+};
+
+function customerControlsFromSearch(search: string): CustomerControls {
+  const params = new URLSearchParams(search);
+  const channels = (params.get("channels") ?? "").split(",").filter((channel): channel is Channel => ALL_CHANNELS.includes(channel as Channel));
+  const topN = Number(params.get("top_n") ?? 10);
+  return {
+    branch: params.get("branch_id") ?? "all",
+    channels: channels.length ? channels : [...ALL_CHANNELS],
+    topN: [10, 20, 50, 100].includes(topN) ? topN : 10,
+    includeIgv: params.get("include_igv") !== "false",
+  };
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -510,20 +533,14 @@ function CustomerTransactionsModal({
 export default function TopCustomers() {
   const { theme } = useTheme();
   const { user, loading: authLoading } = useAuth();
+  const temporal = useTemporalUrlState("P05");
   const isStoreUser = user?.role === "store_user";
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
-  // ── Fechas por defecto: últimos 30 días ──
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
-
-  const [from, setFrom] = useState<Date>(thirtyDaysAgo);
-  const [to, setTo] = useState<Date>(today);
-  const [topN, setTopN] = useState<number>(10);
-  const [includeIgv, setIncludeIgv] = useState(true);
+  const [draftControls, setDraftControls] = useState<CustomerControls>(() => customerControlsFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<CustomerControls>(() => customerControlsFromSearch(window.location.search));
+  const from = useMemo(() => new Date(`${temporal.draft.primary.start}T12:00:00`), [temporal.draft.primary.start]);
+  const to = useMemo(() => new Date(`${temporal.draft.primary.end}T12:00:00`), [temporal.draft.primary.end]);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
-  const [selectedSapId, setSelectedSapId] = useState<string>("all");
-  const [selectedChannels, setSelectedChannels] = useState<Channel[]>([...ALL_CHANNELS]);
   const activeViewMode = isStoreUser ? "table" : viewMode;
 
   // Modal de transacciones
@@ -534,22 +551,34 @@ export default function TopCustomers() {
   const [dniMessage, setDniMessage] = useState<string | null>(null);
   const [dniDialogOpen, setDniDialogOpen] = useState(false);
 
-  const fechaMin = toLocalDate(from);
-  const fechaMax = toLocalDate(to);
+  const fechaMin = temporal.applied.primary.start;
+  const fechaMax = temporal.applied.primary.end;
+  const comparisonFechaMin = temporal.applied.comparison?.start ?? fechaMin;
+  const comparisonFechaMax = temporal.applied.comparison?.end ?? fechaMax;
 
   // Límite de tarjetas: máximo 20 en modo cards
-  const effectiveTopN = activeViewMode === "cards" ? Math.min(topN, 20) : topN;
+  const effectiveTopN = activeViewMode === "cards" ? Math.min(appliedControls.topN, 20) : appliedControls.topN;
 
   useEffect(() => {
-    if (isStoreUser && assignedStoreCode) setSelectedSapId(assignedStoreCode);
+    if (isStoreUser && assignedStoreCode) {
+      setDraftControls(current => ({ ...current, branch: assignedStoreCode }));
+      setAppliedControls(current => ({ ...current, branch: assignedStoreCode }));
+    }
   }, [isStoreUser, assignedStoreCode]);
+
+  useEffect(() => {
+    const next = customerControlsFromSearch(window.location.search);
+    if (isStoreUser && assignedStoreCode) next.branch = assignedStoreCode;
+    setDraftControls(next);
+    setAppliedControls(next);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, isStoreUser, assignedStoreCode]);
 
   // Canal único para el backend (si todos seleccionados → 'all', si uno → ese canal)
   const effectiveChannel = useMemo(() => {
-    if (selectedChannels.length === ALL_CHANNELS.length || selectedChannels.length === 0) return 'all';
-    if (selectedChannels.length === 1) return selectedChannels[0];
+    if (appliedControls.channels.length === ALL_CHANNELS.length || appliedControls.channels.length === 0) return 'all';
+    if (appliedControls.channels.length === 1) return appliedControls.channels[0];
     return 'all'; // multi-select: filtramos en frontend
-  }, [selectedChannels]);
+  }, [appliedControls.channels]);
 
   // ── Queries ──
   const { data: byBranchData, isLoading: loadingCards } =
@@ -558,8 +587,8 @@ export default function TopCustomers() {
         fecha_min: fechaMin,
         fecha_max: fechaMax,
         top_n: effectiveTopN,
-        include_igv: includeIgv,
-        branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
+        include_igv: appliedControls.includeIgv,
+        branch_sap_id: appliedControls.branch !== 'all' ? appliedControls.branch : undefined,
         sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
       },
       { enabled: !authLoading && activeViewMode === "cards" }
@@ -570,12 +599,38 @@ export default function TopCustomers() {
       {
         fecha_min: fechaMin,
         fecha_max: fechaMax,
-        top_n: topN,
-        include_igv: includeIgv,
-        branch_sap_id: selectedSapId !== 'all' ? selectedSapId : undefined,
+        top_n: appliedControls.topN,
+        include_igv: appliedControls.includeIgv,
+        branch_sap_id: appliedControls.branch !== 'all' ? appliedControls.branch : undefined,
         sales_channel: effectiveChannel !== 'all' ? effectiveChannel : undefined,
       },
       { enabled: !authLoading && activeViewMode === "table" }
+    );
+
+  const { data: comparisonByBranchData, isLoading: loadingComparisonCards } =
+    trpc.sales.getTopCustomersByBranch.useQuery(
+      {
+        fecha_min: comparisonFechaMin,
+        fecha_max: comparisonFechaMax,
+        top_n: effectiveTopN,
+        include_igv: appliedControls.includeIgv,
+        branch_sap_id: appliedControls.branch !== "all" ? appliedControls.branch : undefined,
+        sales_channel: effectiveChannel !== "all" ? effectiveChannel : undefined,
+      },
+      { enabled: !authLoading && activeViewMode === "cards" && !!temporal.applied.comparison },
+    );
+
+  const { data: comparisonGeneralData, isLoading: loadingComparisonGeneral } =
+    trpc.sales.getTopCustomersGeneral.useQuery(
+      {
+        fecha_min: comparisonFechaMin,
+        fecha_max: comparisonFechaMax,
+        top_n: appliedControls.topN,
+        include_igv: appliedControls.includeIgv,
+        branch_sap_id: appliedControls.branch !== "all" ? appliedControls.branch : undefined,
+        sales_channel: effectiveChannel !== "all" ? effectiveChannel : undefined,
+      },
+      { enabled: !authLoading && activeViewMode === "table" && !!temporal.applied.comparison },
     );
 
   const { data: dniData, isFetching: isSearchingDni, error: dniError } =
@@ -584,7 +639,7 @@ export default function TopCustomers() {
         dni: submittedDni ?? "00000000",
         fecha_min: fechaMin,
         fecha_max: fechaMax,
-        branch_sap_id: selectedSapId !== "all" ? selectedSapId : undefined,
+        branch_sap_id: appliedControls.branch !== "all" ? appliedControls.branch : undefined,
         sales_channel: effectiveChannel !== "all" ? effectiveChannel : undefined,
       },
       { enabled: !authLoading && submittedDni !== null },
@@ -610,8 +665,7 @@ export default function TopCustomers() {
   }, [byBranchData]);
 
   // ── Agrupar filas por tienda para las tarjetas ──
-  const storeCards = useMemo(() => {
-    const rows: CustomerRow[] = byBranchData?.data ?? [];
+  const groupStoreCards = (rows: CustomerRow[]) => {
     const map = new Map<string, { nombre: string; codigo: string; total: number; txn: number; customers: CustomerRow[] }>();
     for (const r of rows) {
       if (!map.has(r.codigo_tienda)) {
@@ -630,9 +684,13 @@ export default function TopCustomers() {
       const nb = parseInt(b.codigo.replace(/\D/g, "") || "9999");
       return na - nb;
     });
-  }, [byBranchData]);
+  };
+
+  const storeCards = useMemo(() => groupStoreCards(byBranchData?.data ?? []), [byBranchData]);
+  const comparisonStoreCards = useMemo(() => groupStoreCards(comparisonByBranchData?.data ?? []), [comparisonByBranchData]);
 
   const generalRows: GeneralRow[] = generalData?.data ?? [];
+  const comparisonGeneralRows: GeneralRow[] = comparisonGeneralData?.data ?? [];
 
   // ── KPIs globales (modo cards) ──
   const kpis = useMemo(() => {
@@ -644,8 +702,59 @@ export default function TopCustomers() {
   }, [byBranchData]);
 
   // ── Parámetros para el modal de transacciones ──
-  const modalBranchSapId = selectedSapId !== 'all' ? selectedSapId : undefined;
+  const modalBranchSapId = appliedControls.branch !== 'all' ? appliedControls.branch : undefined;
   const modalSalesChannel: Channel | undefined = effectiveChannel !== 'all' ? effectiveChannel : undefined;
+
+  const applyFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "channels", "top_n", "include_igv"].forEach(key => params.delete(key));
+    if (draftControls.branch !== "all") params.set("branch_id", draftControls.branch);
+    if (draftControls.channels.length !== ALL_CHANNELS.length) params.set("channels", draftControls.channels.join(","));
+    if (draftControls.topN !== 10) params.set("top_n", String(draftControls.topN));
+    if (!draftControls.includeIgv) params.set("include_igv", "false");
+    temporal.apply(params);
+    setAppliedControls(draftControls);
+  };
+
+  const resetFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: CustomerControls = {
+      branch: isStoreUser && assignedStoreCode ? assignedStoreCode : "all",
+      channels: [...ALL_CHANNELS],
+      topN: 10,
+      includeIgv: true,
+    };
+    const params = new URLSearchParams(window.location.search);
+    ["branch_id", "channels", "top_n", "include_igv"].forEach(key => params.delete(key));
+    if (nextControls.branch !== "all") params.set("branch_id", nextControls.branch);
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const setDraftDates = (nextFrom: Date, nextTo: Date) => {
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: toLocalDate(nextFrom), end: toLocalDate(nextTo) },
+    }));
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
+
+  // Aliases conservan el marcado del formulario existente, pero solo actualizan
+  // el borrador hasta que se pulsa Aplicar filtros.
+  const today = new Date();
+  const selectedSapId = draftControls.branch;
+  const setSelectedSapId = (branch: string) => setDraftControls(current => ({ ...current, branch }));
+  const selectedChannels = draftControls.channels;
+  const setSelectedChannels = (channels: Channel[]) => setDraftControls(current => ({ ...current, channels }));
+  const topN = draftControls.topN;
+  const setTopN = (topN: number) => setDraftControls(current => ({ ...current, topN }));
+  const includeIgv = draftControls.includeIgv;
+  const setIncludeIgv = (includeIgv: boolean) => setDraftControls(current => ({ ...current, includeIgv }));
+  const setFrom = (value: Date) => setDraftDates(value, to);
+  const setTo = (value: Date) => setDraftDates(from, value);
 
   const handleCustomerClick = (customerId: string | null, customerName: string) => {
     if (!customerId) return;
@@ -939,6 +1048,17 @@ export default function TopCustomers() {
                 </div>
               </div>
 
+              <ComparisonPeriodControls
+                value={temporal.draft}
+                onChange={temporal.setDraft}
+                error={temporal.issue}
+              />
+              <AppliedFilterActions
+                onApply={applyFilters}
+                onReset={resetFilters}
+                isPending={hasPendingChanges}
+              />
+
               {/* Aviso de límite en modo tarjetas */}
               {activeViewMode === "cards" && topN > 20 && (
                 <p className="mt-2 text-xs text-muted-foreground italic">
@@ -1008,97 +1128,20 @@ export default function TopCustomers() {
                   No se encontraron datos para el período seleccionado.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {storeCards.map((store) => (
-                    <Card
-                      key={store.codigo}
-                      className="border border-border/60 hover:shadow-md transition-shadow"
-                    >
-                      <CardHeader className="pb-2 pt-4 px-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <CardTitle
-                              className="text-sm font-bold uppercase tracking-wide leading-tight truncate"
-                              style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
-                            >
-                              {store.nombre}
-                            </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Cód. {store.codigo} · {fmtNumber(store.txn)} txn · S/ {fmtCurrency(store.total)}
-                            </p>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 text-xs"
-                            style={{ borderColor: "#C49705", color: "#C49705" }}
-                          >
-                            Top {store.customers.length}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="px-4 pb-4">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-border/40">
-                              <TableHead className="py-1.5 px-2 text-xs w-8">#</TableHead>
-                              <TableHead className="py-1.5 px-2 text-xs">Cliente</TableHead>
-                              <TableHead className="py-1.5 px-2 text-xs text-right">Monto</TableHead>
-                              <TableHead className="py-1.5 px-2 text-xs text-right">Txn</TableHead>
-                              <TableHead className="py-1.5 px-2 text-xs text-right">%</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {store.customers.map((c) => (
-                              <TableRow
-                                key={c.customer_id ?? c.rn}
-                                className="border-border/30 hover:bg-muted/40 cursor-pointer transition-colors"
-                                onClick={() => handleCustomerClick(c.customer_id, c.customer_name)}
-                              >
-                                <TableCell className="py-1.5 px-2 text-xs">
-                                  <MedalBadge pos={c.rn} />
-                                </TableCell>
-                                <TableCell className="py-1.5 px-2 text-xs max-w-[140px]">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span
-                                        className="block truncate font-medium underline-offset-2 hover:underline"
-                                        style={{ color: "#1A6894" }}
-                                      >
-                                        {toTitleCase(c.customer_name)}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Ver transacciones</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TableCell>
-                                <TableCell
-                                  className="py-1.5 px-2 text-xs text-right tabular-nums font-medium"
-                                  style={{ color: "#008064" }}
-                                >
-                                  {fmtCurrency(c.monto)}
-                                </TableCell>
-                                <TableCell className="py-1.5 px-2 text-xs text-right tabular-nums text-muted-foreground">
-                                  {fmtNumber(c.transacciones)}
-                                </TableCell>
-                                <TableCell className="py-1.5 px-2 text-xs text-right tabular-nums">
-                                  <span
-                                    className="font-medium"
-                                    style={{
-                                      color: c.pct_tienda >= 10 ? "#BC2C46" : c.pct_tienda >= 5 ? "#C49705" : "#008064",
-                                    }}
-                                  >
-                                    {c.pct_tienda.toFixed(1)}%
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-5">
+                  {storeCards.map((store) => {
+                    const comparisonStore = comparisonStoreCards.find(item => item.codigo === store.codigo);
+                    return (
+                      <div key={store.codigo} className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
+                        <CustomerStoreRankingCard store={store} periodLabel="Periodo principal" onCustomerClick={handleCustomerClick} />
+                        {comparisonStore ? (
+                          <CustomerStoreRankingCard store={comparisonStore} periodLabel="Periodo comparativo" onCustomerClick={handleCustomerClick} />
+                        ) : (
+                          <Card className="border border-dashed border-border/60"><CardContent className="py-10 text-center text-sm text-muted-foreground">No hay ranking comparativo para esta tienda.</CardContent></Card>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -1108,13 +1151,14 @@ export default function TopCustomers() {
               MODO TABLA GENERAL
           ══════════════════════════════════════════════════════════════════ */}
           {activeViewMode === "table" && (
+            <div className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
             <Card className="border border-border/60">
               <CardHeader className="pb-2 pt-4">
                 <CardTitle
                   className="text-sm font-bold uppercase tracking-wide"
                   style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}
                 >
-                  Top {topN} Clientes — Período {fechaMin} al {fechaMax}
+                  Top {topN} Clientes — Periodo principal {fechaMin} al {fechaMax}
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -1222,6 +1266,25 @@ export default function TopCustomers() {
                 )}
               </CardContent>
             </Card>
+            <Card className="border border-border/60">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "'Italian Plate No 1', sans-serif" }}>
+                  Top {appliedControls.topN} Clientes — Periodo comparativo {comparisonFechaMin} al {comparisonFechaMax}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                {loadingComparisonGeneral ? (
+                  <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+                ) : comparisonGeneralRows.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">No se encontraron datos para el período comparativo.</p>
+                ) : (
+                  <div className="overflow-x-auto"><Table><TableHeader><TableRow className="border-border/50"><TableHead className="w-8 text-xs">#</TableHead><TableHead className="text-xs">Cliente</TableHead><TableHead className="text-right text-xs">Monto Total</TableHead><TableHead className="text-right text-xs">Transacciones</TableHead><TableHead className="text-right text-xs">Monto Prom./Mes</TableHead></TableRow></TableHeader><TableBody>
+                    {comparisonGeneralRows.map((row, index) => <TableRow key={row.customer_id ?? index} className="cursor-pointer border-border/30 hover:bg-muted/40" onClick={() => handleCustomerClick(row.customer_id, row.customer_name)}><TableCell className="text-xs text-muted-foreground">{index + 1}</TableCell><TableCell className="max-w-[200px] text-sm font-medium"><span className="block truncate">{toTitleCase(row.customer_name)}</span></TableCell><TableCell className="text-right text-sm font-semibold tabular-nums text-[var(--ff-esmeralda)]">S/ {fmtCurrency(row.monto_total)}</TableCell><TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmtNumber(row.total_transacciones)}</TableCell><TableCell className="text-right text-sm tabular-nums">S/ {fmtCurrency(row.monto_promedio_mes)}</TableCell></TableRow>)}
+                  </TableBody></Table></div>
+                )}
+              </CardContent>
+            </Card>
+            </div>
           )}
         </main>
 

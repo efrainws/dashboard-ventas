@@ -44,7 +44,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Loader2,
-  X,
   Store,
   Lock,
   UserCircle2,
@@ -57,10 +56,13 @@ import {
   ChevronLeft,
   ShoppingBasket,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
 import { ReportDiscrepancyButton } from "@/components/ReportDiscrepancyButton";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { AppliedFilterActions } from "@/components/AppliedFilterActions";
+import { isRangeValid } from "@shared/temporalFilterState";
 
 // ─── Paleta F&F ──────────────────────────────────────────────────────────────
 const COLOR = {
@@ -95,6 +97,23 @@ function toLocalDate(d: Date) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function isoToLocalDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+interface CreditNotesControls {
+  sapId: string;
+  includeIgv: boolean;
+}
+
+function creditNotesControlsFromSearch(search: string): CreditNotesControls {
+  const params = new URLSearchParams(search);
+  return {
+    sapId: params.get("branch_sap_id") ?? "all",
+    includeIgv: params.get("include_igv") !== "false",
+  };
 }
 
 function formatNumber(n: number) {
@@ -846,29 +865,31 @@ function CashierDetailModal({
 
 export default function CreditNotes() {
   const { user, loading: authLoading } = useAuth();
+  const temporal = useTemporalUrlState("P08");
   const isStoreUser = user?.role === "store_user";
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
   const { effectiveTheme } = useTheme();
 
   const {
-    dateRange: globalDateRange,
     setDateRange: setGlobalDateRange,
     setBranchId: setGlobalBranchId,
   } = useFilters();
 
-  // Filtros
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-    return { from: yesterday, to: yesterdayEnd };
-  });
-
-  const [selectedSapId, setSelectedSapId] = useState<string>("all");
-  const [includeIgv, setIncludeIgv] = useState(true);
+  // El borrador no consulta ni cambia la URL. El estado aplicado se reconstruye desde URL.
+  const [draftControls, setDraftControls] = useState<CreditNotesControls>(() =>
+    creditNotesControlsFromSearch(window.location.search),
+  );
+  const [appliedControls, setAppliedControls] = useState<CreditNotesControls>(() =>
+    creditNotesControlsFromSearch(window.location.search),
+  );
+  const draftDateRange = useMemo<DateRange>(() => ({
+    from: isoToLocalDate(temporal.draft.primary.start),
+    to: isoToLocalDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary.start, temporal.draft.primary.end]);
+  const appliedDateRange = useMemo<DateRange>(() => ({
+    from: isoToLocalDate(temporal.applied.primary.start),
+    to: isoToLocalDate(temporal.applied.primary.end),
+  }), [temporal.applied.primary.start, temporal.applied.primary.end]);
 
   // Umbrales
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds);
@@ -880,39 +901,109 @@ export default function CreditNotes() {
     store: null,
   });
 
+  // Las restricciones de tienda por rol prevalecen sobre cualquier parámetro de URL.
   useEffect(() => {
-    if (isStoreUser && assignedStoreCode) setSelectedSapId(assignedStoreCode);
+    if (isStoreUser && assignedStoreCode) {
+      const restricted = (current: CreditNotesControls): CreditNotesControls => ({
+        ...current,
+        sapId: assignedStoreCode,
+      });
+      setDraftControls(restricted);
+      setAppliedControls(restricted);
+    }
   }, [isStoreUser, assignedStoreCode]);
 
   useEffect(() => {
-    setGlobalDateRange(dateRange);
-  }, [dateRange, setGlobalDateRange]);
+    const syncControlsFromUrl = () => {
+      const next = creditNotesControlsFromSearch(window.location.search);
+      const controls = isStoreUser && assignedStoreCode
+        ? { ...next, sapId: assignedStoreCode }
+        : next;
+      setDraftControls(controls);
+      setAppliedControls(controls);
+    };
+    window.addEventListener("popstate", syncControlsFromUrl);
+    return () => window.removeEventListener("popstate", syncControlsFromUrl);
+  }, [isStoreUser, assignedStoreCode]);
+
+  // El contexto global solo refleja filtros ya aplicados; nunca adelanta un borrador local.
+  useEffect(() => {
+    setGlobalDateRange(appliedDateRange);
+    setGlobalBranchId(appliedControls.sapId !== "all" ? appliedControls.sapId : undefined);
+  }, [appliedDateRange, appliedControls.sapId, setGlobalBranchId, setGlobalDateRange]);
 
   const handleSaveThresholds = (t: Thresholds) => {
     setThresholds(t);
     try { localStorage.setItem(LS_KEY, JSON.stringify(t)); } catch {}
   };
 
-  const queryParams = useMemo(() => {
-    const fecha_min = dateRange?.from
-      ? toLocalDate(dateRange.from)
-      : toLocalDate(new Date(Date.now() - 86_400_000));
-    const fecha_max = dateRange?.to ? toLocalDate(dateRange.to) : fecha_min;
-    return {
-      fecha_min,
-      fecha_max,
-      branch_sap_id: selectedSapId !== "all" ? selectedSapId : undefined,
-    };
-  }, [dateRange, selectedSapId]);
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range.to) return;
+    const { from, to } = range;
+    temporal.setDraft(current => ({
+      ...current,
+      primary: { start: toLocalDate(from), end: toLocalDate(to) },
+    }));
+  };
 
-  const { data: queryData, isLoading, error } =
+  const applyFilters = () => {
+    if (!isRangeValid(temporal.draft.primary)) {
+      temporal.setIssue("Selecciona un rango de fechas válido.");
+      return;
+    }
+    const nextControls = isStoreUser && assignedStoreCode
+      ? { ...draftControls, sapId: assignedStoreCode }
+      : draftControls;
+    const params = new URLSearchParams(window.location.search);
+    ["branch_sap_id", "include_igv"].forEach(key => params.delete(key));
+    if (!isStoreUser && nextControls.sapId !== "all") params.set("branch_sap_id", nextControls.sapId);
+    if (!nextControls.includeIgv) params.set("include_igv", "false");
+    temporal.apply(params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const handleResetFilters = () => {
+    const nextTemporal = temporal.reset();
+    const nextControls: CreditNotesControls = {
+      sapId: isStoreUser && assignedStoreCode ? assignedStoreCode : "all",
+      includeIgv: true,
+    };
+    const params = new URLSearchParams(window.location.search);
+    ["branch_sap_id", "include_igv"].forEach(key => params.delete(key));
+    temporal.applyState(nextTemporal, params);
+    setDraftControls(nextControls);
+    setAppliedControls(nextControls);
+  };
+
+  const hasPendingChanges = temporal.hasPendingChanges ||
+    JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
+
+  const queryParams = useMemo(() => {
+    return {
+      fecha_min: temporal.applied.primary.start,
+      fecha_max: temporal.applied.primary.end,
+      branch_sap_id: appliedControls.sapId !== "all" ? appliedControls.sapId : undefined,
+    };
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, appliedControls.sapId]);
+
+  const { data: queryData, isLoading, isFetching, error } =
     trpc.sales.getCreditNotes.useQuery(queryParams);
+  const lastQueryData = useRef<typeof queryData>(undefined);
+
+  useEffect(() => {
+    if (queryData) lastQueryData.current = queryData;
+  }, [queryData]);
+
+  // React Query puede retirar data al cambiar la clave; se conserva la última respuesta visible.
+  const displayedQueryData = queryData ?? lastQueryData.current;
+  const isInitialLoading = isLoading && !displayedQueryData;
 
   // Agrupar por tienda (suma de todos los días del rango)
   const storeData = useMemo<StoreRow[]>(() => {
-    if (!queryData?.data) return [];
+    if (!displayedQueryData?.data) return [];
     const map = new Map<string, StoreRow>();
-    for (const row of queryData.data) {
+    for (const row of displayedQueryData.data) {
       const key = row.codigo_tienda || row.nombre;
       const existing = map.get(key);
       if (existing) {
@@ -934,7 +1025,7 @@ export default function CreditNotes() {
       return na - nb;
     });
     return rows;
-  }, [queryData]);
+  }, [displayedQueryData]);
 
   const availableStores = useMemo(() => {
     const seen = new Set<string>();
@@ -952,19 +1043,19 @@ export default function CreditNotes() {
   const summary = useMemo(() => {
     const total_nc = storeData.reduce((s, r) => s + r.total_nc, 0);
     const monto = storeData.reduce(
-      (s, r) => s + (includeIgv ? r.monto_total_nc : r.monto_subtotal_nc),
+      (s, r) => s + (appliedControls.includeIgv ? r.monto_total_nc : r.monto_subtotal_nc),
       0
     );
     const total_txn = storeData.reduce((s, r) => s + r.total_txn_tienda, 0);
     const monto_ventas = storeData.reduce(
-      (s, r) => s + (includeIgv ? r.monto_total_ventas : r.monto_subtotal_ventas),
+      (s, r) => s + (appliedControls.includeIgv ? r.monto_total_ventas : r.monto_subtotal_ventas),
       0
     );
     const pct_txn   = total_txn   > 0 ? (total_nc / total_txn)   * 100 : null;
     const pct_monto = monto_ventas > 0 ? (monto   / monto_ventas) * 100 : null;
     const promedio  = storeData.length > 0 ? monto / storeData.length : 0;
     return { total_nc, monto, total_txn, monto_ventas, pct_txn, pct_monto, promedio };
-  }, [storeData, includeIgv]);
+  }, [storeData, appliedControls.includeIgv]);
 
   // Conteo de semáforo
   const trafficCount = useMemo(() => {
@@ -972,9 +1063,9 @@ export default function CreditNotes() {
     for (const store of storeData) {
       const t = getTrafficLight(
         store.total_nc,
-        includeIgv ? store.monto_total_nc : store.monto_subtotal_nc,
+        appliedControls.includeIgv ? store.monto_total_nc : store.monto_subtotal_nc,
         store.total_txn_tienda,
-        includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas,
+        appliedControls.includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas,
         thresholds
       );
       if (t.color === COLOR.green)   counts.green++;
@@ -983,16 +1074,16 @@ export default function CreditNotes() {
       else counts.neutral++;
     }
     return counts;
-  }, [storeData, thresholds, includeIgv]);
+  }, [storeData, thresholds, appliedControls.includeIgv]);
 
   const dateRangeText = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${dateRange.from.toLocaleDateString("es-PE")} – ${dateRange.to.toLocaleDateString("es-PE")}`;
-    } else if (dateRange?.from) {
-      return `Desde ${dateRange.from.toLocaleDateString("es-PE")}`;
+    if (appliedDateRange.from && appliedDateRange.to) {
+      return `${appliedDateRange.from.toLocaleDateString("es-PE")} – ${appliedDateRange.to.toLocaleDateString("es-PE")}`;
+    } else if (appliedDateRange.from) {
+      return `Desde ${appliedDateRange.from.toLocaleDateString("es-PE")}`;
     }
-    return "Ayer (por defecto)";
-  }, [dateRange]);
+    return "Período predeterminado";
+  }, [appliedDateRange]);
 
   if (authLoading) {
     return (
@@ -1023,10 +1114,10 @@ export default function CreditNotes() {
                   ? "Usa Ver cajeros para abrir el detalle de tu tienda."
                   : "Haz clic en una tarjeta para ver el breakdown por cajero."}
               </p>
-              {queryData?.metadata && (
+              {displayedQueryData?.metadata && (
                 <p className="text-xs text-muted-foreground">
-                  Actualizado: {new Date(queryData.metadata.generated_at).toLocaleString("es-PE")} |
-                  Registros: {formatNumber(queryData.metadata.total_rows)}
+                  Actualizado: {new Date(displayedQueryData.metadata.generated_at).toLocaleString("es-PE")} |
+                  Registros: {formatNumber(displayedQueryData.metadata.total_rows)}
                 </p>
               )}
             </div>
@@ -1054,18 +1145,6 @@ export default function CreditNotes() {
                     Selecciona un rango de fechas y/o tienda para explorar los datos
                   </CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDateRange(undefined);
-                    setSelectedSapId("all");
-                    setGlobalBranchId(undefined);
-                  }}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Limpiar
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -1073,19 +1152,19 @@ export default function CreditNotes() {
                 <div className="space-y-2">
                   <Label>Fecha Inicio</Label>
                   <DatePicker
-                    date={dateRange?.from}
-                    onDateChange={(from) => setDateRange({ from, to: dateRange?.to })}
+                    date={draftDateRange.from}
+                    onDateChange={(from) => setDraftDateRange({ from, to: draftDateRange.to })}
                     placeholder="Fecha inicio"
-                    maxDate={dateRange?.to ?? new Date()}
+                    maxDate={draftDateRange.to ?? new Date()}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Fecha Fin</Label>
                   <DatePicker
-                    date={dateRange?.to}
-                    onDateChange={(to) => setDateRange({ from: dateRange?.from, to })}
+                    date={draftDateRange.to}
+                    onDateChange={(to) => setDraftDateRange({ from: draftDateRange.from, to })}
                     placeholder="Fecha fin"
-                    minDate={dateRange?.from}
+                    minDate={draftDateRange.from}
                     maxDate={new Date()}
                   />
                 </div>
@@ -1103,7 +1182,10 @@ export default function CreditNotes() {
                       </span>
                     </div>
                   ) : (
-                    <Select value={selectedSapId} onValueChange={setSelectedSapId}>
+                    <Select
+                      value={draftControls.sapId}
+                      onValueChange={(sapId) => setDraftControls(current => ({ ...current, sapId }))}
+                    >
                       <SelectTrigger id="store">
                         <SelectValue placeholder="Todas las tiendas" />
                       </SelectTrigger>
@@ -1122,9 +1204,9 @@ export default function CreditNotes() {
                   <Label>Montos</Label>
                   <div className="flex rounded-md border border-border overflow-hidden h-9">
                     <button
-                      onClick={() => setIncludeIgv(true)}
+                      onClick={() => setDraftControls(current => ({ ...current, includeIgv: true }))}
                       className={`flex-1 text-xs font-medium transition-colors ${
-                        includeIgv
+                        draftControls.includeIgv
                           ? "bg-foreground text-background"
                           : "bg-background text-muted-foreground hover:bg-muted"
                       }`}
@@ -1132,9 +1214,9 @@ export default function CreditNotes() {
                       Con IGV
                     </button>
                     <button
-                      onClick={() => setIncludeIgv(false)}
+                      onClick={() => setDraftControls(current => ({ ...current, includeIgv: false }))}
                       className={`flex-1 text-xs font-medium transition-colors border-l border-border ${
-                        !includeIgv
+                        !draftControls.includeIgv
                           ? "bg-foreground text-background"
                           : "bg-background text-muted-foreground hover:bg-muted"
                       }`}
@@ -1144,14 +1226,30 @@ export default function CreditNotes() {
                   </div>
                 </div>
               </div>
+              {temporal.issue && (
+                <p className="mt-4 text-sm text-destructive" role="alert">{temporal.issue}</p>
+              )}
+              <AppliedFilterActions
+                onApply={applyFilters}
+                onReset={handleResetFilters}
+                isPending={hasPendingChanges}
+                isApplying={isFetching}
+              />
             </CardContent>
           </Card>
 
-          {/* ── Estado de carga ── */}
-          {isLoading && (
+          {/* La primera carga ocupa el área de resultados; en recargas se mantienen los datos anteriores. */}
+          {isInitialLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <span className="ml-2 text-lg font-medium">Cargando datos...</span>
+            </div>
+          )}
+
+          {isFetching && !isInitialLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Actualizando resultados…
             </div>
           )}
 
@@ -1164,7 +1262,7 @@ export default function CreditNotes() {
             </Card>
           )}
 
-          {!isLoading && !error && (
+          {!isInitialLoading && !error && (
             <>
               {/* ── KPIs globales ── */}
               <div className="grid gap-4 md:grid-cols-4">
@@ -1188,7 +1286,7 @@ export default function CreditNotes() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Monto NC ({includeIgv ? "c/ IGV" : "s/ IGV"})
+                      Monto NC ({appliedControls.includeIgv ? "c/ IGV" : "s/ IGV"})
                     </CardTitle>
                     <Banknote className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
@@ -1310,8 +1408,8 @@ export default function CreditNotes() {
                           </TableHeader>
                           <TableBody>
                             {storeData.map((store) => {
-                              const montoNc = includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
-                              const montoVentas = includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas;
+                              const montoNc = appliedControls.includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
+                              const montoVentas = appliedControls.includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas;
                               const traffic = getTrafficLight(
                                 store.total_nc,
                                 montoNc,
@@ -1352,8 +1450,8 @@ export default function CreditNotes() {
                   ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {storeData.map((store) => {
-                      const monto_nc = includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
-                      const monto_ventas = includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas;
+                      const monto_nc = appliedControls.includeIgv ? store.monto_total_nc : store.monto_subtotal_nc;
+                      const monto_ventas = appliedControls.includeIgv ? store.monto_total_ventas : store.monto_subtotal_ventas;
                       const traffic = getTrafficLight(
                         store.total_nc,
                         monto_nc,
@@ -1473,7 +1571,7 @@ export default function CreditNotes() {
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">
-                                  Monto ({includeIgv ? "c/ IGV" : "s/ IGV"})
+                                  Monto ({appliedControls.includeIgv ? "c/ IGV" : "s/ IGV"})
                                 </p>
                                 <p
                                   className="font-semibold"
@@ -1512,7 +1610,7 @@ export default function CreditNotes() {
           store={modal.store}
           fechaMin={queryParams.fecha_min}
           fechaMax={queryParams.fecha_max}
-          includeIgv={includeIgv}
+          includeIgv={appliedControls.includeIgv}
           thresholds={thresholds}
           onClose={() => setModal({ open: false, store: null })}
         />
@@ -1523,10 +1621,10 @@ export default function CreditNotes() {
             module: "credit-notes",
             dateFrom: queryParams.fecha_min,
             dateTo: queryParams.fecha_max,
-            storeId: selectedSapId !== "all" ? selectedSapId : undefined,
+            storeId: appliedControls.sapId !== "all" ? appliedControls.sapId : undefined,
             storeName:
-              selectedSapId !== "all"
-                ? availableStores.find((s) => s.sap_id === selectedSapId)?.nombre
+              appliedControls.sapId !== "all"
+                ? availableStores.find((s) => s.sap_id === appliedControls.sapId)?.nombre
                 : undefined,
           }}
         />

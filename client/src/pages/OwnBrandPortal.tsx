@@ -86,17 +86,18 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import { differenceInCalendarDays, format, getDaysInMonth, parseISO, subDays, startOfMonth } from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { differenceInCalendarDays, format, getDaysInMonth, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { MultiProductSelect } from "@/components/MultiProductSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { IgvToggle } from "@/components/IgvToggle";
-import { useIgv } from "@/contexts/IgvContext";
 import { SalesEvolutionTable, type Granularity } from "@/components/SalesEvolutionTable";
 import { ChannelBreakdown } from "@/components/ChannelBreakdown";
 import { SALES_CHANNELS, SalesChannelFilter, type SalesChannel } from "@/components/SalesChannelFilter";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { defaultTemporalRange, isRangeValid, type TemporalRange, type TemporalState } from "@shared/temporalFilterState";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -122,11 +123,113 @@ function fmtCurrency(val: string | number | null | undefined): string {
   }).format(n);
 }
 
-function defaultFrom() {
-  return format(startOfMonth(new Date()), "yyyy-MM-dd");
+type AppliedPortalControls = {
+  categoryId?: number;
+  includeIgv: boolean;
+};
+
+type SalesDraftControls = AppliedPortalControls & {
+  primary: TemporalRange;
+  productIds: string[];
+  branchId?: string;
+  channels: SalesChannel[];
+};
+
+type DashboardDraftControls = AppliedPortalControls & {
+  primary: TemporalRange;
+};
+
+type CatalogDraftControls = {
+  categoryId?: number;
+  productId?: string;
+};
+
+type StockDraftControls = {
+  categoryId?: number;
+  productId?: string;
+  branchId?: string;
+};
+
+type ReceptionsDraftControls = {
+  primary: TemporalRange;
+};
+
+const OWN_BRAND_FILTER_KEYS = [
+  "own_brand_category_id",
+  "own_brand_include_igv",
+  "own_brand_sales_products",
+  "own_brand_sales_branch",
+  "own_brand_sales_channels",
+  "own_brand_catalog_product",
+  "own_brand_stock_product",
+  "own_brand_stock_branch",
+] as const;
+
+function validOptionalId(value: string | null): string | undefined {
+  return value?.trim() || undefined;
 }
-function defaultTo() {
-  return format(subDays(new Date(), 1), "yyyy-MM-dd");
+
+function validOptionalCategory(value: string | null): number | undefined {
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  const categoryId = Number(value);
+  return Number.isSafeInteger(categoryId) && categoryId > 0 ? categoryId : undefined;
+}
+
+function readSalesChannels(value: string | null): SalesChannel[] {
+  if (!value) return SALES_CHANNELS.slice();
+  const channels = value
+    .split(",")
+    .filter((channel): channel is SalesChannel => SALES_CHANNELS.includes(channel as SalesChannel));
+  return channels.length > 0 ? channels : SALES_CHANNELS.slice();
+}
+
+function readOwnBrandUrlState() {
+  const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  const applied: AppliedPortalControls = {
+    categoryId: validOptionalCategory(params.get("own_brand_category_id")),
+    includeIgv: params.get("own_brand_include_igv") !== "false",
+  };
+
+  return {
+    applied,
+    sales: {
+      productIds: (params.get("own_brand_sales_products") ?? "").split(",").filter(Boolean),
+      branchId: validOptionalId(params.get("own_brand_sales_branch")),
+      channels: readSalesChannels(params.get("own_brand_sales_channels")),
+    },
+    catalog: {
+      productId: validOptionalId(params.get("own_brand_catalog_product")),
+    },
+    stock: {
+      productId: validOptionalId(params.get("own_brand_stock_product")),
+      branchId: validOptionalId(params.get("own_brand_stock_branch")),
+    },
+  };
+}
+
+function writeAppliedPortalControls(params: URLSearchParams, controls: AppliedPortalControls) {
+  params.delete("own_brand_category_id");
+  params.delete("own_brand_include_igv");
+  if (controls.categoryId != null) params.set("own_brand_category_id", String(controls.categoryId));
+  if (!controls.includeIgv) params.set("own_brand_include_igv", "false");
+}
+
+function writeSalesControls(params: URLSearchParams, controls: Pick<SalesDraftControls, "productIds" | "branchId" | "channels">) {
+  ["own_brand_sales_products", "own_brand_sales_branch", "own_brand_sales_channels"].forEach(key => params.delete(key));
+  if (controls.productIds.length > 0) params.set("own_brand_sales_products", controls.productIds.join(","));
+  if (controls.branchId) params.set("own_brand_sales_branch", controls.branchId);
+  if (controls.channels.length !== SALES_CHANNELS.length) params.set("own_brand_sales_channels", controls.channels.join(","));
+}
+
+function writeCatalogControls(params: URLSearchParams, controls: CatalogDraftControls) {
+  params.delete("own_brand_catalog_product");
+  if (controls.productId) params.set("own_brand_catalog_product", controls.productId);
+}
+
+function writeStockControls(params: URLSearchParams, controls: StockDraftControls) {
+  ["own_brand_stock_product", "own_brand_stock_branch"].forEach(key => params.delete(key));
+  if (controls.productId) params.set("own_brand_stock_product", controls.productId);
+  if (controls.branchId) params.set("own_brand_stock_branch", controls.branchId);
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
@@ -599,27 +702,47 @@ function CategoriesManager() {
 
 export default function OwnBrandPortal() {
   const { logout, user, loading } = useAuth();
-  const { includeIgv } = useIgv();
+  const temporal = useTemporalUrlState("P11");
+  const initialOwnBrandState = useRef(readOwnBrandUrlState());
+  const [urlRevision, setUrlRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [from, setFrom] = useState(defaultFrom);
-  const [to, setTo] = useState(defaultTo);
-  const [stockProductId, setStockProductId] = useState<string | undefined>(undefined);
+  const [appliedControls, setAppliedControls] = useState<AppliedPortalControls>(initialOwnBrandState.current.applied);
+  const [dashboardDraft, setDashboardDraft] = useState<DashboardDraftControls>(() => ({
+    primary: temporal.applied.primary,
+    ...initialOwnBrandState.current.applied,
+  }));
+  const [salesDraft, setSalesDraft] = useState<SalesDraftControls>(() => ({
+    primary: temporal.applied.primary,
+    ...initialOwnBrandState.current.applied,
+    ...initialOwnBrandState.current.sales,
+  }));
+  const [catalogDraft, setCatalogDraft] = useState<CatalogDraftControls>(() => ({
+    categoryId: initialOwnBrandState.current.applied.categoryId,
+    ...initialOwnBrandState.current.catalog,
+  }));
+  const [stockDraft, setStockDraft] = useState<StockDraftControls>(() => ({
+    categoryId: initialOwnBrandState.current.applied.categoryId,
+    ...initialOwnBrandState.current.stock,
+  }));
+  const [appliedSalesControls, setAppliedSalesControls] = useState(initialOwnBrandState.current.sales);
+  const [appliedCatalogControls, setAppliedCatalogControls] = useState(initialOwnBrandState.current.catalog);
+  const [appliedStockControls, setAppliedStockControls] = useState(initialOwnBrandState.current.stock);
+  const [receptionsDraft, setReceptionsDraft] = useState<ReceptionsDraftControls>(() => ({
+    primary: temporal.applied.primary,
+  }));
   const [stockProductSearch, setStockProductSearch] = useState("");
-  const [stockBranchId, setStockBranchId] = useState<string | undefined>(undefined);
   const [stockPage, setStockPage] = useState(0);
-  const [catalogProductId, setCatalogProductId] = useState<string | undefined>(undefined);
   const [catalogProductSearch, setCatalogProductSearch] = useState("");
   const [catalogPage, setCatalogPage] = useState(0);
   const [recPage, setRecPage] = useState(0);
-  const [salesProductIds, setSalesProductIds] = useState<string[]>([]);
-  const [salesBranchId, setSalesBranchId] = useState<string | undefined>(undefined);
-  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>(SALES_CHANNELS.slice());
   const [salesPage, setSalesPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
+  const from = temporal.applied.primary.start;
+  const to = temporal.applied.primary.end;
+  const selectedCategoryId = appliedControls.categoryId;
+  const includeIgv = appliedControls.includeIgv;
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingStock, setIsExportingStock] = useState(false);
-  // Filtro de categoría interna (compartido entre Dashboard, Ventas, Catálogo y Stock)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
   // Toggles de dimensiones en la tabla de ventas
   const [showStore, setShowStore] = useState(true);
   const [showProduct, setShowProduct] = useState(true);
@@ -655,6 +778,111 @@ export default function OwnBrandPortal() {
   const canAccessPortal = !!user && ALLOWED_ROLES.includes(user.role as string);
   // Admin, own_brand_user y system_specialist pueden gestionar marcas y categorías internas
   const canManageBrands = ["admin", "own_brand_user", "system_specialist"].includes(user?.role as string);
+
+  // Los filtros propios no dependen del período; también se reconstruyen al usar
+  // atrás/adelante cuando la URL conserva las mismas fechas.
+  useEffect(() => {
+    const syncOwnBrandFilters = () => setUrlRevision(current => current + 1);
+    window.addEventListener("popstate", syncOwnBrandFilters);
+    return () => window.removeEventListener("popstate", syncOwnBrandFilters);
+  }, []);
+
+  // La URL es la fuente del estado aplicado. Al usar atrás/adelante se reconstruyen
+  // todos los borradores desde los parámetros realmente aplicados.
+  useEffect(() => {
+    const next = readOwnBrandUrlState();
+    setAppliedControls(next.applied);
+    setAppliedSalesControls(next.sales);
+    setAppliedCatalogControls(next.catalog);
+    setAppliedStockControls(next.stock);
+    setDashboardDraft({ primary: temporal.applied.primary, ...next.applied });
+    setSalesDraft({ primary: temporal.applied.primary, ...next.applied, ...next.sales });
+    setCatalogDraft({ categoryId: next.applied.categoryId, ...next.catalog });
+    setStockDraft({ categoryId: next.applied.categoryId, ...next.stock });
+    setReceptionsDraft({ primary: temporal.applied.primary });
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    setRecPage(0);
+  }, [temporal.applied.primary.start, temporal.applied.primary.end, urlRevision]);
+
+  const validateDraftRange = (range: TemporalRange) => {
+    if (isRangeValid(range)) return true;
+    toast.error("Selecciona un rango de fechas válido.");
+    return false;
+  };
+
+  const applyDashboardFilters = () => {
+    if (!validateDraftRange(dashboardDraft.primary)) return;
+    const params = new URLSearchParams(window.location.search);
+    writeAppliedPortalControls(params, dashboardDraft);
+    temporal.applyState({ primary: dashboardDraft.primary, comparisonMode: "previous" }, params);
+    setAppliedControls({ categoryId: dashboardDraft.categoryId, includeIgv: dashboardDraft.includeIgv });
+  };
+
+  const applySalesFilters = () => {
+    if (!validateDraftRange(salesDraft.primary)) return;
+    const params = new URLSearchParams(window.location.search);
+    writeAppliedPortalControls(params, salesDraft);
+    writeSalesControls(params, salesDraft);
+    temporal.applyState({ primary: salesDraft.primary, comparisonMode: "previous" }, params);
+    setAppliedControls({ categoryId: salesDraft.categoryId, includeIgv: salesDraft.includeIgv });
+    setAppliedSalesControls({
+      productIds: salesDraft.productIds,
+      branchId: salesDraft.branchId,
+      channels: salesDraft.channels,
+    });
+    setSalesPage(0);
+  };
+
+  const applyCatalogFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    writeAppliedPortalControls(params, { categoryId: catalogDraft.categoryId, includeIgv: appliedControls.includeIgv });
+    writeCatalogControls(params, catalogDraft);
+    temporal.applyState(temporal.applied, params);
+    setAppliedControls(current => ({ ...current, categoryId: catalogDraft.categoryId }));
+    setAppliedCatalogControls({ productId: catalogDraft.productId });
+    setCatalogPage(0);
+  };
+
+  const applyStockFilters = () => {
+    const params = new URLSearchParams(window.location.search);
+    writeAppliedPortalControls(params, { categoryId: stockDraft.categoryId, includeIgv: appliedControls.includeIgv });
+    writeStockControls(params, stockDraft);
+    temporal.applyState(temporal.applied, params);
+    setAppliedControls(current => ({ ...current, categoryId: stockDraft.categoryId }));
+    setAppliedStockControls({ productId: stockDraft.productId, branchId: stockDraft.branchId });
+    setStockPage(0);
+  };
+
+  const applyReceptionsFilters = () => {
+    if (!validateDraftRange(receptionsDraft.primary)) return;
+    const params = new URLSearchParams(window.location.search);
+    temporal.applyState({ primary: receptionsDraft.primary, comparisonMode: "previous" }, params);
+    setRecPage(0);
+  };
+
+  const resetAllPortalFilters = () => {
+    const primary = defaultTemporalRange("P11");
+    const nextTemporal: TemporalState = { primary, comparisonMode: "previous" };
+    const params = new URLSearchParams(window.location.search);
+    OWN_BRAND_FILTER_KEYS.forEach(key => params.delete(key));
+    temporal.applyState(nextTemporal, params);
+    const defaults: AppliedPortalControls = { includeIgv: true };
+    setAppliedControls(defaults);
+    setAppliedSalesControls({ productIds: [], branchId: undefined, channels: SALES_CHANNELS.slice() });
+    setAppliedCatalogControls({ productId: undefined });
+    setAppliedStockControls({ productId: undefined, branchId: undefined });
+    setDashboardDraft({ primary, ...defaults });
+    setSalesDraft({ primary, ...defaults, productIds: [], branchId: undefined, channels: SALES_CHANNELS.slice() });
+    setCatalogDraft({ categoryId: undefined, productId: undefined });
+    setStockDraft({ categoryId: undefined, productId: undefined, branchId: undefined });
+    setReceptionsDraft({ primary });
+    setSalesPage(0);
+    setStockPage(0);
+    setCatalogPage(0);
+    setRecPage(0);
+  };
 
   // Queries
   const { data: summary, isLoading: summaryLoading } =
@@ -697,8 +925,8 @@ export default function OwnBrandPortal() {
 
   const { data: stockData, isLoading: stockLoading } =
     trpc.ownBrand.getStockByProduct.useQuery({
-      productId: stockProductId,
-      branchId: stockBranchId,
+      productId: appliedStockControls.productId,
+      branchId: appliedStockControls.branchId,
       categoryId: selectedCategoryId,
       limit: PAGE_SIZE,
       offset: stockPage * PAGE_SIZE,
@@ -706,8 +934,8 @@ export default function OwnBrandPortal() {
 
   const { data: catalogData, isLoading: catalogLoading } =
     trpc.ownBrand.getProductCatalog.useQuery({
-      search: catalogProductId
-        ? brandProducts?.find((p) => p.id === catalogProductId)?.name
+      search: appliedCatalogControls.productId
+        ? brandProducts?.find((p) => p.id === appliedCatalogControls.productId)?.name
         : undefined,
       categoryId: selectedCategoryId,
       limit: PAGE_SIZE,
@@ -716,6 +944,8 @@ export default function OwnBrandPortal() {
 
   const { data: receptionsData, isLoading: recLoading } =
     trpc.ownBrand.getReceptions.useQuery({
+      from,
+      to,
       limit: PAGE_SIZE,
       offset: recPage * PAGE_SIZE,
     }, { enabled: canAccessPortal });
@@ -733,13 +963,13 @@ export default function OwnBrandPortal() {
     trpc.ownBrand.getSalesByProductBranch.useQuery({
       from,
       to,
-      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-      branchId: salesBranchId,
+      productIds: appliedSalesControls.productIds.length > 0 ? appliedSalesControls.productIds : undefined,
+      branchId: appliedSalesControls.branchId,
       categoryId: selectedCategoryId,
       groupByProduct: showProduct,
       groupByStore: showStore,
       groupByChannel: showChannel,
-      salesChannels,
+      salesChannels: appliedSalesControls.channels,
       limit: PAGE_SIZE,
       offset: salesPage * PAGE_SIZE,
       include_igv: includeIgv,
@@ -748,13 +978,13 @@ export default function OwnBrandPortal() {
   const exportQuery = trpc.ownBrand.exportSalesByProductBranch.useQuery({
     from,
     to,
-    productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-    branchId: salesBranchId,
+    productIds: appliedSalesControls.productIds.length > 0 ? appliedSalesControls.productIds : undefined,
+    branchId: appliedSalesControls.branchId,
     categoryId: selectedCategoryId,
     groupByProduct: showProduct,
     groupByStore: showStore,
     groupByChannel: showChannel,
-    salesChannels,
+    salesChannels: appliedSalesControls.channels,
     include_igv: includeIgv,
   }, { enabled: false });
 
@@ -763,13 +993,13 @@ export default function OwnBrandPortal() {
     trpc.ownBrand.getSalesEvolution.useQuery({
       from,
       to,
-      productIds: salesProductIds.length > 0 ? salesProductIds : undefined,
-      branchId: salesBranchId,
+      productIds: appliedSalesControls.productIds.length > 0 ? appliedSalesControls.productIds : undefined,
+      branchId: appliedSalesControls.branchId,
       categoryId: selectedCategoryId,
       groupByProduct: showProduct,
       groupByStore: showStore,
       groupByChannel: showChannel,
-      salesChannels,
+      salesChannels: appliedSalesControls.channels,
       granularity: evolutionGranularity,
       include_igv: includeIgv,
     }, { enabled: canAccessPortal && activeTab === "ventas" });
@@ -798,8 +1028,8 @@ export default function OwnBrandPortal() {
   };
 
   const exportStockQuery = trpc.ownBrand.exportStockByProduct.useQuery({
-    productId: stockProductId,
-    branchId: stockBranchId,
+    productId: appliedStockControls.productId,
+    branchId: appliedStockControls.branchId,
     categoryId: selectedCategoryId,
   }, { enabled: false });
 
@@ -819,8 +1049,8 @@ export default function OwnBrandPortal() {
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Stock");
-      const productLabel = stockProductId
-        ? (brandProducts?.find((p) => p.id === stockProductId)?.sku ?? "producto")
+      const productLabel = appliedStockControls.productId
+        ? (brandProducts?.find((p) => p.id === appliedStockControls.productId)?.sku ?? "producto")
         : "todos";
       XLSX.writeFile(wb, `marca_propia_stock_${productLabel}.xlsx`);
     } finally {
@@ -880,16 +1110,17 @@ export default function OwnBrandPortal() {
   );
   const channelDaysInMonth = useMemo(() => getDaysInMonth(parseISO(to)), [to]);
 
-  /** Selector de categoría interna reutilizable en las 4 pestañas */
-  const CategoryFilter = () => (
+  /** Selector de categoría interna: cada pestaña conserva su propio borrador. */
+  const CategoryFilter = ({
+    value,
+    onChange,
+  }: {
+    value?: number;
+    onChange: (categoryId: number | undefined) => void;
+  }) => (
     <Select
-      value={selectedCategoryId != null ? String(selectedCategoryId) : "all"}
-      onValueChange={(v) => {
-        setSelectedCategoryId(v === "all" ? undefined : Number(v));
-        setSalesPage(0);
-        setStockPage(0);
-        setCatalogPage(0);
-      }}
+      value={value != null ? String(value) : "all"}
+      onValueChange={(v) => onChange(v === "all" ? undefined : Number(v))}
     >
       <SelectTrigger className="h-8 w-[200px] text-sm">
         <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
@@ -1035,23 +1266,22 @@ export default function OwnBrandPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={dashboardDraft.primary.start} onChange={(e) => setDashboardDraft(current => ({ ...current, primary: { ...current.primary, start: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={dashboardDraft.primary.end} onChange={(e) => setDashboardDraft(current => ({ ...current, primary: { ...current.primary, end: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
-              <Button variant="outline" size="sm" onClick={() => { setFrom(defaultFrom()); setTo(defaultTo()); }}>
-                Este mes
-              </Button>
-              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
-              {selectedCategoryId != null && (
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedCategoryId(undefined)}>
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter value={dashboardDraft.categoryId} onChange={(categoryId) => setDashboardDraft(current => ({ ...current, categoryId }))} />}
+              {dashboardDraft.categoryId != null && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setDashboardDraft(current => ({ ...current, categoryId: undefined }))}>
                   <X className="h-3.5 w-3.5 mr-1" />
                   Limpiar categoría
                 </Button>
               )}
-              <IgvToggle />
+              <IgvToggle includeIgv={dashboardDraft.includeIgv} onIncludeIgvChange={(includeIgv) => setDashboardDraft(current => ({ ...current, includeIgv }))} />
+              <Button size="sm" onClick={applyDashboardFilters}>Aplicar filtros</Button>
+              <Button variant="outline" size="sm" onClick={resetAllPortalFilters}>Restablecer filtros</Button>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1318,17 +1548,11 @@ export default function OwnBrandPortal() {
         {activeTab === "productos" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
-              {selectedCategoryId != null && (
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedCategoryId(undefined)}>
-                  <X className="h-3.5 w-3.5 mr-1" />
-                  Limpiar categoría
-                </Button>
-              )}
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter value={catalogDraft.categoryId} onChange={(categoryId) => setCatalogDraft(current => ({ ...current, categoryId }))} />}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={catalogProductId ?? "all"}
-                  onValueChange={(v) => { setCatalogProductId(v === "all" ? undefined : v); setCatalogPage(0); }}
+                  value={catalogDraft.productId ?? "all"}
+                  onValueChange={(v) => setCatalogDraft(current => ({ ...current, productId: v === "all" ? undefined : v }))}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={brandProductsLoading ? "Cargando artículos..." : "Todos los artículos"} />
@@ -1366,6 +1590,8 @@ export default function OwnBrandPortal() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button size="sm" onClick={applyCatalogFilters}>Aplicar filtros</Button>
+              <Button variant="outline" size="sm" onClick={resetAllPortalFilters}>Restablecer filtros</Button>
             </div>
 
             <Card className="border-border/50">
@@ -1435,11 +1661,11 @@ export default function OwnBrandPortal() {
         {activeTab === "stock" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter value={stockDraft.categoryId} onChange={(categoryId) => setStockDraft(current => ({ ...current, categoryId }))} />}
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <Select
-                  value={stockProductId ?? "all"}
-                  onValueChange={(v) => { setStockProductId(v === "all" ? undefined : v); setStockPage(0); }}
+                  value={stockDraft.productId ?? "all"}
+                  onValueChange={(v) => setStockDraft(current => ({ ...current, productId: v === "all" ? undefined : v }))}
                 >
                   <SelectTrigger className="h-9 text-sm w-full">
                     <SelectValue placeholder={brandProductsLoading ? "Cargando artículos..." : "Todos los artículos"} />
@@ -1478,7 +1704,7 @@ export default function OwnBrandPortal() {
                 </Select>
               </div>
 
-              <Select value={stockBranchId ?? "all"} onValueChange={(val) => { setStockBranchId(val === "all" ? undefined : val); setStockPage(0); }}>
+              <Select value={stockDraft.branchId ?? "all"} onValueChange={(val) => setStockDraft(current => ({ ...current, branchId: val === "all" ? undefined : val }))}>
                 <SelectTrigger className="h-9 w-[220px]">
                   <Store className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                   <SelectValue placeholder="Todas las tiendas" />
@@ -1491,11 +1717,8 @@ export default function OwnBrandPortal() {
                 </SelectContent>
               </Select>
 
-              {(stockProductId || stockBranchId || selectedCategoryId != null) && (
-                <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={() => { setStockProductId(undefined); setStockProductSearch(""); setStockBranchId(undefined); setStockPage(0); setSelectedCategoryId(undefined); }}>
-                  Limpiar filtros
-                </Button>
-              )}
+              <Button size="sm" onClick={applyStockFilters}>Aplicar filtros</Button>
+              <Button variant="outline" size="sm" onClick={resetAllPortalFilters}>Restablecer filtros</Button>
 
               <div className="ml-auto flex items-center gap-3">
                 {stockData && <span className="text-sm text-muted-foreground">{stockData.total} registros</span>}
@@ -1577,6 +1800,18 @@ export default function OwnBrandPortal() {
               <h2 className="text-lg font-semibold">Entregas de Mercadería</h2>
               <p className="text-sm text-muted-foreground">Órdenes de compra y recepciones de artículos Marca Propia.</p>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
+                <Input type="date" value={receptionsDraft.primary.start} onChange={(e) => setReceptionsDraft(current => ({ primary: { ...current.primary, start: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split("T")[0]} />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
+                <Input type="date" value={receptionsDraft.primary.end} onChange={(e) => setReceptionsDraft(current => ({ primary: { ...current.primary, end: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split("T")[0]} />
+              </div>
+              <Button size="sm" onClick={applyReceptionsFilters}>Aplicar filtros</Button>
+              <Button variant="outline" size="sm" onClick={resetAllPortalFilters}>Restablecer filtros</Button>
+            </div>
 
             <Card className="border-border/50">
               <CardContent className="px-6 pb-6">
@@ -1653,15 +1888,15 @@ export default function OwnBrandPortal() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha inicio</label>
-                <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={salesDraft.primary.start} onChange={(e) => setSalesDraft(current => ({ ...current, primary: { ...current.primary, start: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground whitespace-nowrap">Fecha fin</label>
-                <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setSalesPage(0); }} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={salesDraft.primary.end} onChange={(e) => setSalesDraft(current => ({ ...current, primary: { ...current.primary, end: e.target.value } }))} className="w-36 text-sm h-8" max={new Date().toISOString().split('T')[0]} />
               </div>
-              {internalCategories && internalCategories.length > 0 && <CategoryFilter />}
-              {selectedCategoryId != null && (
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => { setSelectedCategoryId(undefined); setSalesPage(0); }}>
+              {internalCategories && internalCategories.length > 0 && <CategoryFilter value={salesDraft.categoryId} onChange={(categoryId) => setSalesDraft(current => ({ ...current, categoryId }))} />}
+              {salesDraft.categoryId != null && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSalesDraft(current => ({ ...current, categoryId: undefined }))}>
                   <X className="h-3.5 w-3.5 mr-1" />
                   Limpiar categoría
                 </Button>
@@ -1670,15 +1905,15 @@ export default function OwnBrandPortal() {
               <div className="flex-1 min-w-[240px] max-w-sm">
                 <MultiProductSelect
                   products={brandProducts ?? []}
-                  selectedIds={salesProductIds}
-                  onChange={(ids) => { setSalesProductIds(ids); setSalesPage(0); }}
+                  selectedIds={salesDraft.productIds}
+                  onChange={(productIds) => setSalesDraft(current => ({ ...current, productIds }))}
                   loading={brandProductsLoading}
                   placeholder="Todos los artículos"
                   className="w-full"
                 />
               </div>
               {branchesForSales && branchesForSales.length > 0 && (
-                <Select value={salesBranchId ?? "all"} onValueChange={(v) => { setSalesBranchId(v === "all" ? undefined : v); setSalesPage(0); }}>
+                <Select value={salesDraft.branchId ?? "all"} onValueChange={(v) => setSalesDraft(current => ({ ...current, branchId: v === "all" ? undefined : v }))}>
                   <SelectTrigger className="w-52 h-8 text-sm">
                     <SelectValue placeholder="Todas las tiendas" />
                   </SelectTrigger>
@@ -1691,8 +1926,8 @@ export default function OwnBrandPortal() {
                 </Select>
               )}
               <SalesChannelFilter
-                value={salesChannels}
-                onChange={(channels) => { setSalesChannels(channels); setSalesPage(0); }}
+                value={salesDraft.channels}
+                onChange={(channels) => setSalesDraft(current => ({ ...current, channels }))}
               />
               {/* Toggles de dimensiones */}
               <div className="flex items-center gap-1.5 ml-auto">
@@ -1729,7 +1964,9 @@ export default function OwnBrandPortal() {
                 </button>
               </div>
 
-              <IgvToggle />
+              <IgvToggle includeIgv={salesDraft.includeIgv} onIncludeIgvChange={(includeIgv) => setSalesDraft(current => ({ ...current, includeIgv }))} />
+              <Button size="sm" onClick={applySalesFilters}>Aplicar filtros</Button>
+              <Button variant="outline" size="sm" onClick={resetAllPortalFilters}>Restablecer filtros</Button>
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleDownloadCSV} disabled={isExporting || !canAccessPortal}>
                 {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                 {isExporting ? "Exportando..." : "Descargar Excel"}

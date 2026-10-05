@@ -2333,3 +2333,9 @@ Fecha: 1 de febrero de 2026
 - [x] Incorporar un resumen agregado y acotado al contrato de analíticas del cliente
 - [x] Mostrar monto, transacciones y promedios mensuales en casillas del perfil
 - [x] Cubrir los cálculos, carga y presentación responsive con pruebas y compilación
+
+## Handoff de periodos, filtros URL y comparativos temporales
+- [x] Auditar rutas, filtros, estados, URL, endpoints y comparativos actuales
+- [x] Entregar plan de impacto y esquema de URL para confirmación
+- [x] Implementar los cambios aprobados por bloques verificables
+- [x] Validar comportamiento, accesibilidad, datos comparativos y regresiones

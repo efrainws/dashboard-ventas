@@ -14,10 +14,28 @@ interface IgvToggleProps {
   /** Variante de presentación: "badge" muestra solo el badge, "button" muestra botón completo */
   variant?: "badge" | "button";
   className?: string;
+  /** Permite usar el toggle dentro de un borrador de filtros sin mutar el contexto global. */
+  includeIgv?: boolean;
+  onIncludeIgvChange?: (value: boolean) => void;
 }
 
-export function IgvToggle({ variant = "button", className = "" }: IgvToggleProps) {
-  const { includeIgv, toggleIgv, igvLabel } = useIgv();
+export function IgvToggle({
+  variant = "button",
+  className = "",
+  includeIgv: controlledIncludeIgv,
+  onIncludeIgvChange,
+}: IgvToggleProps) {
+  const context = useIgv();
+  const includeIgv = controlledIncludeIgv ?? context.includeIgv;
+  const changeIgv = (next: boolean) => {
+    if (onIncludeIgvChange) {
+      onIncludeIgvChange(next);
+      return;
+    }
+    context.setIncludeIgv(next);
+  };
+  const toggleIgv = () => changeIgv(!includeIgv);
+  const igvLabel = includeIgv ? 'Con IGV' : 'Sin IGV';
 
   if (variant === "badge") {
     return (

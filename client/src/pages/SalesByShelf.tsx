@@ -54,11 +54,18 @@ import { Loader2, Search, Download, LayoutGrid, TableIcon, Upload, Info, ImageIc
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { DateRange } from "react-day-picker";
 import { useFilters } from "@/contexts/FiltersContext";
-import { useIgv } from "@/contexts/IgvContext";
 import { useAggregatedSales } from "@/hooks/useAggregatedSales";
 import { Stage, Layer, Rect, Text, Group, Image as KonvaImage, Transformer } from "react-konva";
 import type Konva from "konva";
 import { toast } from "sonner";
+import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
+import { ComparisonTrend } from "@/components/ComparisonTrend";
+import { ShelfPeriodControls } from "./ShelfPeriodControls";
+import {
+  type ShelfFilters, shelfFiltersFromSearch, shelfFiltersToParams,
+  shelfProductKey, shelfAggregateKey, shelfRankingKey,
+  updateShelfPrimary, validateShelfComparison,
+} from "./shelfComparison";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -106,6 +113,19 @@ function fmtCurrency(n: number) {
 
 function fmtNumber(n: number) {
   return n.toLocaleString("es-PE", { maximumFractionDigits: 2 });
+}
+
+const shelfDate = (value: string) => new Date(`${value}T12:00:00`);
+const shelfIso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+function ShelfMetricValue({ current, comparison, monetary, label }: {
+  current: number; comparison?: number; monetary?: boolean; label: string;
+}) {
+  const formatter = monetary ? (n: number) => `S/ ${fmtCurrency(n)}` : fmtNumber;
+  return <span className="inline-flex flex-wrap items-center justify-end gap-1 tabular-nums">
+    <span>{formatter(current)}</span>
+    {comparison !== undefined && <ComparisonTrend current={current} comparison={comparison} formatValue={formatter}
+      label={label} />}
+  </span>;
 }
 
 function statusBadge(status: string) {
@@ -1006,6 +1026,8 @@ interface ShelfRankingTarget extends ReassignTarget {
   shelf_status?: 'Sin registro en stocks' | 'Stock sin góndola' | 'Con góndola asignada';
   category_id?: string;
   include_igv: boolean;
+  comparison_fecha_min?: string;
+  comparison_fecha_max?: string;
 }
 
 interface ShelfRankingRow {
@@ -1053,9 +1075,25 @@ function ShelfProductRankingModal({
     { enabled: !!target }
   );
 
+  const products: ShelfRankingRow[] = rankingResult?.data ?? [];
+  const comparisonInput = useMemo(() => ({
+    branch_sap_id: target?.branch_sap_id ?? 'pending',
+    shelf_id: target?.shelf_id ?? null,
+    shelf_status: target?.shelf_id === null ? target?.shelf_status : undefined,
+    fecha_min: target?.comparison_fecha_min ?? '1970-01-01',
+    fecha_max: target?.comparison_fecha_max ?? '1970-01-01',
+    category_id: target?.category_id,
+    include_igv: target?.include_igv ?? true,
+    product_ids: products.map(product => product.product_id),
+  }), [target, rankingResult]);
+  const { data: comparisonProducts, error: comparisonError, isFetching: comparisonFetching } = trpc.shelfComparison.products.useQuery(
+    comparisonInput,
+    { enabled: !!target?.comparison_fecha_min && products.length > 0 }
+  );
+  const comparisonMap = useMemo(() => new Map(comparisonProducts?.map(row => [shelfRankingKey(row), row]) ?? []), [comparisonProducts]);
+
   if (!target) return null;
 
-  const products: ShelfRankingRow[] = rankingResult?.data ?? [];
   const totalProducts = rankingResult?.total_productos ?? 0;
   const selectedSortLabel = SHELF_RANKING_SORT_OPTIONS.find((option) => option.value === sortBy)?.label.toLowerCase();
 
@@ -1121,18 +1159,20 @@ function ShelfProductRankingModal({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product, index) => (
-                  <TableRow key={product.product_id} className="hover:bg-muted/20 transition-colors">
+                {products.map((product, index) => {
+                  const other = comparisonMap.get(shelfRankingKey(product));
+                  const compared = !!target.comparison_fecha_min && !comparisonError && !comparisonFetching && !!comparisonProducts;
+                  return <TableRow key={product.product_id} className="hover:bg-muted/20 transition-colors">
                     <TableCell className="text-xs text-center tabular-nums text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="text-xs tabular-nums text-muted-foreground hidden sm:table-cell">{product.int_sku || '—'}</TableCell>
                     <TableCell className="text-xs text-foreground font-medium max-w-[280px]">
                       <span className="block truncate" title={product.product_name}>{product.product_name}</span>
                     </TableCell>
-                    <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">S/ {fmtCurrency(product.monto_total)}</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(product.cantidad_vendida)}</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums text-foreground">{product.transacciones.toLocaleString()}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground"><ShelfMetricValue current={product.monto_total} comparison={compared ? other?.monto_total ?? 0 : undefined} monetary label={`${product.product_name} · monto`} /></TableCell>
+                    <TableCell className="text-xs text-right tabular-nums text-foreground"><ShelfMetricValue current={product.cantidad_vendida} comparison={compared ? other?.cantidad_vendida ?? 0 : undefined} label={`${product.product_name} · unidades`} /></TableCell>
+                    <TableCell className="text-xs text-right tabular-nums text-foreground"><ShelfMetricValue current={product.transacciones} comparison={compared ? other?.transacciones ?? 0 : undefined} label={`${product.product_name} · transacciones`} /></TableCell>
                   </TableRow>
-                ))}
+                })}
               </TableBody>
             </Table>
           )}
@@ -1140,6 +1180,8 @@ function ShelfProductRankingModal({
 
         <div className="px-6 py-3 border-t flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
           <span>
+            {comparisonError && <span role="status" className="block text-destructive">El comparativo no está disponible.</span>}
+            {comparisonFetching && <span role="status" className="block">Cargando comparativo…</span>}
             {totalProducts > products.length
               ? `Mostrando ${products.length.toLocaleString()} de ${totalProducts.toLocaleString()} productos, por ${selectedSortLabel}.`
               : `${totalProducts.toLocaleString()} producto${totalProducts === 1 ? '' : 's'}, ordenado${totalProducts === 1 ? '' : 's'} por ${selectedSortLabel}.`}
@@ -1414,23 +1456,17 @@ function ShelfReassignModal({
 export default function SalesByShelf() {
   const { user } = useAuth();
   const { effectiveTheme } = useTheme();
-   const {
-    dateRange: globalDateRange,
+  const temporal = useTemporalUrlState("P06");
+  const {
     setDateRange: setGlobalDateRange,
-    branchId: globalBranchId,
     setBranchId: setGlobalBranchId,
   } = useFilters();
-  const { includeIgv } = useIgv();
-
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    if (globalDateRange) return globalDateRange;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const from = new Date(yesterday);
-    from.setDate(from.getDate() - 14); // 15 días: ayer-14 hasta ayer
-    return { from, to: new Date(yesterday.getTime() + 86399999) };
-  });
+  const [draftControls, setDraftControls] = useState<ShelfFilters>(() => shelfFiltersFromSearch(window.location.search));
+  const [appliedControls, setAppliedControls] = useState<ShelfFilters>(() => shelfFiltersFromSearch(window.location.search));
+  const dateRange = useMemo<DateRange>(() => ({
+    from: shelfDate(temporal.draft.primary.start), to: shelfDate(temporal.draft.primary.end),
+  }), [temporal.draft.primary]);
+  const includeIgv = appliedControls.includeIgv;
 
   const userRole = user?.role as string | undefined;
   const isStoreUser = userRole === "store_user";
@@ -1438,9 +1474,9 @@ export default function SalesByShelf() {
   const canReassignShelves = canReassignShelfProducts(userRole);
   const canBulkAssign = canReassignShelves;
   const assignedStoreCode = (user as any)?.assignedStoreCode as string | null | undefined;
-  const [selectedBranch, setSelectedBranch] = useState<string>(() => globalBranchId || "all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [shelfStatus, setShelfStatus] = useState<"all" | "sin_registro" | "sin_gondola" | "con_gondola">("all");
+  const selectedBranch = isStoreUser && assignedStoreCode ? assignedStoreCode : appliedControls.branch;
+  const selectedCategory = appliedControls.category;
+  const shelfStatus = appliedControls.shelfStatus;
   const [search, setSearch] = useState("");
   const [searchAgg, setSearchAgg] = useState("");
   const [activeTab, setActiveTab] = useState<"tabla" | "agregado" | "mapa">("agregado");
@@ -1506,46 +1542,60 @@ export default function SalesByShelf() {
   };
 
   useEffect(() => {
-    if (isStoreUser && assignedStoreCode) setSelectedBranch(assignedStoreCode);
+    const sync = () => {
+      const next = shelfFiltersFromSearch(window.location.search);
+      if (isStoreUser && assignedStoreCode) next.branch = assignedStoreCode;
+      setDraftControls(next); setAppliedControls(next);
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, [isStoreUser, assignedStoreCode]);
 
-  useEffect(() => { setGlobalDateRange(dateRange); }, [dateRange, setGlobalDateRange]);
+  useEffect(() => { setGlobalDateRange({ from: shelfDate(temporal.applied.primary.start), to: shelfDate(temporal.applied.primary.end) }); }, [temporal.applied.primary.start, temporal.applied.primary.end, setGlobalDateRange]);
   useEffect(() => { setGlobalBranchId(selectedBranch === "all" ? undefined : selectedBranch); }, [selectedBranch, setGlobalBranchId]);
-
-  const { fechaMin, fechaMax } = useMemo(() => {
-    const fmt = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return {
-      fechaMin: dateRange?.from ? fmt(dateRange.from) : fmt(yesterday),
-      fechaMax: dateRange?.to ? fmt(dateRange.to) : fmt(yesterday),
-    };
-  }, [dateRange]);
+  const fechaMin = temporal.applied.primary.start;
+  const fechaMax = temporal.applied.primary.end;
+  const comparisonRange = temporal.issue ? undefined : temporal.applied.comparison;
 
   // Query principal (por producto)
-  const { data: queryResult, isLoading, error } = trpc.sales.getSalesByShelf.useQuery({
+  const { data: queryResult, isLoading, isFetching, error } = trpc.sales.getSalesByShelf.useQuery({
     fecha_min: fechaMin,
     fecha_max: fechaMax,
     branch_id: selectedBranch !== "all" ? selectedBranch : undefined,
     category_id: selectedCategory !== "all" ? selectedCategory : undefined,
     include_igv: includeIgv,
     shelf_status: shelfStatus,
-  });
+  }, { placeholderData: previous => previous });
 
   // Query agregado (por góndola)
-  const { data: aggResult, isLoading: aggLoading, error: aggError } = trpc.sales.getSalesByShelfAggregated.useQuery({
+  const { data: aggResult, isLoading: aggLoading, isFetching: aggFetching, error: aggError } = trpc.sales.getSalesByShelfAggregated.useQuery({
     fecha_min: fechaMin,
     fecha_max: fechaMax,
     branch_id: selectedBranch !== "all" ? selectedBranch : undefined,
     category_id: selectedCategory !== "all" ? selectedCategory : undefined,
     include_igv: includeIgv,
     shelf_status: shelfStatus,
-  });
+  }, { placeholderData: previous => previous });
+
+  // El comparativo personalizado sólo alimenta E01, E02, E07 y E08.
+  // La consulta original de E09 permanece separada e intacta más abajo.
+  const { data: comparisonRowsResult, error: comparisonRowsError, isFetching: comparisonRowsFetching } = trpc.sales.getSalesByShelf.useQuery({
+    fecha_min: comparisonRange?.start ?? fechaMin,
+    fecha_max: comparisonRange?.end ?? fechaMax,
+    branch_id: selectedBranch !== "all" ? selectedBranch : undefined,
+    category_id: selectedCategory !== "all" ? selectedCategory : undefined,
+    include_igv: includeIgv,
+    shelf_status: shelfStatus,
+  }, { enabled: !!comparisonRange, placeholderData: previous => previous });
+  const { data: comparisonAggResult, error: comparisonAggError, isFetching: comparisonAggFetching } = trpc.sales.getSalesByShelfAggregated.useQuery({
+    fecha_min: comparisonRange?.start ?? fechaMin,
+    fecha_max: comparisonRange?.end ?? fechaMax,
+    branch_id: selectedBranch !== "all" ? selectedBranch : undefined,
+    category_id: selectedCategory !== "all" ? selectedCategory : undefined,
+    include_igv: includeIgv,
+    shelf_status: shelfStatus,
+  }, { enabled: !!comparisonRange, placeholderData: previous => previous });
 
   // Query de comparación por góndola (período actual vs anterior)
   const { data: compResult } = trpc.sales.getSalesByShelfComparison.useQuery({
@@ -1575,19 +1625,17 @@ export default function SalesByShelf() {
     });
     return m;
   }, [compData]);
-  // Totales del período anterior para KPIs
-  const prevKpis = useMemo(() => {
-    let totalMonto = 0;
-    let totalCantidad = 0;
-    compData.forEach((e) => {
-      totalMonto    += e.previous.monto_total;
-      totalCantidad += e.previous.cantidad_vendida;
-    });
-    return { totalMonto, totalCantidad };
-  }, [compData]);
-
   const rows: ShelfRow[] = queryResult?.data ?? [];
   const aggRows: ShelfAggRow[] = aggResult?.data ?? [];
+  const comparisonRows: ShelfRow[] = comparisonRowsResult?.data ?? [];
+  const comparisonAggRows: ShelfAggRow[] = comparisonAggResult?.data ?? [];
+  const productComparison = useMemo(() => new Map(comparisonRows.map(row => [shelfProductKey(row), row])), [comparisonRowsResult]);
+  const shelfComparison = useMemo(() => new Map(comparisonAggRows.map(row => [shelfAggregateKey(row), row])), [comparisonAggResult]);
+  const hasProductComparison = !!comparisonRange && !comparisonRowsError && !!comparisonRowsResult && !comparisonRowsFetching;
+  const hasShelfComparison = !!comparisonRange && !comparisonAggError && !!comparisonAggResult && !comparisonAggFetching;
+  const previousTotals = useMemo(() => comparisonRows.reduce((totals, row) => ({
+    amount: totals.amount + row.monto_total, quantity: totals.quantity + row.cantidad_vendida,
+  }), { amount: 0, quantity: 0 }), [comparisonRowsResult]);
 
   const { metrics: salesMetrics } = useAggregatedSales(
     useMemo(() => ({
@@ -1672,19 +1720,29 @@ export default function SalesByShelf() {
     URL.revokeObjectURL(url);
   };
 
-  const handleClearFilters = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const from = new Date(yesterday);
-    from.setDate(from.getDate() - 14); // 15 días: ayer-14 hasta ayer
-    setDateRange({ from, to: new Date(yesterday.getTime() + 86399999) });
-    if (!isStoreUser) setSelectedBranch("all");
-    setSelectedCategory("all");
-    setShelfStatus("all");
-    setSearch("");
-    setSearchAgg("");
+  const handleApplyFilters = () => {
+    const issue = validateShelfComparison(temporal.draft);
+    if (issue) { temporal.setIssue(issue); return; }
+    const next = { ...draftControls, branch: isStoreUser && assignedStoreCode ? assignedStoreCode : draftControls.branch };
+    const params = shelfFiltersToParams(window.location.search, next);
+    temporal.apply(params);
+    setAppliedControls(next);
   };
+
+  const handleClearFilters = () => {
+    const next = temporal.reset();
+    const filters: ShelfFilters = { branch: isStoreUser && assignedStoreCode ? assignedStoreCode : "all", category: "all", shelfStatus: "all", includeIgv: true };
+    temporal.applyState(next, shelfFiltersToParams(window.location.search, filters));
+    setDraftControls(filters); setAppliedControls(filters);
+    setSearch(""); setSearchAgg("");
+  };
+
+  const setDraftDateRange = (range: DateRange | undefined) => {
+    if (!range?.from || !range?.to) return;
+    temporal.setDraft(current => updateShelfPrimary(current, { start: shelfIso(range.from!), end: shelfIso(range.to!) }));
+    temporal.setIssue(undefined);
+  };
+  const hasPendingChanges = temporal.hasPendingChanges || JSON.stringify(draftControls) !== JSON.stringify(appliedControls);
 
   const createShelfTarget = (row: {
     branch_sap_id: string;
@@ -1708,6 +1766,8 @@ export default function SalesByShelf() {
       shelf_status: shelfStatus,
       category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
       include_igv: includeIgv,
+      comparison_fecha_min: comparisonRange?.start,
+      comparison_fecha_max: comparisonRange?.end,
     };
   };
 
@@ -1758,22 +1818,27 @@ export default function SalesByShelf() {
         {/* Filtros */}
         <DashboardFilters
           dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          selectedBranch={selectedBranch}
+          onDateRangeChange={setDraftDateRange}
+          selectedBranch={isStoreUser && assignedStoreCode ? assignedStoreCode : draftControls.branch}
           branches={salesMetrics.branches}
-          onBranchChange={isStoreUser ? () => {} : setSelectedBranch}
+          onBranchChange={isStoreUser ? () => {} : branch => setDraftControls(current => ({ ...current, branch }))}
           branchLocked={isStoreUser}
-          selectedCategory={selectedCategory}
+          selectedCategory={draftControls.category}
           categories={salesMetrics.categories}
-          onCategoryChange={setSelectedCategory}
+          onCategoryChange={category => setDraftControls(current => ({ ...current, category }))}
           onClearFilters={handleClearFilters}
           showIgvToggle
+          includeIgv={draftControls.includeIgv}
+          onIncludeIgvChange={includeIgv => setDraftControls(current => ({ ...current, includeIgv }))}
+          comparisonControls={<ShelfPeriodControls value={temporal.draft} onChange={value => { temporal.setDraft(value); temporal.setIssue(undefined); }} error={temporal.issue} />}
+          onApplyFilters={handleApplyFilters}
+          hasPendingChanges={hasPendingChanges}
         />
 
         {/* Filtro adicional: estado de shelf */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-medium" style={{ color: "#919291" }}>Estado shelf:</span>
-          <Select value={shelfStatus} onValueChange={(v) => setShelfStatus(v as "all" | "sin_registro" | "sin_gondola" | "con_gondola")}>
+          <Select value={draftControls.shelfStatus} onValueChange={(value) => setDraftControls(current => ({ ...current, shelfStatus: value as ShelfFilters["shelfStatus"] }))}>
             <SelectTrigger className="w-48 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -1785,6 +1850,10 @@ export default function SalesByShelf() {
             </SelectContent>
           </Select>
         </div>
+
+        {(isFetching || aggFetching) && (rows.length > 0 || aggRows.length > 0) &&
+          <p role="status" className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Actualizando resultados; se conservan los datos anteriores.</p>}
+        {(comparisonRowsError || comparisonAggError) && <p role="status" className="text-sm text-amber-700">El comparativo no está disponible; se muestra el periodo principal.</p>}
 
         {/* KPIs */}
         {isLoading ? (
@@ -1802,10 +1871,10 @@ export default function SalesByShelf() {
                 <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: "#008064", fontFamily: "var(--font-sans)" }}>
                   S/ {fmtCurrency(kpis.totalMonto)}
                 </p>
-                {prevKpis.totalMonto > 0 && (
+                {hasProductComparison && (
                   <div className="mt-1">
-                    <VariationBadge current={kpis.totalMonto} previous={prevKpis.totalMonto} />
-                    <span className="text-xs ml-1 text-muted-foreground">vs período ant.</span>
+                    <ComparisonTrend current={kpis.totalMonto} comparison={previousTotals.amount} formatValue={n => `S/ ${fmtCurrency(n)}`} label="Monto Total" />
+                    <span className="text-xs ml-1 text-muted-foreground">vs comparativo</span>
                   </div>
                 )}
               </CardContent>
@@ -1817,10 +1886,10 @@ export default function SalesByShelf() {
                 <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: "#1A6894", fontFamily: "var(--font-sans)" }}>
                   {fmtNumber(kpis.totalCantidad)}
                 </p>
-                {prevKpis.totalCantidad > 0 && (
+                {hasProductComparison && (
                   <div className="mt-1">
-                    <VariationBadge current={kpis.totalCantidad} previous={prevKpis.totalCantidad} />
-                    <span className="text-xs ml-1 text-muted-foreground">vs período ant.</span>
+                    <ComparisonTrend current={kpis.totalCantidad} comparison={previousTotals.quantity} formatValue={fmtNumber} label="Cantidad Vendida" />
+                    <span className="text-xs ml-1 text-muted-foreground">vs comparativo</span>
                   </div>
                 )}
               </CardContent>
@@ -1954,9 +2023,15 @@ export default function SalesByShelf() {
                                 )}
                               </TableCell>
                               <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
-                              <TableCell className="text-xs text-right tabular-nums text-foreground">{fmtNumber(row.cantidad_vendida)}</TableCell>
+                              <TableCell className="text-xs text-right tabular-nums text-foreground">
+                                <ShelfMetricValue current={row.cantidad_vendida}
+                                  comparison={hasProductComparison ? productComparison.get(shelfProductKey(row))?.cantidad_vendida ?? 0 : undefined}
+                                  label={`${row.branch_name} · ${row.product_name} · cantidad`} />
+                              </TableCell>
                               <TableCell className="text-xs text-right tabular-nums font-semibold text-foreground">
-                                S/ {fmtCurrency(row.monto_total)}
+                                <ShelfMetricValue current={row.monto_total} monetary
+                                  comparison={hasProductComparison ? productComparison.get(shelfProductKey(row))?.monto_total ?? 0 : undefined}
+                                  label={`${row.branch_name} · ${row.product_name} · monto`} />
                               </TableCell>
                             </TableRow>
                           );
@@ -2006,8 +2081,7 @@ export default function SalesByShelf() {
                       </TableHeader>
                       <TableBody>
                         {filteredAggRows.map((row, i) => {
-                          const compKey = `${row.branch_sap_id}::${row.shelf_id ?? 'null'}`;
-                          const comp = compMap.get(compKey);
+                          const personalized = hasShelfComparison ? shelfComparison.get(shelfAggregateKey(row)) : undefined;
                           const actionTarget = createShelfTarget(row);
                           return (
                           <TableRow
@@ -2033,70 +2107,19 @@ export default function SalesByShelf() {
                             <TableCell className="text-xs tabular-nums" style={{ color: "#919291" }}>{row.branch_sap_id}</TableCell>
                             <TableCell className="text-xs">{statusBadge(row.shelf_status)}</TableCell>
                             <TableCell className="text-xs text-right tabular-nums text-foreground">
-                              {comp && periodPrevious ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="cursor-help inline-block w-full">
-                                      <div>{row.productos_distintos.toLocaleString()}</div>
-                                      <VariationBadge current={row.productos_distintos} previous={comp.previous.productos_distintos} />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="text-xs max-w-[220px]">
-                                    <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
-                                    <p>{comp.previous.productos_distintos.toLocaleString()} productos</p>
-                                    <p className="mt-1" style={{ color: row.productos_distintos - comp.previous.productos_distintos >= 0 ? '#008064' : '#BC2C46' }}>
-                                      {row.productos_distintos - comp.previous.productos_distintos >= 0 ? '+' : ''}{(row.productos_distintos - comp.previous.productos_distintos).toLocaleString()} vs período ant.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <div>{row.productos_distintos.toLocaleString()}</div>
-                              )}
+                              <ShelfMetricValue current={row.productos_distintos}
+                                comparison={hasShelfComparison ? personalized?.productos_distintos ?? 0 : undefined}
+                                label={`${row.branch_name} · ${row.shelf_name} · productos`} />
                             </TableCell>
                             <TableCell className="text-xs text-right tabular-nums text-foreground">
-                              {comp && periodPrevious ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="cursor-help inline-block w-full">
-                                      <div>{fmtNumber(row.cantidad_vendida)}</div>
-                                      <VariationBadge current={row.cantidad_vendida} previous={comp.previous.cantidad_vendida} />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="text-xs max-w-[220px]">
-                                    <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
-                                    <p>{fmtNumber(comp.previous.cantidad_vendida)} unidades</p>
-                                    <p className="mt-1" style={{ color: row.cantidad_vendida - comp.previous.cantidad_vendida >= 0 ? '#008064' : '#BC2C46' }}>
-                                      {row.cantidad_vendida - comp.previous.cantidad_vendida >= 0 ? '+' : ''}{fmtNumber(row.cantidad_vendida - comp.previous.cantidad_vendida)} vs período ant.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <div>{fmtNumber(row.cantidad_vendida)}</div>
-                              )}
+                              <ShelfMetricValue current={row.cantidad_vendida}
+                                comparison={hasShelfComparison ? personalized?.cantidad_vendida ?? 0 : undefined}
+                                label={`${row.branch_name} · ${row.shelf_name} · cantidad`} />
                             </TableCell>
                             <TableCell className="text-xs text-right tabular-nums font-bold text-foreground">
-                              {comp && periodPrevious ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="cursor-help inline-block w-full">
-                                      <div>S/ {fmtCurrency(row.monto_total)}</div>
-                                      <VariationBadge current={row.monto_total} previous={comp.previous.monto_total} />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="text-xs max-w-[240px]">
-                                    <p className="font-semibold mb-1">Período anterior</p>
-                                    <p className="text-muted-foreground text-[11px] mb-2">{fmtDate(periodPrevious.start)} – {fmtDate(periodPrevious.end)}</p>
-                                    <p className="font-semibold">S/ {fmtCurrency(comp.previous.monto_total)}</p>
-                                    <p className="mt-1" style={{ color: row.monto_total - comp.previous.monto_total >= 0 ? '#008064' : '#BC2C46' }}>
-                                      {row.monto_total - comp.previous.monto_total >= 0 ? '+' : ''}S/ {fmtCurrency(row.monto_total - comp.previous.monto_total)} vs período ant.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <div>S/ {fmtCurrency(row.monto_total)}</div>
-                              )}
+                              <ShelfMetricValue current={row.monto_total} monetary
+                                comparison={hasShelfComparison ? personalized?.monto_total ?? 0 : undefined}
+                                label={`${row.branch_name} · ${row.shelf_name} · monto`} />
                             </TableCell>
                           </TableRow>
                           );

@@ -3,6 +3,9 @@
  * Verifica la lógica de transformación de datos y el manejo de filtros
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { defaultTemporalRange, parseTemporalState } from "@shared/temporalFilterState";
 
 // ─── Helpers replicados del procedimiento ────────────────────────────────────
 
@@ -162,5 +165,42 @@ describe("identified-transactions: aggregateByStore", () => {
     const result = aggregateByStore(noCodeRows);
     expect(result).toHaveLength(1);
     expect(result[0].identified_percentage).toBe(80);
+  });
+});
+
+describe("identified-transactions: filtros aplicados P09", () => {
+  it("reconstruye mes actual hasta ayer desde la URL sin comparación temporal", () => {
+    const now = new Date("2026-10-05T10:00:00");
+    expect(defaultTemporalRange("P09", now)).toEqual({ start: "2026-10-01", end: "2026-10-04" });
+    expect(defaultTemporalRange("P09", new Date("2026-10-01T10:00:00"))).toEqual({
+      start: "2026-09-01",
+      end: "2026-09-30",
+    });
+
+    const parsed = parseTemporalState(
+      "P09",
+      "?fecha_min=2026-09-15&fecha_max=2026-09-30&branch_sap_id=001",
+      now,
+    );
+    expect(parsed.state).toEqual({
+      primary: { start: "2026-09-15", end: "2026-09-30" },
+      comparisonMode: "previous",
+    });
+    expect(parsed.state.comparison).toBeUndefined();
+  });
+
+  it("usa el hook temporal, mantiene borrador local y no incorpora controles comparativos", () => {
+    const page = readFileSync(
+      path.resolve(process.cwd(), "client/src/pages/IdentifiedTransactions.tsx"),
+      "utf8",
+    );
+
+    expect(page).toContain('useTemporalUrlState("P09")');
+    expect(page).toContain("const [draftControls, setDraftControls]");
+    expect(page).toContain("const [appliedControls, setAppliedControls]");
+    expect(page).toContain("<AppliedFilterActions");
+    expect(page).toContain("onApply={applyFilters}");
+    expect(page).toContain("onReset={handleResetFilters}");
+    expect(page).not.toContain("ComparisonPeriodControls");
   });
 });

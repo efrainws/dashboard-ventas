@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -39,6 +39,25 @@ import {
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { hasCommercialScope } from "@shared/roleAccess";
+import {
+  buildTemporalNavigationHref,
+  type SalesTemporalPageId,
+} from "@shared/temporalFilterState";
+import { toast } from "sonner";
+
+const SALES_TEMPORAL_PAGES: Record<string, SalesTemporalPageId> = {
+  "/sales": "P01",
+  "/hourly": "P02",
+  "/sales-vs-target": "P03",
+  "/top-products": "P04",
+  "/top-customers": "P05",
+  "/sales-by-shelf": "P06",
+  "/sales-by-category": "P07",
+  "/credit-notes": "P08",
+  "/identified-transactions": "P09",
+  "/supplier": "P10",
+  "/marca-propia": "P11",
+};
 
 export function NavigationMenu() {
   const [location] = useLocation();
@@ -47,6 +66,21 @@ export function NavigationMenu() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [salesExpanded, setSalesExpanded] = useState(false);
   const [opsExpanded, setOpsExpanded] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const notice = params.get("aviso_periodo");
+    if (!notice) return;
+
+    toast.message(
+      notice === "conservado"
+        ? "Se conservó el período temporal compatible."
+        : "Se aplicó el período predeterminado de este módulo.",
+    );
+    params.delete("aviso_periodo");
+    const query = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }, [location]);
 
   const { data: openTicketCount } = trpc.tickets.countOpen.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "system_specialist",
@@ -68,6 +102,13 @@ export function NavigationMenu() {
   const isOpsActive =
     location.startsWith("/identified-transactions") ||
     location.startsWith("/credit-notes");
+
+  const salesHref = (destinationPath: string) => {
+    const from = SALES_TEMPORAL_PAGES[location];
+    const to = SALES_TEMPORAL_PAGES[destinationPath];
+    if (!from || !to) return destinationPath;
+    return buildTemporalNavigationHref(destinationPath, from, to, window.location.search);
+  };
 
   const closeMobile = () => {
     setMobileOpen(false);
@@ -129,43 +170,43 @@ export function NavigationMenu() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/sales")} className="flex items-center w-full cursor-pointer">
                     <BarChart3 className="mr-2 h-4 w-4" />
                     <span>Análisis General</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/hourly" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/hourly")} className="flex items-center w-full cursor-pointer">
                     <Clock className="mr-2 h-4 w-4" />
                     <span>Análisis por Horas</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales-vs-target" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/sales-vs-target")} className="flex items-center w-full cursor-pointer">
                     <Target className="mr-2 h-4 w-4" />
                     <span>Ventas vs Meta</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/top-products" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/top-products")} className="flex items-center w-full cursor-pointer">
                     <Trophy className="mr-2 h-4 w-4" />
                     <span>Top Productos</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/top-customers" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/top-customers")} className="flex items-center w-full cursor-pointer">
                     <Users className="mr-2 h-4 w-4" />
                     <span>Top Clientes</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales-by-shelf" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/sales-by-shelf")} className="flex items-center w-full cursor-pointer">
                     <LayoutGrid className="mr-2 h-4 w-4" />
                     <span>Análisis por Góndola</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/sales-by-category" className="flex items-center w-full cursor-pointer">
+                  <Link href={salesHref("/sales-by-category")} className="flex items-center w-full cursor-pointer">
                     <FolderTree className="mr-2 h-4 w-4" />
                     <span>Análisis por Categorías</span>
                   </Link>
@@ -194,13 +235,13 @@ export function NavigationMenu() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem asChild>
-                    <Link href="/identified-transactions" className="flex items-center w-full cursor-pointer">
+                    <Link href={salesHref("/identified-transactions")} className="flex items-center w-full cursor-pointer">
                       <UserCheck className="mr-2 h-4 w-4" />
                       <span>Transacciones Identificadas</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/credit-notes" className="flex items-center w-full cursor-pointer">
+                    <Link href={salesHref("/credit-notes")} className="flex items-center w-full cursor-pointer">
                       <ReceiptText className="mr-2 h-4 w-4" />
                       <span>Notas de Crédito</span>
                     </Link>
@@ -250,7 +291,7 @@ export function NavigationMenu() {
                   {/* Ventas por Proveedor — especialistas, Gerencia y admin */}
                   {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                     <DropdownMenuItem asChild>
-                      <Link href="/supplier" className="flex items-center w-full cursor-pointer">
+                      <Link href={salesHref("/supplier")} className="flex items-center w-full cursor-pointer">
                         <Truck className="mr-2 h-4 w-4" />
                         <span>Ventas por Proveedor</span>
                       </Link>
@@ -269,7 +310,7 @@ export function NavigationMenu() {
                   {/* Portal Marca Propia — especialistas, Gerencia, admin y Marca Propia */}
                   {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                     <DropdownMenuItem asChild>
-                      <Link href="/marca-propia" className="flex items-center w-full cursor-pointer">
+                      <Link href={salesHref("/marca-propia")} className="flex items-center w-full cursor-pointer">
                         <Tag className="mr-2 h-4 w-4" />
                         <span>Portal Marca Propia</span>
                       </Link>
@@ -387,7 +428,7 @@ export function NavigationMenu() {
               {salesExpanded && (
                 <div className="mt-1 ml-4 pl-3 border-l border-border flex flex-col space-y-1">
                   <Link
-                    href="/sales"
+                    href={salesHref("/sales")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/sales")
@@ -399,7 +440,7 @@ export function NavigationMenu() {
                     <span>Análisis General</span>
                   </Link>
                   <Link
-                    href="/hourly"
+                    href={salesHref("/hourly")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/hourly")
@@ -411,7 +452,7 @@ export function NavigationMenu() {
                     <span>Análisis por Horas</span>
                   </Link>
                   <Link
-                    href="/sales-vs-target"
+                    href={salesHref("/sales-vs-target")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/sales-vs-target")
@@ -423,7 +464,7 @@ export function NavigationMenu() {
                     <span>Ventas vs Meta</span>
                   </Link>
                   <Link
-                    href="/top-products"
+                    href={salesHref("/top-products")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/top-products")
@@ -435,7 +476,7 @@ export function NavigationMenu() {
                     <span>Top Productos</span>
                   </Link>
                   <Link
-                    href="/top-customers"
+                    href={salesHref("/top-customers")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/top-customers")
@@ -447,7 +488,7 @@ export function NavigationMenu() {
                     <span>Top Clientes</span>
                   </Link>
                   <Link
-                    href="/sales-by-shelf"
+                    href={salesHref("/sales-by-shelf")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/sales-by-shelf")
@@ -459,7 +500,7 @@ export function NavigationMenu() {
                     <span>Análisis por Góndola</span>
                   </Link>
                   <Link
-                    href="/sales-by-category"
+                    href={salesHref("/sales-by-category")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive("/sales-by-category")
@@ -498,7 +539,7 @@ export function NavigationMenu() {
                 {opsExpanded && (
                   <div className="mt-1 ml-4 pl-3 border-l border-border flex flex-col space-y-1">
                     <Link
-                      href="/identified-transactions"
+                      href={salesHref("/identified-transactions")}
                       onClick={closeMobile}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive("/identified-transactions")
@@ -510,7 +551,7 @@ export function NavigationMenu() {
                       <span>Transacciones Identificadas</span>
                     </Link>
                     <Link
-                      href="/credit-notes"
+                      href={salesHref("/credit-notes")}
                       onClick={closeMobile}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive("/credit-notes")
@@ -575,7 +616,7 @@ export function NavigationMenu() {
                 {/* Ventas por Proveedor */}
                 {(["system_specialist", "admin"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                   <Link
-                    href="/supplier"
+                    href={salesHref("/supplier")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ml-2 ${
                       isActive("/supplier")
@@ -605,7 +646,7 @@ export function NavigationMenu() {
                 {/* Portal Marca Propia */}
                 {(["system_specialist", "admin", "own_brand_user"].includes(user?.role as string) || hasCommercialScope(user?.role)) && (
                   <Link
-                    href="/marca-propia"
+                    href={salesHref("/marca-propia")}
                     onClick={closeMobile}
                     className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ml-2 ${
                       isActive("/marca-propia")
