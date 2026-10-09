@@ -1,3 +1,5 @@
+import { salesDetailBranchJoin } from "./salesDetailDimensions";
+
 export const SHELF_PRODUCT_SORTS = ["amount", "quantity", "transactions"] as const;
 
 export type ShelfProductSort = (typeof SHELF_PRODUCT_SORTS)[number];
@@ -69,17 +71,14 @@ export function buildShelfProductRankingQuery(input: ShelfProductRankingInput): 
           COALESCE(NULLIF(INITCAP(LOWER(p.name)), ''), 'Producto sin nombre') AS product_name,
           ROUND(SUM(${amountColumn})::numeric, 2)                         AS monto_total,
           ROUND(SUM(sd.quantity)::numeric, 2)                             AS cantidad_vendida,
-          COUNT(DISTINCT sh.id)                                            AS transacciones
-        FROM public.sales_header sh
-        INNER JOIN public.sales_detail sd
-          ON sd.header_id = sh.id
-        INNER JOIN public.branches b
-          ON b.id = sh.branch_id
+          COUNT(DISTINCT sd.header_id)                                     AS transacciones
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
         INNER JOIN public.products p
           ON p.id = sd.product_id
         LEFT JOIN public.stocks st
           ON st.product_id = sd.product_id
-         AND st.branch_id = sh.branch_id
+         AND st.branch_id = b.id
         LEFT JOIN public.categories_products cp
           ON cp.product_id = p.id
          AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
@@ -87,9 +86,9 @@ export function buildShelfProductRankingQuery(input: ShelfProductRankingInput): 
         LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
         LEFT JOIN public.categories g ON g.id = p2.parent_category_id
         WHERE b.sap_id = $1
-          AND sh.doc_date >= $2::date
-          AND sh.doc_date < ($3::date + INTERVAL '1 day')
-          AND sh.doc_date IS NOT NULL
+          AND sd.doc_date >= $2::date
+          AND sd.doc_date < ($3::date + INTERVAL '1 day')
+          AND sd.doc_date IS NOT NULL
           ${shelfClause}
           ${categoryClause}
         GROUP BY sd.product_id, p.int_sku, p.name

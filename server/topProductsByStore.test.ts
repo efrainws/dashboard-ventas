@@ -30,7 +30,8 @@ describe("Top Productos por tienda", () => {
     expect(built.query).toContain("PARTITION BY branch_sap_id");
     expect(built.query).toContain("ORDER BY SUM(amount) DESC, SUM(quantity) DESC");
     expect(built.query).toContain("WHERE ranked_products.rank <= $5");
-    expect(built.query).toContain("INNER JOIN public.sales_detail sd ON sd.header_id = sh.id");
+    expect(built.query).toContain("FROM public.sales_detail sd");
+    expect(built.query).toContain("BTRIM(b.sap_id) = BTRIM(sd.costing_code)");
     expect(built.query).toContain("FROM active_branches");
     expect(built.query).toContain("b.sap_id = $3");
     expect(built.query).toContain("= $4::uuid");

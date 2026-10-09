@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, salesDataProcedure } from "./_core/trpc";
 import { queryWithRetry } from "./postgres";
+import { salesDetailBranchJoin } from "./salesDetailDimensions";
 
 const inputSchema = z.object({
   branch_sap_id: z.string().min(1).max(64),
@@ -28,18 +29,17 @@ export function buildShelfComparisonProductQuery(input: z.infer<typeof inputSche
   return {
     params,
     query: `SELECT sd.product_id, ROUND(SUM(${amountColumn})::numeric, 2) AS monto_total,
-      ROUND(SUM(sd.quantity)::numeric, 2) AS cantidad_vendida, COUNT(DISTINCT sh.id) AS transacciones
-      FROM public.sales_header sh
-      JOIN public.sales_detail sd ON sd.header_id = sh.id
-      JOIN public.branches b ON b.id = sh.branch_id
+      ROUND(SUM(sd.quantity)::numeric, 2) AS cantidad_vendida, COUNT(DISTINCT sd.header_id) AS transacciones
+      FROM public.sales_detail sd
+      ${salesDetailBranchJoin("sd", "b")}
       JOIN public.products p ON p.id = sd.product_id
-      LEFT JOIN public.stocks st ON st.product_id = sd.product_id AND st.branch_id = sh.branch_id
+      LEFT JOIN public.stocks st ON st.product_id = sd.product_id AND st.branch_id = b.id
       LEFT JOIN public.categories_products cp ON cp.product_id = p.id
         AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
       LEFT JOIN public.categories c2 ON c2.id = cp.category_id
       LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
       LEFT JOIN public.categories g ON g.id = p2.parent_category_id
-      WHERE b.sap_id = $1 AND sh.doc_date >= $2::date AND sh.doc_date < ($3::date + INTERVAL '1 day')
+      WHERE b.sap_id = $1 AND sd.doc_date >= $2::date AND sd.doc_date < ($3::date + INTERVAL '1 day')
         AND sd.product_id = ANY($4::uuid[]) ${shelfClause} ${categoryClause}
       GROUP BY sd.product_id`,
   };

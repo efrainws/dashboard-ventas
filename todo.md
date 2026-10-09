@@ -2339,3 +2339,18 @@ Fecha: 1 de febrero de 2026
 - [x] Entregar plan de impacto y esquema de URL para confirmación
 - [x] Implementar los cambios aprobados por bloques verificables
 - [x] Validar comportamiento, accesibilidad, datos comparativos y regresiones
+
+## Corrección: consultas de Análisis General
+- [x] Reproducir los fallos comunes de ventas agregadas y comparativos en /sales
+- [x] Diagnosticar el plan: escaneos secuenciales de 1.87 M cabeceras y 7.07 M líneas por consulta
+- [ ] Solicitar al DBA la creación concurrente del índice de fecha y sucursal en la tabla operativa
+- [ ] Corregir las consultas parametrizadas sin alterar el alcance de filtros ni roles
+- [ ] Cubrir consultas principal, período, sucursal y categoría; validar producción
+
+## Migración aprobada del menú Ventas a sales_detail
+- [x] Centralizar fecha, tienda y canal desde sales_detail; incluir Sin clasificar
+- [x] Migrar Análisis General y Análisis por Horas a la nueva fuente
+- [x] Migrar Ventas vs Meta, Top Productos, Góndolas y Categorías
+- [x] Conservar Top Clientes, Transacciones identificadas y Notas de crédito en sales_header
+- [x] Validar contratos, canales, permisos, tipado y build
+- [ ] Crear por DBA el índice operativo de doc_date para completar la validación de rendimiento en producción

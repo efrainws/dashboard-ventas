@@ -1,4 +1,5 @@
 const CATEGORY_GROUP_ID = "07a06cd5-d1a8-4ea5-9ca5-98865d9630ca";
+import { salesDetailBranchJoin, salesDetailBranchName } from "./salesDetailDimensions";
 
 export type TopProductsByStoreInput = {
   fechaMin: string;
@@ -61,10 +62,10 @@ export function buildTopProductsByStoreQuery(input: TopProductsByStoreInput): Bu
     query: `
       WITH sales_scope AS (
         SELECT
-          sh.id AS header_id,
-          sh.branch_id,
-          b.sap_id AS branch_sap_id,
-          INITCAP(LOWER(COALESCE(b.name, 'Sin tienda'))) AS branch_name,
+          sd.header_id,
+          b.id AS branch_id,
+          COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+          ${salesDetailBranchName("b")} AS branch_name,
           sd.product_id,
           COALESCE(prod.name, sd.descripcion, 'Producto desconocido') AS product_name,
           COALESCE(prod.int_sku::text, '—') AS sku,
@@ -76,9 +77,8 @@ export function buildTopProductsByStoreQuery(input: TopProductsByStoreInput): Bu
           ))) AS category_name,
           sd.quantity AS quantity,
           ${amountColumn} AS amount
-        FROM public.sales_header sh
-        INNER JOIN public.branches b ON b.id = sh.branch_id
-        INNER JOIN public.sales_detail sd ON sd.header_id = sh.id
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
         LEFT JOIN public.products prod ON prod.id = sd.product_id
         LEFT JOIN public.categories_products cp
           ON cp.product_id = sd.product_id
@@ -86,8 +86,8 @@ export function buildTopProductsByStoreQuery(input: TopProductsByStoreInput): Bu
         LEFT JOIN public.categories leaf_category ON leaf_category.id = cp.category_id
         LEFT JOIN public.categories parent_category ON parent_category.id = leaf_category.parent_category_id
         LEFT JOIN public.categories grandparent_category ON grandparent_category.id = parent_category.parent_category_id
-        WHERE sh.doc_date >= $1::date
-          AND sh.doc_date < ($2::date + INTERVAL '1 day')
+        WHERE sd.doc_date >= $1::date
+          AND sd.doc_date < ($2::date + INTERVAL '1 day')
           ${branchFilter}
           ${categoryFilter}
       ),

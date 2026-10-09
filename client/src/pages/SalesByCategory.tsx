@@ -27,7 +27,7 @@ import {
   CategoryPieChartSkeleton,
 } from "@/components/SalesSkeletons";
 
-const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"];
+const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi", "Sin clasificar"];
 
 interface AppliedSalesControls {
   branch: string;
@@ -127,18 +127,18 @@ export default function SalesByCategory() {
 
   // Filtrar por canal en el frontend (igual que HourlyAnalysis)
   const data = useMemo(() => {
-    if (!rawData || appliedControls.channels.length === 3) return rawData;
+    if (!rawData || appliedControls.channels.length === ALL_CHANNELS.length) return rawData;
     return rawData.filter((row: any) => appliedControls.channels.includes(row.sales_channel));
   }, [rawData, appliedControls.channels]);
 
   const comparisonData = useMemo(() => {
-    if (appliedControls.channels.length === 3) return comparisonRawData;
+    if (appliedControls.channels.length === ALL_CHANNELS.length) return comparisonRawData;
     return comparisonRawData.filter((row: any) => appliedControls.channels.includes(row.sales_channel));
   }, [comparisonRawData, appliedControls.channels]);
 
   // Recalcular métricas con datos filtrados por canal
   const filteredMetrics = useMemo(() => {
-    if (!data || appliedControls.channels.length === 3) return metrics;
+    if (!data || appliedControls.channels.length === ALL_CHANNELS.length) return metrics;
     const totalSales = data.reduce((sum: number, row: any) => sum + parseFloat(row.sales_amount || '0'), 0);
     const uniqueSaleIds = new Set<string>();
     data.forEach((row: any) => {
@@ -159,7 +159,7 @@ export default function SalesByCategory() {
     category_id: filters.category_id,
     sales_channels: appliedControls.channels.length === ALL_CHANNELS.length
       ? undefined
-      : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi")[],
+      : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi" | "Sin clasificar")[],
     include_igv: appliedControls.includeIgv,
   });
 

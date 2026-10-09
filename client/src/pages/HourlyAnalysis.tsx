@@ -33,7 +33,7 @@ import { useTemporalUrlState } from "@/hooks/useTemporalUrlState";
 import { ComparisonPeriodControls } from "@/components/ComparisonPeriodControls";
 import { AppliedFilterActions } from "@/components/AppliedFilterActions";
 
-const HOURLY_CHANNELS = ["Presencial", "eCommerce", "Rappi"];
+const HOURLY_CHANNELS = ["Presencial", "eCommerce", "Rappi", "Sin clasificar"];
 
 interface HourlyControls {
   branch: string;
@@ -117,9 +117,9 @@ export default function HourlyAnalysis() {
       comparison_fecha_min: temporal.applied.comparison?.start,
       comparison_fecha_max: temporal.applied.comparison?.end,
       branch_id: filters.branch_id,
-      sales_channels: appliedControls.channels.length === 3
+      sales_channels: appliedControls.channels.length === HOURLY_CHANNELS.length
         ? undefined
-        : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi")[],
+        : appliedControls.channels as ("Presencial" | "eCommerce" | "Rappi" | "Sin clasificar")[],
       include_igv: appliedControls.includeIgv,
     },
     {
@@ -129,7 +129,7 @@ export default function HourlyAnalysis() {
 
   // Filtrar datos por canal de ventas en el frontend
   const filteredData = useMemo(() => {
-    if (!data || appliedControls.channels.length === 3) {
+    if (!data || appliedControls.channels.length === HOURLY_CHANNELS.length) {
       return data; // Si todos los canales están seleccionados, no filtrar
     }
     return data.filter(row => appliedControls.channels.includes(row.sales_channel));
@@ -350,12 +350,12 @@ export default function HourlyAnalysis() {
                         <span className="truncate text-sm">
                           {draftControls.channels.length === 0
                             ? "Sin canales"
-                            : draftControls.channels.length === 3
+                            : draftControls.channels.length === HOURLY_CHANNELS.length
                             ? "Todos los canales"
                             : draftControls.channels.join(", ")}
                         </span>
                         <div className="flex items-center gap-1 shrink-0">
-                          {draftControls.channels.length > 0 && draftControls.channels.length < 3 && (
+                          {draftControls.channels.length > 0 && draftControls.channels.length < HOURLY_CHANNELS.length && (
                             <Badge variant="secondary" className="h-5 px-1.5 text-xs">
                               {draftControls.channels.length}
                             </Badge>
@@ -372,13 +372,13 @@ export default function HourlyAnalysis() {
                           onClick={() => setDraftControls(current => ({ ...current, channels: HOURLY_CHANNELS }))}
                         >
                           <Checkbox
-                            checked={draftControls.channels.length === 3}
+                            checked={draftControls.channels.length === HOURLY_CHANNELS.length}
                             onCheckedChange={() => setDraftControls(current => ({ ...current, channels: HOURLY_CHANNELS }))}
                           />
                           <span className="text-sm">Todos los canales</span>
                         </div>
                         <div className="border-t my-1" />
-                        {(["Presencial", "eCommerce", "Rappi"] as const).map((channel) => (
+                        {(HOURLY_CHANNELS as readonly string[]).map((channel) => (
                           <div
                             key={channel}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"

@@ -6,9 +6,9 @@ describe('getAggregatedSales with tickets_count', () => {
     const query = `
       WITH base AS (
         SELECT
-          sh.id AS sale_id,
-          sh.doc_date,
-          sh.branch_id,
+          sd.header_id AS sale_id,
+          sd.doc_date,
+          b.id,
           INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
           INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
           b.sap_id                               AS branch_sap_id,
@@ -19,16 +19,15 @@ describe('getAggregatedSales with tickets_count', () => {
           p.name AS parent_category_name,
           g.id   AS grandparent_category_id,
           g.name AS grandparent_category_name
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        LEFT JOIN branches b ON b.id = sh.branch_id
+        FROM sales_detail sd
+        LEFT JOIN branches b ON BTRIM(b.sap_id) = BTRIM(sd.costing_code)
         LEFT JOIN categories_products cp
           ON cp.product_id = sd.product_id
          AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
         LEFT JOIN categories c ON c.id = cp.category_id
         LEFT JOIN categories p ON p.id = c.parent_category_id
         LEFT JOIN categories g ON g.id = p.parent_category_id
-        WHERE sh.doc_date IS NOT NULL
+        WHERE sd.doc_date IS NOT NULL
       )
       SELECT
         doc_date::date AS doc_date,
@@ -81,15 +80,14 @@ describe('getAggregatedSales with tickets_count', () => {
     const query = `
       WITH base AS (
         SELECT
-          sh.id AS sale_id,
-          sh.doc_date,
-          sh.branch_id,
+          sd.header_id AS sale_id,
+          sd.doc_date,
+          b.id,
           sd.total AS line_total
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        WHERE sh.doc_date IS NOT NULL
-          AND sh.doc_date >= $1
-          AND sh.doc_date < $2
+        FROM sales_detail sd
+        WHERE sd.doc_date IS NOT NULL
+          AND sd.doc_date >= $1
+          AND sd.doc_date < $2
       )
       SELECT
         SUM(line_total) AS total_sales,
@@ -113,17 +111,16 @@ describe('getAggregatedSales with tickets_count', () => {
     const query = `
       WITH base AS (
         SELECT
-          sh.id AS sale_id,
-          sh.doc_date,
-          sh.branch_id,
+          sd.header_id AS sale_id,
+          sd.doc_date,
+          b.id,
           b.name AS branch_name,
           sd.total AS line_total
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        LEFT JOIN branches b ON b.id = sh.branch_id
-        WHERE sh.doc_date IS NOT NULL
-          AND sh.doc_date >= $1
-          AND sh.doc_date < $2
+        FROM sales_detail sd
+        LEFT JOIN branches b ON BTRIM(b.sap_id) = BTRIM(sd.costing_code)
+        WHERE sd.doc_date IS NOT NULL
+          AND sd.doc_date >= $1
+          AND sd.doc_date < $2
       )
       SELECT
         branch_id,

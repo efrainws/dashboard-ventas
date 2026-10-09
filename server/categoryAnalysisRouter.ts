@@ -14,6 +14,7 @@ import { router, salesDataProcedure } from "./_core/trpc";
 import { pool, queryWithRetry } from "./postgres";
 import { z } from "zod";
 import { cached, TTL } from "./queryCache";
+import { salesDetailBranchJoin } from "./salesDetailDimensions";
 
 const CAT_GROUP = "07a06cd5-d1a8-4ea5-9ca5-98865d9630ca";
 
@@ -206,10 +207,10 @@ export const categoryAnalysisRouter = router({
       // causes a 1-day shift when the client is in UTC-5 (Lima).
       const dateTrunc =
         granularity === "day"
-          ? "sh.doc_date::date::text"
+          ? "sd.doc_date::date::text"
           : granularity === "week"
-            ? "date_trunc('week', sh.doc_date)::date::text"
-            : "date_trunc('month', sh.doc_date)::date::text";
+            ? "date_trunc('week', sd.doc_date)::date::text"
+            : "date_trunc('month', sd.doc_date)::date::text";
 
       const params: unknown[] = [fecha_min, fecha_max];
       const branchFilter = buildBranchFilter(branch_id, params);
@@ -225,14 +226,13 @@ export const categoryAnalysisRouter = router({
             ${dateTrunc}                AS period,
             SUM(${amtCol})              AS amount,
             SUM(sd.quantity)            AS quantity
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
+          FROM sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
           JOIN products p      ON p.id = sd.product_id
           JOIN cp_hier         ON cp_hier.product_id = p.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= $1::date
-            AND sh.doc_date <  ($2::date + INTERVAL '1 day')
+          WHERE sd.doc_date IS NOT NULL
+            AND sd.doc_date >= $1::date
+            AND sd.doc_date <  ($2::date + INTERVAL '1 day')
             ${branchFilter}
             ${catFilter}
           GROUP BY period
@@ -310,14 +310,13 @@ export const categoryAnalysisRouter = router({
             ${nameCol}         AS category_name,
             SUM(${amtCol})     AS amount,
             SUM(sd.quantity)   AS quantity
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
+          FROM sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
           JOIN products p      ON p.id = sd.product_id
           JOIN cp_hier         ON cp_hier.product_id = p.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= $1::date
-            AND sh.doc_date <  ($2::date + INTERVAL '1 day')
+          WHERE sd.doc_date IS NOT NULL
+            AND sd.doc_date >= $1::date
+            AND sd.doc_date <  ($2::date + INTERVAL '1 day')
             ${branchFilter}
             ${parentFilter}
           GROUP BY ${groupCol}, ${nameCol}
@@ -369,10 +368,10 @@ export const categoryAnalysisRouter = router({
       // causes a 1-day shift when the client is in UTC-5 (Lima).
       const dateTrunc =
         granularity === "day"
-          ? "sh.doc_date::date::text"
+          ? "sd.doc_date::date::text"
           : granularity === "week"
-            ? "date_trunc('week', sh.doc_date)::date::text"
-            : "date_trunc('month', sh.doc_date)::date::text";
+            ? "date_trunc('week', sd.doc_date)::date::text"
+            : "date_trunc('month', sd.doc_date)::date::text";
 
       const params: unknown[] = [fecha_min, fecha_max];
       const branchFilter = buildBranchFilter(branch_id, params);
@@ -406,14 +405,13 @@ export const categoryAnalysisRouter = router({
             ${selectStore}
             SUM(${amtCol})           AS amount,
             SUM(sd.quantity)         AS quantity
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
+          FROM sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
           JOIN products p      ON p.id = sd.product_id
           JOIN cp_hier         ON cp_hier.product_id = p.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= $1::date
-            AND sh.doc_date <  ($2::date + INTERVAL '1 day')
+          WHERE sd.doc_date IS NOT NULL
+            AND sd.doc_date >= $1::date
+            AND sd.doc_date <  ($2::date + INTERVAL '1 day')
             ${branchFilter}
             ${catFilter}
           GROUP BY ${groupByClause}

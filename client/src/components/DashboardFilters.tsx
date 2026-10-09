@@ -18,7 +18,7 @@ import { IgvToggle } from "@/components/IgvToggle";
 import { AppliedFilterActions } from "@/components/AppliedFilterActions";
 import type { ReactNode } from "react";
 
-const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi"] as const;
+const ALL_CHANNELS = ["Presencial", "eCommerce", "Rappi", "Sin clasificar"] as const;
 type Channel = typeof ALL_CHANNELS[number];
 
 export interface DashboardFiltersProps {

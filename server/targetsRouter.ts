@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { storeMonthlyTargets } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { salesDetailBranchJoin } from "./salesDetailDimensions";
 
 /**
  * Canales de venta reconocidos en el sistema.
@@ -46,42 +47,21 @@ export const targetsRouter = router({
         store_ids && store_ids.length > 0 ? `AND b.sap_id = ANY($3::text[])` : "";
       const queryParams: any[] = [fecha_min, fecha_max];
       if (store_ids && store_ids.length > 0) queryParams.push(store_ids);
-      // ── Construir filtro de canal ──────────────────────────────────────────────
-      // El canal se determina por methods_payment.payment_type_name:
-      //   'RAPPI'     → canal Rappi
-      //   'ECOMMERCE' → canal eCommerce
-      //   cualquier otro valor → canal Presencial
-      //
-      // La consulta agrega un JOIN a methods_payment cuando se filtra por canal.
-      // Para evitar duplicar totales (una venta puede tener múltiples métodos de pago),
-      // usamos EXISTS en lugar de JOIN directo.
-      let channelJoin = "";
+      // ── Construir filtro de canal desde costing_code3 de sales_detail ──────────
+      // CF → presencial, ECM → ecommerce y UMI → rappi.
       let channelFilter = "";
 
       if (!activeChannels.includes("all")) {
         const conditions: string[] = [];
 
         if (activeChannels.includes("rappi")) {
-          conditions.push(`EXISTS (
-            SELECT 1 FROM methods_payment mp_ch
-            WHERE mp_ch.header_id = sh.id
-              AND mp_ch.payment_type_name = 'RAPPI'
-          )`);
+          conditions.push("BTRIM(sd.costing_code3) = 'UMI'");
         }
         if (activeChannels.includes("ecommerce")) {
-          conditions.push(`EXISTS (
-            SELECT 1 FROM methods_payment mp_ch
-            WHERE mp_ch.header_id = sh.id
-              AND mp_ch.payment_type_name = 'ECOMMERCE'
-          )`);
+          conditions.push("BTRIM(sd.costing_code3) = 'ECM'");
         }
         if (activeChannels.includes("presencial")) {
-          // Presencial = NO tiene ningún método de pago de canal digital
-          conditions.push(`NOT EXISTS (
-            SELECT 1 FROM methods_payment mp_ch
-            WHERE mp_ch.header_id = sh.id
-              AND mp_ch.payment_type_name IN ('RAPPI', 'ECOMMERCE')
-          )`);
+          conditions.push("BTRIM(sd.costing_code3) = 'CF'");
         }
 
         if (conditions.length > 0) {
@@ -91,17 +71,16 @@ export const targetsRouter = router({
 
       const salesQuery = `
         SELECT
-          sh.branch_id AS store_id,
+          b.id AS store_id,
           INITCAP(LOWER(COALESCE(b.name, ''))) AS store_name,
           COALESCE(b.sap_id, '') AS store_sap_id,
           SUM(sd.total) AS total_sales
-        FROM sales_header sh
-        JOIN sales_detail sd ON sd.header_id = sh.id
-        LEFT JOIN branches b ON b.id = sh.branch_id
-        WHERE sh.doc_date >= $1::date AND sh.doc_date < ($2::date + INTERVAL '1 day')
+        FROM sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
+        WHERE sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day')
           ${storeFilter}
           ${channelFilter}
-        GROUP BY sh.branch_id, b.name, b.sap_id
+        GROUP BY b.id, b.name, b.sap_id
         ORDER BY b.sap_id;
       `;
 

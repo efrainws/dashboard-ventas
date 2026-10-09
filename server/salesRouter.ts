@@ -23,6 +23,11 @@ import {
   buildShelfProductRankingQuery,
   SHELF_PRODUCT_SORTS,
 } from "./shelfProductRanking";
+import {
+  salesDetailBranchJoin,
+  salesDetailBranchName,
+  salesDetailChannelCase,
+} from "./salesDetailDimensions";
 
 function resolveComparisonRange(
   fechaMin: string,
@@ -68,91 +73,63 @@ export const salesRouter = router({
   getAggregatedSales: salesDataProcedure
     .input(
       z.object({
-        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        branch_id: z.string().optional(), // Filtro opcional de sucursal
-        category_id: z.string().optional(), // Filtro opcional de departamento
-        include_igv: z.boolean().default(true), // true = con IGV (sd.total), false = sin IGV (sd.subtotal)
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_id: z.string().optional(),
+        category_id: z.string().optional(),
+        include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, category_id, include_igv } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
+      const queryParams: unknown[] = [fechaMinDate, fechaMaxDate];
+      let parameterIndex = 3;
 
-      // Construir filtros adicionales dinámicamente (sin fechas - ya están en el SQL)
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => {
+            queryParams.push(branch_id);
+            return `AND b.sap_id = $${parameterIndex++}`;
+          })()
+        : "";
+      const categoryFilter = category_id && category_id !== "all"
+        ? (() => {
+            queryParams.push(category_id);
+            return `AND COALESCE(g.id, p.id, c.id) = $${parameterIndex++}::uuid`;
+          })()
+        : "";
 
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      if (category_id && category_id !== 'all') {
-        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
-        queryParams.push(category_id);
-        paramIndex++;
-      }
-
-      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO (usa índice en doc_date),
-      // luego hacer JOIN con sales_detail solo para las filas del rango.
-      // Esto evita el full scan de 4M filas de sales_detail.
       const query = `
-        WITH filtered_headers AS (
+        WITH base AS (
           SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            sh.source_system_id,
-            INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
-            INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
-            b.sap_id                               AS branch_sap_id,
-            CASE
-              WHEN EXISTS (
-                SELECT 1 FROM methods_payment mp
-                WHERE mp.header_id = sh.id
-                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
-              ) THEN 'Rappi'
-              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
-                THEN 'eCommerce'
-              ELSE 'Presencial'
-            END AS sales_channel
-          FROM sales_header sh
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date >= '${fechaMinDate}'::date
-            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-            AND sh.doc_date IS NOT NULL
-        ),
-        base AS (
-          SELECT
-            fh.id AS sale_id,
-            fh.doc_date,
-            fh.branch_id,
-            fh.branch_name,
-            fh.branch_address,
-            fh.branch_sap_id,
-            fh.sales_channel,
+            sd.header_id AS sale_id,
+            sd.doc_date,
+            b.id AS branch_id,
+            ${salesDetailBranchName("b")} AS branch_name,
+            INITCAP(LOWER(COALESCE(b.address, ''))) AS branch_address,
+            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            ${salesDetailChannelCase("sd")} AS sales_channel,
             ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
             c.name AS leaf_category_name,
-            p.id   AS parent_category_id,
+            p.id AS parent_category_id,
             p.name AS parent_category_name,
-            g.id   AS grandparent_category_id,
+            g.id AS grandparent_category_id,
             g.name AS grandparent_category_name
-          FROM filtered_headers fh
-          JOIN sales_detail sd ON sd.header_id = fh.id
-          LEFT JOIN categories_products cp
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          LEFT JOIN public.categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories c ON c.id = cp.category_id
-          LEFT JOIN categories p ON p.id = c.parent_category_id
-          LEFT JOIN categories g ON g.id = p.parent_category_id
+          LEFT JOIN public.categories c ON c.id = cp.category_id
+          LEFT JOIN public.categories p ON p.id = c.parent_category_id
+          LEFT JOIN public.categories g ON g.id = p.parent_category_id
+          WHERE sd.doc_date >= $1::date
+            AND sd.doc_date < ($2::date + INTERVAL '1 day')
+            ${branchFilter}
+            ${categoryFilter}
         )
         SELECT
           doc_date::date AS doc_date,
@@ -161,8 +138,7 @@ export const salesRouter = router({
           branch_name,
           branch_address,
           sales_channel,
-          COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)
-            AS category_abuelo_id,
+          COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) AS category_abuelo_id,
           INITCAP(LOWER(COALESCE(
             grandparent_category_name,
             parent_category_name,
@@ -173,18 +149,16 @@ export const salesRouter = router({
           COUNT(DISTINCT sale_id) AS tickets_count,
           array_agg(DISTINCT sale_id) AS sale_ids
         FROM base
-        WHERE 1=1
-          ${additionalFilters.join('\n          ')}
         GROUP BY
           doc_date::date, branch_id, branch_sap_id,
           branch_name, branch_address,
           sales_channel,
           category_abuelo_id, category_abuelo_name
-        ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER), category_abuelo_name;
+        ORDER BY doc_date, CAST(SUBSTRING(branch_sap_id FROM '[0-9]+') AS INTEGER) NULLS LAST, category_abuelo_name;
       `;
 
-      const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:aggregated:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
+      const igvKey = include_igv ? "igv" : "noigv";
+      const cacheKey = `sales:aggregated:detail:${fechaMinDate}:${fechaMaxDate}:${branch_id ?? "all"}:${category_id ?? "all"}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
@@ -195,101 +169,64 @@ export const salesRouter = router({
               total_rows: result.rows.length,
               fecha_min,
               fecha_max,
-              branch_id: branch_id || 'all',
-              category_id: category_id || 'all',
+              branch_id: branch_id || "all",
+              category_id: category_id || "all",
               generated_at: new Date().toISOString(),
             },
           };
         });
       } catch (error) {
-        console.error('[PostgreSQL] Error executing aggregated sales query:', error);
-        throw new Error('Error al consultar ventas agregadas');
+        console.error("[PostgreSQL] Error executing aggregated sales query:", error);
+        throw new Error("Error al consultar ventas agregadas");
       }
     }),
 
   /**
-   * Obtiene ventas agregadas por hora y tienda (sin categorías)
-   * Incluye métricas de transacciones para análisis de patrones horarios
-   * Soporta filtro opcional de sucursal
+   * Obtiene ventas agregadas por hora y tienda desde sales_detail.
    */
   getHourlySales: salesDataProcedure
     .input(
       z.object({
-        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        branch_id: z.string().optional(), // Filtro opcional de sucursal
+        fecha_min: z.string(),
+        fecha_max: z.string(),
+        branch_id: z.string().optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, include_igv } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      // Extraer solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
       const fechaMinDate = fecha_min.substring(0, 10);
       const fechaMaxDate = fecha_max.substring(0, 10);
+      const queryParams: unknown[] = [fechaMinDate, fechaMaxDate];
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => {
+            queryParams.push(branch_id);
+            return "AND b.sap_id = $3";
+          })()
+        : "";
 
-      // Construir filtros adicionales dinámicamente (sin fechas - ya están en el SQL)
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND branch_sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO
       const query = `
-        WITH filtered_headers AS (
-          SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            sh.source_system_id,
-            INITCAP(LOWER(COALESCE(b.name,'')))    AS branch_name,
-            INITCAP(LOWER(COALESCE(b.address,''))) AS branch_address,
-            b.sap_id                               AS branch_sap_id,
-            CASE
-              WHEN EXISTS (
-                SELECT 1 FROM methods_payment mp
-                WHERE mp.header_id = sh.id
-                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
-              ) THEN 'Rappi'
-              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
-                THEN 'eCommerce'
-              ELSE 'Presencial'
-            END AS sales_channel
-          FROM sales_header sh
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date >= '${fechaMinDate}'::date
-            AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-            AND sh.doc_date IS NOT NULL
-        )
         SELECT
-          date_trunc('hour', fh.doc_date) AS hour_ts,
-          fh.branch_id,
-          fh.branch_sap_id,
-          fh.branch_name,
-          fh.branch_address,
-          fh.sales_channel,
+          date_trunc('hour', sd.doc_date) AS hour_ts,
+          b.id AS branch_id,
+          COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+          ${salesDetailBranchName("b")} AS branch_name,
+          INITCAP(LOWER(COALESCE(b.address, ''))) AS branch_address,
+          ${salesDetailChannelCase("sd")} AS sales_channel,
           SUM(${amtCol}) AS sales_amount,
-          COUNT(DISTINCT fh.id) AS tickets_count
-        FROM filtered_headers fh
-        JOIN sales_detail sd ON sd.header_id = fh.id
-        WHERE 1=1
-          ${additionalFilters.join('\n          ')}
-        GROUP BY
-          hour_ts, fh.branch_id, fh.branch_sap_id,
-          fh.branch_name, fh.branch_address,
-          fh.sales_channel
-        ORDER BY hour_ts, CAST(SUBSTRING(fh.branch_sap_id FROM '[0-9]+') AS INTEGER);
+          COUNT(DISTINCT sd.header_id) AS tickets_count
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
+        WHERE sd.doc_date >= $1::date
+          AND sd.doc_date < ($2::date + INTERVAL '1 day')
+          ${branchFilter}
+        GROUP BY hour_ts, b.id, branch_sap_id, branch_name, branch_address, sales_channel
+        ORDER BY hour_ts, CAST(SUBSTRING(COALESCE(b.sap_id, BTRIM(sd.costing_code), '') FROM '[0-9]+') AS INTEGER) NULLS LAST;
       `;
 
       try {
         const result = await queryWithRetry(query, queryParams);
-        
         return {
           success: true,
           data: result.rows,
@@ -297,13 +234,13 @@ export const salesRouter = router({
             total_rows: result.rows.length,
             fecha_min,
             fecha_max,
-            branch_id: branch_id || 'all',
+            branch_id: branch_id || "all",
             generated_at: new Date().toISOString(),
           },
         };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing hourly sales query:', error);
-        throw new Error('Error al consultar ventas por hora');
+        console.error("[PostgreSQL] Error executing hourly sales query:", error);
+        throw new Error("Error al consultar ventas por hora");
       }
     }),
 
@@ -314,142 +251,82 @@ export const salesRouter = router({
   getAggregatedComparison: salesDataProcedure
     .input(
       z.object({
-        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_min: z.string(),
+        fecha_max: z.string(),
         comparison_fecha_min: z.string().optional(),
         comparison_fecha_max: z.string().optional(),
         branch_id: z.string().optional(),
         category_id: z.string().optional(),
-        sales_channels: z.array(z.enum(['Presencial', 'eCommerce', 'Rappi'])).optional(),
+        sales_channels: z.array(z.enum(["Presencial", "eCommerce", "Rappi", "Sin clasificar"])).optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const {
-        fecha_min,
-        fecha_max,
-        comparison_fecha_min,
-        comparison_fecha_max,
-        branch_id,
-        category_id,
-        sales_channels,
-        include_igv,
-      } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
-        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
-
-      // Construir filtros adicionales
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      if (category_id && category_id !== 'all') {
-        additionalFilters.push(`AND COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) = $${paramIndex}`);
-        queryParams.push(category_id);
-        paramIndex++;
-      }
-
+      const { fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max, branch_id, category_id, sales_channels, include_igv } = input;
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      const { currentStart, currentEnd, comparisonStart, comparisonEnd } = resolveComparisonRange(
+        fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max,
+      );
+      const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
+      let parameterIndex = 5;
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        : "";
+      const categoryFilter = category_id && category_id !== "all"
+        ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p.id, c.id) = $${parameterIndex++}::uuid`; })()
+        : "";
       const channelFilter = sales_channels?.length
-        ? (() => {
-            queryParams.push(sales_channels);
-            return `AND fh.sales_channel = ANY($${paramIndex++}::text[])`;
-          })()
-        : '';
+        ? (() => { queryParams.push(sales_channels); return `AND sales_channel = ANY($${parameterIndex++}::text[])`; })()
+        : "";
 
-      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail
-      // Incluye JOIN a branches (para filtrar por branch_id) y categories (para category_id)
       const query = `
-        WITH filtered_headers AS (
+        WITH base AS (
           SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            b.sap_id AS branch_sap_id,
+            sd.header_id AS sale_id,
+            ${amtCol} AS line_total,
+            ${salesDetailChannelCase("sd")} AS sales_channel,
             CASE
-              WHEN EXISTS (
-                SELECT 1 FROM methods_payment mp
-                WHERE mp.header_id = sh.id
-                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
-              ) THEN 'Rappi'
-              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid THEN 'eCommerce'
-              ELSE 'Presencial'
-            END AS sales_channel,
-            CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-                THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
-                THEN 'previous'
-            END AS period
-          FROM sales_header sh
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
-              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
-            )
-            ${additionalFilters.filter(f => f.includes('b.sap_id')).join('\n            ')}
-        ),
-        agg_detail AS (
-          SELECT
-            sd.header_id,
-            SUM(${amtCol}) AS line_total,
+              WHEN sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day') THEN 'current'
+              WHEN sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day') THEN 'previous'
+            END AS period,
             COALESCE(g.id, p.id, c.id) AS category_id
-          FROM sales_detail sd
-          INNER JOIN filtered_headers fh ON fh.id = sd.header_id
-          LEFT JOIN categories_products cp
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          LEFT JOIN public.categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories c ON c.id = cp.category_id
-          LEFT JOIN categories p ON p.id = c.parent_category_id
-          LEFT JOIN categories g ON g.id = p.parent_category_id
-          GROUP BY sd.header_id, COALESCE(g.id, p.id, c.id)
+          LEFT JOIN public.categories c ON c.id = cp.category_id
+          LEFT JOIN public.categories p ON p.id = c.parent_category_id
+          LEFT JOIN public.categories g ON g.id = p.parent_category_id
+          WHERE (
+            (sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day'))
+            OR (sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day'))
+          )
+          ${branchFilter}
+          ${categoryFilter}
         )
-        SELECT
-          fh.period,
-          SUM(ad.line_total) AS total_sales,
-          COUNT(DISTINCT fh.id) AS total_tickets
-        FROM filtered_headers fh
-        JOIN agg_detail ad ON ad.header_id = fh.id
-        WHERE fh.period IS NOT NULL
-          ${additionalFilters.filter(f => f.includes('category')).map(f => f.replace('COALESCE(grandparent_category_id, parent_category_id, leaf_category_id)', 'ad.category_id')).join('\n          ')}
-          ${channelFilter}
-        GROUP BY fh.period;
+        SELECT period, SUM(line_total) AS total_sales, COUNT(DISTINCT sale_id) AS total_tickets
+        FROM base
+        WHERE period IS NOT NULL ${channelFilter}
+        GROUP BY period;
       `;
-
-      const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:comparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${sales_channels?.join(',') ?? 'all'}:${igvKey}`;
+      const igvKey = include_igv ? "igv" : "noigv";
+      const cacheKey = `sales:comparison:detail:${currentStart}:${currentEnd}:${comparisonStart}:${comparisonEnd}:${branch_id ?? "all"}:${category_id ?? "all"}:${sales_channels?.join(",") ?? "all"}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
-          const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
-          const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
+          const currentMetrics = result.rows.find(row => row.period === "current") || { total_sales: 0, total_tickets: 0 };
+          const previousMetrics = result.rows.find(row => row.period === "previous") || { total_sales: 0, total_tickets: 0 };
           return {
             success: true,
-            current: {
-              total_sales: parseFloat(currentMetrics.total_sales || 0),
-              total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
-            },
-            previous: {
-              total_sales: parseFloat(previousMetrics.total_sales || 0),
-              total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
-            },
-            metadata: {
-              current_period: { start: fechaMinDate, end: fechaMaxDate },
-              previous_period: { start: prevStartStr, end: prevEndStr },
-            },
+            current: { total_sales: Number(currentMetrics.total_sales || 0), total_tickets: Number(currentMetrics.total_tickets || 0) },
+            previous: { total_sales: Number(previousMetrics.total_sales || 0), total_tickets: Number(previousMetrics.total_tickets || 0) },
+            metadata: { current_period: { start: currentStart, end: currentEnd }, previous_period: { start: comparisonStart, end: comparisonEnd } },
           };
         });
       } catch (error) {
-        console.error('[PostgreSQL] Error executing comparison query:', error);
-        throw new Error('Error al consultar comparación de períodos');
+        console.error("[PostgreSQL] Error executing comparison query:", error);
+        throw new Error("Error al consultar comparación de períodos");
       }
     }),
 
@@ -459,123 +336,67 @@ export const salesRouter = router({
   getHourlyComparison: salesDataProcedure
     .input(
       z.object({
-        fecha_min: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
-        fecha_max: z.string(), // Fecha en formato YYYY-MM-DD o ISO 8601
+        fecha_min: z.string(),
+        fecha_max: z.string(),
         comparison_fecha_min: z.string().optional(),
         comparison_fecha_max: z.string().optional(),
         branch_id: z.string().optional(),
         sales_channel: z.string().optional(),
-        sales_channels: z.array(z.enum(['Presencial', 'eCommerce', 'Rappi'])).optional(),
+        sales_channels: z.array(z.enum(["Presencial", "eCommerce", "Rappi", "Sin clasificar"])).optional(),
         include_igv: z.boolean().default(true),
       })
     )
     .query(async ({ input }) => {
-      const {
-        fecha_min,
-        fecha_max,
-        comparison_fecha_min,
-        comparison_fecha_max,
-        branch_id,
-        sales_channel,
-        sales_channels,
-        include_igv,
-      } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
-        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
-
-      // Construir filtros adicionales
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      // Los canales seleccionados se enlazan como parámetro: la comparación debe
-      // usar exactamente el mismo conjunto que el análisis mostrado en pantalla.
-      const selectedChannels = sales_channels ?? (sales_channel && sales_channel !== 'all'
-        ? [sales_channel]
-        : undefined);
-      const channelFilter = selectedChannels
-        ? (() => {
-            queryParams.push(selectedChannels);
-            return `AND sales_channel = ANY($${paramIndex++}::text[])`;
-          })()
-        : '';
-
+      const { fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max, branch_id, sales_channel, sales_channels, include_igv } = input;
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      const { currentStart, currentEnd, comparisonStart, comparisonEnd } = resolveComparisonRange(
+        fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max,
+      );
+      const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
+      let parameterIndex = 5;
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        : "";
+      const selectedChannels = sales_channels ?? (sales_channel && sales_channel !== "all" ? [sales_channel] : undefined);
+      const channelFilter = selectedChannels?.length
+        ? (() => { queryParams.push(selectedChannels); return `AND sales_channel = ANY($${parameterIndex++}::text[])`; })()
+        : "";
       const query = `
         WITH base AS (
           SELECT
-            sh.id AS sale_id,
-            sh.doc_date,
-            sh.branch_id,
+            sd.header_id AS sale_id,
             ${amtCol} AS line_total,
+            ${salesDetailChannelCase("sd")} AS sales_channel,
             CASE
-              WHEN EXISTS (
-                SELECT 1 FROM methods_payment mp
-                WHERE mp.header_id = sh.id
-                  AND mp.payment_account_id = '7a8fefe8-ddaa-40d1-ace5-d0aebb1b3204'::uuid
-              ) THEN 'Rappi'
-              WHEN sh.source_system_id = 'be387046-08e4-4229-a52c-7ff5c1569c89'::uuid
-                THEN 'eCommerce'
-              ELSE 'Presencial'
-            END AS sales_channel,
-            CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-                THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
-                THEN 'previous'
-              ELSE NULL
+              WHEN sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day') THEN 'current'
+              WHEN sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day') THEN 'previous'
             END AS period
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
-              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
-            )
-            ${additionalFilters.join('\n            ')}
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          WHERE (
+            (sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day'))
+            OR (sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day'))
+          )
+          ${branchFilter}
         )
-        SELECT
-          period,
-          SUM(line_total) AS total_sales,
-          COUNT(DISTINCT sale_id) AS total_tickets
+        SELECT period, SUM(line_total) AS total_sales, COUNT(DISTINCT sale_id) AS total_tickets
         FROM base
-        WHERE period IS NOT NULL
-          ${channelFilter}
+        WHERE period IS NOT NULL ${channelFilter}
         GROUP BY period;
       `;
-
       try {
         const result = await queryWithRetry(query, queryParams);
-        
-        const currentMetrics = result.rows.find(r => r.period === 'current') || { total_sales: 0, total_tickets: 0 };
-        const previousMetrics = result.rows.find(r => r.period === 'previous') || { total_sales: 0, total_tickets: 0 };
-
+        const currentMetrics = result.rows.find(row => row.period === "current") || { total_sales: 0, total_tickets: 0 };
+        const previousMetrics = result.rows.find(row => row.period === "previous") || { total_sales: 0, total_tickets: 0 };
         return {
           success: true,
-          current: {
-            total_sales: parseFloat(currentMetrics.total_sales || 0),
-            total_tickets: parseInt(currentMetrics.total_tickets || 0, 10),
-          },
-          previous: {
-            total_sales: parseFloat(previousMetrics.total_sales || 0),
-            total_tickets: parseInt(previousMetrics.total_tickets || 0, 10),
-          },
-          metadata: {
-            current_period: { start: fechaMinDate, end: fechaMaxDate },
-            previous_period: { start: prevStartStr, end: prevEndStr },
-          },
+          current: { total_sales: Number(currentMetrics.total_sales || 0), total_tickets: Number(currentMetrics.total_tickets || 0) },
+          previous: { total_sales: Number(previousMetrics.total_sales || 0), total_tickets: Number(previousMetrics.total_tickets || 0) },
+          metadata: { current_period: { start: currentStart, end: currentEnd }, previous_period: { start: comparisonStart, end: comparisonEnd } },
         };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing hourly comparison query:', error);
-        throw new Error('Error al consultar comparación de períodos por hora');
+        console.error("[PostgreSQL] Error executing hourly comparison query:", error);
+        throw new Error("Error al consultar comparación de períodos por hora");
       }
     }),
 
@@ -595,138 +416,89 @@ export const salesRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const {
-        fecha_min,
-        fecha_max,
-        comparison_fecha_min,
-        comparison_fecha_max,
-        category_id,
-        branch_id,
-        include_igv,
-      } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
-        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
-      const currentPeriodDays = inclusiveCalendarDays(fechaMinDate, fechaMaxDate);
-      const comparisonPeriodDays = inclusiveCalendarDays(prevStartStr, prevEndStr);
-
-      // Construir filtros adicionales
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      const branchFilter = branch_id && branch_id !== 'all'
-        ? (() => {
-            queryParams.push(branch_id);
-            return `AND b.sap_id = $${paramIndex++}`;
-          })()
-        : '';
-
-      // Construir filtro de categoría para el JOIN con sales_detail (si aplica)
-      let categoryJoin = '';
-      let categoryFilter = '';
-      if (category_id && category_id !== 'all') {
-        // Necesitamos filtrar por categoría a nivel de sales_detail
-        categoryJoin = `
-          LEFT JOIN products p ON p.id = sd.product_id
-          LEFT JOIN categories_products cp ON cp.product_id = p.id AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories leaf_cat ON leaf_cat.id = cp.category_id
-          LEFT JOIN categories parent_cat ON parent_cat.id = leaf_cat.parent_category_id
-          LEFT JOIN categories grandparent_cat ON grandparent_cat.id = parent_cat.parent_category_id`;
-        categoryFilter = `AND COALESCE(grandparent_cat.id, parent_cat.id, leaf_cat.id) = $${paramIndex}`;
-        queryParams.push(category_id);
-        paramIndex++;
-      }
-
-      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego pre-agregar sales_detail
+      const { fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max, category_id, branch_id, include_igv } = input;
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      const { currentStart, currentEnd, comparisonStart, comparisonEnd } = resolveComparisonRange(
+        fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max,
+      );
+      const currentPeriodDays = inclusiveCalendarDays(currentStart, currentEnd);
+      const comparisonPeriodDays = inclusiveCalendarDays(comparisonStart, comparisonEnd);
+      const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
+      let parameterIndex = 5;
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        : "";
+      const categoryFilter = category_id && category_id !== "all"
+        ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p.id, c.id) = $${parameterIndex++}::uuid`; })()
+        : "";
       const query = `
-        WITH filtered_headers AS (
+        WITH base AS (
           SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            INITCAP(LOWER(COALESCE(b.name,''))) AS branch_name,
-            b.sap_id AS branch_sap_id,
+            sd.header_id AS sale_id,
+            sd.doc_date,
+            b.id AS branch_id,
+            ${salesDetailBranchName("b")} AS branch_name,
+            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            ${amtCol} AS line_total,
             CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-                THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
-                THEN 'previous'
+              WHEN sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day') THEN 'current'
+              WHEN sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day') THEN 'previous'
             END AS period
-          FROM sales_header sh
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
-              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
-            )
-            ${branchFilter}
-        ),
-        agg_detail AS (
-          SELECT sd.header_id, SUM(${amtCol}) AS line_total
-          FROM sales_detail sd
-          INNER JOIN filtered_headers fh ON fh.id = sd.header_id
-          ${categoryJoin}
-          WHERE 1=1 ${categoryFilter}
-          GROUP BY sd.header_id
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          LEFT JOIN public.categories_products cp
+            ON cp.product_id = sd.product_id
+           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
+          LEFT JOIN public.categories c ON c.id = cp.category_id
+          LEFT JOIN public.categories p ON p.id = c.parent_category_id
+          LEFT JOIN public.categories g ON g.id = p.parent_category_id
+          WHERE (
+            (sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day'))
+            OR (sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day'))
+          )
+          ${branchFilter}
+          ${categoryFilter}
         )
         SELECT
-          fh.period,
-          fh.branch_id,
-          fh.branch_name,
-          fh.branch_sap_id,
-          SUM(ad.line_total) AS total_sales,
-          COUNT(DISTINCT fh.id) AS total_tickets,
-          COUNT(DISTINCT DATE(fh.doc_date)) AS total_days
-        FROM filtered_headers fh
-        JOIN agg_detail ad ON ad.header_id = fh.id
-        WHERE fh.period IS NOT NULL
-        GROUP BY fh.period, fh.branch_id, fh.branch_name, fh.branch_sap_id
-        ORDER BY fh.branch_sap_id;
+          period, branch_id, branch_name, branch_sap_id,
+          SUM(line_total) AS total_sales,
+          COUNT(DISTINCT sale_id) AS total_tickets,
+          COUNT(DISTINCT doc_date::date) AS total_days
+        FROM base
+        WHERE period IS NOT NULL
+        GROUP BY period, branch_id, branch_name, branch_sap_id
+        ORDER BY branch_sap_id;
       `;
-
-      const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:branchComparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${category_id ?? 'all'}:${igvKey}`;
+      const igvKey = include_igv ? "igv" : "noigv";
+      const cacheKey = `sales:branchComparison:detail:${currentStart}:${currentEnd}:${comparisonStart}:${comparisonEnd}:${branch_id ?? "all"}:${category_id ?? "all"}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
-          // Agrupar por sucursal
           const branchMap = new Map<string, any>();
           result.rows.forEach(row => {
-            const branchId = row.branch_id;
-            if (!branchMap.has(branchId)) {
-              branchMap.set(branchId, {
-                branch_id: branchId,
+            const branchKey = String(row.branch_id ?? row.branch_sap_id);
+            if (!branchMap.has(branchKey)) {
+              branchMap.set(branchKey, {
+                branch_id: branchKey,
                 branch_name: row.branch_name,
                 branch_sap_id: row.branch_sap_id,
                 current: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
                 previous: { total_sales: 0, total_tickets: 0, avg_ticket: 0, avg_sales_per_day: 0 },
               });
             }
-            const branch = branchMap.get(branchId);
-            const totalSales = parseFloat(row.total_sales || 0);
-            const totalTickets = parseInt(row.total_tickets || 0, 10);
-            const avgTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
-            const avgSalesPerDay = totalSales / (row.period === 'current' ? currentPeriodDays : comparisonPeriodDays);
-            if (row.period === 'current') {
-              branch.current = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
-            } else if (row.period === 'previous') {
-              branch.previous = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: avgTicket, avg_sales_per_day: avgSalesPerDay };
-            }
+            const entry = branchMap.get(branchKey);
+            const totalSales = Number(row.total_sales || 0);
+            const totalTickets = Number(row.total_tickets || 0);
+            const days = row.period === "current" ? currentPeriodDays : comparisonPeriodDays;
+            const values = { total_sales: totalSales, total_tickets: totalTickets, avg_ticket: totalTickets ? totalSales / totalTickets : 0, avg_sales_per_day: totalSales / days };
+            if (row.period === "current") entry.current = values;
+            if (row.period === "previous") entry.previous = values;
           });
-          return {
-            success: true,
-            data: Array.from(branchMap.values()),
-            metadata: {
-              current_period: { start: fechaMinDate, end: fechaMaxDate },
-              previous_period: { start: prevStartStr, end: prevEndStr },
-            },
-          };
+          return { success: true, data: Array.from(branchMap.values()), metadata: { current_period: { start: currentStart, end: currentEnd }, previous_period: { start: comparisonStart, end: comparisonEnd } } };
         });
       } catch (error) {
-        console.error('[PostgreSQL] Error executing branch comparison query:', error);
-        throw new Error('Error al consultar comparación por sucursal');
+        console.error("[PostgreSQL] Error executing branch comparison query:", error);
+        throw new Error("Error al consultar comparación por sucursal");
       }
     }),
 
@@ -745,124 +517,70 @@ export const salesRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const {
-        fecha_min,
-        fecha_max,
-        comparison_fecha_min,
-        comparison_fecha_max,
-        branch_id,
-        include_igv,
-      } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      const { currentStart: fechaMinDate, currentEnd: fechaMaxDate, comparisonStart: prevStartStr, comparisonEnd: prevEndStr } =
-        resolveComparisonRange(fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max);
-
-      // Construir filtros adicionales
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      // OPTIMIZACIÓN: filtrar sales_header por fecha PRIMERO, luego JOIN con sales_detail y categories
+      const { fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max, branch_id, include_igv } = input;
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      const { currentStart, currentEnd, comparisonStart, comparisonEnd } = resolveComparisonRange(
+        fecha_min, fecha_max, comparison_fecha_min, comparison_fecha_max,
+      );
+      const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => { queryParams.push(branch_id); return "AND b.sap_id = $5"; })()
+        : "";
       const query = `
-        WITH filtered_headers AS (
+        WITH base AS (
           SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-                THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day')
-                THEN 'previous'
-            END AS period
-          FROM sales_header sh
-          WHERE sh.doc_date IS NOT NULL
-            AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
-              OR (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
-            )
-        ),
-        base AS (
-          SELECT
-            fh.id AS sale_id,
-            fh.period,
             ${amtCol} AS line_total,
+            CASE
+              WHEN sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day') THEN 'current'
+              WHEN sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day') THEN 'previous'
+            END AS period,
             cp.category_id AS leaf_category_id,
             c.name AS leaf_category_name,
             p.id AS parent_category_id,
             p.name AS parent_category_name,
             g.id AS grandparent_category_id,
             g.name AS grandparent_category_name
-          FROM filtered_headers fh
-          JOIN sales_detail sd ON sd.header_id = fh.id
-          LEFT JOIN branches b ON b.id = fh.branch_id
-          LEFT JOIN categories_products cp
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          LEFT JOIN public.categories_products cp
             ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN categories c ON c.id = cp.category_id
-          LEFT JOIN categories p ON p.id = c.parent_category_id
-          LEFT JOIN categories g ON g.id = p.parent_category_id
-          WHERE fh.period IS NOT NULL
-            ${additionalFilters.join('\n            ')}
+          LEFT JOIN public.categories c ON c.id = cp.category_id
+          LEFT JOIN public.categories p ON p.id = c.parent_category_id
+          LEFT JOIN public.categories g ON g.id = p.parent_category_id
+          WHERE (
+            (sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day'))
+            OR (sd.doc_date >= $3::date AND sd.doc_date < ($4::date + INTERVAL '1 day'))
+          )
+          ${branchFilter}
         )
         SELECT
           period,
           COALESCE(grandparent_category_id, parent_category_id, leaf_category_id) AS category_id,
-          INITCAP(LOWER(COALESCE(
-            grandparent_category_name,
-            parent_category_name,
-            leaf_category_name,
-            'Sin Categoría'
-          ))) AS category_name,
+          INITCAP(LOWER(COALESCE(grandparent_category_name, parent_category_name, leaf_category_name, 'Sin Categoría'))) AS category_name,
           SUM(line_total) AS total_sales
         FROM base
+        WHERE period IS NOT NULL
         GROUP BY period, category_id, category_name
         ORDER BY category_name;
       `;
-
-      const igvKey = include_igv ? 'igv' : 'noigv';
-      const cacheKey = `sales:categoryComparison:${fechaMinDate}:${fechaMaxDate}:${prevStartStr}:${prevEndStr}:${branch_id ?? 'all'}:${igvKey}`;
+      const igvKey = include_igv ? "igv" : "noigv";
+      const cacheKey = `sales:categoryComparison:detail:${currentStart}:${currentEnd}:${comparisonStart}:${comparisonEnd}:${branch_id ?? "all"}:${igvKey}`;
       try {
         return await cached(cacheKey, TTL.DYNAMIC, async () => {
           const result = await queryWithRetry(query, queryParams);
-          // Agrupar por categoría
           const categoryMap = new Map<string, any>();
           result.rows.forEach(row => {
-            const categoryId = row.category_id;
-            if (!categoryMap.has(categoryId)) {
-              categoryMap.set(categoryId, {
-                category_id: categoryId,
-                category_name: row.category_name,
-                current: { total_sales: 0 },
-                previous: { total_sales: 0 },
-              });
-            }
-            const category = categoryMap.get(categoryId);
-            if (row.period === 'current') {
-              category.current = { total_sales: parseFloat(row.total_sales || 0) };
-            } else if (row.period === 'previous') {
-              category.previous = { total_sales: parseFloat(row.total_sales || 0) };
-            }
+            const categoryId = String(row.category_id ?? "sin-categoria");
+            if (!categoryMap.has(categoryId)) categoryMap.set(categoryId, { category_id: categoryId, category_name: row.category_name, current: { total_sales: 0 }, previous: { total_sales: 0 } });
+            if (row.period === "current") categoryMap.get(categoryId).current = { total_sales: Number(row.total_sales || 0) };
+            if (row.period === "previous") categoryMap.get(categoryId).previous = { total_sales: Number(row.total_sales || 0) };
           });
-          return {
-            success: true,
-            data: Array.from(categoryMap.values()),
-            metadata: {
-              current_period: { start: fechaMinDate, end: fechaMaxDate },
-              previous_period: { start: prevStartStr, end: prevEndStr },
-            },
-          };
+          return { success: true, data: Array.from(categoryMap.values()), metadata: { current_period: { start: currentStart, end: currentEnd }, previous_period: { start: comparisonStart, end: comparisonEnd } } };
         });
       } catch (error) {
-        console.error('[PostgreSQL] Error executing category comparison query:', error);
-        throw new Error('Error al consultar comparación por categoría');
+        console.error("[PostgreSQL] Error executing category comparison query:", error);
+        throw new Error("Error al consultar comparación por categoría");
       }
     }),
 
@@ -883,235 +601,103 @@ export const salesRouter = router({
     )
     .query(async ({ input }) => {
       const { fecha_min, fecha_max, branch_id, category_id, include_igv, limit } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
+      const amtCol = include_igv ? "sd.total" : "sd.subtotal";
+      const fechaMin = fecha_min.substring(0, 10);
+      const fechaMax = fecha_max.substring(0, 10);
+      const queryParams: unknown[] = [fechaMin, fechaMax];
+      let parameterIndex = 3;
+      const branchFilter = branch_id && branch_id !== "all"
+        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        : "";
+      const categoryFilter = category_id && category_id !== "all"
+        ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${parameterIndex++}::uuid`; })()
+        : "";
+      const limitParameter = parameterIndex;
+      queryParams.push(limit);
+      const stockBranchClause = branch_id && branch_id !== "all"
+        ? `AND sb.sap_id = '${branch_id.replace(/'/g, "''")}'`
+        : "";
+      const daysDiff = Math.max(1, Math.round((new Date(fechaMax).getTime() - new Date(fechaMin).getTime()) / 86_400_000) + 1);
 
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      const params: any[] = [];
-      let pi = 1;
-
-      const branchClause = (branch_id && branch_id !== 'all')
-        ? (() => { params.push(branch_id); return `AND b.sap_id = $${pi++}`; })()
-        : '';
-
-      const categoryClause = (category_id && category_id !== 'all')
-        ? (() => { params.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${pi++}`; })()
-        : '';
-
-      const limitParameter = pi;
-      const queryParams = [...params, limit];
-
-      // Cláusula de stock: si hay filtro de tienda, solo el stock de esa tienda;
-      // si no, suma el stock de todas las tiendas (a través del branch_id de branches).
-      const stockBranchClause = (branch_id && branch_id !== 'all')
-        ? `AND sb.sap_id = '${branch_id.replace(/'/g, "''")}' `
-        : '';
-
-      // Número de días del período para calcular venta diaria promedio
-      const daysDiff = Math.max(
-        1,
-        Math.round(
-          (new Date(fechaMaxDate).getTime() - new Date(fechaMinDate).getTime()) / 86_400_000
-        ) + 1
-      );
-
-      const query = `
+      const buildQuery = (orderMetric: "quantity" | "amount") => `
         WITH line_items AS (
           SELECT
-            prod.id                                   AS product_id,
-            prod.name                                 AS product_name,
-            prod.int_sku                              AS sku,
-            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,
-            b.sap_id                                  AS branch_sap_id,
-            INITCAP(LOWER(COALESCE(
-              g.name, p2.name, c2.name, 'Sin Categoría'
-            )))                                       AS category_name,
-            sd.quantity                               AS qty,
-            ${amtCol}                                 AS amount
-          FROM public.sales_header sh
-          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
-          JOIN public.products       prod ON prod.id       = sd.product_id
-          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id
+            sd.product_id AS product_id,
+            COALESCE(prod.name, sd.descripcion, 'Producto desconocido') AS product_name,
+            COALESCE(prod.int_sku::text, '—') AS sku,
+            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            INITCAP(LOWER(COALESCE(g.name, p2.name, c2.name, 'Sin Categoría'))) AS category_name,
+            sd.quantity AS qty,
+            ${amtCol} AS amount
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          LEFT JOIN public.products prod ON prod.id = sd.product_id
           LEFT JOIN public.categories_products cp
-            ON cp.product_id       = prod.id
+            ON cp.product_id = sd.product_id
            AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
           LEFT JOIN public.categories c2 ON c2.id = cp.category_id
           LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
-          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-            ${branchClause}
-            ${categoryClause}
+          LEFT JOIN public.categories g ON g.id = p2.parent_category_id
+          WHERE sd.doc_date >= $1::date
+            AND sd.doc_date < ($2::date + INTERVAL '1 day')
+            ${branchFilter}
+            ${categoryFilter}
         ),
         aggregated AS (
-          SELECT
-            product_id,
-            product_name,
-            sku,
-            MAX(category_name)   AS category_name,
-            SUM(qty)             AS total_qty,
-            SUM(amount)          AS total_amount,
-            COUNT(DISTINCT branch_sap_id) AS branch_count
+          SELECT product_id, MAX(product_name) AS product_name, MAX(sku) AS sku,
+            MAX(category_name) AS category_name, SUM(qty) AS total_qty,
+            SUM(amount) AS total_amount, COUNT(DISTINCT branch_sap_id) AS branch_count
           FROM line_items
-          GROUP BY product_id, product_name, sku
+          GROUP BY product_id
         ),
-        -- Stock actual: suma del stock de todas las tiendas en scope
         stock_agg AS (
-          SELECT
-            s.product_id,
-            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
+          SELECT s.product_id, SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
           FROM public.stocks s
           LEFT JOIN public.branches sb ON sb.id = s.branch_id
-          WHERE 1=1
-            ${stockBranchClause}
+          WHERE 1=1 ${stockBranchClause}
           GROUP BY s.product_id
         )
-        SELECT
-          a.product_id,
-          a.product_name,
-          a.sku,
-          a.category_name,
-          a.total_qty::numeric                                         AS total_qty,
-          a.total_amount::numeric                                      AS total_amount,
-          a.branch_count,
-          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,
-          -- Venta diaria promedio = total_qty / días del período
-          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,
-          -- Cobertura = stock / venta_diaria (NULL si venta_diaria = 0)
-          CASE
-            WHEN a.total_qty > 0
-            THEN ROUND(
-              COALESCE(sa.total_stock, 0)::numeric
-              / (a.total_qty::numeric / ${daysDiff}),
-              1
-            )
-            ELSE NULL
-          END                                                          AS coverage_days,
-          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,
+        SELECT a.product_id, a.product_name, a.sku, a.category_name,
+          a.total_qty::numeric AS total_qty, a.total_amount::numeric AS total_amount,
+          a.branch_count, COALESCE(sa.total_stock, 0)::numeric AS total_stock,
+          ROUND((a.total_qty::numeric / ${daysDiff}), 2) AS avg_daily_qty,
+          CASE WHEN a.total_qty > 0 THEN ROUND(COALESCE(sa.total_stock, 0)::numeric / (a.total_qty::numeric / ${daysDiff}), 1) ELSE NULL END AS coverage_days,
+          RANK() OVER (ORDER BY a.total_qty DESC) AS rank_qty,
           RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount
         FROM aggregated a
         LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
-        WHERE a.total_qty > 0
-        ORDER BY rank_qty
-        LIMIT $${limitParameter};
-      `;
-
-      // Segunda query para top 50 por monto (necesitamos orden diferente)
-      const queryByAmount = `
-        WITH line_items AS (
-          SELECT
-            prod.id                                   AS product_id,
-            prod.name                                 AS product_name,
-            prod.int_sku                              AS sku,
-            INITCAP(LOWER(COALESCE(b.name, '')))      AS branch_name,
-            b.sap_id                                  AS branch_sap_id,
-            INITCAP(LOWER(COALESCE(
-              g.name, p2.name, c2.name, 'Sin Categoría'
-            )))                                       AS category_name,
-            sd.quantity                               AS qty,
-            ${amtCol}                                 AS amount
-          FROM public.sales_header sh
-          JOIN public.sales_detail  sd   ON sd.header_id  = sh.id
-          JOIN public.products       prod ON prod.id       = sd.product_id
-          LEFT JOIN public.branches  b    ON b.id          = sh.branch_id
-          LEFT JOIN public.categories_products cp
-            ON cp.product_id       = prod.id
-           AND cp.category_group_id = '07a06cd5-d1a8-4ea5-9ca5-98865d9630ca'
-          LEFT JOIN public.categories c2 ON c2.id = cp.category_id
-          LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
-          LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-            ${branchClause}
-            ${categoryClause}
-        ),
-        aggregated AS (
-          SELECT
-            product_id,
-            product_name,
-            sku,
-            MAX(category_name)   AS category_name,
-            SUM(qty)             AS total_qty,
-            SUM(amount)          AS total_amount,
-            COUNT(DISTINCT branch_sap_id) AS branch_count
-          FROM line_items
-          GROUP BY product_id, product_name, sku
-        ),
-        stock_agg AS (
-          SELECT
-            s.product_id,
-            SUM(GREATEST(s.stock::numeric, 0)) AS total_stock
-          FROM public.stocks s
-          LEFT JOIN public.branches sb ON sb.id = s.branch_id
-          WHERE 1=1
-            ${stockBranchClause}
-          GROUP BY s.product_id
-        )
-        SELECT
-          a.product_id,
-          a.product_name,
-          a.sku,
-          a.category_name,
-          a.total_qty::numeric                                         AS total_qty,
-          a.total_amount::numeric                                      AS total_amount,
-          a.branch_count,
-          COALESCE(sa.total_stock, 0)::numeric                        AS total_stock,
-          ROUND((a.total_qty::numeric / ${daysDiff}), 2)              AS avg_daily_qty,
-          CASE
-            WHEN a.total_qty > 0
-            THEN ROUND(
-              COALESCE(sa.total_stock, 0)::numeric
-              / (a.total_qty::numeric / ${daysDiff}),
-              1
-            )
-            ELSE NULL
-          END                                                          AS coverage_days,
-          RANK() OVER (ORDER BY a.total_qty    DESC) AS rank_qty,
-          RANK() OVER (ORDER BY a.total_amount DESC) AS rank_amount
-        FROM aggregated a
-        LEFT JOIN stock_agg sa ON sa.product_id = a.product_id
-        WHERE a.total_amount > 0
-        ORDER BY rank_amount
+        WHERE a.${orderMetric === "quantity" ? "total_qty" : "total_amount"} > 0
+        ORDER BY ${orderMetric === "quantity" ? "rank_qty" : "rank_amount"}
         LIMIT $${limitParameter};
       `;
 
       try {
         const [resultByQty, resultByAmount] = await Promise.all([
-          pool.query(query, queryParams),
-          pool.query(queryByAmount, queryParams),
+          pool.query(buildQuery("quantity"), queryParams),
+          pool.query(buildQuery("amount"), queryParams),
         ]);
-
-        const mapRow = (row: any, idx: number) => ({
-          rank: idx + 1,
+        const mapRow = (row: any, index: number) => ({
+          rank: index + 1,
           product_id: row.product_id,
-          product_name: row.product_name ?? '',
-          sku: row.sku ?? '',
-          category_name: row.category_name ?? 'Sin Categoría',
+          product_name: row.product_name ?? "",
+          sku: row.sku ?? "",
+          category_name: row.category_name ?? "Sin Categoría",
           total_qty: Number(row.total_qty ?? 0),
           total_amount: Number(row.total_amount ?? 0),
           branch_count: Number(row.branch_count ?? 0),
           total_stock: Number(row.total_stock ?? 0),
           avg_daily_qty: Number(row.avg_daily_qty ?? 0),
-          coverage_days: row.coverage_days != null ? Number(row.coverage_days) : null,
+          coverage_days: row.coverage_days == null ? null : Number(row.coverage_days),
         });
-
         return {
           success: true,
           byQuantity: resultByQty.rows.map(mapRow),
           byAmount: resultByAmount.rows.map(mapRow),
-          metadata: {
-            fecha_min: fechaMinDate,
-            fecha_max: fechaMaxDate,
-            branch_id: branch_id || 'all',
-            category_id: category_id || 'all',
-            limit,
-            generated_at: new Date().toISOString(),
-          },
+          metadata: { fecha_min: fechaMin, fecha_max: fechaMax, branch_id: branch_id || "all", category_id: category_id || "all", limit, generated_at: new Date().toISOString() },
         };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing top products query:', error);
-        throw new Error('Error al consultar top productos');
+        console.error("[PostgreSQL] Error executing top products query:", error);
+        throw new Error("Error al consultar top productos");
       }
     }),
 
@@ -1276,74 +862,40 @@ export const salesRouter = router({
    * (que es UTC) para que ambos gráficos muestren los mismos valores por hora.
    */
   getHeatmapData: salesDataProcedure
-    .input(
-      z.object({
-        fecha_min: z.string(),
-        fecha_max: z.string(),
-        branch_id: z.string().optional(),
-        metric: z.enum(['amount', 'transactions']).default('amount'),
-        include_igv: z.boolean().default(true),
-      })
-    )
+    .input(z.object({
+      fecha_min: z.string(), fecha_max: z.string(), branch_id: z.string().optional(),
+      metric: z.enum(["amount", "transactions"]).default("amount"), include_igv: z.boolean().default(true),
+    }))
     .query(async ({ input }) => {
-      const { fecha_min, fecha_max, branch_id, metric, include_igv } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-      const fechaMinDate = fecha_min.substring(0, 10);
-      const fechaMaxDate = fecha_max.substring(0, 10);
-
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      // Extraer hora y día de semana directamente en UTC (sin conversión de zona horaria)
-      // para que coincida con HourlyLineChart que usa date.getUTCHours().
-      // Transacciones con time = 00:00:00 exacto no tienen hora real (importadas sin hora);
-      // se agrupan como hour_of_day = -1 para que el frontend las muestre como "Sin hora".
-      const metricExpr = metric === 'amount'
-        ? 'SUM(line_total)'
-        : 'COUNT(DISTINCT sale_id)';
-
+      const amtCol = input.include_igv ? "sd.total" : "sd.subtotal";
+      const fechaMin = input.fecha_min.substring(0, 10);
+      const fechaMax = input.fecha_max.substring(0, 10);
+      const params: unknown[] = [fechaMin, fechaMax];
+      const branchFilter = input.branch_id && input.branch_id !== "all"
+        ? (() => { params.push(input.branch_id); return "AND b.sap_id = $3"; })()
+        : "";
+      const metricExpr = input.metric === "amount" ? "SUM(line_total)" : "COUNT(DISTINCT sale_id)";
       const query = `
         WITH base AS (
-          SELECT
-            sh.id AS sale_id,
-            sh.doc_date,
-            ${amtCol} AS line_total
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')
-            ${additionalFilters.join('\n            ')}
+          SELECT sd.header_id AS sale_id, sd.doc_date, ${amtCol} AS line_total
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          WHERE sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day')
+            ${branchFilter}
         )
-        SELECT
-          EXTRACT(DOW FROM doc_date)::int   AS day_of_week,
-          CASE
-            WHEN doc_date::time = TIME '00:00:00' THEN -1
-            ELSE EXTRACT(HOUR FROM doc_date)::int
-          END                               AS hour_of_day,
-          ${metricExpr.replace('sd.total', 'line_total').replace('sh.id', 'sale_id')} AS value
+        SELECT EXTRACT(DOW FROM doc_date)::int AS day_of_week,
+          CASE WHEN doc_date::time = TIME '00:00:00' THEN -1 ELSE EXTRACT(HOUR FROM doc_date)::int END AS hour_of_day,
+          ${metricExpr} AS value
         FROM base
         GROUP BY day_of_week, hour_of_day
         ORDER BY day_of_week, hour_of_day;
       `;
-
       try {
-        const result = await queryWithRetry(query, queryParams);
-        return {
-          success: true,
-          data: result.rows as Array<{ day_of_week: number; hour_of_day: number; value: string }>,
-          metadata: { fecha_min: fechaMinDate, fecha_max: fechaMaxDate, metric },
-        };
+        const result = await queryWithRetry(query, params);
+        return { success: true, data: result.rows as Array<{ day_of_week: number; hour_of_day: number; value: string }>, metadata: { fecha_min: fechaMin, fecha_max: fechaMax, metric: input.metric } };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing heatmap query:', error);
-        throw new Error('Error al consultar datos del mapa de calor');
+        console.error("[PostgreSQL] Error executing heatmap query:", error);
+        throw new Error("Error al consultar datos del mapa de calor");
       }
     }),
 
@@ -1354,110 +906,45 @@ export const salesRouter = router({
    * Preparado para ampliar a 8, 12 o 16 semanas cambiando weeks_back.
    */
   getHeatmapDayComparison: salesDataProcedure
-    .input(
-      z.object({
-        base_date: z.string(),                              // YYYY-MM-DD: fecha de referencia
-        day_of_week: z.number().int().min(0).max(6),       // 0=Dom ... 6=Sáb
-        weeks_back: z.number().int().min(1).max(52).default(6),
-        branch_id: z.string().optional(),
-        metric: z.enum(['amount', 'transactions']).default('amount'),
-        include_igv: z.boolean().default(true),
-      })
-    )
+    .input(z.object({
+      base_date: z.string(), day_of_week: z.number().int().min(0).max(6), weeks_back: z.number().int().min(1).max(52).default(6),
+      branch_id: z.string().optional(), metric: z.enum(["amount", "transactions"]).default("amount"), include_igv: z.boolean().default(true),
+    }))
     .query(async ({ input }) => {
-      const { base_date, day_of_week, weeks_back, branch_id, metric, include_igv } = input;
-      const amtCol = include_igv ? 'sd.total' : 'sd.subtotal';
-
-      // Calcular las fechas de las últimas N ocurrencias del día seleccionado
-      // partiendo desde base_date hacia atrás, en orden cronológico ascendente
-      const baseDateObj = new Date(base_date + 'T00:00:00Z');
+      const baseDate = new Date(`${input.base_date}T00:00:00Z`);
       const targetDates: string[] = [];
-      const cursor = new Date(baseDateObj);
-      // Retroceder hasta encontrar el día de semana correcto
-      while (cursor.getUTCDay() !== day_of_week) {
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      }
-      for (let i = 0; i < weeks_back; i++) {
-        const yyyy = cursor.getUTCFullYear();
-        const mm = String(cursor.getUTCMonth() + 1).padStart(2, '0');
-        const dd = String(cursor.getUTCDate()).padStart(2, '0');
-        targetDates.unshift(`${yyyy}-${mm}-${dd}`); // orden cronológico ascendente
+      const cursor = new Date(baseDate);
+      while (cursor.getUTCDay() !== input.day_of_week) cursor.setUTCDate(cursor.getUTCDate() - 1);
+      for (let index = 0; index < input.weeks_back; index += 1) {
+        targetDates.unshift(`${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(cursor.getUTCDate()).padStart(2, "0")}`);
         cursor.setUTCDate(cursor.getUTCDate() - 7);
       }
-
-      const additionalFilters: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (branch_id && branch_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
-        queryParams.push(branch_id);
-        paramIndex++;
-      }
-
-      // Construir cláusula IN con las fechas calculadas
-      const datePlaceholders = targetDates.map((d) => {
-        queryParams.push(d);
-        const ph = `$${paramIndex}`;
-        paramIndex++;
-        return ph;
-      }).join(', ');
-
-      // OPTIMIZACIÓN: agregar rango de timestamp para que PostgreSQL use el índice en doc_date
-      // El rango cubre desde la fecha más antigua hasta la más reciente de targetDates
-      // Luego el IN filtra las fechas exactas (días de semana específicos)
-      const minDate = targetDates[0];                    // fecha más antigua (orden cronológico)
-      const maxDate = targetDates[targetDates.length - 1]; // fecha más reciente
-
-      const metricExpr = metric === 'amount'
-        ? 'SUM(line_total)'
-        : 'COUNT(DISTINCT sale_id)';
-
-      // OPTIMIZACIÓN: filtrar sales_header por rango de fechas PRIMERO (usa índice),
-      // luego filtrar por fechas exactas con IN (días de semana específicos)
+      const params: unknown[] = [targetDates[0], targetDates.at(-1), targetDates];
+      const branchFilter = input.branch_id && input.branch_id !== "all"
+        ? (() => { params.push(input.branch_id); return "AND b.sap_id = $4"; })()
+        : "";
+      const amtCol = input.include_igv ? "sd.total" : "sd.subtotal";
+      const metricExpr = input.metric === "amount" ? "SUM(line_total)" : "COUNT(DISTINCT sale_id)";
       const query = `
-        WITH filtered_headers AS (
-          SELECT
-            sh.id,
-            sh.doc_date,
-            sh.branch_id,
-            b.sap_id AS branch_sap_id
-          FROM sales_header sh
-          LEFT JOIN branches b ON b.id = sh.branch_id
-          WHERE sh.doc_date IS NOT NULL
-            AND sh.doc_date >= '${minDate}'::date
-            AND sh.doc_date < ('${maxDate}'::date + INTERVAL '1 day')
-            AND sh.doc_date::date IN (${datePlaceholders})
-            ${additionalFilters.join('\n            ')}
-        ),
-        base AS (
-          SELECT
-            fh.id AS sale_id,
-            fh.doc_date,
-            ${amtCol} AS line_total
-          FROM filtered_headers fh
-          JOIN sales_detail sd ON sd.header_id = fh.id
+        WITH base AS (
+          SELECT sd.header_id AS sale_id, sd.doc_date, ${amtCol} AS line_total
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
+          WHERE sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day')
+            AND sd.doc_date::date = ANY($3::date[])
+            ${branchFilter}
         )
-        SELECT
-          doc_date::date::text                   AS date_label,
-          EXTRACT(HOUR FROM doc_date)::int       AS hour_of_day,
-          ${metricExpr}                          AS value
+        SELECT doc_date::date::text AS date_label, EXTRACT(HOUR FROM doc_date)::int AS hour_of_day, ${metricExpr} AS value
         FROM base
         GROUP BY date_label, hour_of_day
         ORDER BY date_label, hour_of_day;
       `;
-
       try {
-        const result = await queryWithRetry(query, queryParams);
-        return {
-          success: true,
-          data: result.rows as Array<{ date_label: string; hour_of_day: number; value: string }>,
-          target_dates: targetDates,
-          metadata: { base_date, day_of_week, weeks_back, metric },
-        };
+        const result = await queryWithRetry(query, params);
+        return { success: true, data: result.rows as Array<{ date_label: string; hour_of_day: number; value: string }>, target_dates: targetDates, metadata: { base_date: input.base_date, day_of_week: input.day_of_week, weeks_back: input.weeks_back, metric: input.metric } };
       } catch (error) {
-        console.error('[PostgreSQL] Error executing heatmap day comparison query:', error);
-        throw new Error('Error al consultar datos de comparación por día');
+        console.error("[PostgreSQL] Error executing heatmap day comparison query:", error);
+        throw new Error("Error al consultar datos de comparación por día");
       }
     }),
 
@@ -2261,16 +1748,13 @@ export const salesRouter = router({
           INITCAP(LOWER(COALESCE(g.name, p2.name, c2.name, 'Sin Categoría'))) AS category_name,
           ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,
           ROUND(SUM(${amtCol})::numeric, 2)                           AS monto_total
-        FROM public.sales_header sh
-        INNER JOIN public.sales_detail sd
-          ON sd.header_id = sh.id
-        INNER JOIN public.branches b
-          ON b.id = sh.branch_id
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
         INNER JOIN public.products p
           ON p.id = sd.product_id
         LEFT JOIN public.stocks st
           ON st.product_id = sd.product_id
-         AND st.branch_id  = sh.branch_id
+         AND st.branch_id  = b.id
         LEFT JOIN public.shelfs sh2
           ON sh2.id = st.shelf_id
         LEFT JOIN public.categories_products cp
@@ -2279,9 +1763,9 @@ export const salesRouter = router({
         LEFT JOIN public.categories c2 ON c2.id = cp.category_id
         LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
         LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
-        WHERE sh.doc_date >= '${fechaMinDate}'::date
-          AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
-          AND sh.doc_date IS NOT NULL
+        WHERE sd.doc_date >= '${fechaMinDate}'::date
+          AND sd.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
+          AND sd.doc_date IS NOT NULL
           ${branchClause}
           ${categoryClause}
           ${shelfStatusClause}
@@ -2382,16 +1866,13 @@ export const salesRouter = router({
           COUNT(DISTINCT sd.product_id)                                AS productos_distintos,
           ROUND(SUM(sd.quantity)::numeric, 2)                         AS cantidad_vendida,
           ROUND(SUM(${amtCol})::numeric, 2)                           AS monto_total
-        FROM public.sales_header sh
-        INNER JOIN public.sales_detail sd
-          ON sd.header_id = sh.id
-        INNER JOIN public.branches b
-          ON b.id = sh.branch_id
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
         INNER JOIN public.products p
           ON p.id = sd.product_id
         LEFT JOIN public.stocks st
           ON st.product_id = sd.product_id
-         AND st.branch_id  = sh.branch_id
+         AND st.branch_id  = b.id
         LEFT JOIN public.shelfs sh2
           ON sh2.id = st.shelf_id
         LEFT JOIN public.categories_products cp
@@ -2400,9 +1881,9 @@ export const salesRouter = router({
         LEFT JOIN public.categories c2 ON c2.id = cp.category_id
         LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
         LEFT JOIN public.categories g  ON g.id  = p2.parent_category_id
-        WHERE sh.doc_date >= '${fechaMinDate}'::date
-          AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
-          AND sh.doc_date IS NOT NULL
+        WHERE sd.doc_date >= '${fechaMinDate}'::date
+          AND sd.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
+          AND sd.doc_date IS NOT NULL
           ${branchClause}
           ${categoryClause}
           ${shelfStatusClause}
@@ -2525,8 +2006,7 @@ export const salesRouter = router({
           ${priceCol}               AS precio_unitario,
           ${amtCol}                 AS monto_linea
         FROM public.sales_detail sd
-        INNER JOIN public.sales_header sh ON sh.id = sd.header_id
-        INNER JOIN public.branches b ON b.id = sh.branch_id
+        ${salesDetailBranchJoin("sd", "b")}
         LEFT JOIN public.products p ON p.id = sd.product_id
         WHERE sd.header_id = '${header_id.replace(/'/g, "''")}'
           ${branch_sap_id && branch_sap_id !== 'all' ? `AND b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'` : ''}
@@ -2613,21 +2093,20 @@ export const salesRouter = router({
             ${amtCol}                                                    AS line_total,
             sd.quantity,
             CASE
-              WHEN sh.doc_date >= '${fechaMinDate}'::date
-               AND sh.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
+              WHEN sd.doc_date >= '${fechaMinDate}'::date
+               AND sd.doc_date <  ('${fechaMaxDate}'::date + INTERVAL '1 day')
               THEN 'current'
-              WHEN sh.doc_date >= '${prevStartStr}'::date
-               AND sh.doc_date <  ('${prevEndStr}'::date + INTERVAL '1 day')
+              WHEN sd.doc_date >= '${prevStartStr}'::date
+               AND sd.doc_date <  ('${prevEndStr}'::date + INTERVAL '1 day')
               THEN 'previous'
               ELSE NULL
             END AS period
-          FROM public.sales_header sh
-          INNER JOIN public.sales_detail sd ON sd.header_id = sh.id
-          INNER JOIN public.branches b      ON b.id = sh.branch_id
+          FROM public.sales_detail sd
+          ${salesDetailBranchJoin("sd", "b")}
           INNER JOIN public.products p      ON p.id = sd.product_id
           LEFT JOIN  public.stocks st
             ON st.product_id = sd.product_id
-           AND st.branch_id  = sh.branch_id
+           AND st.branch_id  = b.id
           LEFT JOIN  public.shelfs sh2      ON sh2.id = st.shelf_id
           LEFT JOIN  public.categories_products cp
             ON cp.product_id        = p.id
@@ -2635,11 +2114,11 @@ export const salesRouter = router({
           LEFT JOIN  public.categories c2 ON c2.id = cp.category_id
           LEFT JOIN  public.categories p2 ON p2.id = c2.parent_category_id
           LEFT JOIN  public.categories g  ON g.id  = p2.parent_category_id
-          WHERE sh.doc_date IS NOT NULL
+          WHERE sd.doc_date IS NOT NULL
             AND (
-              (sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
+              (sd.doc_date >= '${fechaMinDate}'::date AND sd.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day'))
               OR
-              (sh.doc_date >= '${prevStartStr}'::date AND sh.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
+              (sd.doc_date >= '${prevStartStr}'::date AND sd.doc_date < ('${prevEndStr}'::date + INTERVAL '1 day'))
             )
             ${branchClause}
             ${categoryClause}
@@ -2733,7 +2212,7 @@ export const salesRouter = router({
       const fechaMinDate = fecha_min ? fecha_min.substring(0, 10) : null;
       const fechaMaxDate = fecha_max ? fecha_max.substring(0, 10) : null;
       const fechaClause = (fechaMinDate && fechaMaxDate)
-        ? `AND sh.doc_date >= '${fechaMinDate}'::date AND sh.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')`
+        ? `AND sd.doc_date >= '${fechaMinDate}'::date AND sd.doc_date < ('${fechaMaxDate}'::date + INTERVAL '1 day')`
         : '';
 
       // Filtra solo productos que tienen ventas registradas en esa tienda+góndola.
@@ -2749,11 +2228,8 @@ export const salesRouter = router({
           st.shelf_id                                                  AS shelf_id,
           COALESCE(sh2.name, '(Sin góndola)')                          AS shelf_name,
           sh2.id                                                       AS shelf_uuid
-        FROM public.branches b
-        INNER JOIN public.sales_header sh
-          ON sh.branch_id = b.id
-        INNER JOIN public.sales_detail sd
-          ON sd.header_id = sh.id
+        FROM public.sales_detail sd
+        ${salesDetailBranchJoin("sd", "b")}
         INNER JOIN public.products p
           ON p.id = sd.product_id
         -- Stock SOLO de esta tienda (b.id garantiza que es la misma tienda del header)
@@ -2763,7 +2239,7 @@ export const salesRouter = router({
         LEFT JOIN public.shelfs sh2
           ON sh2.id = st.shelf_id
         WHERE b.sap_id = '${branch_sap_id.replace(/'/g, "''")}'
-          AND sh.doc_date IS NOT NULL
+          AND sd.doc_date IS NOT NULL
           ${fechaClause}
           ${shelfStockClause}
         ORDER BY p.id, INITCAP(LOWER(p.name))

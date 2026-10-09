@@ -77,7 +77,7 @@ export async function queryWithRetry(
 /**
  * Warm-up del caché de PostgreSQL (RDS).
  *
- * El problema: sales_header (291 MB) + sales_detail (1186 MB) + products no están en el
+ * El problema: sales_detail (1186 MB) + products no están en el
  * buffer cache de PostgreSQL cuando el servidor lleva tiempo inactivo. La primera query que
  * toca estas tablas debe leer páginas desde disco EBS, lo que tarda 14-60 segundos.
  *
@@ -85,7 +85,7 @@ export async function queryWithRetry(
  * recientes en el buffer cache de RDS.
  *
  * Estrategia:
- * - Al iniciar: warm-up completo — products + 6 meses de sales_header + 14 días de sales_detail
+ * - Al iniciar: warm-up acotado — products + una muestra reciente de sales_detail
  * - Cada 3 minutos: keep-alive de los últimos 3 días con JOIN products (mantiene datos calientes)
  */
 async function warmupCache(label: string): Promise<void> {
@@ -96,9 +96,6 @@ async function warmupCache(label: string): Promise<void> {
     fourteenDaysAgo.setDate(today.getDate() - 14);
     const threeDaysAgo = new Date(today);
     threeDaysAgo.setDate(today.getDate() - 3);
-    const sixMonthsAgo = new Date(today);
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
-
     const dateStr = (d: Date) => d.toISOString().substring(0, 10);
 
     if (label === 'startup') {
@@ -110,26 +107,29 @@ async function warmupCache(label: string): Promise<void> {
         LEFT JOIN brands b ON b.id = p.brand_id
       `);
 
-      // Paso 2: Recorrer sales_header sin transferir filas al proceso Node.
+      // Paso 2: Recorrer sales_detail sin transferir filas al proceso Node.
       // COUNT mantiene el efecto de precalentamiento en PostgreSQL y evita
       // materializar cientos de miles de objetos JavaScript en cada arranque.
       await client.query(`
         SELECT COUNT(*)
-        FROM sales_header
-        WHERE doc_date >= $1::date
-      `, [dateStr(sixMonthsAgo)]);
+        FROM (
+          SELECT 1
+          FROM sales_detail
+          WHERE doc_date >= $1::date
+          LIMIT 200000
+        ) AS warmup_rows
+      `, [dateStr(fourteenDaysAgo)]);
 
       // Paso 3: Recorrer sales_detail reciente con JOIN a products.
-      // Toca idx_sales_detail_header_id + idx_sales_detail_product_id + index_products_on_brand_id
+      // Toca el índice de fecha de detalle, idx_sales_detail_product_id e index_products_on_brand_id.
       await client.query(`
         SELECT COUNT(*)
         FROM (
           SELECT 1
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
+          FROM sales_detail sd
           JOIN products p ON p.id = sd.product_id
-          WHERE sh.doc_date >= $1::date
-            AND sh.doc_date < ($2::date + INTERVAL '1 day')
+          WHERE sd.doc_date >= $1::date
+            AND sd.doc_date < ($2::date + INTERVAL '1 day')
           LIMIT 200000
         ) AS warmup_rows
       `, [dateStr(fourteenDaysAgo), dateStr(today)]);
@@ -140,16 +140,15 @@ async function warmupCache(label: string): Promise<void> {
 
       console.log('[PostgreSQL] Cache warm-up completado — páginas consultadas sin transferir filas masivas al proceso');
     } else {
-      // Keep-alive: mantener los últimos 3 días calientes con JOIN que toca sales_detail + products
+      // Keep-alive: mantener los últimos 3 días calientes con detalle y productos.
       await client.query(`
         SELECT COUNT(*)
         FROM (
           SELECT 1
-          FROM sales_header sh
-          JOIN sales_detail sd ON sd.header_id = sh.id
+          FROM sales_detail sd
           JOIN products p ON p.id = sd.product_id
-          WHERE sh.doc_date >= $1::date
-            AND sh.doc_date < ($2::date + INTERVAL '1 day')
+          WHERE sd.doc_date >= $1::date
+            AND sd.doc_date < ($2::date + INTERVAL '1 day')
           LIMIT 50000
         ) AS warmup_rows
       `, [dateStr(threeDaysAgo), dateStr(today)]);
