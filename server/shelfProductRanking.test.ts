@@ -22,7 +22,8 @@ describe("buildShelfProductRankingQuery", () => {
     expect(query).toContain("SUM(sd.quantity)");
     expect(query).toContain("COUNT(DISTINCT sd.header_id)");
     expect(query).toContain("FROM public.sales_detail sd");
-    expect(query).toContain("BTRIM(b.sap_id) = BTRIM(sd.costing_code)");
+    expect(query).toContain("b.sap_id = sd.costing_code");
+    expect(query).toContain("WHERE sd.costing_code = $1");
     expect(query).toContain("GROUP BY sd.product_id, p.int_sku, p.name");
     expect(query).toContain("ORDER BY monto_total DESC NULLS LAST");
     expect(query).toContain("LIMIT $5::int");

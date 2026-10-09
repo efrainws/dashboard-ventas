@@ -31,9 +31,9 @@ describe("Top Productos por tienda", () => {
     expect(built.query).toContain("ORDER BY SUM(amount) DESC, SUM(quantity) DESC");
     expect(built.query).toContain("WHERE ranked_products.rank <= $5");
     expect(built.query).toContain("FROM public.sales_detail sd");
-    expect(built.query).toContain("BTRIM(b.sap_id) = BTRIM(sd.costing_code)");
+    expect(built.query).toContain("b.sap_id = sd.costing_code");
+    expect(built.query).toContain("AND sd.costing_code = $3");
     expect(built.query).toContain("FROM active_branches");
-    expect(built.query).toContain("b.sap_id = $3");
     expect(built.query).toContain("= $4::uuid");
     expect(built.query).not.toContain("FF01");
   });

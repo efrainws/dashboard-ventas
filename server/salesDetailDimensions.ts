@@ -15,7 +15,7 @@ export type SalesDetailChannel = (typeof SALES_DETAIL_CHANNELS)[number];
  * mezclarlos con ventas presenciales.
  */
 export function salesDetailChannelCase(detailAlias = "sd"): string {
-  return `CASE BTRIM(COALESCE(${detailAlias}.costing_code3, ''))
+  return `CASE COALESCE(${detailAlias}.costing_code3, '')
     WHEN 'CF' THEN 'Presencial'
     WHEN 'ECM' THEN 'eCommerce'
     WHEN 'UMI' THEN 'Rappi'
@@ -26,7 +26,7 @@ export function salesDetailChannelCase(detailAlias = "sd"): string {
 /** Preserves unmatched sales lines so data-quality gaps remain visible. */
 export function salesDetailBranchJoin(detailAlias = "sd", branchAlias = "b"): string {
   return `LEFT JOIN public.branches ${branchAlias}
-    ON BTRIM(${branchAlias}.sap_id) = BTRIM(${detailAlias}.costing_code)`;
+    ON ${branchAlias}.sap_id = ${detailAlias}.costing_code`;
 }
 
 /** Normalized display values for lines whose costing code lacks an equivalence. */

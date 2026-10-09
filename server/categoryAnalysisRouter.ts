@@ -30,11 +30,11 @@ const dateRangeSchema = z.object({
 function buildBranchFilter(
   branch_id: string | undefined,
   params: unknown[],
-  tableAlias = "b"
+  tableAlias = "sd"
 ): string {
   if (!branch_id || branch_id === "all") return "";
   params.push(branch_id);
-  return `AND ${tableAlias}.sap_id = $${params.length}`;
+  return `AND ${tableAlias}.costing_code = $${params.length}`;
 }
 
 // ─── Helper: build category WHERE clause ────────────────────────────────────

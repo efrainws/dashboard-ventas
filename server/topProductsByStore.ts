@@ -43,7 +43,7 @@ export function buildTopProductsByStoreQuery(input: TopProductsByStoreInput): Bu
   const branchFilter = input.branchSapId && input.branchSapId !== "all"
     ? (() => {
         params.push(input.branchSapId);
-        return `AND b.sap_id = $${parameterIndex++}`;
+        return `AND sd.costing_code = $${parameterIndex++}`;
       })()
     : "";
 
@@ -64,7 +64,7 @@ export function buildTopProductsByStoreQuery(input: TopProductsByStoreInput): Bu
         SELECT
           sd.header_id,
           b.id AS branch_id,
-          COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+          COALESCE(b.sap_id, sd.costing_code, 'SIN-EQUIVALENCIA') AS branch_sap_id,
           ${salesDetailBranchName("b")} AS branch_name,
           sd.product_id,
           COALESCE(prod.name, sd.descripcion, 'Producto desconocido') AS product_name,

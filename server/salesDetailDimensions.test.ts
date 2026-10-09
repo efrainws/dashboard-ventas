@@ -16,7 +16,7 @@ describe("salesDetailDimensions", () => {
     ]);
 
     const sql = salesDetailChannelCase("line");
-    expect(sql).toContain("line.costing_code3");
+    expect(sql).toContain("COALESCE(line.costing_code3, '')");
     expect(sql).toContain("WHEN 'CF' THEN 'Presencial'");
     expect(sql).toContain("WHEN 'ECM' THEN 'eCommerce'");
     expect(sql).toContain("WHEN 'UMI' THEN 'Rappi'");
@@ -25,7 +25,7 @@ describe("salesDetailDimensions", () => {
 
   it("resuelve tienda por costing_code contra el SAP de branches", () => {
     expect(salesDetailBranchJoin("line", "store")).toContain(
-      "BTRIM(store.sap_id) = BTRIM(line.costing_code)",
+      "store.sap_id = line.costing_code",
     );
     expect(salesDetailBranchName("store")).toContain("Tienda sin equivalencia");
   });

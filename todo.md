@@ -2354,3 +2354,10 @@ Fecha: 1 de febrero de 2026
 - [x] Conservar Top Clientes, Transacciones identificadas y Notas de crédito en sales_header
 - [x] Validar contratos, canales, permisos, tipado y build
 - [ ] Crear por DBA el índice operativo de doc_date para completar la validación de rendimiento en producción
+
+## Optimización de consultas por índices de sales_detail
+- [x] Verificar en modo solo lectura el plan de fecha y tienda para los índices disponibles
+- [x] Sustituir comparaciones transformadas de costing_code por filtros directos indexables
+- [x] Ajustar joins y cláusulas de módulos migrados sin perder tiendas no equivalentes
+- [x] Cubrir contratos, tipado y planes de consulta sin modificar datos PostgreSQL
+- [ ] Crear los índices declarados en la base operativa; el plan actual aún muestra escaneos secuenciales

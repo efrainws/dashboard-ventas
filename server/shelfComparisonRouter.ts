@@ -39,7 +39,7 @@ export function buildShelfComparisonProductQuery(input: z.infer<typeof inputSche
       LEFT JOIN public.categories c2 ON c2.id = cp.category_id
       LEFT JOIN public.categories p2 ON p2.id = c2.parent_category_id
       LEFT JOIN public.categories g ON g.id = p2.parent_category_id
-      WHERE b.sap_id = $1 AND sd.doc_date >= $2::date AND sd.doc_date < ($3::date + INTERVAL '1 day')
+      WHERE sd.costing_code = $1 AND sd.doc_date >= $2::date AND sd.doc_date < ($3::date + INTERVAL '1 day')
         AND sd.product_id = ANY($4::uuid[]) ${shelfClause} ${categoryClause}
       GROUP BY sd.product_id`,
   };

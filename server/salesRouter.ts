@@ -91,7 +91,7 @@ export const salesRouter = router({
       const branchFilter = branch_id && branch_id !== "all"
         ? (() => {
             queryParams.push(branch_id);
-            return `AND b.sap_id = $${parameterIndex++}`;
+            return `AND sd.costing_code = $${parameterIndex++}`;
           })()
         : "";
       const categoryFilter = category_id && category_id !== "all"
@@ -109,7 +109,7 @@ export const salesRouter = router({
             b.id AS branch_id,
             ${salesDetailBranchName("b")} AS branch_name,
             INITCAP(LOWER(COALESCE(b.address, ''))) AS branch_address,
-            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            COALESCE(b.sap_id, sd.costing_code, 'SIN-EQUIVALENCIA') AS branch_sap_id,
             ${salesDetailChannelCase("sd")} AS sales_channel,
             ${amtCol} AS line_total,
             cp.category_id AS leaf_category_id,
@@ -202,7 +202,7 @@ export const salesRouter = router({
       const branchFilter = branch_id && branch_id !== "all"
         ? (() => {
             queryParams.push(branch_id);
-            return "AND b.sap_id = $3";
+            return "AND sd.costing_code = $3";
           })()
         : "";
 
@@ -210,7 +210,7 @@ export const salesRouter = router({
         SELECT
           date_trunc('hour', sd.doc_date) AS hour_ts,
           b.id AS branch_id,
-          COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+          COALESCE(b.sap_id, sd.costing_code, 'SIN-EQUIVALENCIA') AS branch_sap_id,
           ${salesDetailBranchName("b")} AS branch_name,
           INITCAP(LOWER(COALESCE(b.address, ''))) AS branch_address,
           ${salesDetailChannelCase("sd")} AS sales_channel,
@@ -222,7 +222,7 @@ export const salesRouter = router({
           AND sd.doc_date < ($2::date + INTERVAL '1 day')
           ${branchFilter}
         GROUP BY hour_ts, b.id, branch_sap_id, branch_name, branch_address, sales_channel
-        ORDER BY hour_ts, CAST(SUBSTRING(COALESCE(b.sap_id, BTRIM(sd.costing_code), '') FROM '[0-9]+') AS INTEGER) NULLS LAST;
+        ORDER BY hour_ts, CAST(SUBSTRING(COALESCE(b.sap_id, sd.costing_code, '') FROM '[0-9]+') AS INTEGER) NULLS LAST;
       `;
 
       try {
@@ -270,7 +270,7 @@ export const salesRouter = router({
       const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
       let parameterIndex = 5;
       const branchFilter = branch_id && branch_id !== "all"
-        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        ? (() => { queryParams.push(branch_id); return `AND sd.costing_code = $${parameterIndex++}`; })()
         : "";
       const categoryFilter = category_id && category_id !== "all"
         ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p.id, c.id) = $${parameterIndex++}::uuid`; })()
@@ -355,7 +355,7 @@ export const salesRouter = router({
       const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
       let parameterIndex = 5;
       const branchFilter = branch_id && branch_id !== "all"
-        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        ? (() => { queryParams.push(branch_id); return `AND sd.costing_code = $${parameterIndex++}`; })()
         : "";
       const selectedChannels = sales_channels ?? (sales_channel && sales_channel !== "all" ? [sales_channel] : undefined);
       const channelFilter = selectedChannels?.length
@@ -426,7 +426,7 @@ export const salesRouter = router({
       const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
       let parameterIndex = 5;
       const branchFilter = branch_id && branch_id !== "all"
-        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        ? (() => { queryParams.push(branch_id); return `AND sd.costing_code = $${parameterIndex++}`; })()
         : "";
       const categoryFilter = category_id && category_id !== "all"
         ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p.id, c.id) = $${parameterIndex++}::uuid`; })()
@@ -438,7 +438,7 @@ export const salesRouter = router({
             sd.doc_date,
             b.id AS branch_id,
             ${salesDetailBranchName("b")} AS branch_name,
-            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            COALESCE(b.sap_id, sd.costing_code, 'SIN-EQUIVALENCIA') AS branch_sap_id,
             ${amtCol} AS line_total,
             CASE
               WHEN sd.doc_date >= $1::date AND sd.doc_date < ($2::date + INTERVAL '1 day') THEN 'current'
@@ -524,7 +524,7 @@ export const salesRouter = router({
       );
       const queryParams: unknown[] = [currentStart, currentEnd, comparisonStart, comparisonEnd];
       const branchFilter = branch_id && branch_id !== "all"
-        ? (() => { queryParams.push(branch_id); return "AND b.sap_id = $5"; })()
+        ? (() => { queryParams.push(branch_id); return "AND sd.costing_code = $5"; })()
         : "";
       const query = `
         WITH base AS (
@@ -607,7 +607,7 @@ export const salesRouter = router({
       const queryParams: unknown[] = [fechaMin, fechaMax];
       let parameterIndex = 3;
       const branchFilter = branch_id && branch_id !== "all"
-        ? (() => { queryParams.push(branch_id); return `AND b.sap_id = $${parameterIndex++}`; })()
+        ? (() => { queryParams.push(branch_id); return `AND sd.costing_code = $${parameterIndex++}`; })()
         : "";
       const categoryFilter = category_id && category_id !== "all"
         ? (() => { queryParams.push(category_id); return `AND COALESCE(g.id, p2.id, c2.id) = $${parameterIndex++}::uuid`; })()
@@ -625,7 +625,7 @@ export const salesRouter = router({
             sd.product_id AS product_id,
             COALESCE(prod.name, sd.descripcion, 'Producto desconocido') AS product_name,
             COALESCE(prod.int_sku::text, '—') AS sku,
-            COALESCE(b.sap_id, BTRIM(sd.costing_code), 'SIN-EQUIVALENCIA') AS branch_sap_id,
+            COALESCE(b.sap_id, sd.costing_code, 'SIN-EQUIVALENCIA') AS branch_sap_id,
             INITCAP(LOWER(COALESCE(g.name, p2.name, c2.name, 'Sin Categoría'))) AS category_name,
             sd.quantity AS qty,
             ${amtCol} AS amount
@@ -783,7 +783,7 @@ export const salesRouter = router({
       let paramIndex = 1;
 
       if (branch_sap_id && branch_sap_id !== 'all') {
-        additionalFilters.push(`AND b.sap_id = $${paramIndex}`);
+        additionalFilters.push(`AND sd.costing_code = $${paramIndex}`);
         queryParams.push(branch_sap_id);
         paramIndex++;
       }
@@ -872,7 +872,7 @@ export const salesRouter = router({
       const fechaMax = input.fecha_max.substring(0, 10);
       const params: unknown[] = [fechaMin, fechaMax];
       const branchFilter = input.branch_id && input.branch_id !== "all"
-        ? (() => { params.push(input.branch_id); return "AND b.sap_id = $3"; })()
+        ? (() => { params.push(input.branch_id); return "AND sd.costing_code = $3"; })()
         : "";
       const metricExpr = input.metric === "amount" ? "SUM(line_total)" : "COUNT(DISTINCT sale_id)";
       const query = `
@@ -921,7 +921,7 @@ export const salesRouter = router({
       }
       const params: unknown[] = [targetDates[0], targetDates.at(-1), targetDates];
       const branchFilter = input.branch_id && input.branch_id !== "all"
-        ? (() => { params.push(input.branch_id); return "AND b.sap_id = $4"; })()
+        ? (() => { params.push(input.branch_id); return "AND sd.costing_code = $4"; })()
         : "";
       const amtCol = input.include_igv ? "sd.total" : "sd.subtotal";
       const metricExpr = input.metric === "amount" ? "SUM(line_total)" : "COUNT(DISTINCT sale_id)";

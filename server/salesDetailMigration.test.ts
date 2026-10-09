@@ -20,10 +20,27 @@ describe("migración de módulos de Ventas a sales_detail", () => {
 
   it("usa costing_code3 para los canales de Ventas vs Meta", () => {
     const content = source("targetsRouter.ts");
-    expect(content).toContain("BTRIM(sd.costing_code3) = 'CF'");
-    expect(content).toContain("BTRIM(sd.costing_code3) = 'ECM'");
-    expect(content).toContain("BTRIM(sd.costing_code3) = 'UMI'");
+    expect(content).toContain("sd.costing_code3 = 'CF'");
+    expect(content).toContain("sd.costing_code3 = 'ECM'");
+    expect(content).toContain("sd.costing_code3 = 'UMI'");
     expect(content).not.toContain("methods_payment mp_ch");
+  });
+
+  it("filtra una tienda directamente por costing_code sin transformar la columna indexada", () => {
+    const optimizedModules = {
+      "salesRouter.ts": "costing_code = $",
+      "targetsRouter.ts": "costing_code = ANY($",
+      "categoryAnalysisRouter.ts": "costing_code = $",
+      "topProductsByStore.ts": "costing_code = $",
+      "shelfProductRanking.ts": "costing_code = $",
+      "shelfComparisonRouter.ts": "costing_code = $",
+    };
+
+    Object.entries(optimizedModules).forEach(([file, expectedPredicate]) => {
+      const content = source(file);
+      expect(content).toContain(expectedPredicate);
+      expect(content).not.toContain("BTRIM(sd.costing_code)");
+    });
   });
 
   it("mantiene los módulos explícitamente excluidos con sales_header", () => {

@@ -44,7 +44,7 @@ export const targetsRouter = router({
 
       // ── Construir filtro de tiendas ────────────────────────────────────────
       const storeFilter =
-        store_ids && store_ids.length > 0 ? `AND b.sap_id = ANY($3::text[])` : "";
+        store_ids && store_ids.length > 0 ? `AND sd.costing_code = ANY($3::text[])` : "";
       const queryParams: any[] = [fecha_min, fecha_max];
       if (store_ids && store_ids.length > 0) queryParams.push(store_ids);
       // ── Construir filtro de canal desde costing_code3 de sales_detail ──────────
@@ -55,13 +55,13 @@ export const targetsRouter = router({
         const conditions: string[] = [];
 
         if (activeChannels.includes("rappi")) {
-          conditions.push("BTRIM(sd.costing_code3) = 'UMI'");
+          conditions.push("sd.costing_code3 = 'UMI'");
         }
         if (activeChannels.includes("ecommerce")) {
-          conditions.push("BTRIM(sd.costing_code3) = 'ECM'");
+          conditions.push("sd.costing_code3 = 'ECM'");
         }
         if (activeChannels.includes("presencial")) {
-          conditions.push("BTRIM(sd.costing_code3) = 'CF'");
+          conditions.push("sd.costing_code3 = 'CF'");
         }
 
         if (conditions.length > 0) {
