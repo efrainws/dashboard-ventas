@@ -2361,3 +2361,10 @@ Fecha: 1 de febrero de 2026
 - [x] Ajustar joins y cláusulas de módulos migrados sin perder tiendas no equivalentes
 - [x] Cubrir contratos, tipado y planes de consulta sin modificar datos PostgreSQL
 - [ ] Crear los índices declarados en la base operativa; el plan actual aún muestra escaneos secuenciales
+
+## Corrección de tooltips y filtros comparativos
+- [x] Ajustar tooltips Radix, Recharts y góndolas a superficies semánticas por tema
+- [x] Separar inicio y fin del comparativo de fechas en todos los controles compartidos
+- [x] Validar duración exacta, no solapamiento y sugerencia del fin comparativo
+- [x] Formatear los selectores mensuales con tokens y tipografías del sistema
+- [x] Cubrir regresiones y validar tipado, build y vistas claro/oscuro

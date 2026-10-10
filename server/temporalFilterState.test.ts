@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildTemporalNavigationHref,
   defaultTemporalRange,
+  latestExactDaysComparisonStart,
   parseTemporalState,
   previousPeriod,
   serializeTemporalState,
+  suggestedExactDaysComparisonEnd,
   validateExactDaysComparison,
   validateMonthComparison,
 } from "@shared/temporalFilterState";
@@ -49,6 +51,13 @@ describe("validación de comparación", () => {
     expect(validateExactDaysComparison(primary, { start: "2026-09-05", end: "2026-09-19" }, "2026-10-05")).toBeNull();
     expect(validateExactDaysComparison(primary, { start: "2026-09-05", end: "2026-09-18" }, "2026-10-05")).toContain("misma cantidad");
     expect(validateExactDaysComparison(primary, { start: "2026-10-05", end: "2026-10-19" }, "2026-10-05")).toContain("Selecciona nuevamente");
+  });
+
+  it("sugiere el final exacto y bloquea comparativos que se solapan", () => {
+    const primary = { start: "2026-09-20", end: "2026-10-04" };
+    expect(latestExactDaysComparisonStart(primary)).toBe("2026-09-05");
+    expect(suggestedExactDaysComparisonEnd(primary, "2026-09-05")).toBe("2026-09-19");
+    expect(validateExactDaysComparison(primary, { start: "2026-09-10", end: "2026-09-24" }, "2026-10-05")).toContain("sin solaparse");
   });
 
   it("valida bloques completos de meses con el mismo tamaño", () => {

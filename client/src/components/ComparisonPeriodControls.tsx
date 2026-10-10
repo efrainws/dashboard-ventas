@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CalendarDays, RefreshCcw } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { TemporalState } from "@shared/temporalFilterState";
-import { previousPeriod, temporalRangeToMonths } from "@shared/temporalFilterState";
+import {
+  latestExactDaysComparisonStart,
+  previousPeriod,
+  suggestedExactDaysComparisonEnd,
+  temporalRangeToMonths,
+} from "@shared/temporalFilterState";
 
 interface ComparisonPeriodControlsProps {
   value: TemporalState;
@@ -36,11 +42,15 @@ function lastClosedMonth(): string {
 }
 
 export function ComparisonPeriodControls({ value, onChange, error }: ComparisonPeriodControlsProps) {
+  const [selectionNotice, setSelectionNotice] = useState<string>();
   const comparison = value.comparison ?? previousPeriod(value.primary);
   const monthValues = temporalRangeToMonths(value.primary);
   const comparisonMonthValues = temporalRangeToMonths(comparison);
+  const latestComparisonStart = latestExactDaysComparisonStart(value.primary);
+  const suggestedComparisonEnd = suggestedExactDaysComparisonEnd(value.primary, comparison.start);
 
   const changeMode = (comparisonMode: TemporalState["comparisonMode"]) => {
+    setSelectionNotice(undefined);
     if (comparisonMode === "previous") {
       onChange({ ...value, comparisonMode, comparison: previousPeriod(value.primary) });
       return;
@@ -51,7 +61,25 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
   const updateComparisonDate = (key: "start" | "end", date: Date | undefined) => {
     const parsed = isoFromDate(date);
     if (!parsed) return;
-    onChange({ ...value, comparison: { ...comparison, [key]: parsed } });
+
+    if (key === "start") {
+      if (parsed > latestComparisonStart) {
+        setSelectionNotice("El comparativo debe finalizar antes del período principal y conservar la misma duración.");
+        return;
+      }
+      const end = suggestedExactDaysComparisonEnd(value.primary, parsed);
+      setSelectionNotice(`Fecha final propuesta: ${end}. Mantiene la misma duración y no se solapa con el período principal.`);
+      onChange({ ...value, comparison: { start: parsed, end } });
+      return;
+    }
+
+    const requiredEnd = suggestedExactDaysComparisonEnd(value.primary, comparison.start);
+    if (parsed !== requiredEnd) {
+      setSelectionNotice(`La fecha final debe ser ${requiredEnd} para conservar la duración exacta; se ajustó automáticamente.`);
+    } else {
+      setSelectionNotice(undefined);
+    }
+    onChange({ ...value, comparison: { ...comparison, end: requiredEnd } });
   };
 
   const updateMonthRange = (target: "primary" | "comparison", key: "start" | "end", month: string) => {
@@ -101,19 +129,22 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
               date={dateFromIso(comparison.start)}
               onDateChange={date => updateComparisonDate("start", date)}
               placeholder="Fecha inicio comparativa"
-              maxDate={new Date()}
+              maxDate={dateFromIso(latestComparisonStart)}
             />
           </div>
           <div className="space-y-2">
             <Label>Fin de comparación</Label>
             <DatePicker
-              date={dateFromIso(comparison.end)}
+              date={dateFromIso(suggestedComparisonEnd)}
               onDateChange={date => updateComparisonDate("end", date)}
               placeholder="Fecha fin comparativa"
-              minDate={dateFromIso(comparison.start)}
-              maxDate={new Date()}
+              minDate={dateFromIso(suggestedComparisonEnd)}
+              maxDate={dateFromIso(suggestedComparisonEnd)}
             />
           </div>
+          <p className="md:col-span-2 text-xs text-muted-foreground" role="status">
+            La fecha final se propone automáticamente para igualar la duración del período principal: {suggestedComparisonEnd}.
+          </p>
         </div>
       )}
 
@@ -128,7 +159,7 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
                 value={monthValues?.startMonth ?? ""}
                 max={lastClosedMonth()}
                 onChange={event => updateMonthRange("primary", "start", event.target.value)}
-                className="h-9 border border-input bg-background px-3 text-foreground outline-none focus:ring-2 focus:ring-ring"
+                className="ff-month-input"
               />
             </label>
             <label className="grid gap-1 text-sm text-muted-foreground">
@@ -138,7 +169,7 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
                 value={monthValues?.endMonth ?? ""}
                 max={lastClosedMonth()}
                 onChange={event => updateMonthRange("primary", "end", event.target.value)}
-                className="h-9 border border-input bg-background px-3 text-foreground outline-none focus:ring-2 focus:ring-ring"
+                className="ff-month-input"
               />
             </label>
           </fieldset>
@@ -151,7 +182,7 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
                 value={comparisonMonthValues?.startMonth ?? ""}
                 max={lastClosedMonth()}
                 onChange={event => updateMonthRange("comparison", "start", event.target.value)}
-                className="h-9 border border-input bg-background px-3 text-foreground outline-none focus:ring-2 focus:ring-ring"
+                className="ff-month-input"
               />
             </label>
             <label className="grid gap-1 text-sm text-muted-foreground">
@@ -161,14 +192,14 @@ export function ComparisonPeriodControls({ value, onChange, error }: ComparisonP
                 value={comparisonMonthValues?.endMonth ?? ""}
                 max={lastClosedMonth()}
                 onChange={event => updateMonthRange("comparison", "end", event.target.value)}
-                className="h-9 border border-input bg-background px-3 text-foreground outline-none focus:ring-2 focus:ring-ring"
+                className="ff-month-input"
               />
             </label>
           </fieldset>
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {(selectionNotice || error) && <p role={error ? "alert" : "status"} className={error ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{error ?? selectionNotice}</p>}
     </div>
   );
 }

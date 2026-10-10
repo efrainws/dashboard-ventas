@@ -147,6 +147,18 @@ export function previousPeriod(range: TemporalRange): TemporalRange {
   return { start: shiftIso(end, -(dayCount - 1)), end };
 }
 
+/** Mantiene el comparativo inmediatamente antes del periodo principal y con igual duración. */
+export function suggestedExactDaysComparisonEnd(primary: TemporalRange, comparisonStart: string): string {
+  const dayCount = inclusiveCalendarDays(primary.start, primary.end);
+  return shiftIso(comparisonStart, dayCount - 1);
+}
+
+/** Última fecha de inicio que deja todo el comparativo antes del periodo principal. */
+export function latestExactDaysComparisonStart(primary: TemporalRange): string {
+  const dayCount = inclusiveCalendarDays(primary.start, primary.end);
+  return shiftIso(primary.start, -dayCount);
+}
+
 export function validateExactDaysComparison(primary: TemporalRange, comparison: TemporalRange, maxDate = todayIso()): string | null {
   if (!isRangeValid(primary, maxDate) || !isRangeValid(comparison, maxDate)) {
     return "Selecciona nuevamente el periodo comparativo.";
@@ -156,6 +168,9 @@ export function validateExactDaysComparison(primary: TemporalRange, comparison: 
   }
   if (comparison.start >= primary.start) {
     return "El periodo comparativo debe comenzar antes del período principal.";
+  }
+  if (comparison.end >= primary.start) {
+    return "El periodo comparativo debe terminar antes del período principal, sin solaparse.";
   }
   return null;
 }

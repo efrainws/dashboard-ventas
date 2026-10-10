@@ -203,6 +203,7 @@ interface StoreLayoutViewerProps {
 }
 
 function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map() }: StoreLayoutViewerProps) {
+  const { effectiveTheme } = useTheme();
   const utils = trpc.useUtils();
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -224,6 +225,23 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
   // Pantalla completa
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
+  const tooltipPalette = effectiveTheme === "dark"
+    ? {
+        surface: "#242424",
+        border: "#46443F",
+        title: "#F3EEE1",
+        muted: "#CFC7B8",
+        positive: "#6EC1AD",
+        negative: "#E992A4",
+      }
+    : {
+        surface: "#FCFCFC",
+        border: "#D9D6CD",
+        title: "#232523",
+        muted: "#847B66",
+        positive: "#005A47",
+        negative: "#842032",
+      };
 
   // Escuchar cambios de fullscreen (Esc, etc.)
   useEffect(() => {
@@ -888,19 +906,19 @@ function StoreLayoutViewer({ data, selectedBranch, branchName, compMap = new Map
               const tooltipHeight = metrics ? (compEntry ? 100 : 70) : 40;
               return (
                 <Group x={tipX} y={tipY}>
-                  <Rect width={220} height={tooltipHeight} fill="#1e293b" cornerRadius={6} opacity={0.95} />
-                  <Text text={tooltip.zone.name} x={8} y={8} fontSize={12} fontStyle="bold" fill="#f8fafc" />
+                  <Rect width={220} height={tooltipHeight} fill={tooltipPalette.surface} stroke={tooltipPalette.border} cornerRadius={0} opacity={0.98} />
+                  <Text text={tooltip.zone.name} x={8} y={8} fontSize={12} fontStyle="bold" fill={tooltipPalette.title} />
                   {metrics ? (
                     <>
-                      <Text text={`Monto: S/ ${fmtCurrency(metrics.monto)}${fmtVar(montoVar)}`} x={8} y={26} fontSize={10} fill={montoVar !== null ? (montoVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
-                      <Text text={`Unidades: ${fmtNumber(metrics.unidades)}${fmtVar(unidVar)}`} x={8} y={42} fontSize={10} fill={unidVar !== null ? (unidVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
-                      <Text text={`SKUs: ${metrics.skus.size}${fmtVar(skuVar)}`} x={8} y={58} fontSize={10} fill={skuVar !== null ? (skuVar >= 0 ? "#4ade80" : "#f87171") : "#94a3b8"} />
+                      <Text text={`Monto: S/ ${fmtCurrency(metrics.monto)}${fmtVar(montoVar)}`} x={8} y={26} fontSize={10} fill={montoVar !== null ? (montoVar >= 0 ? tooltipPalette.positive : tooltipPalette.negative) : tooltipPalette.muted} />
+                      <Text text={`Unidades: ${fmtNumber(metrics.unidades)}${fmtVar(unidVar)}`} x={8} y={42} fontSize={10} fill={unidVar !== null ? (unidVar >= 0 ? tooltipPalette.positive : tooltipPalette.negative) : tooltipPalette.muted} />
+                      <Text text={`SKUs: ${metrics.skus.size}${fmtVar(skuVar)}`} x={8} y={58} fontSize={10} fill={skuVar !== null ? (skuVar >= 0 ? tooltipPalette.positive : tooltipPalette.negative) : tooltipPalette.muted} />
                       {compEntry && (
-                        <Text text="vs período anterior" x={8} y={78} fontSize={9} fill="#64748b" fontStyle="italic" />
+                        <Text text="vs período anterior" x={8} y={78} fontSize={9} fill={tooltipPalette.muted} fontStyle="italic" />
                       )}
                     </>
                   ) : (
-                    <Text text="Sin datos en el período" x={8} y={26} fontSize={11} fill="#94a3b8" />
+                    <Text text="Sin datos en el período" x={8} y={26} fontSize={11} fill={tooltipPalette.muted} />
                   )}
                 </Group>
               );

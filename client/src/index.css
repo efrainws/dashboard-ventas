@@ -511,6 +511,47 @@
     font-size: 0.875rem;
   }
 
+  /* Tooltips nativos de Recharts: la librería inyecta colores claros en línea
+     si no se configura cada gráfico. Los tokens globales preservan contraste
+     en ambos temas sin duplicar estilos por página. */
+  .recharts-default-tooltip {
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0 !important;
+    background: var(--surface-card) !important;
+    box-shadow: var(--shadow-warm-md) !important;
+    color: var(--text-body) !important;
+    font-family: var(--font-sans) !important;
+  }
+
+  .recharts-default-tooltip .recharts-tooltip-label,
+  .recharts-default-tooltip .recharts-tooltip-item {
+    color: var(--text-body) !important;
+  }
+
+  .ff-month-input {
+    width: 100%;
+    height: 2.25rem;
+    border: 1px solid var(--border-default);
+    border-radius: 0;
+    background: var(--surface-card);
+    color: var(--text-strong);
+    color-scheme: light;
+    padding: 0 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+
+  .ff-month-input:focus-visible {
+    border-color: var(--ring);
+    box-shadow: var(--shadow-focus);
+  }
+
+  .dark .ff-month-input {
+    color-scheme: dark;
+  }
+
   .ff-chart-pie-label {
     fill: var(--text-inverse);
     font-size: 0.75rem;

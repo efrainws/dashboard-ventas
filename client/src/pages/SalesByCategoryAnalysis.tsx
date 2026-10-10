@@ -240,7 +240,7 @@ function ComparativeLineTooltip({
   const percentage = comparison === undefined || comparison === 0 ? undefined : (difference! / comparison) * 100;
 
   return (
-    <div className="min-w-52 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-md">
+    <div className="ff-chart-tooltip min-w-52">
       <p className="mb-1 font-semibold">{point.label}</p>
       <p><span className="text-muted-foreground">Principal: </span>{formatter(primary)}</p>
       {comparison !== undefined ? (
